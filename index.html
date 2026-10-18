@@ -355,7 +355,7 @@
     .parkHero p{ display:none; }
     .modes{ margin-top:12px; }
     .mode{ padding:9px 16px; }
-    .mode span{ display:none; }
+    .mode .tx > span{ display:none; }
     .mpCard{ margin-top:10px; padding:11px 18px; }
     .loadout{ margin-top:12px; padding:12px 18px 2px; }
     .bikePreview{ height:112px; }
@@ -652,8 +652,239 @@
     background:var(--gold); cursor:pointer; box-shadow:0 0 8px rgba(255,196,107,.6);
   }
   #adminPanel .note{ font-size:9.5px; letter-spacing:.05em; opacity:.35; margin-top:14px; line-height:1.6; }
+
+  /* =====================================================================
+     FULL-SCREEN MENU -- the whole viewport: map picker on the left, the city
+     orbiting in the middle, loadout on the right. The side columns are glass;
+     the middle is left clear so the 3D scene behind the menu actually shows.
+     ===================================================================== */
+  #menu:not(.hide){
+    display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start;
+    padding:0; overflow:hidden; backdrop-filter:none;
+    background:
+      linear-gradient(180deg, rgba(6,8,12,.78) 0, rgba(6,8,12,0) 150px),
+      linear-gradient(90deg, rgba(6,8,12,.86) 0, rgba(6,8,12,.55) 22%, rgba(6,8,12,.08) 36%, rgba(6,8,12,.08) 60%, rgba(6,8,12,.58) 76%, rgba(6,8,12,.88) 100%),
+      linear-gradient(0deg, rgba(6,8,12,.6) 0, rgba(6,8,12,0) 240px);
+  }
+  .mTop{ flex:0 0 auto; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:20px 34px 0; }
+  .mBrand{ display:flex; align-items:baseline; gap:18px; min-width:0; }
+  .mBrand .title{ font-size:clamp(26px,3vw,40px); white-space:nowrap; }
+  .mBrand .sub{ margin-top:0; font-size:10px; letter-spacing:.4em; white-space:nowrap; }
+  .mTopR{ display:flex; align-items:center; gap:10px; }
+  .mTopR .btn{ margin-top:0; padding:10px 18px; font-size:10px; letter-spacing:.22em; background:rgba(8,11,16,.5); }
+  .fsBtn .fsIco{ margin-right:9px; font-size:13px; letter-spacing:0; }
+  .acctChip{
+    display:inline-flex; align-items:center; gap:9px; padding:10px 18px; font-family:inherit;
+    font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--paper);
+    border:1px solid var(--line); background:rgba(8,11,16,.5); cursor:pointer; transition:.16s; max-width:240px;
+  }
+  .acctChip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .acctChip:hover{ border-color:var(--teal); }
+  .acctChip .dot{ flex:0 0 auto; width:8px; height:8px; border-radius:50%; background:rgba(242,237,228,.35); }
+  .acctChip.on .dot{ background:var(--teal); box-shadow:0 0 8px var(--teal); }
+  .acctChip .bdg{ margin-left:2px; }
+
+  .mGrid{
+    flex:1 1 auto; min-height:0; display:grid; gap:26px; padding:18px 34px 28px;
+    grid-template-columns:clamp(224px,24vw,350px) minmax(0,1fr) clamp(250px,28vw,410px); align-items:stretch;
+  }
+  .mCol{ min-height:0; display:flex; flex-direction:column; }
+  .mLeft, .mRight{
+    padding:18px 18px 20px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(242,237,228,.25) transparent;
+    border:1px solid var(--line-soft); background:rgba(8,11,16,.5); backdrop-filter:blur(14px);
+    box-shadow:0 24px 60px -34px rgba(0,0,0,.9);
+  }
+  .mHead{ font-size:9px; letter-spacing:.32em; text-transform:uppercase; opacity:.5; margin-bottom:12px; }
+
+  .mapList{ display:flex; flex-direction:column; gap:10px; }
+  .mapCard{
+    position:relative; display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;
+    padding:10px 14px 10px 10px; font-family:inherit; color:var(--paper);
+    border:1px solid var(--line); background:rgba(242,237,228,.03); transition:.16s; border-radius:2px;
+  }
+  .mapCard .sw{ flex:0 0 auto; width:58px; height:58px; border:1px solid rgba(242,237,228,.2); box-shadow:inset 0 -14px 18px -12px rgba(0,0,0,.4); }
+  .mapCard .tx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+  .mapCard b{ font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; }
+  .mapCard .tg{ font-size:10.5px; font-weight:300; opacity:.66; line-height:1.35; }
+  .mapCard .bs{ font-size:9px; letter-spacing:.16em; text-transform:uppercase; opacity:.42; }
+  .mapCard .go{ flex:0 0 auto; font-size:9px; letter-spacing:.2em; text-transform:uppercase; opacity:.5; }
+  .mapCard:hover{ border-color:rgba(242,237,228,.42); transform:translateX(3px); }
+  .mapCard.sel{ border-color:var(--gold); background:rgba(255,196,107,.10); box-shadow:0 10px 26px -16px rgba(255,196,107,.55); }
+  .mapCard.sel b, .mapCard.sel .go{ color:var(--gold); opacity:1; }
+  .mapCard.sel:hover{ transform:none; }
+  .mapCard .desc{ display:none; margin-top:5px; font-size:10.5px; line-height:1.55; font-weight:300; opacity:.72; }
+  .mapCard.sel .desc{ display:block; }
+  .mLeft .mpCard{ width:100%; margin:16px 0 0; padding:12px 16px; }
+
+  .mMid{ align-items:center; justify-content:space-between; min-width:0; text-align:center; }
+  #menu .parkHero{
+    width:auto; max-width:640px; margin:0 auto; padding:18px 30px 20px; border:0; box-shadow:none;
+    background:radial-gradient(closest-side, rgba(6,8,12,.55), rgba(6,8,12,0));
+    text-shadow:0 2px 24px rgba(4,7,12,.9), 0 0 3px rgba(4,7,12,.6);
+  }
+  #menu .parkHero::before{ display:none; }
+  #menu .parkHero h3{ font-size:clamp(28px,3.3vw,52px); font-weight:100; letter-spacing:.14em; line-height:1.05; }
+  #menu .parkHero p{ display:none; }
+  #menu .parkHero .meta{ margin-top:14px; flex-direction:column; align-items:center; gap:7px; }
+  #menu .parkHero .tag{ font-size:10px; max-width:52ch; line-height:1.6; }
+  #menu .parkHero .best{ font-size:10px; opacity:.7; }
+  .mDock{
+    width:min(640px,100%); display:flex; flex-direction:column; align-items:center;
+    padding:18px 22px 16px; border:1px solid var(--line-soft); background:rgba(8,11,16,.55); backdrop-filter:blur(14px);
+    box-shadow:0 24px 60px -34px rgba(0,0,0,.9);
+  }
+  .mDock .modes{ margin-top:0; padding:0; max-width:none; width:100%; }
+  .mDock .mode{ min-width:0; flex:1 1 150px; padding:11px 14px; }
+  .mDock .mode .tx > span{ font-size:10.5px; }
+  #startBtn{ margin-top:16px; width:100%; padding:17px 20px; font-size:14px; letter-spacing:.42em; white-space:nowrap; }
+  .mDock .hint{ margin-top:14px; text-align:center; line-height:1.6; }
+  .mDock .btnRow{ width:100%; flex-wrap:wrap; justify-content:center; gap:8px; }
+  .mDock .btnRow .btn.ghost{ padding:10px 16px; letter-spacing:.2em; }
+  .mDock .btnRow .btn.primary{ width:100%; }
+
+  #menu .loadout{ width:auto; margin:0; padding:0; border:0; background:none; }
+  #menu .bikePreview{ height:150px; margin:0 0 14px; }
+  #menu .kitRow{ flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:12px; }
+  #menu .kits{ gap:6px; }
+  #menu .kit{ padding:6px 11px 6px 8px; font-size:9.5px; letter-spacing:.14em; }
+  #menu .kitRow .cap{ width:auto; }
+  .kitPair{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 14px; }
+
+  @media (max-width:1180px){
+    .mGrid{ gap:16px; padding:14px 18px 22px; }
+    .mTop{ padding:16px 18px 0; }
+    #startBtn{ letter-spacing:.34em; }
+    .mapCard{ gap:10px; padding:9px 12px 9px 9px; }
+    .mapCard .sw{ width:44px; height:44px; }
+    .mapCard.sel .desc{ display:none; }
+    .mapCard b{ letter-spacing:.12em; }
+  }
+  @media (max-width:860px){
+    #menu:not(.hide){ overflow-y:auto; overflow-x:hidden; }
+    .mTop{ flex-wrap:wrap; padding:14px 14px 0; }
+    .mBrand .sub{ display:none; }
+    .mGrid{ display:flex; flex-direction:column; flex:0 0 auto; padding:12px 14px 28px; gap:14px; }
+    .mMid{ order:-1; justify-content:flex-start; gap:14px; }
+    .mLeft, .mRight{ overflow:visible; }
+    .mapList{ flex-direction:row; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
+    .mapCard{ flex:0 0 232px; }
+    .mapCard:hover{ transform:none; }
+    .mapCard.sel .desc{ display:none; }
+    #menu .parkHero{ padding:6px 10px 8px; background:none; }
+    #menu .parkHero p{ display:none; }
+    .mDock{ width:100%; padding:14px; }
+    #menu .bikePreview{ height:150px; }
+  }
+  @media (max-height:700px) and (min-width:861px){
+    .mTop{ padding-top:12px; }
+    .mGrid{ padding-top:10px; padding-bottom:16px; gap:18px; }
+    #menu .bikePreview{ height:118px; margin-bottom:10px; }
+    #menu .kitRow{ margin-bottom:9px; gap:5px; }
+    #menu .parkHero p{ font-size:12px; margin-top:8px; }
+    #menu .parkHero .meta{ margin-top:8px; }
+    .mDock{ padding:12px 18px 10px; }
+    .mDock .mode .tx > span{ display:none; }
+    #startBtn{ margin-top:12px; padding:13px 20px; }
+    .mDock .hint{ margin-top:10px; }
+    .mapCard .sw{ width:46px; height:46px; }
+    .mapList{ gap:7px; }
+    .mapCard{ padding:7px 12px 7px 8px; }
+  }
+  body.noOnline .onlineOnly, body.noOnline #mpBtn{ display:none !important; }
+
+  /* =====================================================================
+     PLAY ONLINE hub -- tabs: public servers / friends / private room / account
+     ===================================================================== */
+  #friends:not(.hide){ justify-content:flex-start; align-items:center; padding:0; }
+  .hubWrap{ width:min(940px,94vw); margin:auto; padding:30px 0 34px; display:flex; flex-direction:column; align-items:stretch; }
+  .hubHead{ text-align:center; }
+  .hubTabs{ display:flex; gap:6px; margin-top:22px; justify-content:center; flex-wrap:wrap; border-bottom:1px solid var(--line-soft); }
+  .hubTab{
+    position:relative; padding:12px 20px; font-family:inherit; font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--paper); background:none; border:0; border-bottom:2px solid transparent; opacity:.55; cursor:pointer; transition:.16s;
+    margin-bottom:-1px;
+  }
+  .hubTab:hover{ opacity:.9; }
+  .hubTab.sel{ opacity:1; color:var(--teal); border-bottom-color:var(--teal); }
+  .bdg{
+    display:inline-block; margin-left:8px; min-width:18px; padding:2px 6px; border-radius:9px; background:var(--hot); color:var(--ink);
+    font-style:normal; font-size:9px; letter-spacing:0; font-weight:700; text-align:center; line-height:1.3;
+  }
+  .hubPane{
+    margin-top:20px; border:1px solid var(--line); background:rgba(10,13,18,.66); backdrop-filter:blur(10px);
+    padding:22px 26px 24px; box-shadow:0 20px 50px -28px rgba(0,0,0,.8); text-align:left;
+  }
+  .paneBar{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .paneTitle{ font-size:11px; letter-spacing:.24em; text-transform:uppercase; opacity:.7; }
+  .paneTitle span{ opacity:.6; margin-left:6px; }
+  .paneActs{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn.sm{ margin-top:0; padding:9px 18px; font-size:10px; letter-spacing:.2em; }
+  .btn.danger{ border-color:var(--hot); color:var(--hot); }
+  .btn.danger:hover{ background:var(--hot); color:var(--ink); }
+  .hlist{ margin-top:14px; display:flex; flex-direction:column; gap:6px; }
+  .hrow{
+    display:flex; align-items:center; gap:14px; padding:11px 14px; text-align:left;
+    border:1px solid var(--line-soft); background:rgba(242,237,228,.03);
+  }
+  .hrow .sw{ flex:0 0 auto; width:34px; height:34px; border:1px solid rgba(242,237,228,.2); }
+  .hrow .nm{ flex:1; min-width:0; }
+  .hrow .nm b{ display:block; font-size:12px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hrow .nm span{ display:block; margin-top:3px; font-size:11px; font-weight:300; opacity:.55; }
+  .hrow .meta{ font-size:10px; letter-spacing:.18em; text-transform:uppercase; opacity:.6; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .hrow .acts{ display:flex; gap:6px; flex:0 0 auto; }
+  .hrow .btn.sm{ padding:8px 14px; }
+  .hrow.full{ opacity:.55; }
+  .hdot{ flex:0 0 auto; width:9px; height:9px; border-radius:50%; background:rgba(242,237,228,.25); }
+  .hdot.on{ background:var(--teal); box-shadow:0 0 8px var(--teal); }
+  .hempty{ margin-top:14px; padding:26px 10px; text-align:center; font-size:12px; opacity:.45; font-weight:300; line-height:1.7; }
+  .subhead{ margin-top:20px; font-size:9px; letter-spacing:.26em; text-transform:uppercase; opacity:.45; }
+  .hubErr{ margin-top:12px; min-height:1.4em; font-size:11px; color:var(--hot); letter-spacing:.05em; }
+  .hubErr.ok, .mpErr.ok{ color:var(--teal); }
+  .hubNote{ margin-top:14px; font-size:11px; font-weight:300; opacity:.6; line-height:1.7; }
+  .hostForm, .acctForm{
+    margin-top:16px; padding:16px 18px 18px; border:1px solid var(--line-soft); background:rgba(242,237,228,.03);
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .hostNote, .acctFine{ font-size:11px; font-weight:300; opacity:.5; line-height:1.6; }
+  .formRow{ display:grid; grid-template-columns:minmax(0,1fr) 120px; gap:14px; }
+  .mpField select{
+    width:100%; box-sizing:border-box; padding:11px 12px; font-family:inherit; font-size:14px; color:var(--paper);
+    background:rgba(242,237,228,.05); border:1px solid var(--line); outline:none; color-scheme:dark;
+  }
+  .mpField select:focus{ border-color:var(--teal); }
+  .mpField select option{ background:#10151c; color:var(--paper); }
+  .gate{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:18px; border:1px dashed rgba(95,214,196,.4); background:rgba(95,214,196,.05); }
+  .gateTx{ font-size:12px; font-weight:300; opacity:.8; line-height:1.6; max-width:52ch; }
+  .seg{ display:inline-flex; border:1px solid var(--line); }
+  .segBtn{
+    padding:10px 22px; font-family:inherit; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--paper);
+    background:none; border:0; cursor:pointer; opacity:.6; transition:.16s;
+  }
+  .segBtn.sel{ opacity:1; background:rgba(95,214,196,.14); color:var(--teal); }
+  .acctCard{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:16px 18px; border:1px solid var(--line-soft); background:rgba(242,237,228,.03); }
+  .acctAvatar{
+    flex:0 0 auto; width:48px; height:48px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:300;
+    letter-spacing:0; text-transform:uppercase; color:var(--ink); background:linear-gradient(135deg, var(--teal), var(--gold));
+  }
+  .acctWho{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+  .acctWho b{ font-size:15px; font-weight:500; letter-spacing:.12em; text-transform:none; overflow:hidden; text-overflow:ellipsis; }
+  .acctWho span{ font-size:11px; font-weight:300; opacity:.55; }
+  .acctDanger{ margin-top:22px; padding-top:16px; border-top:1px solid var(--line-soft); }
+  .acctCloseForm{ margin-top:14px; display:flex; flex-direction:column; gap:12px; max-width:420px; }
+  .linkBtn{ background:none; border:0; padding:0; font-family:inherit; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--paper); opacity:.45; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  .linkBtn:hover{ opacity:.8; }
+  #acctOut, #acctIn{ max-width:520px; margin:0 auto; }
+  .hubFoot{ margin-top:18px; text-align:center; }
+  .roomMap{ margin-top:8px; font-size:10px; letter-spacing:.24em; text-transform:uppercase; opacity:.55; }
+  #paneRoom .panel{ width:auto; margin:0 auto; max-width:560px; border:0; background:none; padding:6px 0 0; box-shadow:none; }
+  @media (max-width:640px){
+    .hubPane{ padding:16px 14px 18px; }
+    .hubTab{ padding:11px 12px; letter-spacing:.14em; }
+    .formRow{ grid-template-columns:1fr; }
+    .hrow{ flex-wrap:wrap; gap:10px; }
+  }
 </style>
-<style>#mpBtn{display:none !important}</style>
+<style>.onlineOnly, #mpBtn, #friends{display:none !important}</style>
 </head>
 <body>
 
@@ -731,8 +962,8 @@
     <div class="tr"><span>Flair &mdash; flip + spin</span><i>S + A</i></div>
     <h5>Ground</h5>
     <div class="tr"><span>Bunny Hop &mdash; hold, release</span><i>SPACE</i></div>
-    <div class="tr"><span>Wheelie &mdash; hold, from a stop or rolling</span><i>SHIFT</i></div>
-    <div class="tr"><span>Nose Wheelie</span><i>SHIFT + W</i></div>
+    <div class="tr"><span>Wheelie &mdash; hold, even while pedalling</span><i>SHIFT</i></div>
+    <div class="tr"><span>Nose Wheelie / Stoppie</span><i>SHIFT + S</i></div>
     <div class="tr"><span>Grind</span><i>land on a rail</i></div>
     <h5>Camera</h5>
     <div class="tr"><span>Look around</span><i>DRAG</i></div>
@@ -740,7 +971,7 @@
     <div class="tr"><span>Lock / recentre</span><i>C / V</i></div>
     <div class="tr"><span>Cinematic camera</span><i>B</i></div>
     <div class="ft">Hold a whip, barspin or decade for doubles. Let go and it finishes itself &mdash;
-      land mid&#8209;rotation and you eat it. Wheelies work from a standing start, not just at speed.</div>
+      land mid&#8209;rotation and you eat it. Wheelies work from a standing start, and keep going while you pedal or twist the throttle (W).</div>
   </div>
 </div>
 
@@ -819,59 +1050,91 @@
 
 <!-- ======================= MENU ======================= -->
 <div class="screen" id="menu">
-  <div class="title">Dusk <b>Line</b></div>
-  <div class="sub">Freestyle BMX</div>
-  <div class="parkHero" id="parkHero"></div>
-  <div class="modes" id="modeList">
-    <button class="mode sel" data-mode="timed"><span class="ico">⏱</span><span class="tx"><b>Timed Run</b><span>Three minutes on the clock. Go for a score.</span></span></button>
-    <button class="mode" data-mode="free"><span class="ico">∞</span><span class="tx"><b>Free Ride</b><span>No clock, no pressure. Just session it.</span></span></button>
+  <header class="mTop">
+    <div class="mBrand">
+      <div class="title">Dusk <b>Line</b></div>
+      <div class="sub">Freestyle BMX</div>
+    </div>
+    <div class="mTopR">
+      <button class="acctChip onlineOnly" id="acctChip" type="button" title="Account"><i class="dot"></i><span id="acctChipTx">Sign in</span></button>
+      <button class="btn ghost fsBtn" id="fsBtn" type="button" title="Fullscreen"><span class="fsIco">⛶</span><span id="fsTx">Fullscreen</span></button>
+    </div>
+  </header>
+
+  <div class="mGrid">
+    <aside class="mCol mLeft">
+      <div class="mHead">Choose a map</div>
+      <div class="mapList" id="mapList"></div>
+      <button class="mpCard" id="mpBtn" type="button">
+        <span class="ico">⛓</span>
+        <span class="tx"><b>Play Online</b><span id="mpBtnSub">Friends, public servers and private rooms — no bots, just people.</span></span>
+        <span class="go">Open →</span>
+      </button>
+    </aside>
+
+    <main class="mCol mMid">
+      <div class="parkHero" id="parkHero"></div>
+      <div class="mDock">
+        <div class="modes" id="modeList">
+          <button class="mode sel" data-mode="timed"><span class="ico">⏱</span><span class="tx"><b>Timed Run</b><span>Three minutes on the clock. Go for a score.</span></span></button>
+          <button class="mode" data-mode="free"><span class="ico">∞</span><span class="tx"><b>Free Ride</b><span>No clock, no pressure. Just session it.</span></span></button>
+        </div>
+        <div class="btnRow">
+          <button class="btn primary" id="startBtn">Drop In</button>
+        </div>
+        <div class="btnRow" style="margin-top:10px">
+          <button class="btn ghost" id="ctrlBtn" style="margin-top:0">Controls</button>
+          <button class="btn ghost" id="shopBtn" style="margin-top:0">Shop<span class="repChip" id="menuRepNum">0</span></button>
+          <button class="btn ghost" id="achBtn" style="margin-top:0">Achievements<span class="repChip" id="achChip">0/15</span></button>
+        </div>
+        <div class="hint" id="menuHint">Three minutes. Stack the biggest line you can.</div>
+      </div>
+    </main>
+
+    <aside class="mCol mRight">
+      <div class="mHead">Your loadout</div>
+      <div class="loadout">
+        <div class="bikePreview" id="bikePreview">
+          <canvas id="bikePreviewCanvas"></canvas>
+          <div class="nm" id="bikePreviewName">BMX</div>
+        </div>
+        <div class="kitRow">
+          <span class="cap">Rider</span>
+          <div class="kits" id="riderList"></div>
+        </div>
+        <div class="kitRow">
+          <span class="cap" id="kitCap">Kit</span>
+          <div class="kits" id="kitList"></div>
+        </div>
+        <div class="kitRow">
+          <span class="cap" id="driveCap">Bike</span>
+          <div class="kits" id="driveList"></div>
+        </div>
+        <div class="kitPair">
+          <div class="kitRow">
+            <span class="cap">Camera</span>
+            <div class="kits" id="camList"></div>
+          </div>
+          <div class="kitRow">
+            <span class="cap">Bails</span>
+            <div class="kits" id="bailList"></div>
+          </div>
+          <div class="kitRow">
+            <span class="cap">Graphics</span>
+            <div class="kits" id="gfxList"></div>
+          </div>
+          <div class="kitRow">
+            <span class="cap">Auto res</span>
+            <div class="kits" id="autoResList"></div>
+          </div>
+          <div class="kitRow">
+            <span class="cap">Cops</span>
+            <div class="kits" id="copList"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
-  <button class="mpCard" id="mpBtn">
-    <span class="ico">⛓</span>
-    <span class="tx"><b>Play With Friends</b><span>Free‑roam the city together — no bots, just people you invite by code.</span></span>
-    <span class="go">Open →</span>
-  </button>
-  <div class="loadout">
-    <div class="bikePreview" id="bikePreview">
-      <canvas id="bikePreviewCanvas"></canvas>
-      <div class="nm" id="bikePreviewName">BMX</div>
-    </div>
-    <div class="kitRow">
-      <span class="cap">Rider</span>
-      <div class="kits" id="riderList"></div>
-    </div>
-    <div class="kitRow">
-      <span class="cap" id="kitCap">Kit</span>
-      <div class="kits" id="kitList"></div>
-      <span class="cap" style="margin-left:14px" id="driveCap">Bike</span>
-      <div class="kits" id="driveList"></div>
-    </div>
-    <div class="kitRow">
-      <span class="cap">Camera</span>
-      <div class="kits" id="camList"></div>
-      <span class="cap" style="margin-left:14px">Bails</span>
-      <div class="kits" id="bailList"></div>
-    </div>
-    <div class="kitRow">
-      <span class="cap">Graphics</span>
-      <div class="kits" id="gfxList"></div>
-      <span class="cap" style="margin-left:14px">Auto res</span>
-      <div class="kits" id="autoResList"></div>
-    </div>
-    <div class="kitRow">
-      <span class="cap">Cops</span>
-      <div class="kits" id="copList"></div>
-    </div>
-  </div>
-  <div class="btnRow">
-    <button class="btn primary" id="startBtn">Drop In</button>
-  </div>
-  <div class="btnRow" style="margin-top:10px">
-    <button class="btn ghost" id="ctrlBtn" style="margin-top:0">Controls</button>
-    <button class="btn ghost" id="shopBtn" style="margin-top:0">Shop<span class="repChip" id="menuRepNum">0</span></button>
-    <button class="btn ghost" id="achBtn" style="margin-top:0">Achievements<span class="repChip" id="achChip">0/15</span></button>
-  </div>
-  <div class="hint" id="menuHint">Three minutes. Stack the biggest line you can.</div>
 </div>
 
 <!-- ======================= CONTROLS ======================= -->
@@ -885,7 +1148,7 @@
         <div class="row"><span>Brake / lean back</span><span class="k">S · ↓</span></div>
         <div class="row"><span>Steer / spin in air</span><span class="k">A D · ← →</span></div>
         <div class="row"><span>Crouch, then hop</span><span class="k">SPACE</span></div>
-        <div class="row"><span>Wheelie — works from a stop, too</span><span class="k">SHIFT</span></div>
+        <div class="row"><span>Wheelie — from a stop, or while pedalling</span><span class="k">SHIFT (+ W)</span></div>
         <div class="row"><span>Bail out / respawn</span><span class="k">R</span></div>
         <div class="row"><span>Pause</span><span class="k">ESC · P</span></div>
         <div class="row"><span>Mute sound</span><span class="k">M</span></div>
@@ -908,7 +1171,7 @@
         <div class="row"><span>Backflip · double (tap, or hold)</span><span class="k">S in air</span></div>
         <div class="row"><span>Frontflip · double (tap, or hold)</span><span class="k">W in air</span></div>
         <div class="row"><span>Bunny hop — hold to load, release</span><span class="k">SPACE</span></div>
-        <div class="row"><span>Nose wheelie</span><span class="k">SHIFT + W</span></div>
+        <div class="row"><span>Nose wheelie / stoppie</span><span class="k">SHIFT + S</span></div>
         <div class="row"><span>Trick sheet in game</span><span class="k">T</span></div>
         <div class="row"><span>Look around</span><span class="k">DRAG</span></div>
         <div class="row"><span>Zoom in / out</span><span class="k">WHEEL</span></div>
@@ -917,7 +1180,7 @@
         <div class="row"><span>Graphics quality</span><span class="k">F</span></div>
         <div class="row"><span>Cinematic camera</span><span class="k">B</span></div>
         <div class="row"><span>Electric: hold W for motor, brake to regen</span><span class="k">W · S</span></div>
-        <div class="row"><span>Dirt bike: throttle, brake, wheelie / stoppie</span><span class="k">W · S · SHIFT+W / SHIFT+S</span></div>
+        <div class="row"><span>Dirt bike: throttle, brake, wheelie / stoppie</span><span class="k">W · S · SHIFT / SHIFT+S</span></div>
       </div>
     </div>
     <div style="margin-top:24px;font-size:12px;font-weight:300;opacity:.6;line-height:1.7">
@@ -937,46 +1200,169 @@
   </div>
 </div>
 
-<!-- ======================= PLAY WITH FRIENDS ======================= -->
+<!-- ======================= PLAY ONLINE (friends / public servers / private room / account) ======================= -->
 <div class="screen hide" id="friends">
-  <div class="title" style="font-size:clamp(30px,5vw,44px)">Play With <b>Friends</b></div>
-  <div class="sub">No bots &middot; no strangers &middot; just your crew</div>
-
-  <div class="panel" id="mpJoinPanel" style="margin-top:26px">
-    <div class="mpField">
-      <label>Your name</label>
-      <input type="text" id="mpNameInput" maxlength="16" placeholder="Rider" autocomplete="off">
+  <div class="hubWrap">
+    <div class="hubHead">
+      <div class="title" style="font-size:clamp(28px,4.4vw,46px)">Play <b>Online</b></div>
+      <div class="sub" id="hubSub">No bots &middot; just people</div>
     </div>
-    <div class="mpForm">
-      <button class="btn teal" id="mpCreateBtn" style="margin-top:0">Create a Room</button>
-      <div class="mpDivider">or join one</div>
-      <div class="mpRow">
-        <div class="mpField">
-          <label>Room code</label>
-          <input type="text" id="mpCodeInput" class="code" maxlength="5" placeholder="XXXXX" autocomplete="off">
+
+    <div class="hubTabs" id="hubTabs">
+      <button class="hubTab sel" data-tab="servers" type="button">Public servers</button>
+      <button class="hubTab" data-tab="friends" type="button">Friends<i class="bdg hide" id="friendsBadge">0</i></button>
+      <button class="hubTab" data-tab="room" type="button" id="hubTabRoom">Private room</button>
+      <button class="hubTab" data-tab="account" type="button" id="hubTabAcct">Account</button>
+    </div>
+
+    <!-- public servers -->
+    <section class="hubPane" id="paneServers">
+      <div class="paneBar">
+        <div class="paneTitle">Open servers <span id="srvCount"></span></div>
+        <div class="paneActs">
+          <button class="btn ghost sm" id="srvRefresh" type="button">Refresh</button>
+          <button class="btn teal sm" id="srvHostBtn" type="button">Host a server</button>
         </div>
-        <button class="btn teal" id="mpJoinBtn" style="margin-top:0">Join</button>
       </div>
-    </div>
-    <div class="mpErr" id="mpErr"></div>
-  </div>
-
-  <div class="panel hide" id="mpLobbyPanel" style="margin-top:26px">
-    <div class="codeBlock">
-      <div class="cap">Room code — share it with your friends</div>
-      <div class="codeBig" id="mpCodeBig">— — — — —</div>
-      <div class="codeRow">
-        <button class="btn ghost" id="mpCopyBtn" style="margin-top:0">Copy Code</button>
-        <button class="btn ghost" id="mpLeaveBtn" style="margin-top:0">Leave Room</button>
+      <div class="hostForm hide" id="srvHostForm">
+        <div class="formRow">
+          <div class="mpField">
+            <label>Server name</label>
+            <input type="text" id="srvName" maxlength="28" placeholder="My server" autocomplete="off">
+          </div>
+          <div class="mpField">
+            <label>Max riders</label>
+            <select id="srvMax">
+              <option value="4">4</option><option value="6" selected>6</option><option value="8">8</option><option value="12">12</option>
+            </select>
+          </div>
+        </div>
+        <div class="hostNote" id="srvHostNote">Hosted on the map you have selected.</div>
+        <div class="paneActs">
+          <button class="btn teal sm" id="srvCreateBtn" type="button">Open server</button>
+          <button class="btn ghost sm" id="srvCancelBtn" type="button">Cancel</button>
+        </div>
       </div>
-    </div>
-    <div class="rosterList" id="mpRoster"></div>
-    <div class="btnRow">
-      <button class="btn teal" id="mpDropBtn">Drop In Together</button>
-    </div>
-  </div>
+      <div class="hlist" id="srvList"></div>
+      <div class="hubNote hide" id="srvGuest">Playing as a guest. <button class="linkBtn" id="srvGuestBtn" type="button">Sign in or sign up</button> for a name nobody else can use, a friends list and your own servers.</div>
+      <div class="hubErr" id="srvErr"></div>
+    </section>
 
-  <button class="btn ghost" id="mpBack">Back</button>
+    <!-- friends -->
+    <section class="hubPane hide" id="paneFriends">
+      <div class="gate hide" id="friendsGate">
+        <div class="gateTx">Sign in to add friends, see who is online and jump into their server.</div>
+        <button class="btn teal sm" id="friendsGateBtn" type="button">Sign in or sign up</button>
+      </div>
+      <div id="friendsBody">
+        <div class="mpRow">
+          <div class="mpField">
+            <label>Add a friend by username</label>
+            <input type="text" id="frAddInput" maxlength="16" placeholder="username" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <button class="btn teal sm" id="frAddBtn" type="button" style="margin-bottom:1px">Send request</button>
+        </div>
+        <div class="hubErr" id="frErr"></div>
+        <div id="frReqWrap" class="hide"><div class="subhead">Requests</div><div class="hlist" id="frReq"></div></div>
+        <div class="subhead">Friends <span id="frCount"></span></div>
+        <div class="hlist" id="frList"></div>
+        <div id="frOutWrap" class="hide"><div class="subhead">Waiting for them to accept</div><div class="hlist" id="frOut"></div></div>
+      </div>
+    </section>
+
+    <!-- private room (code based, no account needed) -->
+    <section class="hubPane hide" id="paneRoom">
+      <div class="panel" id="mpJoinPanel">
+        <div class="mpField" id="mpNameField">
+          <label>Your name</label>
+          <input type="text" id="mpNameInput" maxlength="16" placeholder="Rider" autocomplete="off">
+        </div>
+        <div class="mpForm">
+          <button class="btn teal" id="mpCreateBtn" style="margin-top:0" type="button">Create a Room</button>
+          <div class="mpDivider">or join one</div>
+          <div class="mpRow">
+            <div class="mpField">
+              <label>Room code</label>
+              <input type="text" id="mpCodeInput" class="code" maxlength="5" placeholder="XXXXX" autocomplete="off">
+            </div>
+            <button class="btn teal" id="mpJoinBtn" style="margin-top:0" type="button">Join</button>
+          </div>
+        </div>
+        <div class="mpErr" id="mpErr"></div>
+      </div>
+
+      <div class="panel hide" id="mpLobbyPanel">
+        <div class="codeBlock">
+          <div class="cap" id="mpLobbyCap">Room code — share it with your friends</div>
+          <div class="codeBig" id="mpCodeBig">— — — — —</div>
+          <div class="roomMap" id="mpRoomMap"></div>
+          <div class="codeRow">
+            <button class="btn ghost" id="mpCopyBtn" style="margin-top:0" type="button">Copy Code</button>
+            <button class="btn ghost" id="mpLeaveBtn" style="margin-top:0" type="button">Leave Room</button>
+          </div>
+        </div>
+        <div class="rosterList" id="mpRoster"></div>
+        <div class="btnRow" style="justify-content:center">
+          <button class="btn teal" id="mpDropBtn" type="button">Drop In Together</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- account -->
+    <section class="hubPane hide" id="paneAccount">
+      <div id="acctOut">
+        <div class="seg" id="acctSeg">
+          <button class="segBtn sel" data-form="login" type="button">Log in</button>
+          <button class="segBtn" data-form="signup" type="button">Sign up</button>
+        </div>
+        <form class="acctForm" id="acctForm" autocomplete="on" novalidate>
+          <div class="mpField">
+            <label>Username</label>
+            <input type="text" id="acctUser" maxlength="16" placeholder="3–16 letters or numbers" autocomplete="username" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="mpField">
+            <label>Password</label>
+            <input type="password" id="acctPass" maxlength="72" placeholder="at least 6 characters" autocomplete="current-password">
+          </div>
+          <div class="mpField hide" id="acctPass2Wrap">
+            <label>Repeat password</label>
+            <input type="password" id="acctPass2" maxlength="72" placeholder="type it again" autocomplete="new-password">
+          </div>
+          <div class="paneActs">
+            <button class="btn teal sm" id="acctGo" type="submit">Log in</button>
+          </div>
+          <div class="acctFine" id="acctFine">An account gives you a name nobody else can use, a friends list and your own public servers. You can still join servers and private rooms without one.</div>
+        </form>
+        <div class="hubErr" id="acctErr"></div>
+      </div>
+
+      <div id="acctIn" class="hide">
+        <div class="acctCard">
+          <div class="acctAvatar" id="acctAvatar">R</div>
+          <div class="acctWho"><b id="acctName">Rider</b><span id="acctSub">Signed in</span></div>
+          <div class="paneActs">
+            <button class="btn ghost sm" id="acctOutBtn" type="button">Sign out</button>
+          </div>
+        </div>
+        <div class="acctDanger">
+          <button class="linkBtn" id="acctCloseBtn" type="button">Close this account…</button>
+          <div class="acctCloseForm hide" id="acctCloseForm">
+            <div class="mpField">
+              <label>Type your password to close the account (friends and servers are removed)</label>
+              <input type="password" id="acctClosePass" maxlength="72" autocomplete="current-password">
+            </div>
+            <div class="paneActs">
+              <button class="btn sm danger" id="acctCloseGo" type="button">Close account</button>
+              <button class="btn ghost sm" id="acctCloseCancel" type="button">Keep it</button>
+            </div>
+          </div>
+        </div>
+        <div class="hubErr" id="acctErr2"></div>
+      </div>
+    </section>
+
+    <div class="hubFoot"><button class="btn ghost" id="mpBack" type="button">Back</button></div>
+  </div>
 </div>
 
 <!-- ======================= SHOP ======================= -->
@@ -5324,6 +5710,138 @@ function updateSun(x, z){
   sun.updateMatrixWorld();
 }
 
+/* =========================================================================
+   MAPS -- four cities, all built from the same generator. A map is plain data:
+   how big the street grid is, where the supertall district and the mega park
+   go (or that they do not exist), and the whole look -- sky, light, night
+   preset, colours, tree style, window colours and weather. Only the picked
+   map is ever built: switching maps reloads the page (the city is baked into
+   thousands of merged meshes, so a clean start is the cheap and safe way).
+   This block has to sit above the grid constants, which read from MAP.
+   ========================================================================= */
+const MAP_STORE_KEY = 'dusk_line_map_v1';
+const MAPS = {
+  dusk: {
+    key:'dusk', code:'D', id:'dusk-city', name:'Dusk City',
+    blurb:'The original. A huge street grid with a skyline of supertall towers, dozens of skate spots and a mega skatepark out in the south-west.',
+    grid:24,
+    mega:{ i0:-9, j0:-9, ex:5 },
+    tower:{ i0:4, j0:4, span:4, mul:1 },
+    ring:{ start:8, step:3, per:0.5, min:6, fixedSpots:true },
+    spots:['diyBowl','vertWall','plaza','rollers','bowlComplex','miniRamp','stairs','garage'],
+    hMul:1, facades:null, tree:'round',
+    cycle:[0,1], weather:null,
+    swatch:['#1e55b2','#c6d9e8','#9a9b97']
+  },
+  palm: {
+    key:'palm', code:'P', id:'sunset-strip', name:'Sunset Strip', tagline:'Golden hour · palm-lined streets · low-rise',
+    blurb:'A palm-lined beach town stuck in golden hour. Wide pastel streets, low stucco blocks, a little resort strip and a skate spot on every corner.',
+    grid:12,
+    mega:null,
+    tower:{ i0:3, j0:-7, span:3, mul:0.34 },
+    ring:{ start:3, step:2, per:1.1, min:8 },
+    spots:['diyBowl','plaza','bigAir','rollers','bowlComplex','kickers','miniRamp','stairs','vertWall','bigAir','plaza'],
+    hMul:0.62,
+    facades:['stucco-sand','stucco-ochre','stucco-rose','stucco-mint','stucco-coral','stucco-sky','panel-cream','panel-terracotta','panel-teal','panel-mustard','panel-white','glass-blue','glass-amber'],
+    tree:'palm', leaf:[0x4a9a3e,0x2f6e33], trunk:0x8c6a46, scrub:0x8e9d56,
+    cycle:[0,0.62], weather:null,
+    sky:{ zenith:'#2f5da8', horizon:'#ffbd86', gnd:'#9b7a5e', sun:'#ffe2b4',
+          dir:[-0.80,0.20,-0.56], cover:0.50, cloudY:5.0, haze:1.6,
+          fog:'#f1b98e', fogNear:150, fogFar:520 },
+    light:{ sun:3.2, sunCol:0xffa866, hemi:1.4, skyCol:0xc2b4d8, gndCol:0xd29a6a,
+            rim:0.6, rimCol:0xff8f98, bounce:0.55, exposure:0.98 },
+    night:{ sky:{ zenith:'#10072a', horizon:'#52204f', gnd:'#0a0610', sun:'#ffd0ee',
+                  dir:[-0.5,0.55,-0.25], cover:0.78, haze:0.55, fog:'#2f1538', fogNear:90, fogFar:420 },
+            light:{ sun:0.55, sunCol:0xe0b8ff, hemi:0.8, skyCol:0x4a3a7c, gndCol:0x2a1d22,
+                    rim:0.4, rimCol:0x8a5aa8, bounce:0.24, exposure:0.95 },
+            lamp:0xffb26e },
+    pal:{ ground:0xcdbf9f, concrete:0xd8ccb0, ramp:0xcdc1a4, metal:0xb4aea2, dark:0x5e5348, bowl:0xd0c4a6,
+          dirt:0xcdb98c, curb:0xe0d5bb, wood:0x9a7653, coping:0xece4d2 },
+    mats:{ road:0xa49c91, sidewalk:0xe9ddc4, plaza:0xe8dcc2, grass:0x82a24a },
+    hills:{ low:0xdcca98, mid:0xaaa466, high:0x908a64, rock:0xaa9a7c },
+    swatch:['#2f5da8','#ffbd86','#e8dcc2']
+  },
+  neon: {
+    key:'neon', code:'N', id:'neon-harbor', name:'Neon Harbor', tagline:'Endless night · rain · container yards',
+    blurb:'A rain-slick harbor town that never sees daylight. Violet towers over the central park, cyan streetlamps, container yards and cranes down by the quay.',
+    grid:10,
+    mega:null,
+    tower:{ i0:-4, j0:-9, span:8, mul:0.62 },
+    ring:{ start:3, step:2, per:1.0, min:8 },
+    spots:['vertWall','plaza','stairs','garage','rollers','bigAir','miniRamp','kickers','bowlComplex','containerYard'],
+    harbor:{ fromRow:7 },
+    hMul:1.12,
+    facades:['panel-navy','panel-gray','panel-teal','glass-blue','glass-green','brick-plum','panel-magenta','panel-cyan','glass-violet'],
+    tree:'round', leaf:[0x2b6a72,0x1b4658], trunk:0x3a3040, scrub:0x2f4a52,
+    cycle:[0.78,1], weather:'rain',
+    sky:{ zenith:'#1a1146', horizon:'#7a2a86', gnd:'#150c28', sun:'#ff7adb',
+          dir:[0.5,0.22,0.4], cover:0.55, cloudY:5.0, haze:1.2,
+          fog:'#2c1550', fogNear:70, fogFar:360 },
+    light:{ sun:1.2, sunCol:0xffa0e8, hemi:1.1, skyCol:0x6a4aa8, gndCol:0x2a1a40,
+            rim:0.55, rimCol:0x38d8ff, bounce:0.3, exposure:0.98 },
+    night:{ sky:{ zenith:'#05030f', horizon:'#1a0b34', gnd:'#08050f', sun:'#c8b0ff',
+                  dir:[-0.35,0.68,0.40], cover:0.7, haze:0.7, fog:'#0c0620', fogNear:60, fogFar:330 },
+            light:{ sun:0.5, sunCol:0xb8a0ff, hemi:0.85, skyCol:0x36308c, gndCol:0x1c1530,
+                    rim:0.5, rimCol:0x2ad0ff, bounce:0.22, exposure:0.98 },
+            lamp:0x86f2ff },
+    lamp:0x86f2ff,
+    pal:{ ground:0x262b36, concrete:0x454c5e, ramp:0x3a4152, metal:0x8590aa, dark:0x0b0d14, bowl:0x303647,
+          dirt:0x403a4c, curb:0x5c6480, wood:0x54466a, coping:0xaebce0 },
+    mats:{ road:0x3b4150, sidewalk:0x5a6379, plaza:0x4f5873, grass:0x2f4a48 },
+    wet:true,
+    hills:{ low:0x2a2d3a, mid:0x232736, high:0x2c3142, rock:0x3a4054 },
+    swatch:['#1a1146','#7a2a86','#38d8ff']
+  },
+  frost: {
+    key:'frost', code:'F', id:'frostline', name:'Frostline', tagline:'Snowfall · pine forests · pale light',
+    blurb:'A snowed-in mountain town. White rooftops, pine trees, a heavy pale sky and snow that never stops falling. Roads are the only dark thing here.',
+    grid:11,
+    mega:null,
+    tower:null,
+    ring:{ start:3, step:2, per:1.0, min:8 },
+    spots:['miniRamp','kickers','plaza','bowlComplex','rollers','diyBowl','bigAir','stairs','vertWall','kickers'],
+    hMul:0.72,
+    facades:['panel-snow','panel-ice','panel-cream','panel-gray','panel-navy','panel-teal','brick-brown','brick-tan','brick-red','glass-blue'],
+    tree:'pine', leaf:[0x2f5c48,0x1f4636], trunk:0x4c3b2d, scrub:0xeaf0f7, snow:0xf3f7fc,
+    cycle:[0,0.86], weather:'snow', snowGround:true,
+    sky:{ zenith:'#6f93bd', horizon:'#dbe7f3', gnd:'#c2cedb', sun:'#fff4e2',
+          dir:[0.34,0.30,-0.62], cover:0.24, cloudY:3.0, haze:2.1,
+          fog:'#d3dfec', fogNear:60, fogFar:330 },
+    light:{ sun:2.3, sunCol:0xfff0dc, hemi:2.0, skyCol:0xcfe0f5, gndCol:0xe9f1fb,
+            rim:0.7, rimCol:0xbfd6f5, bounce:0.8, exposure:0.97 },
+    night:{ sky:{ zenith:'#060c1f', horizon:'#1b2c52', gnd:'#0b1226', sun:'#cfe0ff',
+                  dir:[-0.3,0.66,0.38], cover:0.55, haze:1.0, fog:'#101c38', fogNear:55, fogFar:300 },
+            light:{ sun:0.6, sunCol:0xb4cdff, hemi:1.05, skyCol:0x3c5590, gndCol:0x34486e,
+                    rim:0.45, rimCol:0x6a8cd0, bounce:0.35, exposure:0.97 },
+            lamp:0xffd9a0 },
+    pal:{ ground:0xdfe7f0, concrete:0xd6dee8, ramp:0xcad4e0, metal:0xaab6c6, dark:0x59616f, bowl:0xcdd7e3,
+          dirt:0xe8eff6, curb:0xbac4d0, wood:0x9a8f86, coping:0xeaeff5 },
+    mats:{ road:0x585e67, sidewalk:0xe8eff6, plaza:0xdfe7f0, grass:0xe9f0f7 },
+    hills:{ low:0xe6eef6, mid:0xdce6f1, high:0xf2f6fb, rock:0x8e9bad, flat:true },
+    swatch:['#6f93bd','#dbe7f3','#f2f6fb']
+  }
+};
+const MAP_ORDER = ['dusk','palm','neon','frost'];
+function mapKeyFromCode(code){
+  const c = String(code || '').charAt(0).toUpperCase();
+  for (let i=0;i<MAP_ORDER.length;i++) if (MAPS[MAP_ORDER[i]].code === c) return MAP_ORDER[i];
+  return null;
+}
+function mapStoreGet(){
+  try { const m = /[?&#]map=(\w+)/.exec(location.search + location.hash); if (m && MAPS[m[1]]) return m[1]; } catch(e){}
+  try { const v = localStorage.getItem(MAP_STORE_KEY); if (v && MAPS[v]) return v; } catch(e){}
+  try { const v = sessionStorage.getItem(MAP_STORE_KEY); if (v && MAPS[v]) return v; } catch(e){}
+  try { const m = /(?:^|;)dlmap=(\w+)/.exec(window.name || ''); if (m && MAPS[m[1]]) return m[1]; } catch(e){}
+  return 'dusk';
+}
+function mapStoreSet(key){
+  try { localStorage.setItem(MAP_STORE_KEY, key); } catch(e){}
+  try { sessionStorage.setItem(MAP_STORE_KEY, key); } catch(e){}
+  try { window.name = String(window.name || '').replace(/(?:^|;)dlmap=\w+/g, '') + ';dlmap=' + key; } catch(e){}
+}
+const MAP = MAPS[mapStoreGet()];
+const MAP_CYCLE = MAP.cycle || [0,1];
+
 /* ---------------------------------------------------------------- materials */
 const S = o => new T.MeshStandardMaterial(o);
 const MAT = {
@@ -6052,7 +6570,7 @@ function facadeEmissiveTexture(o, K){
           const ww = cw*(1-2*o.insetX), wh = rh*(1-2*o.insetY);
           const warm = rnd() < 0.75;                      // mostly warm interior light, some cool office/fluorescent
           g.globalAlpha = 0.5 + rnd()*0.5;                 // not every lit window is equally bright
-          g.fillStyle = warm ? '#ffcd82' : '#bed2ff';
+          g.fillStyle = o.litColors ? o.litColors[Math.floor(rnd()*o.litColors.length)] : (warm ? '#ffcd82' : '#bed2ff');
           g.fillRect(wx, wy, ww, wh);
           g.globalAlpha = 1;
         }
@@ -6909,7 +7427,7 @@ function leafClusterTexture(){
 }
 
 /* a whole tree drawn as one card: trunk + canopy, for the far hills */
-function treeCardTexture(){
+function treeCardTextureRound(){
   const W = 96, H = 128, c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = c.getContext('2d');
@@ -6959,6 +7477,7 @@ const grassCardMat = cardMaterial(TEX.grass, { color:C(0xffffff) });
    the outer-ring tufts in buildTerrain(), so it reads as patchy real turf. */
 let _tuftSeed = 4001;
 function scatterGrassTufts(rects, count){
+  if (MAP.snowGround) return;
   let s = _tuftSeed; _tuftSeed += 97;
   const rnd = ()=>{ s = (s*16807) % 2147483647; return s/2147483647; };
   const areas = rects.map(r=> r.w*r.d);
@@ -7073,7 +7592,7 @@ function buildTerrain(){
   const rg = new T.ShapeGeometry(tsh, 8);
   rg.rotateX(-Math.PI/2);
   worldUV(rg, 1, 1);
-  MAT.dirt.map = TEX.cover;
+  if (!(MAP.hills && MAP.hills.flat)) MAT.dirt.map = TEX.cover;
   const ring = new T.Mesh(rg, MAT.dirt);
   ring.userData.noBatch = true;
   ring.userData.noCull = true;   // one mesh spanning the whole city ring — always cheap, must not distance-cull
@@ -7087,7 +7606,9 @@ function buildTerrain(){
   hg.rotateX(-Math.PI/2);
   const pos = hg.attributes.position;
   const cols = new Float32Array(pos.count*3);
-  const cLow  = C(0x8b8b62), cMid = C(0x647648), cHigh = C(0x7a7365), cRock = C(0x8f8a82);
+  const HL = MAP.hills || {};
+  const cLow  = C(HL.low !== undefined ? HL.low : 0x8b8b62), cMid = C(HL.mid !== undefined ? HL.mid : 0x647648),
+        cHigh = C(HL.high !== undefined ? HL.high : 0x7a7365), cRock = C(HL.rock !== undefined ? HL.rock : 0x8f8a82);
   const tmp = new T.Color();
   for (let i=0;i<pos.count;i++){
     const x = pos.getX(i), z = pos.getZ(i);
@@ -7107,7 +7628,7 @@ function buildTerrain(){
   hg.setAttribute('color', new T.BufferAttribute(cols, 3));
   hg.computeVertexNormals();
   worldUV(hg, SIZE/9, SIZE/9);
-  const hillMat = new T.MeshStandardMaterial({ vertexColors:true, map:TEX.cover, roughness:1.0, metalness:0.0 });
+  const hillMat = new T.MeshStandardMaterial({ vertexColors:true, map:(MAP.hills && MAP.hills.flat) ? null : TEX.cover, roughness:1.0, metalness:0.0 });
   patchWorldShading(hillMat, { vary:0.6 });
   const hills = new T.Mesh(hg, hillMat);
   hills.userData.noBatch = true;
@@ -7130,7 +7651,7 @@ function buildTerrain(){
       const cluster = fbm2(x*0.004+2, z*0.004+5, 3);
       if (cluster < 0.42 && rnd() > 0.25) continue;
       const sc = 7 + rnd()*7;
-      const tint = [0xffffff, 0xd8dccc, 0xc9d3b6, 0xe8e2c8][Math.floor(rnd()*4)];
+      const tint = (MAP.cardTints || [0xffffff, 0xd8dccc, 0xc9d3b6, 0xe8e2c8])[Math.floor(rnd()*(MAP.cardTints ? MAP.cardTints.length : 4))];
       return { x, z, y:h - 0.4, w:sc*0.75, h:sc, rot:rnd()*6.283, tint };
     }
     return null;
@@ -7140,7 +7661,7 @@ function buildTerrain(){
      own denser scatter from scatterGrassTufts(), called where each is built) ---- */
   const grassMat = grassCardMat;
   seed = 91;
-  crossCards(4200, TEX.grass, grassMat, i=>{
+  crossCards(MAP.snowGround ? 1 : 4200, TEX.grass, grassMat, i=>{
     for (let k=0;k<10;k++){
       const a = rnd()*6.283, d = BOUND*1.05 + 1.6 + rnd()*rnd()*90;
       const x = Math.cos(a)*d, z = Math.sin(a)*d;
@@ -7426,7 +7947,7 @@ function strut(ax,ay,az, bx,by,bz, r, mat){
 function pmod(n, m){ return ((n % m) + m) % m; }
 
 const TREE_GEO = { trunk:null, branch:null, lobe:null };
-function tree(x,z,sc){
+function treeRound(x,z,sc){
   const trunkH = 3.0*sc;
   const cr     = 1.75*sc;                       // canopy radius
   const cy     = trunkH + cr*0.42;              // canopy sits down over the trunk top
@@ -7489,7 +8010,7 @@ const dpick = arr => arr[Math.floor(drand()*arr.length)];
    between them, or a pocket plaza) plus a sidewalk ring and street
    furniture; a handful of cells get a hand-built skate spot instead.
    ========================================================================= */
-const CELL = 110, ROAD_W = 13, BLOCK = CELL - ROAD_W, SIDEWALK_W = 4.5, GRID_N = 24;
+const CELL = 110, ROAD_W = 13, BLOCK = CELL - ROAD_W, SIDEWALK_W = 4.5, GRID_N = MAP.grid;
 const PARK_HALF = 1.5 * CELL;                    // 165 — the ring road fronting the central park
 const CITY_HALF = GRID_N*CELL + BLOCK/2;         // outer edge of the outermost block row
 
@@ -7501,7 +8022,8 @@ function isParkCell(i,j){ return Math.abs(i) <= 1 && Math.abs(j) <= 1; }
    Excludes an 11x11-cell block (1210x1210m) around its centre so its 800x800m
    footprint gets the same kind of ring-road-and-green buffer the central park
    gets around its own, much smaller, footprint. */
-const MEGA_I0 = -9, MEGA_J0 = -9, MEGA_EXCLUDE = 5;
+const MAP_MEGA = MAP.mega || null;
+const MEGA_I0 = MAP_MEGA ? MAP_MEGA.i0 : 0, MEGA_J0 = MAP_MEGA ? MAP_MEGA.j0 : 0, MEGA_EXCLUDE = MAP_MEGA ? MAP_MEGA.ex : -1;
 const MEGA_CX = MEGA_I0*CELL, MEGA_CZ = MEGA_J0*CELL;
 const MEGA_HALF = (MEGA_EXCLUDE + 0.5) * CELL;   // 605 — world-space half-extent of the excluded block
 function isMegaParkCell(i,j){ return Math.abs(i-MEGA_I0) <= MEGA_EXCLUDE && Math.abs(j-MEGA_J0) <= MEGA_EXCLUDE; }
@@ -7936,7 +8458,8 @@ function building(x, z, w, d, h, facade, opts){
   return { x, z, w, d, h };
 }
 
-function pickHeight(bias){
+function pickHeight(bias){ return pickHeight0(bias) * MAP.hMul; }
+function pickHeight0(bias){
   const low = 6 + drand()*9, mid = 14 + drand()*14, tall = 26 + drand()*30;
   const r = drand(), pTall = 0.06 + bias*0.34, pMid = 0.28 + bias*0.20;
   if (r < pTall) return tall;
@@ -7944,8 +8467,9 @@ function pickHeight(bias){
   return low;
 }
 function pickFacade(h){
-  const pool = h > 22 ? FACADES.filter(f=> f.glassy || f.name.indexOf('panel')===0)
-                       : FACADES.filter(f=> !f.glassy);
+  const all = MAP.facades ? FACADES.filter(f=> MAP.facades.indexOf(f.name) >= 0) : FACADES;
+  const pool = h > 22 ? all.filter(f=> f.glassy || f.name.indexOf('panel')===0)
+                       : all.filter(f=> !f.glassy);
   const use = pool.length ? pool : FACADES;
   const idx = Math.min(use.length-1, Math.max(0, Math.floor(drand()*use.length)));
   return use[idx];
@@ -8109,16 +8633,18 @@ function cityBlock(cx, cz, seed){
    existing opts.setback mechanic, with height biased up the closer a block
    is to the district's corner anchor so it reads as a real skyline —
    tallest at the corner, stepping down into the ordinary city at the seam. */
-const SKY_I0 = 4, SKY_J0 = 4;
+const MAP_TOWER = MAP.tower || { i0:0, j0:0, span:0, mul:1 };
+const SKY_I0 = MAP_TOWER.i0, SKY_J0 = MAP_TOWER.j0;
 // fixed-size downtown (4x4 blocks) regardless of how big the city grid gets --
 // growing the whole city shouldn't also balloon the densest, tallest part of
 // it; a bigger map gets more of everything else instead (see the extra
 // skate-spot blocks scattered further out).
-const SKY_SPAN = 4;
+const SKY_SPAN = MAP_TOWER.span;
 const SKY_I1 = Math.min(GRID_N, SKY_I0 + SKY_SPAN - 1);
 const SKY_J1 = Math.min(GRID_N, SKY_J0 + SKY_SPAN - 1);
 function isSkyscraperCell(i,j){ return i >= SKY_I0 && i <= SKY_I1 && j >= SKY_J0 && j <= SKY_J1 && inGrid(i,j); }
-function pickHeightTower(depth){
+function pickHeightTower(depth){ return pickHeightTower0(depth) * MAP_TOWER.mul; }
+function pickHeightTower0(depth){
   // pushed hard for a genuinely "insane" skyline: the tallest rolls at the
   // corner anchor now clear 250m+, not just a taller-than-average building
   const base = 52 + depth*54;
@@ -8137,7 +8663,7 @@ function skyscraperBlock(cx, cz, seed, i, j){
   // corner -- always a single dominant tower, always crowned with a spire.
   if (i === SKY_I1 && j === SKY_J1){
     const w = lotHalf*2*0.90, d = lotHalf*2*0.90;
-    const h = 340 + drand()*50;
+    const h = (340 + drand()*50) * MAP_TOWER.mul;
     const opts = buildOpts(h);
     opts.setback = 16 + drand()*10;
     opts.roofUnit = true;
@@ -8686,7 +9212,7 @@ function buildCity(){
   HOLES.length = 0;
   LAMPS.length = 0;
   buildCentralPark();
-  megaSkatepark();
+  if (MAP_MEGA) megaSkatepark();
 
   // hand-built skate spots scattered across the city -- see SPECIAL below
   const SPECIAL = buildSpecialBlockMap();
@@ -8727,7 +9253,7 @@ function parkingGarageBlock(cx, cz){
   parkingGarage(cx, cz, w, d);
   streetFurniture(cx, cz); // every other special block ends with this -- this one was missing it entirely, so every parking-garage lot city-wide had zero lampposts/trees regardless of distance from downtown
 }
-function buildSpecialBlockMap(){
+function buildSpecialBlockMapDusk(){
   const TYPES = [diyBowlBlock, vertWallBlock, plazaBlock, rollersBlock, bowlComplexBlock, miniRampBlock, stairsBlock, parkingGarageBlock];
   const SPECIAL = {};
   const used = new Set();
@@ -8831,7 +9357,483 @@ function finishCity(resolveCity){
 /* =========================================================================
    THE PARK
    ========================================================================= */
-const PARKS = [
+/* =========================================================================
+   MAPS -- everything a map changes beyond the grid size (see maps_head.js):
+   its facade colours, tree style, extra skate-spot blocks, the harbor's
+   container yards, rain and snow, material tints, and how the active map
+   becomes the one park the rest of the game loads.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------- map-only facades
+   Defined only on the maps that use them, so no other map pays for the canvases. */
+if (MAP.key === 'palm'){
+  addFacade('stucco-mint',  { wall:'#a9d3c0', mortar:'#a9d3c0', brick:false, cols:2, rows:5, insetX:0.20, insetY:0.22,
+    frame:'#4a7866', glass:'#24403a', sill:true, sillColor:'#eef8f2' }, 4.8, 3.6, { roughness:0.92 });
+  addFacade('stucco-coral', { wall:'#e8917c', mortar:'#e8917c', brick:false, cols:2, rows:5, insetX:0.20, insetY:0.22,
+    frame:'#7e3b2d', glass:'#2a1c1a', sill:true, sillColor:'#fce6dc' }, 4.8, 3.6, { roughness:0.92 });
+  addFacade('stucco-sky',   { wall:'#a2c6e2', mortar:'#a2c6e2', brick:false, cols:2, rows:5, insetX:0.20, insetY:0.22,
+    frame:'#46647f', glass:'#1f2c38', sill:true, sillColor:'#eaf3fb' }, 4.8, 3.6, { roughness:0.92 });
+  addFacade('panel-white',  { wall:'#ece8df', mortar:'#ece8df', brick:false, cols:2, rows:6, insetX:0.16, insetY:0.18,
+    frame:'#9c978a', glass:'#4b5662', mullion:true }, 4.2, 3.5, { roughness:0.68 });
+}
+if (MAP.key === 'neon'){
+  addFacade('panel-magenta', { wall:'#2b1742', mortar:'#2b1742', brick:false, cols:2, rows:6, insetX:0.15, insetY:0.17,
+    frame:'#10081c', glass:'#5d2068', mullion:true, litChance:0.40, litColors:['#ff4fd8','#ff7ae8','#ffd1f6'] }, 4.2, 3.5, { roughness:0.6 });
+  addFacade('panel-cyan',    { wall:'#12303f', mortar:'#12303f', brick:false, cols:2, rows:6, insetX:0.15, insetY:0.17,
+    frame:'#06121a', glass:'#17495b', mullion:true, litChance:0.40, litColors:['#35e6ff','#9ff7ff','#ffffff'] }, 4.2, 3.5, { roughness:0.6 });
+  addFacade('glass-violet',  { wall:'#3a2c58', mortar:'#3a2c58', brick:false, cols:1, rows:1, insetX:0.045, insetY:0.05,
+    frame:'#150e24', glass:'#6b4ba9', mullion:true, mullionH:true, litChance:0.44, litColors:['#c79bff','#ff6fd0','#6fe6ff'] },
+    3.0, 3.6, { roughness:0.28, metalness:0.12, glassy:true });
+}
+if (MAP.key === 'frost'){
+  addFacade('panel-snow', { wall:'#e9eef4', mortar:'#e9eef4', brick:false, cols:2, rows:6, insetX:0.16, insetY:0.18,
+    frame:'#8c99a9', glass:'#5e7188', mullion:true }, 4.2, 3.5, { roughness:0.7 });
+  addFacade('panel-ice',  { wall:'#bdd4e7', mortar:'#bdd4e7', brick:false, cols:2, rows:6, insetX:0.16, insetY:0.18,
+    frame:'#5f7b97', glass:'#35516c', mullion:true }, 4.2, 3.5, { roughness:0.62 });
+}
+
+/* ---------------------------------------------------------------- trees
+   tree() (the original round-canopy tree) became treeRound(); this picks the
+   map's style. All three go through vmeshAdd, so they batch like everything else. */
+const PROP_FROND = S({ color:C(0x4a9a3e), roughness:0.85, metalness:0, side:T.DoubleSide });
+const PROP_PINE  = S({ color:C(0x2f5c48), roughness:0.92, metalness:0 });
+const PROP_SNOW  = S({ color:C(0xf3f7fc), roughness:0.95, metalness:0 });
+patchWorldShading(PROP_FROND, {}); patchWorldShading(PROP_PINE, {}); patchWorldShading(PROP_SNOW, {});
+if (MAP.leaf){ setC(PROP_FROND, MAP.leaf[0]); setC(PROP_PINE, MAP.leaf[0]); }
+if (MAP.snow) setC(PROP_SNOW, MAP.snow);
+
+const PALM_GEO = { seg:null, frond:null, nut:null };
+function palmFrondGeo(){
+  /* one feather-shaped frond: a curved spine (rises, then droops) with paired leaflets,
+     unit length along +x. Flat-shaded triangles, no uv, double-sided material. */
+  const N = 10, pos = [];
+  const sp = s => [s, 0.42*s - 1.0*s*s, 0];
+  for (let k=0;k<N;k++){
+    const s0 = k/N + 0.02, s1 = (k + 0.9)/N + 0.02, sm = (s0 + s1)/2;
+    const a = sp(s0), b = sp(s1), m = sp(sm);
+    const reach = 0.30*Math.sin(Math.PI*Math.min(1, sm*1.05))*(1 - 0.35*sm) + 0.03;
+    [-1, 1].forEach(sd=>{
+      const tip = [m[0] + 0.07, m[1] - 0.10 - 0.16*sm, sd*reach];
+      pos.push(a[0],a[1],a[2], b[0],b[1],b[2], tip[0],tip[1],tip[2]);
+    });
+  }
+  // the midrib, as a thin quad strip so the frond reads as one piece from above
+  for (let k=0;k<N;k++){
+    const a = sp(k/N), b = sp((k+1)/N), w = 0.012;
+    pos.push(a[0],a[1],-w, b[0],b[1],-w, b[0],b[1],w,   a[0],a[1],-w, b[0],b[1],w, a[0],a[1],w);
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+function treePalm(x, z, sc){
+  const p = 0.8 + 0.9*sc;                                   // street trees run sc 0.5..0.75, parks 0.85..1.0
+  const hash = pmod(x*31 + z*17, 10);
+  const H = (4.6 + hash*0.12)*p;                            // trunk height
+  const lx = (pmod(x*13 + z*7, 10) - 5)*0.07*p, lz = (pmod(x*5 + z*19, 10) - 5)*0.07*p;   // gentle lean
+  if (!PALM_GEO.seg)   PALM_GEO.seg = new T.CylinderGeometry(0.86, 1, 1, 7).rotateX(Math.PI/2);
+  if (!PALM_GEO.frond) PALM_GEO.frond = palmFrondGeo();
+  if (!TREE_GEO.lobe)  TREE_GEO.lobe = new T.SphereGeometry(1, 9, 7);
+  // trunk: four tapered segments along a curve
+  let px = x, py = 0, pz = z;
+  for (let i=1;i<=4;i++){
+    const t = i/4, nx = x + lx*t*t*H*0.25, ny = H*t, nz = z + lz*t*t*H*0.25;
+    const r0 = (0.20 - 0.075*((i-1)/4))*p*0.9, len = Math.hypot(nx-px, ny-py, nz-pz);
+    _vmo.position.set((px+nx)/2, (py+ny)/2, (pz+nz)/2);
+    _vmo.lookAt(nx, ny, nz);
+    _vmo.scale.set(r0, r0, len);
+    vmeshAdd(PALM_GEO.seg, PROP.trunk, true, false);
+    px = nx; py = ny; pz = nz;
+  }
+  // crown
+  const nf = 9;
+  for (let i=0;i<nf;i++){
+    const yaw = i*(Math.PI*2/nf) + hash*0.6;
+    const tilt = 0.30 + ((i*37 + hash) % 5)*0.10 - (i%2)*0.12;      // some fronds lift, some hang
+    const L = (2.1 + ((i*29 + hash*3) % 7)*0.1)*p;
+    _vmo.position.set(px, py + 0.05, pz);
+    _vmo.rotation.set(0, yaw, tilt);
+    _vmo.scale.set(L, L*0.95, L);
+    vmeshAdd(PALM_GEO.frond, PROP_FROND, true, true);
+  }
+  // a small cluster of nuts under the crown
+  for (let i=0;i<3;i++){
+    const a = i*2.1 + hash;
+    _vmo.position.set(px + Math.cos(a)*0.22*p, py - 0.18*p, pz + Math.sin(a)*0.22*p);
+    _vmo.scale.set(0.15*p, 0.15*p, 0.15*p);
+    vmeshAdd(TREE_GEO.lobe, PROP.trunk, true, false);
+  }
+}
+
+const PINE_GEO = { cone:null };
+function treePine(x, z, sc){
+  if (!PINE_GEO.cone) PINE_GEO.cone = new T.ConeGeometry(1, 1, 8, 1).translate(0, 0.5, 0);
+  if (!TREE_GEO.trunk) TREE_GEO.trunk = new T.CylinderGeometry(0.13, 0.30, 3.0, 9).translate(0, 1.5, 0);
+  const hash = pmod(x*31 + z*17, 10);
+  const Ht = (6.4 + hash*0.14)*sc*1.15, R = 1.55*sc*1.12;
+  _vmo.position.set(x, 0, z); _vmo.scale.set(sc*0.8, Ht*0.22/3.0, sc*0.8);
+  vmeshAdd(TREE_GEO.trunk, PROP.trunk, true, true);
+  const tiers = Ht > 5.5 ? 4 : 3;
+  for (let k=0;k<tiers;k++){
+    const t = k/(tiers - 1);
+    const y0 = Ht*(0.14 + 0.62*t*(1 - 0.12*(tiers-3))), h = Ht*(0.40 - 0.05*t), r = R*(1 - 0.60*t);
+    _vmo.position.set(x, y0, z); _vmo.rotation.set(0, hash + k*0.7, 0); _vmo.scale.set(r, h, r);
+    vmeshAdd(PINE_GEO.cone, PROP_PINE, true, true);
+    // snow cap: the top ~55% of the tier, a hair wider than the cone under it
+    _vmo.position.set(x, y0 + h*0.45, z); _vmo.rotation.set(0, hash + k*0.7, 0); _vmo.scale.set(r*0.585, h*0.55, r*0.585);
+    vmeshAdd(PINE_GEO.cone, PROP_SNOW, true, true);
+  }
+}
+
+function tree(x, z, sc){
+  if (MAP.tree === 'palm') treePalm(x, z, sc);
+  else if (MAP.tree === 'pine') treePine(x, z, sc);
+  else treeRound(x, z, sc);
+}
+
+/* the far-hill tree cards, drawn in the map's own tree style */
+function treeCardTexture(){
+  if (MAP.tree === 'round') return treeCardTextureRound();
+  const W = 96, H = 128, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, W, H);
+  if (MAP.tree === 'palm'){
+    g.strokeStyle = '#6d5238'; g.lineWidth = 4; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(W/2 - 2, H); g.quadraticCurveTo(W/2 + 8, H*0.62, W/2 + 5, H*0.34); g.stroke();
+    const cx = W/2 + 5, cy = H*0.34;
+    for (let i=0;i<9;i++){
+      const a = -Math.PI*0.96 + i*(Math.PI*0.92/8), R = W*0.44*(0.85 + 0.15*Math.sin(i*2.1));
+      const ex = cx + Math.cos(a)*R, ey = cy + Math.sin(a)*R*0.55 + R*0.30;
+      const sh = 0.7 + 0.35*Math.sin(i*1.7 + 1);
+      g.strokeStyle = 'rgb(' + Math.round(62*sh) + ',' + Math.round(128*sh) + ',' + Math.round(58*sh) + ')';
+      g.lineWidth = 3.2; g.beginPath(); g.moveTo(cx, cy);
+      g.quadraticCurveTo(cx + Math.cos(a)*R*0.55, cy + Math.sin(a)*R*0.9 - 4, ex, ey); g.stroke();
+    }
+  } else {
+    g.fillStyle = '#4a3a2a'; g.fillRect(W/2 - 2.5, H*0.82, 5, H*0.18);
+    for (let k=0;k<4;k++){
+      const top = H*(0.06 + k*0.19), wid = W*(0.20 + k*0.085), bot = top + H*0.30;
+      g.fillStyle = k % 2 ? '#2a5240' : '#33614c';
+      g.beginPath(); g.moveTo(W/2, top); g.lineTo(W/2 + wid, bot); g.lineTo(W/2 - wid, bot); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(240,246,252,0.95)';
+      g.beginPath(); g.moveTo(W/2, top); g.lineTo(W/2 + wid*0.55, top + (bot-top)*0.55); g.lineTo(W/2 - wid*0.55, top + (bot-top)*0.55); g.closePath(); g.fill();
+    }
+  }
+  const t = new T.CanvasTexture(c);
+  t.encoding = T.sRGBEncoding;
+  return t;
+}
+
+/* ---------------------------------------------------------------- extra skate spots (new maps) */
+/* a row of gap jumps: a kicker, a gap, a landing bank -- three lanes, each a size up */
+function bigAirBlock(cx, cz){
+  sidewalkRing(cx, cz);
+  const half = BLOCK/2, lotHalf = half - SIDEWALK_W;
+  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:MAT.plaza });
+  [[-20, 1.5, 6.0, 11], [0, 2.2, 7.5, 14], [20, 3.0, 9.0, 17]].forEach(l=>{
+    const x = cx + l[0], h = l[1], len = l[2], gap = l[3], w = 2.6, z0 = cz + 38;
+    P({ type:'bank', x, z:z0, rot:Math.PI, w, len, h });                        // climbs north (-z)
+    const landTop = z0 - len - gap, lh = h*0.62, ll = len*1.1;
+    P({ type:'bank', x, z:landTop - ll, rot:0, w:w + 0.6, len:ll, h:lh });      // high edge toward the jump
+  });
+  streetFurniture(cx, cz);
+}
+/* a terrain-park line: five kickers climbing in size, two boxes and a ledge to finish */
+function kickerRowBlock(cx, cz){
+  sidewalkRing(cx, cz);
+  const half = BLOCK/2, lotHalf = half - SIDEWALK_W;
+  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:MAT.plaza });
+  for (let i=0;i<5;i++) kicker(cx - 28 + i*14, cz + 12, Math.PI, 2.2, 3.2 + i*0.7, 0.7 + i*0.32);
+  funbox(cx - 12, cz - 20, 0, 3.0, 2.0, 0.9, 2.4);
+  funbox(cx + 12, cz - 20, 0, 3.0, 2.0, 1.1, 2.4);
+  ledge(cx, cz + 33, 0, 8, 0.6, 0.85, true);
+  streetFurniture(cx, cz);
+}
+
+/* ---------------------------------------------------------------- the harbor: container yards, warehouses, cranes */
+const CONTAINER_MATS = [0xb8442f, 0x2f5fa0, 0xd68a2e, 0x3d7a58, 0xc9cdd0, 0xcdb23a, 0x7a3a8a].map(hex=>{
+  const m = S({ color:C(hex), roughness:0.62, metalness:0.25 });
+  patchWorldShading(m, { vary:0.3, rust:0.35, stain:0.25 });
+  return m;
+});
+const CRANE_MAT = S({ color:C(0xd9a423), roughness:0.5, metalness:0.3 });
+patchWorldShading(CRANE_MAT, { rust:0.2, stain:0.3 });
+function containerYardBlock(cx, cz){
+  sidewalkRing(cx, cz);
+  const half = BLOCK/2, lotHalf = half - SIDEWALK_W;
+  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:MAT.plaza });
+  const W = 1.22, L = 6.1, H = 2.6;                          // a 20 ft box: 2.44 m wide, 12.2 m long, 2.6 m tall
+  for (let cI=0;cI<4;cI++){
+    for (let rI=0;rI<3;rI++){
+      const bx = cx - 27 + cI*18, bz = cz - 28 + rI*28;
+      for (let s=0;s<2;s++){
+        if (drand() < 0.16) continue;                         // a gap in the stack
+        const x = bx + (s ? 1.35 : -1.35), levels = 1 + Math.floor(drand()*3);
+        const mat = CONTAINER_MATS[Math.floor(drand()*CONTAINER_MATS.length)];
+        for (let k=0;k<levels;k++){
+          P({ type:'flat', x, z:bz, rot:0, w:W, d:L, h:H, base:k*H, mat: k ? CONTAINER_MATS[Math.floor(drand()*CONTAINER_MATS.length)] : mat });
+        }
+        if (levels === 1 && drand() < 0.5){                   // a ramp up onto the lone containers
+          const sgn = drand() < 0.5 ? 1 : -1;
+          P({ type:'bank', x, z:bz + sgn*(L + 5), rot: sgn > 0 ? Math.PI : 0, w:W, len:5, h:H });
+        }
+      }
+    }
+  }
+  streetFurniture(cx, cz);
+}
+function warehouseBlock(cx, cz){
+  sidewalkRing(cx, cz);
+  const half = BLOCK/2, lotHalf = half - SIDEWALK_W;
+  const w = lotHalf*2*(0.80 + drand()*0.12), d = lotHalf*2*(0.58 + drand()*0.16), h = 9 + drand()*5;
+  building(cx, cz - (lotHalf*2 - d)*0.35, w, d, h, pickFacade(h), { roofVent:true, roofUnit:true, bulkhead:drand() < 0.5 });
+  P({ type:'flat', x:cx, z:cz + lotHalf - 12, rot:0, w:lotHalf, d:12, h:0.08, mat:MAT.plaza });
+  streetFurniture(cx, cz);
+}
+function craneBlock(cx, cz){
+  sidewalkRing(cx, cz);
+  const half = BLOCK/2, lotHalf = half - SIDEWALK_W;
+  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:MAT.plaza });
+  const legH = 38, spanX = 34, spanZ = 14, leg = 1.1;
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(o=>{
+    const lx = cx + o[0]*spanX/2, lz = cz + o[1]*spanZ/2;
+    const m = new T.Mesh(boxGeo(leg*2, legH, leg*2, 0.05), CRANE_MAT);
+    m.position.set(lx, 0, lz); m.castShadow = true; m.receiveShadow = true; worldGroup.add(m);
+    P({ type:'flat', x:lx, z:lz, rot:0, w:leg, d:leg, h:legH, mat:CRANE_MAT });
+  });
+  // cross beams, the long boom reaching out over the quay, and the trolley
+  [[0,-1],[0,1]].forEach(o=>{
+    const m = new T.Mesh(boxGeo(spanX + 2.4 + 34, 2.4, 1.6, 0.05), CRANE_MAT);
+    m.position.set(cx + 17, legH, cz + o[1]*spanZ/2); m.castShadow = true; worldGroup.add(m);
+  });
+  [[-1,0],[1,0]].forEach(o=>{
+    const m = new T.Mesh(boxGeo(1.6, 2.4, spanZ + 1.6, 0.05), CRANE_MAT);
+    m.position.set(cx + o[0]*spanX/2, legH, cz); m.castShadow = true; worldGroup.add(m);
+  });
+  const trolley = new T.Mesh(boxGeo(5, 3, 4, 0.05), MAT.metal);
+  trolley.position.set(cx + 22, legH - 2.7, cz); trolley.castShadow = true; worldGroup.add(trolley);
+  streetFurniture(cx, cz);
+}
+
+const SPOT_FNS = {
+  diyBowl: diyBowlBlock, vertWall: vertWallBlock, plaza: plazaBlock, rollers: rollersBlock,
+  bowlComplex: bowlComplexBlock, miniRamp: miniRampBlock, stairs: stairsBlock, garage: parkingGarageBlock,
+  bigAir: bigAirBlock, kickers: kickerRowBlock, containerYard: containerYardBlock, warehouse: warehouseBlock, crane: craneBlock
+};
+function harborBlockFn(i, j){
+  const r = Math.abs((i*7 + j*13) % 10);
+  if (r <= 4) return containerYardBlock;
+  if (r <= 6) return warehouseBlock;
+  if (r === 7) return craneBlock;
+  if (r === 8) return plazaBlock;
+  return bigAirBlock;
+}
+/* the original city keeps its original spot layout (buildSpecialBlockMapDusk); the
+   other maps scatter their own spot mix, denser, ring by ring around the park */
+function buildSpecialBlockMap(){
+  if (MAP.key === 'dusk') return buildSpecialBlockMapDusk();
+  const TYPES = MAP.spots.map(n=> SPOT_FNS[n]).filter(Boolean);
+  const SPECIAL = {};
+  const used = new Set();
+  const claim = (i,j,fn)=>{
+    i = Math.round(i); j = Math.round(j);
+    if (!blockExists(i,j) || isSkyscraperCell(i,j)) return false;
+    const key = i+','+j;
+    if (used.has(key)) return false;
+    used.add(key);
+    SPECIAL[key] = fn;
+    return true;
+  };
+  if (MAP.harbor){
+    for (let j = MAP.harbor.fromRow; j <= GRID_N; j++)
+      for (let i = -GRID_N; i <= GRID_N; i++) claim(i, j, harborBlockFn(i, j));
+  }
+  // a ring of spots right around the central park, like the original city
+  [[2,0],[-2,0],[0,2],[0,-2],[3,3],[-3,3],[3,-3],[-3,-3],[5,0],[-5,0],[0,5],[0,-5]].forEach((c, k)=> claim(c[0], c[1], TYPES[k % TYPES.length]));
+  let idx = 3;
+  const R = MAP.ring;
+  for (let ring = R.start; ring <= GRID_N - 2; ring += R.step){
+    const count = Math.max(R.min, Math.round(ring * R.per));
+    for (let k = 0; k < count; k++){
+      const ang = (k / count) * Math.PI * 2 + ring * 0.37;
+      const fn = TYPES[idx % TYPES.length];
+      const i1 = Math.cos(ang) * ring, j1 = Math.sin(ang) * ring;
+      if (claim(i1, j1, fn)) { idx++; continue; }
+      if (claim(Math.cos(ang) * (ring+1), Math.sin(ang) * (ring+1), fn)) idx++;
+    }
+  }
+  return SPECIAL;
+}
+
+/* ---------------------------------------------------------------- the active map becomes the one park */
+function makePark(base){
+  if (MAP.key === 'dusk') return base;
+  const size = Math.round(2*(GRID_N*CELL + BLOCK/2));
+  const sky = Object.assign({ hills:['#9db2c6','#8ba3ba','#7793ab'], props:30, palms:false }, MAP.sky);
+  return {
+    id:MAP.id, name:MAP.name, desc:MAP.blurb,
+    tag:MAP.tagline + ' · ' + size.toLocaleString() + ' × ' + size.toLocaleString() + ' m',
+    sky, bound:Math.round(GRID_N*CELL + BLOCK/2 + 68.5),
+    pal:MAP.pal, light:MAP.light,
+    spawn:base.spawn, challenges:base.challenges,
+    build(){ return buildCity(); }
+  };
+}
+
+/* ---------------------------------------------------------------- map look: material tints, wet streets, lamp glow */
+(function applyMapLook(){
+  const m = MAP.mats || {};
+  if (m.road     !== undefined) setC(MAT.road, m.road);
+  if (m.sidewalk !== undefined) setC(MAT.sidewalk, m.sidewalk);
+  if (m.plaza    !== undefined) setC(MAT.plaza, m.plaza);
+  if (m.grass    !== undefined) setC(MAT.grass, m.grass);
+  if (MAP.leaf){ setC(PROP.leaf, MAP.leaf[0]); setC(PROP.leafDark, MAP.leaf[1]); }
+  if (MAP.trunk !== undefined) setC(PROP.trunk, MAP.trunk);
+  if (MAP.scrub !== undefined) setC(PROP.scrub, MAP.scrub);
+  if (MAP.wet){
+    MAT.road.roughness = 0.42; MAT.road.metalness = 0.12;
+    MAT.sidewalk.roughness = 0.6; MAT.plaza.roughness = 0.62;
+  }
+  if (MAP.snowGround){
+    setC(MAT.roof, 0xeef3f9);
+    MAT.roof.roughness = 0.95;
+  }
+  const lamp = MAP.lamp || (MAP.night && MAP.night.lamp);
+  if (lamp !== undefined) PROP.lampGlow.color.copy(C(lamp));
+})();
+
+/* ---------------------------------------------------------------- weather: rain (Neon Harbor) and snow (Frostline)
+   One draw call, no CPU work per flake: every flake's position is a pure function of
+   time and the camera, computed in the vertex shader, wrapped into a box around the camera. */
+const WEATHER = { obj:null, uni:null };
+let WEATHER_ON = true;
+function weatherInit(){
+  if (WEATHER.obj || !MAP.weather) return;
+  const snow = MAP.weather === 'snow';
+  const drops = snow ? 3400 : 2600, per = snow ? 1 : 2;
+  const box = snow ? [120, 50, 120] : [90, 44, 90];
+  const seed = new Float32Array(drops*per*3), end = new Float32Array(drops*per);
+  let s = 12345;
+  const rnd = ()=>{ s = (s*16807) % 2147483647; return s/2147483647; };
+  for (let i=0;i<drops;i++){
+    const a = rnd(), b = rnd(), c = rnd();
+    for (let k=0;k<per;k++){
+      const o = (i*per + k);
+      seed[o*3] = a; seed[o*3+1] = b; seed[o*3+2] = c;
+      end[o] = k;
+    }
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.BufferAttribute(new Float32Array(drops*per*3), 3));
+  g.setAttribute('aSeed', new T.BufferAttribute(seed, 3));
+  g.setAttribute('aEnd', new T.BufferAttribute(end, 1));
+  const uni = {
+    uTime:{ value:0 }, uCam:{ value:new T.Vector3() }, uBox:{ value:new T.Vector3(box[0], box[1], box[2]) },
+    uVel:{ value: snow ? new T.Vector3(1.1, -2.2, 0.7) : new T.Vector3(-3.0, -26, 1.2) },
+    uSize:{ value: snow ? 0.1 : 0.075 }, uStreak:{ value:0.05 }, uScale:{ value:700 },
+    uCol:{ value:new T.Color(1,1,1) }, uAlpha:{ value: snow ? 0.9 : 0.34 }
+  };
+  const mat = new T.ShaderMaterial({
+    uniforms:uni, transparent:true, depthWrite:false, fog:false,
+    defines: snow ? { SNOW:1 } : { RAIN:1 },
+    vertexShader:`
+      attribute vec3 aSeed; attribute float aEnd;
+      uniform float uTime, uSize, uStreak, uScale; uniform vec3 uCam, uBox, uVel;
+      varying float vA;
+      void main(){
+        vec3 base = aSeed * uBox;
+        float sp = 0.75 + 0.5 * fract(aSeed.x * 7.13 + aSeed.z * 3.71);
+        vec3 vel = uVel * sp;
+        vec3 p = base + vel * uTime;
+        #ifdef SNOW
+          p.x += sin(uTime * 0.8 + aSeed.y * 40.0) * 0.9;
+          p.z += cos(uTime * 0.7 + aSeed.x * 40.0) * 0.9;
+        #endif
+        p = mod(p - uCam, uBox) + uCam - 0.5 * uBox;
+        #ifdef RAIN
+          p -= vel * aEnd * uStreak;
+        #endif
+        vec4 mv = viewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        float d = -mv.z;
+        vec3 r = abs((p - uCam) / (0.5 * uBox));
+        vA = (1.0 - smoothstep(0.72, 1.0, max(max(r.x, r.y), r.z))) * smoothstep(0.8, 3.5, d);
+        #ifdef SNOW
+          gl_PointSize = clamp(uSize * uScale / max(d, 0.5), 1.0, 14.0);
+        #endif
+      }`,
+    fragmentShader:`
+      uniform vec3 uCol; uniform float uAlpha; varying float vA;
+      void main(){
+        #ifdef SNOW
+          float r = length(gl_PointCoord - 0.5);
+          float a = smoothstep(0.5, 0.2, r);
+          vec3 col = mix(uCol, uCol * vec3(0.58, 0.68, 0.86), smoothstep(0.1, 0.45, r));   // pale core, blue-grey rim: still readable over white ground
+          gl_FragColor = vec4(col, a * vA * uAlpha);
+        #else
+          gl_FragColor = vec4(uCol, vA * uAlpha);
+        #endif
+      }`
+  });
+  const obj = snow ? new T.Points(g, mat) : new T.LineSegments(g, mat);
+  obj.frustumCulled = false; obj.renderOrder = 5;
+  obj.userData.noBatch = true; obj.userData.noCull = true;
+  scene.add(obj);
+  WEATHER.obj = obj; WEATHER.uni = uni;
+}
+const _wxDay = new T.Color(1, 1, 1), _wxNight = new T.Color(0.42, 0.52, 0.78);
+function updateWeather(sec){
+  if (!MAP.weather) return;
+  if (!WEATHER.obj) weatherInit();
+  const on = WEATHER_ON;
+  WEATHER.obj.visible = on;
+  if (!on) return;
+  const u = WEATHER.uni;
+  u.uTime.value = sec % 1200;
+  u.uCam.value.copy(camera.position);
+  u.uScale.value = renderer.domElement.height * 0.5 / Math.tan(camera.fov*Math.PI/360);
+  const f = dayNightFactor(DAYNIGHT_CLOCK);
+  if (MAP.weather === 'snow') u.uCol.value.copy(_wxDay).lerp(_wxNight, f);
+  else u.uCol.value.setRGB(0.62, 0.78, 1.0).lerp(_wxNight, f*0.4);
+}
+
+/* ---------------------------------------------------------------- switching maps
+   Reloads the page on the new map (remembered in storage, in sessionStorage and in
+   window.name -- whichever the host lets survive a reload). `after` is a small
+   note (e.g. a room code to join) that the next page picks up once it has booted. */
+const AFTER_KEY = 'dusk_line_after_v1';
+function afterSet(obj){
+  const v = JSON.stringify(Object.assign({ t:Date.now() }, obj));
+  try { localStorage.setItem(AFTER_KEY, v); } catch(e){}
+  try { sessionStorage.setItem(AFTER_KEY, v); } catch(e){}
+  try { window.name = String(window.name || '').replace(/(?:^|;)dlafter=[^;]*/g, '') + ';dlafter=' + encodeURIComponent(v); } catch(e){}
+}
+function afterTake(){
+  let v = null;
+  try { v = localStorage.getItem(AFTER_KEY); } catch(e){}
+  if (!v) { try { v = sessionStorage.getItem(AFTER_KEY); } catch(e){} }
+  if (!v) { try { const m = /(?:^|;)dlafter=([^;]*)/.exec(window.name || ''); if (m) v = decodeURIComponent(m[1]); } catch(e){} }
+  try { localStorage.removeItem(AFTER_KEY); } catch(e){}
+  try { sessionStorage.removeItem(AFTER_KEY); } catch(e){}
+  try { window.name = String(window.name || '').replace(/(?:^|;)dlafter=[^;]*/g, ''); } catch(e){}
+  if (!v) return null;
+  try { const o = JSON.parse(v); return (o && Date.now() - o.t < 120000) ? o : null; } catch(e){ return null; }
+}
+function switchMap(key, after){
+  if (!MAPS[key] || key === MAP.key) return false;
+  mapStoreSet(key);
+  if (after) afterSet(after);
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0a0d12;color:#f2ede4;font-family:inherit;letter-spacing:.3em;text-transform:uppercase;font-size:12px';
+  ov.innerHTML = '<div style="font-size:clamp(26px,5vw,48px);font-weight:100;letter-spacing:.16em">' + MAPS[key].name + '</div><div style="opacity:.5">Travelling…</div>';
+  document.body.appendChild(ov);
+  setTimeout(()=>{ try { location.reload(); } catch(e){ location.replace(location.href); } }, 80);
+  return true;
+}
+
+const PARKS_BASE = [
   {
     id:'dusk-city',
     name:'Dusk City',
@@ -8869,6 +9871,7 @@ const PARKS = [
     build(){ return buildCity(); }
   }
 ];
+const PARKS = [ makePark(PARKS_BASE[0]) ];
 
 /* =========================================================================
    DAY / NIGHT — the whole city was one fixed daytime lighting preset (see
@@ -8902,6 +9905,11 @@ const NIGHT_LIGHT = {
   rim:0.38, rimCol:0x3a5a8c, bounce:0.20, exposure:0.92
 };
 const NIGHT_LAMP = { emissive:C(0xffcf8c), intensity:11 }; // brighter, more of a bloomy glow (was 4.2, then 7.5)
+if (MAP.night){
+  Object.assign(NIGHT_SKY, MAP.night.sky || {});
+  Object.assign(NIGHT_LIGHT, MAP.night.light || {});
+  if (MAP.night.lamp !== undefined) NIGHT_LAMP.emissive = C(MAP.night.lamp);
+}
 const NIGHT_LAMP_GLOW_OPACITY = 0.30;   // the ground-glow decal under each lamp -- see PROP.lampGlow
 const NIGHT_WINDOW_INTENSITY = 1.5; // lit-window glow on building facades -- see FACADES/addFacade
 const DAY_LAMP_EMISSIVE = C(0x3a4048), DAY_LAMP_INTENSITY = 0.35;
@@ -8932,7 +9940,7 @@ const DAYNIGHT_PERIOD = 360;        // seconds for one full day -> night -> day 
 // continuous, unbroken twilight.
 function dayNightFactor(t){
   const phase = (t % DAYNIGHT_PERIOD) / DAYNIGHT_PERIOD;
-  return 0.5 - 0.5*Math.cos(phase*Math.PI*2);
+  return MAP_CYCLE[0] + (MAP_CYCLE[1] - MAP_CYCLE[0]) * (0.5 - 0.5*Math.cos(phase*Math.PI*2));
 }
 
 function updateDayNight(dt){
@@ -9024,7 +10032,9 @@ function updateDayNight(dt){
    ========================================================================= */
 const LF_LAMP_Y = 8.42;            // just under the luminaire lens (lightPole: lens at H-0.50 = 8.5)
 const LF_LAMP_DX = 1.42;           // luminaire overhang from the mast (lightPole's head offset)
-const LF_LAMP_COL = C(0xffc882);   // warm sodium-ish white
+const LF_LAMP_HEX = MAP.lamp || (MAP.night && MAP.night.lamp) || 0xffc882;   // warm sodium-ish white (a map can recolour its lamps)
+const LF_LAMP_COL = C(LF_LAMP_HEX);
+const LF_LAMP_HALO = (MAP.lamp || (MAP.night && MAP.night.lamp)) ? C(LF_LAMP_HEX) : C(0xffc27a);
 const LF_HEAD_COL = C(0xeef3ff);   // cool LED bike light
 const LF_CAR_COL  = C(0xfff0d4);   // halogen-ish car headlights
 const LF_RED = C(0xff1a12), LF_BLUE = C(0x1f4dff);
@@ -9093,7 +10103,7 @@ function buildLampHalos(){
   g.computeBoundingSphere();
   if (!LAMP_HALO.mat){
     LAMP_HALO.mat = new T.ShaderMaterial({
-      uniforms:{ uI:{ value:0 }, uCol:{ value:C(0xffc27a) }, uScale:{ value:innerHeight*0.5 },
+      uniforms:{ uI:{ value:0 }, uCol:{ value:LF_LAMP_HALO.clone() }, uScale:{ value:innerHeight*0.5 },
                  uNear:{ value:90 }, uFar:{ value:430 } },
       vertexShader:`
         uniform float uScale, uNear, uFar;
@@ -9138,7 +10148,7 @@ function ensureShafts(){
   const g = new T.CylinderGeometry(0.28, 4.3, LF_LAMP_Y - 0.1, 24, 1, true);
   g.translate(0, -(LF_LAMP_Y - 0.1)/2, 0);   // apex at local origin, opening downward
   const mat = new T.ShaderMaterial({
-    uniforms:{ uI:{ value:0 }, uCol:{ value:C(0xffc27a) } },
+    uniforms:{ uI:{ value:0 }, uCol:{ value:LF_LAMP_HALO.clone() } },
     vertexShader:`
       varying float vH; varying vec3 vN; varying vec3 vV; varying vec3 vTint;
       void main(){
@@ -12383,10 +13393,18 @@ function updateRide(dt, In){
   // which is the single most iconic version of the trick.
   if (In.manual){
     if (bike.manualT === 0) startManual();
-    bike.noseManual = DRIVE.dirt ? !!In.down : !!In.up;   // SHIFT + W = nose wheelie; on the dirt bike SHIFT + S = stoppie
-    bike.manual = damp(bike.manual, bike.noseManual ? 0.34 : VEH.manual, 7, dt);
-    bike.manualT += dt;
-    bike.manualPts += (bike.noseManual ? 175 : 130)*dt;
+    // SHIFT = wheelie. Pedalling / on the throttle (W) no longer flips it into a nose wheelie: keep
+    // pedalling and the front end stays up, and the harder you pedal the higher it sits.
+    // SHIFT + S while rolling forward is the nose wheelie / stoppie (front brake), on every bike.
+    bike.noseManual = !!In.down && fwd > (bike.noseManual ? 0.3 : 1.2);
+    const backing = !!In.down && !bike.noseManual && fwd < 1.2;     // SHIFT + S at a standstill: you are backing up, not wheelying
+    const pull = (bike.noseManual || backing) ? 0 : clamp(DRIVE.throttle, 0, 1);
+    bike.manual = damp(bike.manual, backing ? 0 : (bike.noseManual ? 0.34 : VEH.manual*(1 + 0.10*pull)), 7, dt);
+    if (!backing){
+      bike.manualT += dt;
+      // riding a wheelie on the pedals / throttle pays more than balancing one standing still
+      bike.manualPts += (bike.noseManual ? 175 : 130 + pull*(25 + clamp(fwd, 0, 22)*4))*dt;
+    }
   } else {
     if (bike.manualT > 0) endManual();
     bike.manual = damp(bike.manual, In.down && Math.abs(fwd)>1 ? 0.10 : 0, 8, dt);
@@ -14087,7 +15105,9 @@ function poseHuman(dt){
   riderAxis(_axX, 1,0,0); riderAxis(_axY, 0,1,0); riderAxis(_axZ, 0,0,1);
 
   // 3. torso: lean into the bars, more when tucked; superman lays it flat
-  const lean = POSE.lean + cr*0.28 + sup*0.75 - noh*0.20 + not*0.10;
+  const wl = bike.state === 'ride' ? clamp(-bike.manual/0.45, 0, 1) : 0;
+  const nl = bike.state === 'ride' ? clamp(bike.manual/0.34, 0, 1) : 0;
+  const lean = POSE.lean + cr*0.28 + sup*0.75 - noh*0.20 + not*0.10 - wl*0.30 + nl*0.18;
   rotateBoneWorld(B.Hips,   _axX, lean*POSE.hipLean);
   rotateBoneWorld(B.Spine,  _axX, lean*POSE.spine*0.45);
   rotateBoneWorld(B.Spine1, _axX, lean*POSE.spine*0.33);
@@ -14460,7 +15480,15 @@ const KEYMAP = {
   'KeyY':'decade','Semicolon':'oneh','Comma':'seat','Period':'lookb'
 };
 
+function typingTarget(e){
+  const t = e.target;
+  if (!t || !t.tagName) return false;
+  if (t.isContentEditable || t.tagName === 'TEXTAREA') return true;
+  if (t.tagName !== 'INPUT') return false;
+  return !/^(checkbox|radio|range|button|submit|reset|file|color|image)$/i.test(t.type || '');
+}
 addEventListener('keydown', e=>{
+  if (typingTarget(e)){ if (e.code === 'Escape') e.target.blur(); return; }   // typing a name / password: the game must not eat WASD, P, M, T ...
   if (e.code === 'Escape' || e.code === 'KeyP'){ togglePause(); return; }
   if (e.code === 'KeyR' && GAME === 'play'){ bail('reset'); return; }
   if (e.code === 'KeyM'){ toast(toggleMute() ? 'Sound off' : 'Sound on', true); return; }
@@ -14498,7 +15526,7 @@ addEventListener('keydown', e=>{
 });
 addEventListener('keyup', e=>{
   const k = KEYMAP[e.code];
-  if (k){ keys[k] = 0; e.preventDefault(); }
+  if (k){ keys[k] = 0; if (!typingTarget(e)) e.preventDefault(); }
 });
 addEventListener('blur', ()=>{ for (const k in keys) keys[k]=0; });
 
@@ -14730,14 +15758,37 @@ function buildTouch(){
 }
 
 /* ---------------------------------------------------------------- menus */
+function mapSizeStr(m){
+  const size = Math.round(2*(m.grid*CELL + BLOCK/2));
+  return size.toLocaleString() + ' m';
+}
+/* the map picker on the left of the menu: one card per city, the current one shows its description */
+function renderMapList(){
+  const l = $('mapList'); if (!l) return;
+  l.innerHTML = '';
+  MAP_ORDER.forEach(k=>{
+    const m = MAPS[k], here = (k === MAP.key);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'mapCard' + (here ? ' sel' : ''); b.dataset.map = k;
+    const sw = m.swatch || ['#223','#445','#667'];
+    b.innerHTML =
+      '<span class="sw" style="background:linear-gradient(180deg,' + sw[0] + ' 0%,' + sw[1] + ' 58%,' + sw[2] + ' 58%)"></span>' +
+      '<span class="tx"><b>' + m.name + '</b><span class="tg">' + (m.tagline || 'Day / night · mega park') + '</span>' +
+      '<span class="bs">' + mapSizeStr(m) + ' wide · Best ' + (BEST[m.id] ? BEST[m.id].toLocaleString() : '—') + '</span>' +
+      (here ? '<span class="desc">' + m.blurb + '</span>' : '') + '</span>' +
+      '<span class="go">' + (here ? 'Here' : 'Go') + '</span>';
+    b.onclick = ()=>{ if (!here) switchMap(k); };
+    l.appendChild(b);
+  });
+}
 function renderParks(){
   const el = $('parkHero');
-  if (!el) return;
-  el.innerHTML =
-    '<h3>' + park.name + '</h3><p>' + park.desc + '</p>' +
+  if (el) el.innerHTML =
+    '<h3>' + park.name + '</h3>' +
     '<div class="meta"><span class="tag">' + park.tag + '</span>' +
     '<span class="best">Best &middot; ' +
       (BEST[park.id] ? BEST[park.id].toLocaleString() : '—') + '</span></div>';
+  renderMapList();
 }
 
 const MODE_HINT = {
@@ -15566,7 +16617,7 @@ function startRun(){
   }
   if (!shownWheelieHint){
     shownWheelieHint = true;
-    setTimeout(()=>{ if (GAME==='play') toast('Hold SHIFT for a wheelie — even from a dead stop'); }, 7500);
+    setTimeout(()=>{ if (GAME==='play') toast('Hold SHIFT for a wheelie — keep pedalling (W) to ride it out'); }, 7500);
   }
   if (!shownTrickHint){
     shownTrickHint = true;
@@ -15655,6 +16706,7 @@ function frame(now){
   skyUni.uTime.value = now * 0.000018;      // clouds drift
   WORLD.uTime.value  = now * 0.001;         // cloud shadows drift with them
   updateDayNight(dt);                       // slow day<->night cross-fade, see p2_park.js
+  updateWeather(now*0.001);
   netTick(dt);
   copsTick(dt);
   civTick(dt);
@@ -15794,6 +16846,7 @@ function boot(){
       $('loading').classList.add('hide');
       setTimeout(()=>{ $('loading').style.display = 'none'; }, 400);
       show('menu');
+      try { onlineAfterBoot(); } catch(e){ console.warn(e); }
       last = performance.now();
       requestAnimationFrame(frame);
       return;
@@ -15873,8 +16926,8 @@ let netSendAcc = 0;
 
 const ROOM_ALPHABET = 'ACDEFGHJKLMNPQRSTUVWXY34679';   // no 0/O/1/I/B/S/Z look-alikes
 function genRoomCode(){
-  let s = '';
-  for (let i=0;i<5;i++) s += ROOM_ALPHABET[Math.floor(Math.random()*ROOM_ALPHABET.length)];
+  let s = MAP.code;                       // first letter says which city the room is in
+  for (let i=0;i<4;i++) s += ROOM_ALPHABET[Math.floor(Math.random()*ROOM_ALPHABET.length)];
   return s;
 }
 function defaultName(){ return 'Rider' + (100 + Math.floor(Math.random()*900)); }
@@ -15897,6 +16950,7 @@ function netConnect(code, cb){
       netConnecting = false;
       netChan = chan;
       chan.track({ id:netId, name:netName, kit: (typeof kitIndex !== 'undefined' ? kitIndex : 0) });
+      try { onlineRoomChanged(); } catch(e){}
       cb && cb(true);
     } else if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && netConnecting){
       netConnecting = false;
@@ -15908,11 +16962,13 @@ function netConnect(code, cb){
 }
 
 function netLeave(){
+  try { onlineLeaving(); } catch(e){}
   progRoomLeave();
   if (netChan){ try { netChan.unsubscribe(); } catch(e){} }
   netChan = null; netRoom = null; netConnecting = false;
   for (const id in REMOTES) despawnRemote(id, true);   // silent: you left, not them
   mpUpdateHudFriends();
+  try { onlineRoomChanged(); } catch(e){}
 }
 
 function netSyncPresence(){
@@ -16178,7 +17234,7 @@ function mpRenderRoster(){
   });
   el.innerHTML = rows;
   if (!ids.length){
-    el.innerHTML += '<div class="rosterEmpty">Waiting for friends — send them the room code above. They’ll need this same game file open.</div>';
+    el.innerHTML += '<div class="rosterEmpty">' + (typeof ROOM_PUBLIC !== 'undefined' && ROOM_PUBLIC ? 'Waiting for riders — your server is in the public list, so anyone can join.' : 'Waiting for friends — send them the room code above, or they can join you from their Friends tab.') + '</div>';
   }
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -16221,6 +17277,7 @@ function mpRefreshScreen(){ netChan ? mpShowLobbyPanel() : mpShowJoinPanel(); }
 function mpSetErr(msg){ const el = $('mpErr'); if (el) el.textContent = msg || ''; }
 
 function mpReadName(){
+  if (typeof ACCT !== 'undefined' && ACCT.token && ACCT.name){ netName = ACCT.name; return netName; }
   const v = ($('mpNameInput').value || '').trim().slice(0,16);
   netName = v || defaultName();
   return netName;
@@ -16284,6 +17341,532 @@ $('mpDropBtn').onclick = ()=>{
   MODE = 'free'; renderModes();
   startRun();
 };
+/* =========================================================================
+   ONLINE -- accounts, friends and public servers, plus the fullscreen button.
+
+   Accounts are the game's own (a username + password checked by the database,
+   no third-party sign-in): the Supabase functions dl_register / dl_login hand
+   back a random session token that is kept in this browser. Everything below
+   talks to the database through those dl_* functions only -- the tables are not
+   reachable from here at all. The live part (riders moving around a shared city)
+   is still the room-code channel from the section above; a "public server" is
+   just a room whose code is also listed for everybody, and a friend's "Join"
+   button is just their room code.
+
+   Without a Supabase URL (the public site and the artifact build have it blanked)
+   every online control is hidden and none of this runs.
+   ========================================================================= */
+const ONLINE_OK = !!SUPA_URL;
+const ACCT_KEY = 'dusk_line_acct_v1';
+const GUEST_KEY = 'dusk_line_guest_v1';
+const ACCT = { token:null, name:null, requests:0 };
+let ROOM_PUBLIC = false;                  // the room I am in is listed as a public server
+const HUB = { tab:'servers', mode:'login', poll:0, friends:null, servers:[], hosting:null, busy:false, bg:0, bgN:0 };
+
+if (!ONLINE_OK) document.body.classList.add('noOnline');
+
+const DL_ERR = {
+  offline:"Online play isn't available in this copy of the game.",
+  net:"Couldn't reach the online service — check your connection and try again.",
+  rate_limited:'Too many tries — wait a minute and try again.',
+  bad_name:'Usernames are 3–16 letters, numbers or underscores.',
+  name_taken:'That username is taken — try another.',
+  bad_password:'Passwords need at least 6 characters.',
+  bad_login:'Wrong username or password.',
+  locked:'Too many wrong passwords — try again in a few minutes.',
+  auth:'You were signed out — please sign in again.',
+  no_such_player:'Nobody has that username.',
+  self:"That's you!",
+  already:"You're already friends.",
+  already_sent:'You already sent that request.',
+  too_many:'Your friends list is full.',
+  bad_code:"That server code isn't valid.",
+  code_taken:'That code was just taken — try again.'
+};
+function errText(code){ return DL_ERR[code] || DL_ERR.net; }
+
+function dlRpc(fn, args){
+  const c = ensureSupa();
+  if (!c) return Promise.resolve({ ok:false, error: ONLINE_OK ? 'net' : 'offline' });
+  return new Promise(res=>{
+    let done = false;
+    const fin = v=>{ if (done) return; done = true; clearTimeout(t); res(v); };
+    const t = setTimeout(()=> fin({ ok:false, error:'net' }), 12000);
+    try {
+      Promise.resolve(c.rpc(fn, args || {})).then(r=>{
+        const d = r && r.data;
+        if (r && r.error) fin({ ok:false, error:'net', detail:String(r.error.message || '') });
+        else if (d && typeof d === 'object') fin(d);
+        else fin({ ok:false, error:'net' });
+      }, ()=> fin({ ok:false, error:'net' }));
+    } catch(e){ fin({ ok:false, error:'net' }); }
+  });
+}
+
+/* ---------------------------------------------------------------- maps by id / code */
+function mapKeyFromId(id){
+  for (let i=0;i<MAP_ORDER.length;i++) if (MAPS[MAP_ORDER[i]].id === id) return MAP_ORDER[i];
+  return null;
+}
+function mapOfRoom(code, id){ return mapKeyFromCode(code) || mapKeyFromId(id) || null; }
+function mapSwatchCss(key){
+  const sw = (MAPS[key] && MAPS[key].swatch) || ['#223','#445','#667'];
+  return 'linear-gradient(180deg,' + sw[0] + ' 0%,' + sw[1] + ' 58%,' + sw[2] + ' 58%)';
+}
+
+/* ---------------------------------------------------------------- account */
+function acctLoad(){
+  try {
+    const o = JSON.parse(localStorage.getItem(ACCT_KEY) || 'null');
+    if (o && typeof o.token === 'string' && typeof o.name === 'string'){ ACCT.token = o.token; ACCT.name = o.name; }
+  } catch(e){}
+}
+function acctSave(){
+  try {
+    if (ACCT.token) localStorage.setItem(ACCT_KEY, JSON.stringify({ token:ACCT.token, name:ACCT.name }));
+    else localStorage.removeItem(ACCT_KEY);
+  } catch(e){}
+}
+function acctSetSession(token, name){
+  ACCT.token = token; ACCT.name = name; ACCT.requests = 0;
+  acctSave();
+  if (name){ netName = name; }
+  onlineRender();
+  bgBeat();
+}
+function acctClear(){
+  ACCT.token = null; ACCT.name = null; ACCT.requests = 0; HUB.friends = null;
+  acctSave();
+  const g = guestName(); netName = g; $('mpNameInput').value = g;
+  onlineRender();
+}
+function acctExpired(){
+  if (!ACCT.token) return;
+  acctClear();
+  const el = $('acctErr'); if (el){ el.textContent = DL_ERR.auth; el.className = 'hubErr'; }
+  if (!$('friends').classList.contains('hide')) hubTab('account');
+}
+function guestName(){
+  let n = '';
+  try { n = (localStorage.getItem(GUEST_KEY) || '').slice(0, 16); } catch(e){}
+  if (!n){ n = defaultName(); try { localStorage.setItem(GUEST_KEY, n); } catch(e){} }
+  return n;
+}
+
+/* paint everything that depends on who is signed in */
+function onlineRender(){
+  const chip = $('acctChip');
+  if (chip){
+    chip.classList.toggle('on', !!ACCT.token);
+    $('acctChipTx').textContent = ACCT.token ? ACCT.name : 'Sign in';
+    let b = chip.querySelector('.bdg');
+    if (ACCT.token && ACCT.requests > 0){
+      if (!b){ b = document.createElement('i'); b.className = 'bdg'; chip.appendChild(b); }
+      b.textContent = ACCT.requests;
+    } else if (b) b.remove();
+  }
+  const fb = $('friendsBadge');
+  if (fb){ fb.textContent = ACCT.requests; fb.classList.toggle('hide', !(ACCT.token && ACCT.requests > 0)); }
+  const sub = $('mpBtnSub');
+  if (sub) sub.textContent = ACCT.token
+    ? 'Signed in as ' + ACCT.name + ' — friends, public servers and private rooms.'
+    : 'Friends, public servers and private rooms — no bots, just people.';
+  const inp = $('mpNameInput');
+  if (inp){
+    if (ACCT.token){ inp.value = ACCT.name; inp.disabled = true; }
+    else { inp.disabled = false; if (!inp.value || inp.value === ACCT.name) inp.value = guestName(); }
+  }
+  const nl = document.querySelector('#mpNameField label');
+  if (nl) nl.textContent = ACCT.token ? 'Riding as (your account)' : 'Your name';
+  $('hubTabRoom').textContent = netChan ? 'Your room' : 'Private room';
+  const lc = $('mpLobbyCap'), rm = $('mpRoomMap');
+  if (lc) lc.textContent = ROOM_PUBLIC ? 'Server code — it is also in the public server list' : 'Room code — share it with your friends';
+  if (rm) rm.textContent = netChan ? MAP.name + (HUB.hosting ? ' · ' + HUB.hosting.name : (ROOM_PUBLIC ? ' · public server' : ' · private room')) : '';
+  const hs = $('hubSub');
+  if (hs) hs.textContent = netChan ? 'You are in room ' + netRoom : (ACCT.token ? 'Signed in as ' + ACCT.name : 'No bots · just people');
+  // account pane
+  const out = $('acctOut'), inn = $('acctIn');
+  if (out && inn){
+    out.classList.toggle('hide', !!ACCT.token);
+    inn.classList.toggle('hide', !ACCT.token);
+    if (ACCT.token){
+      $('acctName').textContent = ACCT.name;
+      $('acctAvatar').textContent = (ACCT.name || '?').charAt(0);
+      $('acctSub').textContent = 'Signed in on this device';
+    }
+  }
+  // friends pane gate + host form note
+  $('friendsGate').classList.toggle('hide', !!ACCT.token);
+  $('friendsBody').classList.toggle('hide', !ACCT.token);
+  const hn = $('srvHostNote');
+  if (hn) hn.textContent = 'Opens on ' + MAP.name + ' — pick another map on the main menu to host there instead.';
+}
+
+function setMsg(id, text, ok){
+  const el = $(id); if (!el) return;
+  el.textContent = text || '';
+  el.className = (el.className.indexOf('mpErr') >= 0 ? 'mpErr' : 'hubErr') + (ok ? ' ok' : '');
+}
+
+function acctMode(mode){
+  HUB.mode = mode;
+  document.querySelectorAll('#acctSeg .segBtn').forEach(b=> b.classList.toggle('sel', b.dataset.form === mode));
+  $('acctPass2Wrap').classList.toggle('hide', mode !== 'signup');
+  $('acctGo').textContent = mode === 'signup' ? 'Create account' : 'Log in';
+  $('acctPass').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  setMsg('acctErr', '');
+}
+
+async function acctSubmit(){
+  if (HUB.busy) return;
+  const user = ($('acctUser').value || '').trim();
+  const pass = $('acctPass').value || '';
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(user)){ setMsg('acctErr', DL_ERR.bad_name); return; }
+  if (pass.length < 6){ setMsg('acctErr', DL_ERR.bad_password); return; }
+  if (HUB.mode === 'signup' && pass !== ($('acctPass2').value || '')){ setMsg('acctErr', "The two passwords don't match."); return; }
+  HUB.busy = true; $('acctGo').disabled = true;
+  setMsg('acctErr', HUB.mode === 'signup' ? 'Creating your account…' : 'Signing in…', true);
+  const r = await dlRpc(HUB.mode === 'signup' ? 'dl_register' : 'dl_login', { p_username:user, p_password:pass });
+  HUB.busy = false; $('acctGo').disabled = false;
+  if (!r.ok){ setMsg('acctErr', errText(r.error)); return; }
+  $('acctPass').value = ''; $('acctPass2').value = '';
+  setMsg('acctErr', '');
+  acctSetSession(r.token, r.username || user);
+  setMsg('acctErr2', HUB.mode === 'signup' ? 'Welcome, ' + ACCT.name + '! Your account is ready.' : 'Welcome back, ' + ACCT.name + '.', true);
+  frRefresh(); bgStart();
+}
+
+async function acctSignOut(){
+  const tok = ACCT.token;
+  if (netChan) netLeave();
+  acctClear();
+  setMsg('acctErr', 'Signed out.', true);
+  if (tok) dlRpc('dl_logout', { p_token:tok });
+}
+
+async function acctCloseGo(){
+  const pw = $('acctClosePass').value || '';
+  if (!pw){ setMsg('acctErr2', 'Type your password to confirm.'); return; }
+  if (HUB.busy) return;
+  HUB.busy = true; $('acctCloseGo').disabled = true;
+  const r = await dlRpc('dl_close_account', { p_token:ACCT.token, p_password:pw });
+  HUB.busy = false; $('acctCloseGo').disabled = false;
+  if (!r.ok){ setMsg('acctErr2', errText(r.error)); return; }
+  $('acctClosePass').value = ''; $('acctCloseForm').classList.add('hide');
+  if (netChan) netLeave();
+  acctClear();
+  setMsg('acctErr', 'Your account was closed.', true);
+}
+
+/* ---------------------------------------------------------------- heartbeat (presence for friends, public server listing) */
+async function bgBeat(){
+  if (!ACCT.token) return;
+  const r = await dlRpc('dl_beat', { p_token:ACCT.token, p_room:netRoom || '', p_public:!!(netRoom && ROOM_PUBLIC), p_map:MAP.id });
+  if (r.ok){ if (r.requests !== ACCT.requests){ ACCT.requests = r.requests | 0; onlineRender(); } }
+  else if (r.error === 'auth') acctExpired();
+}
+async function bgServerBeat(){
+  if (!ACCT.token || !netRoom || !ROOM_PUBLIC) return;
+  const r = await dlRpc('dl_server_beat', { p_token:ACCT.token, p_code:netRoom, p_players:mpFriendCount() + 1 });
+  if (r.ok && r.found === false && HUB.hosting && HUB.hosting.code === netRoom){
+    // the listing expired while the tab was asleep: open it again
+    dlRpc('dl_server_open', { p_token:ACCT.token, p_code:netRoom, p_name:HUB.hosting.name, p_map:MAP.id, p_public:true, p_max:HUB.hosting.max });
+  }
+}
+function bgStart(){
+  if (HUB.bg || !ONLINE_OK) return;
+  HUB.bg = setInterval(()=>{
+    if (!ACCT.token) return;
+    HUB.bgN++;
+    if (HUB.bgN % 3 === 0) bgBeat();                    // every ~30 s
+    if (HUB.bgN % 2 === 0) bgServerBeat();              // every ~20 s
+  }, 10000);
+}
+
+/* called by the room code above whenever I join or leave a room */
+function onlineLeaving(){
+  const code = netRoom;
+  if (code && ROOM_PUBLIC && ACCT.token && !mpFriendCount()) dlRpc('dl_server_close', { p_token:ACCT.token, p_code:code });
+  ROOM_PUBLIC = false; HUB.hosting = null;
+}
+function onlineRoomChanged(){
+  onlineRender();
+  bgBeat();
+  if (HUB.tab === 'servers' && !$('friends').classList.contains('hide')) srvRender();
+}
+
+/* ---------------------------------------------------------------- hub (tabs) */
+function hubOpen(tab){
+  show('friends');
+  hubTab(tab || (netChan ? 'room' : HUB.tab) || 'servers');
+}
+function hubTab(name){
+  HUB.tab = name;
+  document.querySelectorAll('#hubTabs .hubTab').forEach(b=> b.classList.toggle('sel', b.dataset.tab === name));
+  [['servers','paneServers'],['friends','paneFriends'],['room','paneRoom'],['account','paneAccount']].forEach(p=>{
+    $(p[1]).classList.toggle('hide', p[0] !== name);
+  });
+  hubStopPoll();
+  onlineRender();
+  if (name === 'servers'){ srvRender(); srvRefresh(); HUB.poll = setInterval(hubPollTick, 6000); }
+  else if (name === 'friends'){ if (ACCT.token){ frRender(); frRefresh(); HUB.poll = setInterval(hubPollTick, 10000); } }
+  else if (name === 'room'){ mpSetErr(''); mpRefreshScreen(); }
+  else if (name === 'account'){ acctMode(HUB.mode); }
+}
+function hubStopPoll(){ if (HUB.poll){ clearInterval(HUB.poll); HUB.poll = 0; } }
+function hubPollTick(){
+  if ($('friends').classList.contains('hide')){ hubStopPoll(); return; }
+  if (HUB.tab === 'servers') srvRefresh();
+  else if (HUB.tab === 'friends') frRefresh();
+}
+
+/* ---------------------------------------------------------------- joining */
+function joinCode(code, mapId, isPublic){
+  code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length < 4){ return; }
+  const key = mapOfRoom(code, mapId);
+  if (key && key !== MAP.key){
+    // that room lives in another city: travel there, then join on arrival
+    hubErrAll('Travelling to ' + MAPS[key].name + '…', true);
+    switchMap(key, { join:code, pub:!!isPublic });
+    return;
+  }
+  if (netChan) netLeave();                // resets the public flag, so set it afterwards
+  if (ACCT.token) netName = ACCT.name; else mpReadName();
+  ROOM_PUBLIC = !!isPublic;
+  hubErrAll('Connecting…', true);
+  netConnect(code, (ok, err)=>{
+    if (!ok){ ROOM_PUBLIC = false; hubErrAll(err || DL_ERR.net); return; }
+    hubErrAll('');
+    hubTab('room');
+  });
+}
+function hubErrAll(text, ok){ setMsg('srvErr', text, ok); setMsg('frErr', text, ok); }
+
+/* ---------------------------------------------------------------- public servers */
+async function srvRefresh(){
+  const r = await dlRpc('dl_server_list', {});
+  if (!r.ok){ setMsg('srvErr', errText(r.error)); return; }
+  if (HUB.tab === 'servers') setMsg('srvErr', '');
+  HUB.servers = Array.isArray(r.servers) ? r.servers : [];
+  srvRender();
+}
+function srvRender(){
+  const el = $('srvList'); if (!el) return;
+  const list = HUB.servers || [];
+  $('srvCount').textContent = list.length ? '· ' + list.length : '';
+  if (!list.length){
+    el.innerHTML = '<div class="hempty">No public servers are open right now.<br>Host one — it shows up here for everybody.</div>';
+  } else {
+    el.innerHTML = list.map((s, i)=>{
+      const key = mapOfRoom(s.code, s.map);
+      const mp = key ? MAPS[key] : null;
+      const here = netChan && netRoom === s.code;
+      const full = (s.players | 0) >= (s.max | 0);
+      const btn = here ? '<button class="btn sm" disabled type="button">Joined</button>'
+                : full ? '<button class="btn sm" disabled type="button">Full</button>'
+                : '<button class="btn teal sm" data-join="' + i + '" type="button">Join</button>';
+      return '<div class="hrow' + (full && !here ? ' full' : '') + '">' +
+        '<span class="sw" style="background:' + (key ? mapSwatchCss(key) : 'rgba(242,237,228,.1)') + '"></span>' +
+        '<div class="nm"><b>' + escapeHtml(s.name || 'Server') + '</b><span>' + escapeHtml(mp ? mp.name : 'Unknown map') + ' · hosted by ' + escapeHtml(s.host || '?') + '</span></div>' +
+        '<span class="meta">' + (s.players | 0) + ' / ' + (s.max | 0) + '</span>' +
+        '<div class="acts">' + btn + '</div></div>';
+    }).join('');
+  }
+  const guest = !ACCT.token;
+  const note = $('srvGuest');
+  if (note) note.classList.toggle('hide', !guest);
+}
+function srvJoinIdx(i){
+  const s = HUB.servers[i]; if (!s) return;
+  joinCode(s.code, s.map, true);
+}
+function srvShowHost(on){
+  $('srvHostForm').classList.toggle('hide', !on);
+  if (on){
+    if (!ACCT.token){ setMsg('srvErr', 'Sign in to host a public server — guests can still join any server.'); $('srvHostForm').classList.add('hide'); hubTab('account'); return; }
+    if (!$('srvName').value) $('srvName').value = (ACCT.name + "'s server").slice(0, 28);
+    $('srvName').focus();
+  }
+}
+async function srvCreate(){
+  if (HUB.busy) return;
+  if (!ACCT.token){ srvShowHost(true); return; }
+  if (netChan) netLeave();
+  HUB.busy = true; $('srvCreateBtn').disabled = true;
+  setMsg('srvErr', 'Opening your server…', true);
+  const name = ($('srvName').value || '').trim().slice(0, 28);
+  const max = parseInt($('srvMax').value, 10) || 6;
+  let r = null, code = '';
+  for (let tries = 0; tries < 3; tries++){
+    code = genRoomCode();
+    r = await dlRpc('dl_server_open', { p_token:ACCT.token, p_code:code, p_name:name, p_map:MAP.id, p_public:true, p_max:max });
+    if (r.ok || r.error !== 'code_taken') break;
+  }
+  if (!r.ok){
+    HUB.busy = false; $('srvCreateBtn').disabled = false;
+    if (r.error === 'auth') acctExpired(); else setMsg('srvErr', errText(r.error));
+    return;
+  }
+  netName = ACCT.name;
+  ROOM_PUBLIC = true;
+  HUB.hosting = { code, max, name:r.name || name };
+  netConnect(code, (ok, err)=>{
+    HUB.busy = false; $('srvCreateBtn').disabled = false;
+    if (!ok){
+      ROOM_PUBLIC = false; HUB.hosting = null;
+      dlRpc('dl_server_close', { p_token:ACCT.token, p_code:code });
+      setMsg('srvErr', err || DL_ERR.net); return;
+    }
+    setMsg('srvErr', '');
+    $('srvHostForm').classList.add('hide');
+    hubTab('room');
+  });
+}
+
+/* ---------------------------------------------------------------- friends */
+async function frRefresh(){
+  if (!ACCT.token) return;
+  const r = await dlRpc('dl_friends_list', { p_token:ACCT.token });
+  if (!r.ok){ if (r.error === 'auth') acctExpired(); else setMsg('frErr', errText(r.error)); return; }
+  HUB.friends = r;
+  ACCT.requests = (r.incoming || []).length;
+  onlineRender();
+  frRender();
+}
+function frRender(){
+  const d = HUB.friends; if (!d || !ACCT.token) return;
+  const fr = d.friends || [], inc = d.incoming || [], out = d.outgoing || [];
+  $('frCount').textContent = fr.length ? '· ' + fr.filter(f=> f.online).length + ' online / ' + fr.length : '';
+  $('frReqWrap').classList.toggle('hide', !inc.length);
+  $('frOutWrap').classList.toggle('hide', !out.length);
+  $('frReq').innerHTML = inc.map(f=>
+    '<div class="hrow"><i class="hdot"></i><div class="nm"><b>' + escapeHtml(f.name) + '</b><span>wants to be friends</span></div>' +
+    '<div class="acts"><button class="btn teal sm" data-act="accept" data-name="' + escapeHtml(f.name) + '" type="button">Accept</button>' +
+    '<button class="btn ghost sm" data-act="decline" data-name="' + escapeHtml(f.name) + '" type="button">Decline</button></div></div>').join('');
+  $('frOut').innerHTML = out.map(f=>
+    '<div class="hrow"><i class="hdot"></i><div class="nm"><b>' + escapeHtml(f.name) + '</b><span>request sent</span></div>' +
+    '<div class="acts"><button class="btn ghost sm" data-act="remove" data-name="' + escapeHtml(f.name) + '" type="button">Cancel</button></div></div>').join('');
+  if (!fr.length){
+    $('frList').innerHTML = '<div class="hempty">No friends yet.<br>Add someone by username — once they accept, you can see when they are online and jump into their server.</div>';
+    return;
+  }
+  $('frList').innerHTML = fr.map(f=>{
+    const key = f.room ? mapOfRoom(f.room, f.map) : null;
+    const where = !f.online ? 'offline'
+                : f.room ? ('In ' + (f.public ? 'a public server' : 'a private room') + (key ? ' on ' + MAPS[key].name : '') + ' · ' + escapeHtml(f.room))
+                : 'Online · not in a room';
+    const join = (f.online && f.room && !(netChan && netRoom === f.room))
+      ? '<button class="btn teal sm" data-act="join" data-code="' + escapeHtml(f.room) + '" data-map="' + escapeHtml(f.map || '') + '" data-public="' + (f.public ? 1 : 0) + '" type="button">Join</button>' : '';
+    return '<div class="hrow"><i class="hdot' + (f.online ? ' on' : '') + '"></i><div class="nm"><b>' + escapeHtml(f.name) + '</b><span>' + where + '</span></div>' +
+      '<div class="acts">' + join + '<button class="btn ghost sm" data-act="remove" data-name="' + escapeHtml(f.name) + '" type="button" title="Remove friend">✕</button></div></div>';
+  }).join('');
+}
+async function frAdd(){
+  const name = ($('frAddInput').value || '').trim();
+  if (!name){ setMsg('frErr', 'Type your friend’s username first.'); return; }
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(name)){ setMsg('frErr', DL_ERR.no_such_player); return; }
+  $('frAddBtn').disabled = true;
+  const r = await dlRpc('dl_friend_add', { p_token:ACCT.token, p_name:name });
+  $('frAddBtn').disabled = false;
+  if (!r.ok){ if (r.error === 'auth') acctExpired(); else setMsg('frErr', errText(r.error)); return; }
+  $('frAddInput').value = '';
+  setMsg('frErr', r.status === 'friends' ? 'You and ' + name + ' are now friends!' : 'Request sent to ' + name + '.', true);
+  frRefresh();
+}
+async function frAct(btn){
+  const act = btn.dataset.act, name = btn.dataset.name;
+  if (act === 'join'){ joinCode(btn.dataset.code, btn.dataset.map, btn.dataset.public === '1'); return; }
+  if (act === 'remove' && btn.textContent === '✕'){
+    // two taps for the destructive one
+    btn.textContent = 'Sure?'; btn.classList.add('danger');
+    setTimeout(()=>{ if (btn.isConnected){ btn.textContent = '✕'; btn.classList.remove('danger'); } }, 3000);
+    return;
+  }
+  btn.disabled = true;
+  let r;
+  if (act === 'accept') r = await dlRpc('dl_friend_respond', { p_token:ACCT.token, p_name:name, p_accept:true });
+  else if (act === 'decline') r = await dlRpc('dl_friend_respond', { p_token:ACCT.token, p_name:name, p_accept:false });
+  else r = await dlRpc('dl_friend_remove', { p_token:ACCT.token, p_name:name });
+  if (!r.ok){ if (r.error === 'auth') acctExpired(); else setMsg('frErr', errText(r.error)); }
+  frRefresh();
+}
+
+/* ---------------------------------------------------------------- fullscreen */
+const FULLSCR = {
+  el: document.documentElement,
+  can(){ return !!(this.el.requestFullscreen || this.el.webkitRequestFullscreen) && document.fullscreenEnabled !== false; },
+  on(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+};
+function fsRender(){
+  const b = $('fsBtn'); if (!b) return;
+  b.classList.toggle('hide', !FULLSCR.can());
+  $('fsTx').textContent = FULLSCR.on() ? 'Exit fullscreen' : 'Fullscreen';
+  const i = b.querySelector('.fsIco'); if (i) i.textContent = FULLSCR.on() ? '⤡' : '⛶';
+}
+function fsToggle(){
+  const d = document, e = FULLSCR.el;
+  try {
+    if (FULLSCR.on()){ (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+    const p = (e.requestFullscreen || e.webkitRequestFullscreen).call(e);
+    if (p && p.catch) p.catch(()=>{ $('fsTx').textContent = 'Blocked here'; setTimeout(fsRender, 2200); });
+  } catch(err){ $('fsTx').textContent = 'Blocked here'; setTimeout(fsRender, 2200); }
+}
+
+/* ---------------------------------------------------------------- wiring */
+function onlineWire(){
+  $('fsBtn').onclick = fsToggle;
+  document.addEventListener('fullscreenchange', fsRender);
+  document.addEventListener('webkitfullscreenchange', fsRender);
+  fsRender();
+
+  if (!ONLINE_OK) return;
+  $('acctChip').onclick = ()=> hubOpen(ACCT.token && ACCT.requests > 0 ? 'friends' : 'account');
+  $('mpBtn').onclick = ()=> hubOpen(netChan ? 'room' : (HUB.tab === 'account' && ACCT.token ? 'servers' : HUB.tab));
+  $('mpBack').onclick = ()=>{ hubStopPoll(); show('menu'); };
+  $('hubTabs').onclick = e=>{ const b = e.target.closest('.hubTab'); if (b) hubTab(b.dataset.tab); };
+
+  $('srvRefresh').onclick = srvRefresh;
+  $('srvHostBtn').onclick = ()=> srvShowHost($('srvHostForm').classList.contains('hide'));
+  $('srvCancelBtn').onclick = ()=> srvShowHost(false);
+  $('srvCreateBtn').onclick = srvCreate;
+  $('srvName').addEventListener('keydown', e=>{ if (e.key === 'Enter') srvCreate(); });
+  $('srvList').onclick = e=>{ const b = e.target.closest('button[data-join]'); if (b) srvJoinIdx(+b.dataset.join); };
+
+  $('frAddBtn').onclick = frAdd;
+  $('frAddInput').addEventListener('keydown', e=>{ if (e.key === 'Enter') frAdd(); });
+  $('paneFriends').onclick = e=>{ const b = e.target.closest('button[data-act]'); if (b) frAct(b); };
+  $('friendsGateBtn').onclick = ()=> hubTab('account');
+  $('srvGuestBtn').onclick = ()=> hubTab('account');
+
+  $('acctSeg').onclick = e=>{ const b = e.target.closest('.segBtn'); if (b) acctMode(b.dataset.form); };
+  $('acctForm').addEventListener('submit', e=>{ e.preventDefault(); acctSubmit(); });
+  $('acctOutBtn').onclick = acctSignOut;
+  $('acctCloseBtn').onclick = ()=>{ $('acctCloseForm').classList.toggle('hide'); setMsg('acctErr2', ''); };
+  $('acctCloseCancel').onclick = ()=>{ $('acctCloseForm').classList.add('hide'); $('acctClosePass').value = ''; };
+  $('acctCloseGo').onclick = acctCloseGo;
+  $('mpNameInput').addEventListener('change', ()=>{ if (!ACCT.token){ try { localStorage.setItem(GUEST_KEY, ($('mpNameInput').value || '').trim().slice(0, 16)); } catch(e){} } });
+
+  acctLoad();
+  if (ACCT.token){ netName = ACCT.name; }
+  else { const g = guestName(); netName = g; $('mpNameInput').value = g; }
+  onlineRender();
+  if (ACCT.token){
+    dlRpc('dl_me', { p_token:ACCT.token }).then(r=>{
+      if (r.ok){ ACCT.name = r.username || ACCT.name; ACCT.requests = r.requests | 0; netName = ACCT.name; acctSave(); onlineRender(); bgStart(); }
+      else if (r.error === 'auth') acctClear();
+    });
+  }
+}
+onlineWire();
+
+/* runs once when the loading screen is gone and the menu is up */
+function onlineAfterBoot(){
+  const a = afterTake();                 // always consume it, even when online is off
+  if (!ONLINE_OK || !a) return;
+  if (a.join){ hubOpen('room'); joinCode(a.join, null, !!a.pub); }
+}
+
 /* =========================================================================
    ROAD GRAPH + TRAFFIC SIGNALS — shared by the traffic, cop and crowd AI.
 
