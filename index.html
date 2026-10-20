@@ -6210,9 +6210,37 @@ const MAPS = {
     mats:{ road:0x585e67, sidewalk:0xe8eff6, plaza:0xdfe7f0, grass:0xe9f0f7 },
     hills:{ low:0xe6eef6, mid:0xdce6f1, high:0xf2f6fb, rock:0x8e9bad, flat:true },
     swatch:['#6f93bd','#dbe7f3','#f2f6fb']
+  },
+  jump: {
+    key:'jump', code:'A', id:'air-canyon', name:'Air Canyon', tagline:'Giant gaps · roll-in towers · turbo strips',
+    blurb:'A desert town where every single block is a jump park: roll-in towers, 40 m gaps, giant pipes, rollers and pyramids. Hit a turbo strip and fly. Made for e-scooters.',
+    grid:7,
+    mega:null,
+    tower:null,
+    ring:{ start:3, step:2, per:1.0, min:8 },
+    spots:[], jumps:true,
+    hMul:0.5, facades:null,
+    tree:'palm', leaf:[0x5aa23f,0x3a7a2f], trunk:0x93714c, scrub:0xb4a86a,
+    cycle:[0,0.5], weather:null,
+    sky:{ zenith:'#1f62c8', horizon:'#cfe2f3', gnd:'#b08a5e', sun:'#fff1d2',
+          dir:[0.52,0.50,-0.58], cover:0.76, cloudY:5.0, haze:0.85,
+          fog:'#c4d9ee', fogNear:240, fogFar:860 },
+    light:{ sun:3.0, sunCol:0xfff0d6, hemi:1.5, skyCol:0xcfe0f5, gndCol:0xd9b98a,
+            rim:0.5, rimCol:0xbcd4ff, bounce:0.6, exposure:0.98 },
+    night:{ sky:{ zenith:'#0c1233', horizon:'#3a2a52', gnd:'#0a0710', sun:'#ffd9b0',
+                  dir:[-0.5,0.55,-0.3], cover:0.6, haze:0.7, fog:'#21183a', fogNear:90, fogFar:460 },
+            light:{ sun:0.55, sunCol:0xe0c0ff, hemi:0.85, skyCol:0x4a4a88, gndCol:0x30242a,
+                    rim:0.42, rimCol:0x8a6ab8, bounce:0.24, exposure:0.96 },
+            lamp:0xffc27a },
+    pal:{ ground:0xc4a676, concrete:0xcfc2a4, ramp:0xc2ad82, metal:0xa49c8e, dark:0x4f463c, bowl:0xcbbc9a,
+          dirt:0xc1a46f, curb:0xdccfb2, wood:0x9a7048, coping:0xe6dcc6 },
+    mats:{ road:0x58534d, sidewalk:0xd6c39c, plaza:0xc6b084, grass:0x8c9c5a },
+    hills:{ low:0xd9a96d, mid:0xbd8450, high:0x9f6a43, rock:0xb4744a },
+    cardTints:[0xe2c58a, 0xd3ac70, 0xefd6a0],
+    swatch:['#2f6fd0','#e8a35a','#d9533a']
   }
 };
-const MAP_ORDER = ['dusk','palm','neon','frost'];
+const MAP_ORDER = ['dusk','palm','neon','frost','jump'];
 function mapKeyFromCode(code){
   const c = String(code || '').charAt(0).toUpperCase();
   for (let i=0;i<MAP_ORDER.length;i++) if (MAPS[MAP_ORDER[i]].code === c) return MAP_ORDER[i];
@@ -10209,6 +10237,7 @@ function harborBlockFn(i, j){
    other maps scatter their own spot mix, denser, ring by ring around the park */
 function buildSpecialBlockMap(){
   if (MAP.key === 'dusk') return buildSpecialBlockMapDusk();
+  if (MAP.jumps && typeof buildSpecialBlockMapJump === 'function') return buildSpecialBlockMapJump();   // Air Canyon: every block is a jump lot (map_jump.js)
   const TYPES = MAP.spots.map(n=> SPOT_FNS[n]).filter(Boolean);
   const SPECIAL = {};
   const used = new Set();
@@ -10247,7 +10276,7 @@ function makePark(base){
   if (MAP.key === 'dusk') return base;
   const size = Math.round(2*(GRID_N*CELL + BLOCK/2));
   const sky = Object.assign({ hills:['#9db2c6','#8ba3ba','#7793ab'], props:30, palms:false }, MAP.sky);
-  return {
+  const park = {
     id:MAP.id, name:MAP.name, desc:MAP.blurb,
     tag:MAP.tagline + ' · ' + size.toLocaleString() + ' × ' + size.toLocaleString() + ' m',
     sky, bound:Math.round(GRID_N*CELL + BLOCK/2 + 68.5),
@@ -10255,6 +10284,9 @@ function makePark(base){
     spawn:base.spawn, challenges:base.challenges,
     build(){ return buildCity(); }
   };
+  // Air Canyon starts you at the foot of a big jump lane (worked out when asked: the town grid is not built yet at this point)
+  if (MAP.jumps) Object.defineProperty(park, 'spawn', { enumerable:true, get(){ return (typeof jmpSpawn === 'function' && jmpSpawn()) || base.spawn; } });
+  return park;
 }
 
 /* ---------------------------------------------------------------- map look: material tints, wet streets, lamp glow */
@@ -10399,6 +10431,7 @@ function afterTake(){
 function switchMap(key, after){
   if (!MAPS[key] || key === MAP.key) return false;
   mapStoreSet(key);
+  if (key === 'jump' && typeof jmpPickRide === 'function') jmpPickRide();     // Air Canyon is made for e-scooters
   if (after) afterSet(after);
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0a0d12;color:#f2ede4;font-family:inherit;letter-spacing:.3em;text-transform:uppercase;font-size:12px';
@@ -20495,6 +20528,27 @@ FLEET.push(
     { Rr:0.13, Rf:0.13, tr:0.05, wb:1.04, dy:0.15, dw:0.20, dt:0.075, deck:'flat', ha:79, bar:1.15, bw:0.60, bars:'tbar', stem:'thick', fold:'none', fsus:'spring', rsus:'none', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'rear', belly:true, brace:true },
     0x32d357, 0xffffff, { fork:0xffffff, rim:0xffffff, tire:0x131518, grip:0x16181b, bars:0xf2f3f5, glow:0xffffff },
     [0.80, 0.72, 0.98, 0.86], 'The rental you have seen on every corner: lime-green, solid and hard to tip. Speed-limited, so it is easy to control.');
+  /* five more for Air Canyon (the jump map): each one a different silhouette, from a gentle starter to a long-travel jumper */
+  ES('hiboy', 'D12', 'Hiboy S2 Lite', 'escooter',
+    { Rr:0.105, Rf:0.105, tr:0.034, wb:0.93, dy:0.125, dw:0.18, dt:0.05, deck:'flat', ha:78, bar:1.04, bw:0.47, bars:'tbar', stem:'single', fold:'base', fsus:'none', rsus:'none', ffend:'arc', rfend:'arc', light:'stem', disp:'slim', motor:'rear' },
+    0xeef2f6, 0x35a7ff, { fork:0xeef2f6, rim:0x35a7ff, tire:0x131518, grip:0x35a7ff, bars:0x1b1e22, glow:0x35a7ff },
+    [0.74, 0.68, 1.04, 0.92], 'The starter scooter: light, simple and gentle. A low top speed makes it very forgiving.');
+  ES('zero10x', 'D13', 'Zero 10X', 'escooter',
+    { Rr:0.13, Rf:0.13, tr:0.050, wb:1.12, dy:0.165, dw:0.21, dt:0.08, deck:'taper', ha:79, bar:1.18, bw:0.62, bars:'moto', stem:'curve', fold:'mid', fsus:'spring', rsus:'arm', ffend:'high', rfend:'long', light:'fork', disp:'round', motor:'dual', stand:true, tread:14 },
+    0xd8c9a6, 0xe8521e, { fork:0xe8521e, rim:0xe8521e, tire:0x131518, grip:0xe8521e, bars:0x1d1f22, glow:0xff8a3a },
+    [1.15, 1.12, 1.00, 1.05], 'Rally-style dual motor: sand paint, orange springs, a curved stem and tyres that eat rough road.');
+  ES('vsett10', 'D14', 'VSETT 10+', 'escooter',
+    { Rr:0.14, Rf:0.14, tr:0.052, wb:1.24, dy:0.185, dw:0.25, dt:0.09, deck:'flat', ha:79, bar:1.24, bw:0.70, bars:'moto', stem:'thick', fold:'none', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'dual', brace:true, neon:true, stand:true, tread:18 },
+    0x1d3b6b, 0x2de2e6, { fork:0x2de2e6, rim:0x2de2e6, tire:0x0f1113, grip:0x2de2e6, bars:0x14181e, glow:0x2de2e6 },
+    [1.38, 1.34, 0.94, 0.76], 'Long-range tank: deep blue paint, a tall braced stem, dual motors and cyan deck lights.', { power:0.50 });
+  ES('inokim', 'D15', 'Inokim OXO', 'escooter',
+    { Rr:0.15, Rf:0.15, tr:0.050, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:80, bar:1.20, bw:0.64, bars:'tbar', stem:'twin', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'arc', rfend:'cover', light:'twin', disp:'round', motor:'dual', stand:true, tread:16 },
+    0x121316, 0xffd400, { fork:0xffd400, rim:0xffd400, tire:0x0e0f11, grip:0xffd400, bars:0x16181c, glow:0xffd400 },
+    [1.28, 1.24, 0.97, 0.80], 'Black and yellow hyper scooter: twin stems, a hydraulic front end and a round dash.', { power:0.46 });
+  ES('skyrider', 'D16', 'Dusk Skyrider', 'escooter',
+    { Rr:0.14, Rf:0.14, tr:0.052, wb:1.18, dy:0.20, dw:0.24, dt:0.09, deck:'flat', ha:79, bar:1.22, bw:0.68, bars:'moto', stem:'aframe', fold:'none', fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:18 },
+    0x18b7a8, 0xff7b2a, { fork:0xff7b2a, rim:0xff7b2a, tire:0x101214, grip:0xff7b2a, bars:0x14181c, glow:0xff7b2a },
+    [1.22, 1.12, 1.00, 1.40], 'Built for Air Canyon: long-travel suspension front and back, wide bars and a deck that pops. Turbo strips love it.', { power:0.46, manual:-0.30 });
 })();
 
 /* the garage subtitle for an e-scooter (garagePower lives in the ui stream's fleet_garage.js; wrap it without editing that file) */
@@ -23252,6 +23306,369 @@ function parkSpotExtra(name, c){
     SPOT_FNS.bigAir = bigAirBlock; SPOT_FNS.kickers = kickerRowBlock;
   } catch (e) { PK.err.push('SPOT_FNS: ' + e.message); }
 })();
+
+/* =========================================================================
+   AIR CANYON -- the "jump" map (maps_head.js: MAPS.jump, key 'jump', code A).
+   Every block of the town is a jump lot, nine kinds in rotation, each one turned by a multiple of 90 degrees so the
+   lanes point every which way.  They are all built from the game's own pieces (bank / quarter / flat / wave), so every
+   rider -- BMX, scooter, e-scooter, motorbike -- rides them with the same physics as the rest of the game:
+
+     0 Triple Gap      three lanes S / M / L (13 / 20 / 29 m flights), every one with a turbo strip
+     1 Sky Drop        a 7 m roll-in tower (access ramp, deck, drop-in quarter) -> turbo strip -> kicker -> 33 m flight
+     2 Giant Pipes     a 5.4 m half-pipe, a 3.6 m one and three spines
+     3 Mega Gaps       three lanes with turbo strips: 29 / 39 / 45 m flights off 4 m / 5.5 m / 7.5 m kickers
+     4 Pyramids        three pyramids (2.4 / 3.6 / 4.8 m) with a ramp up every side
+     5 Giant Rollers   four lanes of rolling hills, 1.6 m .. 4 m high
+     6 Rhythm          two lanes of three doubles each (a short turbo strip before each), a size up every time
+     7 Launch Pads     three quarter-pipe launches (45 / 50 / 55 degrees): 15 / 20 / 29 m flights, up to 11 m high
+     8 Sky Drop XL     the tall tower: 8.8 m roll-in, 33 m flight
+   Every landing is a hill: a long gentle catch slope, a flat crest, then the steeper back slope to land on, so a rider who
+   comes up short rolls up the catch slope instead of slamming into a wall.  jmpHill(F, hl) lays a hill out for a flight of F metres
+   (measured with test/t_jump_tune.js on the real physics: the same kicker + strip speed gives the same flight on a BMX or an e-scooter).
+
+   TURBO STRIPS: a painted strip of arrows in front of the kickers.  While a rider is ON the strip (and on the ground) it
+   pushes them along its heading up to the strip's speed and lifts the top-speed clamp (the same bike.boostT the G cheat uses),
+   so even a push scooter or an e-scooter can fly the big gaps.  Nothing else in the game changes.
+
+   Everything is deterministic (no drand), so every client in an online room builds the same town.
+   Loaded LATE (after park_core / park_spots): uses the pk* helpers, P, sidewalkRing, lightPole, tree, spine, halfpipe.
+   ========================================================================= */
+const JMP = { lots:0, lanes:[], pads:[], towers:[], err:[], padHits:0, hint:false };
+const JMP_PAD = 0xffb020;
+['TURBO', 'E-SCOOTERS'].forEach(w => { if (PK_ATLAS.items.indexOf(w) < 0) PK_ATLAS.items.push(w); });       // two more painted words (the atlas is built on the first decal)
+
+/* ---------------------------------------------------------------- a lot's local frame:  u = along the lot's x, v = along its z (the way the lanes run);
+   `R` turns the whole lot (a multiple of 90 degrees).  A piece's local rot r is added to R.  Same maths as pkLW(). */
+function jmpK(cx, cz, R){
+  const c = Math.cos(R), s = Math.sin(R);
+  const K = { cx, cz, R, W:(u, v) => [cx + u*c + v*s, cz - u*s + v*c] };
+  K.bank = (u, v, r, w, len, h, mat, o) => { const p = K.W(u, v); return pkP(Object.assign({ type:'bank', x:p[0], z:p[1], rot:r + R, w, len, h, mat:mat || MAT.ramp }, o || {})); };
+  K.quarter = (u, v, r, w, Rr, deg, mat, o) => { const p = K.W(u, v); return pkP(Object.assign({ type:'quarter', x:p[0], z:p[1], rot:r + R, w, R:Rr, maxDeg:deg, deck:0, mat:mat || MAT.ramp }, o || {})); };
+  K.slab = (u, v, r, hw, hd, h, mat, base) => { const p = K.W(u, v); return pkSlab(p[0], p[1], r + R, hw, hd, h, mat, base); };
+  K.flip = () => jmpK(cx, cz, R + Math.PI);
+  return K;
+}
+
+/* a flag on a pole standing on known ground (pkFlag() would scan every piece for the ground height) */
+function jmpFlag(x, z, gy, h, hex){
+  _vmo.position.set(x, gy, z); _vmo.rotation.set(0, 0, 0); _vmo.scale.set(1, h, 1);
+  vmeshAdd(pkGeo('pole1', () => new T.CylinderGeometry(0.035, 0.05, 1, 6).translate(0, 0.5, 0)), MAT.metal, true, false);
+  const g = pkGeo('jflag', () => { const f = new T.PlaneGeometry(1.7, 1.05, 3, 1); f.translate(0.85, 0, 0);
+    const p = f.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getX(i)*3.1)*0.07*p.getX(i)); f.computeVertexNormals(); return f; });
+  const gg = g.clone(), cc = C(hex), col = new Float32Array(gg.attributes.position.count*3);
+  for (let i = 0; i < gg.attributes.position.count; i++){ col[i*3] = cc.r; col[i*3 + 1] = cc.g; col[i*3 + 2] = cc.b; }
+  gg.setAttribute('color', new T.BufferAttribute(col, 3));
+  _vmo.position.set(x + 0.04, gy + h - 1.15, z); _vmo.rotation.set(0, 0, 0); _vmo.scale.set(1, 1, 1);
+  vmeshAdd(gg, PK_MAT.cloth, true, false);
+  PK.nProp++;
+}
+
+/* ---------------------------------------------------------------- turbo strip ---------------------------------------------------
+   (u, vStart) = the middle of the strip's start line, running along +v for flatLen metres of painted ground plus extraLen of kicker
+   (the strip keeps pushing while the rider climbs the kicker, so the speed is still there at the lip). */
+function jmpPad(K, u, vStart, flatLen, extraLen, hw, vt){
+  const p = K.W(u, vStart), c = K.W(u, vStart + flatLen/2);
+  pkDecal('solid', c[0], 0.074, c[1], K.R, hw*2 - 0.3, flatLen, JMP_PAD);                         // the painted strip
+  pkBox(c[0], c[1], K.R, hw*2 - 0.3, flatLen, 0.2, 0xfff1c4, 0.08);                                // cream border
+  const n = Math.max(1, Math.floor((flatLen - 3)/3.4));
+  for (let k = 0; k < n; k++){
+    if (4.0 + k*3.4 > flatLen - 0.8) break;
+    const a = K.W(u, vStart + 4.0 + k*3.4);
+    pkArrow(a[0], a[1], K.R + Math.PI, Math.min(hw*1.3, 2.4), 0x3a2200, 0.085);
+  }
+  if (flatLen >= 7){ const t = K.W(u, vStart + 1.8); pkText('TURBO', t[0], t[1], K.R + Math.PI, 1.3, 0x3a2200, 0.085); }
+  JMP.pads.push({ x:p[0], z:p[1], rot:K.R, hw, len:flatLen + extraLen, vt, c:Math.cos(K.R), s:Math.sin(K.R), r2:Math.pow(Math.hypot(hw, flatLen + extraLen) + 2, 2) });
+}
+
+/* the landing hill for a flight of F metres (lip -> touchdown): the crest starts 4 m short of F, so a rider who lands near F comes down on the back slope.
+   Returns { gap, l1, top, l2 }; hl (the crest height) is the lane's own. */
+function jmpHill(F, hl){
+  const cl = (x, a, b) => Math.max(a, Math.min(b, x));
+  const l1 = Math.round(cl(0.3*F, 4, 10)*2)/2, top = Math.round((1.2 + cl(F/25, 0, 1.3))*10)/10, l2 = Math.round(cl(hl/0.38, 4, 12)*2)/2;
+  return { gap:Math.max(2, Math.round((F - 4 - l1)*2)/2), l1, top, l2 };
+}
+
+/* ---------------------------------------------------------------- one jump lane: kicker (bank or quarter) -> gap -> landing hill
+   (u, v0) = the foot of the kicker, the rider travels +v.
+   o: size, w (half width), h + len (bank kicker)  or  qR + deg (quarter kicker), gap (ground between the lip and the foot of the catch slope),
+      hl (height of the hill's crest), l1 (catch slope length), top (flat crest), l2 (back slope length), mat / matL, run (painted runway),
+      pad { len, vt }, flags (pennants over the lip) */
+function jmpDouble(K, u, v0, o){
+  if (o.F) o = Object.assign({}, o, jmpHill(o.F, o.hl));                                // F = the flight this lane is tuned for -> gap / catch / crest / back slope
+  const w = o.w || 3.0, mat = o.mat || PK_MAT.orange, matL = o.matL || PK_MAT.teal, top = o.top || 1.5;
+  let len, h;
+  if (o.qR){ const a = o.deg*Math.PI/180; len = o.qR*Math.sin(a); h = o.qR*(1 - Math.cos(a)); K.quarter(u, v0, 0, w, o.qR, o.deg, mat); }
+  else { len = o.len; h = o.h; K.bank(u, v0, 0, w, len, h, mat); }
+  const wl = w + 0.9, vc = v0 + len + o.gap;
+  K.bank(u, vc, 0, wl, o.l1, o.hl, matL, { deck:top });                               // catch slope up to the crest
+  K.bank(u, vc + o.l1 + top + o.l2, Math.PI, wl, o.l2, o.hl, matL);                   // back slope (the landing)
+  // paint: runway edge lines, an arrow, a word before the strip (or on the landing box when the lot is too short), a landing box in front of the catch slope
+  const run = o.run || 16, y = 0.075, padL = o.pad ? o.pad.len : 0, vs = Math.max(-43.4, v0 - Math.max(run, padL + 4));
+  [-1, 1].forEach(sd => { const a = K.W(u + sd*(w + 0.3), vs), b = K.W(u + sd*(w + 0.3), v0 + len + o.gap); pkLine(a[0], a[1], b[0], b[1], 0.16, PK_PAINT.white, y); });
+  { const a = K.W(u, vs + 2); pkArrow(a[0], a[1], K.R + Math.PI, 2.4, PK_PAINT.white, y); }
+  const wv = v0 - padL - 4.5;
+  if (wv > -42.6){ const a = K.W(u, wv); pkText(o.word || 'GAP', a[0], a[1], K.R + Math.PI, 1.4, PK_PAINT.yellow, y); }
+  { const c = K.W(u, v0 + len + o.gap*0.5); pkBox(c[0], c[1], K.R, wl*2 - 0.4, o.gap - 1.5 > 2 ? o.gap - 1.5 : 2, 0.16, PK_PAINT.yellow, y);
+    if (wv <= -42.6 && o.gap > 7) pkText(o.word || 'GAP', c[0], c[1], K.R + Math.PI, 1.4, PK_PAINT.white, 0.085); }
+  // cones along the gap, pennants over the lip
+  for (let k = 0; k < 3; k++){ [-1, 1].forEach(sd => { const c = K.W(u + sd*(w + 1.2), v0 + len + (k + 0.5)*o.gap/3); pkCone(c[0], c[1], 0.05); }); }
+  if (o.flags){
+    const a = K.W(u - w - 1.8, v0 + 0.8), b = K.W(u + w + 1.8, v0 + 0.8);
+    pkPennants(a[0], a[1], b[0], b[1], h + 4.4, 14);
+    jmpFlag(a[0], a[1], 0.05, h + 4.8, 0xe8483c); jmpFlag(b[0], b[1], 0.05, h + 4.8, 0x3fa0e0);
+  }
+  if (o.pad) jmpPad(K, u, v0 - o.pad.len, o.pad.len, len, w, o.pad.vt);
+  const vEnd = vc + o.l1 + top + o.l2, vStart = o.pad ? Math.max(-43.4, v0 - o.pad.len - 3) : vs;
+  if (vEnd > 44.2 || v0 - padL < -44.2) JMP.err.push('lane ' + (o.size || '?') + ' overruns the lot: from ' + (v0 - padL).toFixed(1) + ' to ' + vEnd.toFixed(1));
+  JMP.lanes.push({ size:o.size || '', lot:Math.round(K.cx) + ',' + Math.round(K.cz), yaw:K.R, h, hl:o.hl, len, gap:o.gap, l1:o.l1, top, l2:o.l2, pad:o.pad ? o.pad.vt : 0, F:o.F || 0,
+                   start:K.W(u, vStart), lip:K.W(u, v0 + len), crest:K.W(u, vc + o.l1), land:K.W(u, vc + o.l1 + top), end:K.W(u, vEnd) });
+  return { h, len, vEnd };
+}
+
+/* ---------------------------------------------------------------- a roll-in tower: long access ramp -> deck -> turn -> drop-in quarter -> run -> kicker -> gap -> landing hill
+   The deck is 16 x 12 m at the lot's west edge, the access ramp climbs along +u, the rider turns right (+v) and drops into the quarter. */
+function jmpTower(K, o){
+  const a = o.deg*Math.PI/180, H = o.R*(1 - Math.cos(a)), U = o.R*Math.sin(a), w = o.w || 3.4;
+  const vd = -37.5, D = 12, uD0 = -44 + o.La, uD1 = uD0 + 16, uT = uD0 + 8, vS = vd + D/2;
+  K.bank(-44, vd, Math.PI/2, w, o.La, H, MAT.ramp);                                        // access ramp (rises toward +u)
+  K.slab((uD0 + uD1)/2, vd, 0, 8, D/2, H, MAT.concrete);                                   // the deck
+  const g = H + 1.2;                                                                       // guard walls (solid: nobody rolls off the side)
+  K.slab((uD0 + uD1)/2, vd - D/2 - 0.12, 0, 8.2, 0.14, g, MAT.metal);
+  K.slab(uD1 + 0.12, vd, 0, 0.14, D/2 + 0.26, g, MAT.metal);
+  K.slab(uD0 - 0.12, vd - (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, MAT.metal);
+  K.slab(uD0 - 0.12, vd + (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, MAT.metal);
+  K.slab((uD0 + uT - w)/2, vS + 0.12, 0, (uT - w - uD0)/2 + 0.1, 0.14, g, MAT.metal);
+  K.slab((uT + w + uD1)/2, vS + 0.12, 0, (uD1 - uT - w)/2 + 0.1, 0.14, g, MAT.metal);
+  K.quarter(uT, vS + U, Math.PI, w, o.R, o.deg, MAT.ramp);                                 // drop-in (rises toward -v up to the deck)
+  const vq = vS + U, v0 = vq + o.run, kl = o.kh*2;
+  const L = jmpDouble(K, uT, v0, { size:'T', w, h:o.kh, len:kl, hl:o.hl, F:o.F, mat:PK_MAT.red, matL:PK_MAT.teal, run:o.run,
+                                   pad:{ len:o.padLen || 11, vt:o.vt || 19 }, flags:true, word:'BIG AIR' });
+  // deck dressing: lettering, flags, a lamp
+  pkText('DROP', ...K.W(uT, vd + 1.6), K.R + Math.PI, 1.5, PK_PAINT.white, H + 0.07);
+  pkArrow(...K.W(uT, vd - 1.6), K.R + Math.PI, 2.2, PK_PAINT.yellow, H + 0.07);
+  [[uD0 + 1, vd - D/2 + 1], [uD1 - 1, vd - D/2 + 1], [uD1 - 1, vS - 1]].forEach((p, i) => { const q = K.W(p[0], p[1]); jmpFlag(q[0], q[1], H, 3.6, [0xf0c53a, 0x3fa0e0, 0xe8483c][i]); });
+  { const q = K.W(uD0 - 6, vd - 5.5); pkText('MEGA', q[0], q[1], K.R + Math.PI/2*3, 1.8, PK_PAINT.yellow, 0.075); }   // painted beside the foot of the access ramp
+  JMP.towers.push({ H, U, deck:K.W(uT, vd), drop:K.W(uT, vS - 1.2), yaw:K.R, lot:Math.round(K.cx) + ',' + Math.round(K.cz), vq, v0, lane:JMP.lanes[JMP.lanes.length - 1] });
+  return L;
+}
+
+/* ---------------------------------------------------------------- half-pipe / pyramid helpers */
+function jmpPipe(K, u, v, halfW, halfLen, Rr, deg, deck, mat){
+  const p = K.W(u, v), prev = RAMP_MAT;
+  RAMP_MAT = mat;
+  try { halfpipe(p[0], p[1], K.R, halfW, halfLen, Rr, deg, deck, false); } finally { RAMP_MAT = prev; }
+  K.slab(u, v, 0, halfW - 0.05, halfLen + 0.02, 0.07, mat);                              // a painted floor between the walls
+  const U = Rr*Math.sin(deg*Math.PI/180), Hm = Rr*(1 - Math.cos(deg*Math.PI/180));
+  [-1, 1].forEach(sd => { const q = K.W(u - halfW - 1.6, v + sd*(halfLen*0.55)); jmpFlag(q[0], q[1], 0.05, Hm + 3.2, sd > 0 ? 0xf0c53a : 0xe8483c); });
+  const t = K.W(u, v); pkText('VERT', t[0], t[1], K.R, 1.8, PK_PAINT.white, 0.085);
+  return { Hm, U };
+}
+function jmpPyramid(K, u, v, hw, h, ramp, mat){
+  K.slab(u, v, 0, hw, hw, h, mat);
+  K.bank(u, v - (hw + ramp), 0, hw, ramp, h, mat);                                       // rises toward +v
+  K.bank(u, v + (hw + ramp), Math.PI, hw, ramp, h, mat);                                 // rises toward -v
+  K.bank(u + (hw + ramp), v, -Math.PI/2, hw, ramp, h, mat);                              // rises toward -u
+  K.bank(u - (hw + ramp), v, Math.PI/2, hw, ramp, h, mat);                               // rises toward +u
+}
+
+/* ---------------------------------------------------------------- the nine lots ---------------------------------------------- */
+const JMP_LOTS = [
+  /* 0 Triple Gap: S / M / L, each with a turbo strip so a push scooter and an e-scooter get the same flight */
+  function(K){
+    const v0 = -30;
+    jmpDouble(K, -26, v0, { size:'S', w:2.8, h:2.0, len:4.0, hl:1.3, F:13, mat:PK_MAT.green,  matL:PK_MAT.teal, run:14, pad:{ len:7,  vt:11 } });
+    jmpDouble(K,   0, v0, { size:'M', w:3.0, h:3.2, len:6.4, hl:2.0, F:20, mat:PK_MAT.yellow, matL:PK_MAT.teal, run:14, pad:{ len:9,  vt:14 }, flags:true });
+    jmpDouble(K,  26, v0, { size:'L', w:3.2, h:4.2, len:8.4, hl:2.6, F:29, mat:PK_MAT.orange, matL:PK_MAT.teal, run:14, pad:{ len:12, vt:17 }, flags:true, word:'BIG AIR' });
+  },
+  /* 1 Sky Drop */
+  function(K){ jmpTower(K, { R:12, deg:65, La:38, run:14, kh:3.4, hl:2.0, F:33, vt:19, padLen:11 }); },
+  /* 2 Giant Pipes */
+  function(K){
+    jmpPipe(K, -20, 0, 5.5, 10, 6.5, 80, 1.2, PK_MAT.blue);
+    jmpPipe(K,  21, 0, 4.0, 8, 4.5, 78, 1.0, PK_MAT.teal);
+    const prev = RAMP_MAT; RAMP_MAT = PK_MAT.orange;
+    try { [-27, 0, 27].forEach(v => { const p = K.W(0, v); spine(p[0], p[1], K.R, 3.6, 4.0, 62); }); } finally { RAMP_MAT = prev; }
+    [-27, 0, 27].forEach(v => { const t = K.W(0, v + 6.6); pkText('SPINE', t[0], t[1], K.R, 1.3, PK_PAINT.white, 0.085); });
+  },
+  /* 3 Mega Gaps: 39 m / 29 m / 45 m flights */
+  function(K){
+    jmpDouble(K, -24, -32,   { size:'XL',  w:3.4, h:5.5, len:8.5, hl:3.3, F:39, mat:PK_MAT.red,    matL:PK_MAT.blue, flags:true, run:14, pad:{ len:12, vt:20 }, word:'BIG AIR' });
+    jmpDouble(K,   0, -30,   { size:'L',   w:3.2, h:4.2, len:8.4, hl:2.6, F:29, mat:PK_MAT.orange, matL:PK_MAT.blue, flags:true, run:14, pad:{ len:12, vt:17 } });
+    jmpDouble(K,  24, -29.5, { size:'XXL', w:3.6, h:7.5, len:11,  hl:4.5, F:45, mat:PK_MAT.pink,   matL:PK_MAT.blue, flags:true, run:14, pad:{ len:14, vt:21 }, word:'MEGA' });
+  },
+  /* 4 Pyramids */
+  function(K){
+    jmpPyramid(K, -24, -24, 3.2, 2.4, 6.8, PK_MAT.green);
+    jmpPyramid(K,  20, -18, 4.6, 3.6, 10, PK_MAT.yellow);
+    jmpPyramid(K,   0,  22, 6.2, 4.8, 13.5, PK_MAT.orange);
+    [[-24, -24], [20, -18], [0, 22]].forEach((p, i) => { const q = K.W(p[0], p[1]); jmpFlag(q[0], q[1], [2.4, 3.6, 4.8][i], 3.4, [0x58b46e, 0xf0c53a, 0xf08a3c][i]); });
+  },
+  /* 5 Giant Rollers */
+  function(K){
+    const lanes = [[-33, 20, 4, 1.6, PK_MAT.yellow], [-11, 24, 3, 2.4, PK_MAT.orange], [11, 28, 3, 3.2, PK_MAT.red], [33, 32, 2, 4.0, PK_MAT.pink]];
+    lanes.forEach(l => { const p = K.W(l[0], -42); pkWaves(p[0], p[1], K.R, l[2], l[1], l[3], 4.2, l[4]); const t = K.W(l[0], -43); pkText('WAVES', t[0], t[1], K.R + Math.PI, 1.3, PK_PAINT.white, 0.075); });
+  },
+  /* 6 Rhythm: two lanes of three doubles (a short turbo strip before each, a size up every time) */
+  function(K){
+    const K2 = K.flip();
+    const run = (Kx, u) => {
+      let v = -44;
+      [[2.2, 1.3, 11, 10, PK_MAT.green], [3.0, 1.8, 15, 12, PK_MAT.yellow], [3.8, 2.4, 18, 13, PK_MAT.orange]].forEach((d, i) => {
+        const pl = 4.5;
+        const r = jmpDouble(Kx, u, v + pl, { size:'R' + (i + 1), w:3.0, h:d[0], len:d[0]*2, hl:d[1], F:d[2], mat:d[4], matL:PK_MAT.teal, run:pl + 4, pad:{ len:pl, vt:d[3] }, word:'GAP' });
+        v = r.vEnd + 0.5;
+      });
+    };
+    run(K, -14);
+    run(K2, -14);       // the second lane runs the other way: u' = -14 in the flipped frame is u = +14
+  },
+  /* 7 Launch Pads: quarter-pipe kickers, steep and high */
+  function(K){
+    jmpDouble(K, -26, -30, { size:'Q1', w:3.0, qR:6,  deg:45, hl:1.2, F:15, mat:PK_MAT.green,  matL:PK_MAT.blue, run:14, pad:{ len:7,  vt:10 } });
+    jmpDouble(K,   0, -31, { size:'Q2', w:3.2, qR:8,  deg:50, hl:1.8, F:20, mat:PK_MAT.yellow, matL:PK_MAT.blue, flags:true, run:14, pad:{ len:9,  vt:12 } });
+    jmpDouble(K,  26, -32, { size:'Q3', w:3.4, qR:10, deg:55, hl:2.6, F:29, mat:PK_MAT.red,    matL:PK_MAT.blue, flags:true, run:14, pad:{ len:12, vt:16 }, word:'BIG AIR' });
+  },
+  /* 8 Sky Drop XL */
+  function(K){ jmpTower(K, { R:14, deg:68, La:40, w:3.6, run:12, kh:4.0, hl:2.4, F:33, vt:19, padLen:11 }); }
+];
+
+/* ---------------------------------------------------------------- parked e-scooters (static props: one merged mesh per colour, vertex colours) */
+function jmpMerge(parts){
+  let nv = 0, ni = 0;
+  parts.forEach(q => { nv += q[0].attributes.position.count; ni += q[0].index.count; });
+  const pos = new Float32Array(nv*3), nor = new Float32Array(nv*3), uv = new Float32Array(nv*2), col = new Float32Array(nv*3), idx = new Uint16Array(ni);
+  let ov = 0, oi = 0;
+  parts.forEach(q => {
+    const g = q[0], c = q[1], n = g.attributes.position.count;
+    pos.set(g.attributes.position.array, ov*3); nor.set(g.attributes.normal.array, ov*3);
+    if (g.attributes.uv) uv.set(g.attributes.uv.array, ov*2);
+    for (let k = 0; k < n; k++){ col[(ov + k)*3] = c.r; col[(ov + k)*3 + 1] = c.g; col[(ov + k)*3 + 2] = c.b; }
+    for (let k = 0; k < g.index.count; k++) idx[oi + k] = g.index.array[k] + ov;
+    ov += n; oi += g.index.count;
+  });
+  const m = new T.BufferGeometry();
+  m.setAttribute('position', new T.BufferAttribute(pos, 3)); m.setAttribute('normal', new T.BufferAttribute(nor, 3));
+  m.setAttribute('uv', new T.BufferAttribute(uv, 2)); m.setAttribute('color', new T.BufferAttribute(col, 3));
+  m.setIndex(new T.BufferAttribute(idx, 1));
+  return m;
+}
+const JMP_SC_COL = [0x32d357, 0xf2f3f5, 0x2f7fe0, 0xff7b2a];
+function jmpScooterGeo(ci){
+  return pkGeo('jscoot' + ci, () => {
+    const parts = [], body = JMP_SC_COL[ci % JMP_SC_COL.length];
+    const M4 = (x, y, z, rx, rz) => new T.Matrix4().compose(new T.Vector3(x, y, z), new T.Quaternion().setFromEuler(new T.Euler(rx || 0, 0, rz || 0)), new T.Vector3(1, 1, 1));
+    const add = (g, hex, m) => { g.applyMatrix4(m); parts.push([g, C(hex)]); };
+    const wheel = (z) => add(new T.CylinderGeometry(0.125, 0.125, 0.055, 12), 0x1b1d21, M4(0, 0.125, z, 0, Math.PI/2));
+    add(new T.BoxGeometry(0.2, 0.045, 0.62), body, M4(0, 0.15, -0.02));                         // deck
+    add(new T.BoxGeometry(0.17, 0.05, 0.22), 0x2a2d33, M4(0, 0.22, -0.30));                     // battery / rear fender
+    wheel(-0.36); wheel(0.36);
+    add(new T.BoxGeometry(0.06, 0.2, 0.06), body, M4(0, 0.26, 0.34));                           // fork
+    add(new T.CylinderGeometry(0.02, 0.022, 0.95, 8), body, M4(0, 0.62, 0.22, -0.2));           // stem, leaning back
+    add(new T.CylinderGeometry(0.016, 0.016, 0.5, 8), 0x1b1d21, M4(0, 1.09, 0.14, 0, Math.PI/2));   // bars
+    add(new T.BoxGeometry(0.07, 0.05, 0.035), 0xfff3c4, M4(0, 0.96, 0.2));                      // lamp
+    return jmpMerge(parts);
+  });
+}
+function jmpScooter(x, z, gy, yaw, ci){
+  _vmo.position.set(x, gy, z); _vmo.rotation.set(0, yaw, 0); _vmo.scale.set(1, 1, 1);
+  vmeshAdd(jmpScooterGeo(ci), PK_MAT.cloth, true, false);
+  PK.nProp++;
+}
+/* a rental bay on the sidewalk: a lime-green painted strip, the word E-SCOOTERS and five parked scooters facing the street */
+function jmpRack(cx, cz, side, off, seed){
+  const N = [[1, 0], [-1, 0], [0, 1], [0, -1]][side], n = BLOCK/2 - SIDEWALK_W/2, tx = -N[1], tz = N[0];
+  const bx = cx + N[0]*n + tx*off, bz = cz + N[1]*n + tz*off, gy = 0.15, rot = N[0] !== 0 ? 0 : Math.PI/2;
+  pkDecal('solid', bx, gy + 0.012, bz, rot, 1.9, 7.6, 0x2fbf54);
+  pkBox(bx, bz, rot, 1.9, 7.6, 0.12, 0xf4f1e6, gy + 0.018);
+  const yaw = Math.atan2(N[0], N[1]);
+  for (let k = -2; k <= 2; k++) jmpScooter(bx + tx*k*1.4, bz + tz*k*1.4, gy, yaw, (k + 2 + seed) & 3);
+  pkText('E-SCOOTERS', bx - N[0]*0.0, bz, rot + (N[0] !== 0 ? (N[0] > 0 ? Math.PI/2*3 : Math.PI/2) : (N[1] > 0 ? Math.PI : 0)), 0.9, 0xf4f1e6, gy + 0.026);
+}
+
+/* ---------------------------------------------------------------- the street dressing (replaces streetFurniture(): no parked cars on the landing roads) */
+function jmpDress(K, i, j){
+  const half = BLOCK/2, o = half - 0.6, h = ((i*31 + j*17) % 4 + 4) % 4;
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(c => lightPole(K.cx + c[0]*o, K.cz + c[1]*o));
+  [0, 1].forEach(k => { const c = [[-1, -1], [1, -1], [-1, 1], [1, 1]][(h + k*2) % 4]; tree(K.cx + c[0]*(half - 2.6), K.cz + c[1]*(half - 2.6), 0.55 + 0.1*((i + j + k) & 1)); });
+  if ((((i*5 + j*3) % 3) + 3) % 3 === 0) jmpRack(K.cx, K.cz, (((i*3 + j*5) % 4) + 4) % 4, ((((i*7 + j*11) % 5) + 5) % 5 - 2)*5, i + j + 8);   // an e-scooter bay on every third lot
+}
+
+function jmpLot(cx, cz, i, j, t, R){
+  const K = jmpK(cx, cz, R);
+  sidewalkRing(cx, cz);
+  const lotHalf = BLOCK/2 - SIDEWALK_W;
+  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:MAT.plaza });
+  PK.zone = 'air ' + t;
+  pkTry('air lot ' + t + ' @' + i + ',' + j, () => JMP_LOTS[t](K, i, j));
+  pkTry('air dress @' + i + ',' + j, () => jmpDress(K, i, j));
+  PK.zone = ''; JMP.lots++;
+}
+/* every block of the town is a jump lot: kind = (i + 2j) mod 9 (no two neighbours alike), turned by (5i + 3j) mod 4 quarter turns */
+function buildSpecialBlockMapJump(){
+  jmpHook();
+  const SPECIAL = {};
+  for (let i = -GRID_N; i <= GRID_N; i++){
+    for (let j = -GRID_N; j <= GRID_N; j++){
+      if (!blockExists(i, j)) continue;
+      const t = (((i + 2*j) % 9) + 9) % 9, R = ((((5*i + 3*j) % 4) + 4) % 4)*Math.PI/2;
+      SPECIAL[i + ',' + j] = (cx, cz) => jmpLot(cx, cz, i, j, t, R);
+    }
+  }
+  return SPECIAL;
+}
+
+/* ---------------------------------------------------------------- the turbo strips (physics) -------------------------------------
+   After every ride step: on the ground and inside a strip -> push along the strip's heading up to its speed, and keep bike.boostT up so
+   the top-speed clamp in updateRide lets the extra speed through. In the air nothing is added (the speed just carries). */
+function jmpPadTick(dt){
+  if (bike.state !== 'ride') return;
+  if (!JMP.welcome){ JMP.welcome = true; try { toast('AIR CANYON · hit a TURBO strip, then the ramp', true); } catch (e) {} }
+  const px = bike.pos.x, pz = bike.pos.z, pads = JMP.pads;
+  for (let k = 0; k < pads.length; k++){
+    const p = pads[k], dx = px - p.x, dz = pz - p.z;
+    if (dx*dx + dz*dz > p.r2) continue;
+    const lx = dx*p.c - dz*p.s, lz = dx*p.s + dz*p.c;
+    if (lx < -p.hw || lx > p.hw || lz < 0 || lz > p.len) continue;
+    const fx = Math.sin(p.rot), fz = Math.cos(p.rot);
+    const along = bike.vel.x*fx + bike.vel.z*fz;
+    if (along > -3 && along < p.vt){
+      const a = Math.min(18*dt, p.vt - along);
+      bike.vel.x += fx*a; bike.vel.z += fz*a;
+      if (bike.boostT < 0.3) bike.boostT = 0.3;
+      JMP.padHits++;
+      if (!JMP.hint){ JMP.hint = true; try { toast('TURBO strip! Hold W and hit the ramp', true); } catch (e) {} }
+    }
+    return;
+  }
+}
+/* the spawn: the start of the 29 m lane (turbo strip first) in the Mega Gaps lot nearest the middle of the map */
+function jmpSpawn(){
+  let best = null;
+  for (let i = -GRID_N; i <= GRID_N; i++) for (let j = -GRID_N; j <= GRID_N; j++){
+    if (!blockExists(i, j) || (((i + 2*j) % 9) + 9) % 9 !== 3) continue;
+    const d = Math.hypot(i, j); if (!best || d < best.d) best = { i, j, d };
+  }
+  if (!best) return null;
+  const R = ((((5*best.i + 3*best.j) % 4) + 4) % 4)*Math.PI/2, p = jmpK(best.i*CELL, best.j*CELL, R).W(0, -42.5);
+  return { x:p[0], z:p[1], yaw:R };
+}
+/* choosing Air Canyon in the menu puts you on an e-scooter (turbo strips + an e-scooter = the biggest air); the garage still has every ride */
+function jmpPickRide(){
+  try {
+    const d = fleetLoadPrefs(), cur = FLEET_BY_ID[d.v];
+    if (cur && cur.cat === 'escooter') return;
+    const pick = ['skyrider', 'zero10x', 'phantom', 'vsett10', 'inokim'];
+    localStorage.setItem(FLEET_KEY, JSON.stringify(Object.assign({}, d, { v:pick[Math.floor(Math.random()*pick.length)] })));
+  } catch (e) {}
+}
+/* installed when the town is built (after phys_core.js has replaced updateRide, so this wrapper is the outermost one) */
+let JMP_HOOKED = false;
+function jmpHook(){
+  if (JMP_HOOKED) return;
+  JMP_HOOKED = true;
+  const _jmpRide = updateRide;
+  updateRide = function(dt, In){ _jmpRide(dt, In); jmpPadTick(dt); };
+}
 
 /* =========================================================================
    PEOPLE GEAR — procedural heads, hair, headwear and bits of kit for the extra
