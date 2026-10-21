@@ -19965,8 +19965,8 @@ FLEET_EXTRA_BUILD.escooterS = P=> fbEScooter(Object.assign({ seat:true, fsus:'sp
 
 /* physics class: no pedals, no kick. W is the throttle (eAccel / eTop while the battery lasts, a limp-home crawl when it is flat).
    Starts from the push-scooter record: light and quick to turn, but a heavy battery deck hops less and spins slower. */
-FLEET_TUNE_EXTRA.escooter = { accel:3.0, top:6.5, brake:13.5, drag:0.30, steer:1.06, roll:0.22, hop:0.58, grind:true, hard:21.0, camDist:0.94, lift:0.10, scale:1, manual:-0.34,
-  stoppie:0.30, power:0.28, ease:7.5, grip:12.0, drift:0.50, rot:0.92, kick:0, moto:false, eAccel:9.5, eTop:15.0 };
+FLEET_TUNE_EXTRA.escooter = { accel:3.0, top:9.0, brake:14.0, drag:0.30, steer:1.10, roll:0.22, hop:0.92, grind:true, hard:24.0, camDist:0.94, lift:0.10, scale:1, manual:-0.34,
+  stoppie:0.30, power:0.28, ease:7.5, grip:12.5, drift:0.50, rot:1.0, kick:0, moto:false, eAccel:12.5, eTop:19.0, drainK:0.5 };
 /* =========================================================================
    FLEET DATA -- the 60 vehicles of the two collections (30 bikes + push scooters, 30 e-bikes),
    one row each, and the 30 paint colours. Nothing else is in the game: no old bikes.
@@ -20495,19 +20495,19 @@ FLEET.push(
   ES('gt2', 'D03', 'Segway GT2', 'escooter',
     { Rr:0.15, Rf:0.15, tr:0.050, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:78, bar:1.20, bw:0.64, bars:'moto', stem:'thick', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:16 },
     0x15171a, 0xff7a1a, { fork:0xff7a1a, rim:0xff7a1a, tire:0x101214, grip:0xff7a1a, bars:0x1a1c20, glow:0xff7a1a },
-    [1.25, 1.22, 0.96, 0.80], 'Hyper scooter: dual motors, hydraulic suspension, 11 inch off-road rubber and orange deck lights.', { power:0.5 });
+    [1.25, 1.22, 0.96, 0.90], 'Hyper scooter: dual motors, hydraulic suspension, 11 inch off-road rubber and orange deck lights.', { power:0.5 });
   ES('phantom', 'D04', 'Apollo Phantom', 'escooter',
     { Rr:0.133, Rf:0.133, tr:0.044, wb:1.06, dy:0.155, dw:0.205, dt:0.08, deck:'flat', ha:79, bar:1.16, bw:0.60, bars:'tbar', stem:'thick', fold:'mid', fsus:'spring', rsus:'arm', ffend:'arc', rfend:'long', light:'wide', disp:'big', motor:'dual', fins:true, stand:true },
     0x2a3038, 0x3d7cff, { fork:0x3d7cff, rim:0x3d7cff, tire:0x101214, grip:0x1a1d22, bars:0x1a1d22, glow:0x3d7cff },
-    [1.10, 1.08, 0.98, 0.84], 'Dual-motor rocket with cooling fins on the deck, sprung forks and a blue light bar.');
+    [1.10, 1.08, 0.98, 0.92], 'Dual-motor rocket with cooling fins on the deck, sprung forks and a blue light bar.');
   ES('thunder3', 'D05', 'Dualtron Thunder 3', 'escooter',
     { Rr:0.165, Rf:0.165, tr:0.058, wb:1.30, dy:0.21, dw:0.26, dt:0.10, deck:'flat', ha:80, bar:1.24, bw:0.72, bars:'tbar', stem:'twin', fold:'none', fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, brace:true, stand:true, tread:20 },
     0x1b1d22, 0xff3b30, { fork:0xff3b30, rim:0xff3b30, tire:0x0e0f11, grip:0xff3b30, bars:0x121316, glow:0xff3b30 },
-    [1.50, 1.45, 0.92, 0.70], 'The monster: twin stems, huge tyres, hydraulic suspension and a deck as wide as a skateboard. Hold on.', { power:0.58, manual:-0.40 });
+    [1.50, 1.45, 0.92, 0.86], 'The monster: twin stems, huge tyres, hydraulic suspension and a deck as wide as a skateboard. Hold on.', { power:0.58, manual:-0.40 });
   ES('wolf11', 'D06', 'Kaabo Wolf Warrior 11', 'escooterX',
     { Rr:0.148, Rf:0.148, tr:0.052, wb:1.20, dy:0.185, dw:0.24, dt:0.09, deck:'flat', ha:79, bar:1.2, bw:0.66, stem:'aframe', fold:'none', light:'fork', disp:'round', twist:true, tread:18 },
     0x2b3139, 0x7be22e, { fork:0x7be22e, rim:0x7be22e, tire:0x0f1113, grip:0x7be22e, bars:0x1c2026, glow:0x7be22e },
-    [1.35, 1.30, 0.94, 0.76], 'Off-road warrior: a-frame stem, twin spring forks, knobbly 11 inch tyres and a side stand.', { power:0.5 });
+    [1.35, 1.30, 0.94, 0.88], 'Off-road warrior: a-frame stem, twin spring forks, knobbly 11 inch tyres and a side stand.', { power:0.5 });
   ES('razore300', 'D07', 'Razor E300', 'escooter',
     { Rr:0.10, Rf:0.115, tr:0.032, tf:0.036, wb:0.86, dy:0.115, dw:0.17, dt:0.04, deck:'flat', ha:77, bar:0.98, bw:0.46, bars:'tbar', stem:'single', fold:'none', fsus:'none', rsus:'none', ffend:'arc', rfend:'arc', light:'none', disp:'none', motor:'rear', chainBox:true, stand:true, twist:true, spokes:0 },
     0x2468c7, 0xc8ccd2, { fork:0x2468c7, rim:0xc8ccd2, tire:0x131518, grip:0x16181b, bars:0xc8ccd2 },
@@ -20540,15 +20540,15 @@ FLEET.push(
   ES('vsett10', 'D14', 'VSETT 10+', 'escooter',
     { Rr:0.14, Rf:0.14, tr:0.052, wb:1.24, dy:0.185, dw:0.25, dt:0.09, deck:'flat', ha:79, bar:1.24, bw:0.70, bars:'moto', stem:'thick', fold:'none', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'dual', brace:true, neon:true, stand:true, tread:18 },
     0x1d3b6b, 0x2de2e6, { fork:0x2de2e6, rim:0x2de2e6, tire:0x0f1113, grip:0x2de2e6, bars:0x14181e, glow:0x2de2e6 },
-    [1.38, 1.34, 0.94, 0.76], 'Long-range tank: deep blue paint, a tall braced stem, dual motors and cyan deck lights.', { power:0.50 });
+    [1.38, 1.34, 0.94, 0.88], 'Long-range tank: deep blue paint, a tall braced stem, dual motors and cyan deck lights.', { power:0.50 });
   ES('inokim', 'D15', 'Inokim OXO', 'escooter',
     { Rr:0.15, Rf:0.15, tr:0.050, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:80, bar:1.20, bw:0.64, bars:'tbar', stem:'twin', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'arc', rfend:'cover', light:'twin', disp:'round', motor:'dual', stand:true, tread:16 },
     0x121316, 0xffd400, { fork:0xffd400, rim:0xffd400, tire:0x0e0f11, grip:0xffd400, bars:0x16181c, glow:0xffd400 },
-    [1.28, 1.24, 0.97, 0.80], 'Black and yellow hyper scooter: twin stems, a hydraulic front end and a round dash.', { power:0.46 });
+    [1.28, 1.24, 0.97, 0.90], 'Black and yellow hyper scooter: twin stems, a hydraulic front end and a round dash.', { power:0.46 });
   ES('skyrider', 'D16', 'Dusk Skyrider', 'escooter',
     { Rr:0.14, Rf:0.14, tr:0.052, wb:1.18, dy:0.20, dw:0.24, dt:0.09, deck:'flat', ha:79, bar:1.22, bw:0.68, bars:'moto', stem:'aframe', fold:'none', fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:18 },
     0x18b7a8, 0xff7b2a, { fork:0xff7b2a, rim:0xff7b2a, tire:0x101214, grip:0xff7b2a, bars:0x14181c, glow:0xff7b2a },
-    [1.22, 1.12, 1.00, 1.40], 'Built for Air Canyon: long-travel suspension front and back, wide bars and a deck that pops. Turbo strips love it.', { power:0.46, manual:-0.30 });
+    [1.22, 1.12, 1.00, 1.12], 'Built for Air Canyon: long-travel suspension front and back, wide bars and a deck that pops. Turbo strips love it.', { power:0.46, manual:-0.30 });
 })();
 
 /* the garage subtitle for an e-scooter (garagePower lives in the ui stream's fleet_garage.js; wrap it without editing that file) */
@@ -21177,6 +21177,7 @@ function gEl(id){ return document.getElementById(id); }
 function garagePower(v){
   if (v.cat === 'scooter') return 'Human powered · kick to push';
   if (v.dirt) return 'Electric motorbike · power wheelies';
+  if (v.cat === 'escooter') return 'Electric · thumb throttle · big hops';
   if (v.cat === 'moped') return 'Electric · pedal assist · motor tricks';
   if (v.e) return 'Electric · pedal assist';
   return 'Pedal powered';
@@ -23430,8 +23431,8 @@ function jmpDouble(K, u, v0, o){
 function jmpTower(K, o){
   const a = o.deg*Math.PI/180, H = o.R*(1 - Math.cos(a)), U = o.R*Math.sin(a), w = o.w || 3.4;
   const vd = -37.5, D = 12, uD0 = -44 + o.La, uD1 = uD0 + 16, uT = uD0 + 8, vS = vd + D/2;
-  K.bank(-44, vd, Math.PI/2, w, o.La, H, MAT.ramp);                                        // access ramp (rises toward +u)
-  K.slab((uD0 + uD1)/2, vd, 0, 8, D/2, H, MAT.concrete);                                   // the deck
+  K.bank(-44, vd, Math.PI/2, w, o.La, H, PK_MAT.orange);                                   // access ramp (rises toward +u)
+  K.slab((uD0 + uD1)/2, vd, 0, 8, D/2, H, PK_MAT.pad);                                      // the deck
   const g = H + 1.2;                                                                       // guard walls (solid: nobody rolls off the side)
   K.slab((uD0 + uD1)/2, vd - D/2 - 0.12, 0, 8.2, 0.14, g, MAT.metal);
   K.slab(uD1 + 0.12, vd, 0, 0.14, D/2 + 0.26, g, MAT.metal);
@@ -23439,7 +23440,7 @@ function jmpTower(K, o){
   K.slab(uD0 - 0.12, vd + (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, MAT.metal);
   K.slab((uD0 + uT - w)/2, vS + 0.12, 0, (uT - w - uD0)/2 + 0.1, 0.14, g, MAT.metal);
   K.slab((uT + w + uD1)/2, vS + 0.12, 0, (uD1 - uT - w)/2 + 0.1, 0.14, g, MAT.metal);
-  K.quarter(uT, vS + U, Math.PI, w, o.R, o.deg, MAT.ramp);                                 // drop-in (rises toward -v up to the deck)
+  K.quarter(uT, vS + U, Math.PI, w, o.R, o.deg, PK_MAT.blue);                               // drop-in (rises toward -v up to the deck)
   const vq = vS + U, v0 = vq + o.run, kl = o.kh*2;
   const L = jmpDouble(K, uT, v0, { size:'T', w, h:o.kh, len:kl, hl:o.hl, F:o.F, mat:PK_MAT.red, matL:PK_MAT.teal, run:o.run,
                                    pad:{ len:o.padLen || 11, vt:o.vt || 19 }, flags:true, word:'BIG AIR' });
@@ -23635,6 +23636,13 @@ function jmpPadTick(dt){
       const a = Math.min(18*dt, p.vt - along);
       bike.vel.x += fx*a; bike.vel.z += fz*a;
       if (bike.boostT < 0.3) bike.boostT = 0.3;
+      JMP.padHits++;
+      if (!JMP.hint){ JMP.hint = true; try { toast('TURBO strip! Hold W and hit the ramp', true); } catch (e) {} }
+    } else if (along > p.vt + 0.25){
+      // a quick ride (a Dualtron, a hyper scooter) arrives faster than the lane is built for: the strip meters it back to the launch speed,
+      // so every ride -- BMX or 28 m/s scooter -- clears the gap and lands on the hill
+      const a = Math.min(34*dt, along - p.vt);
+      bike.vel.x -= fx*a; bike.vel.z -= fz*a;
       JMP.padHits++;
       if (!JMP.hint){ JMP.hint = true; try { toast('TURBO strip! Hold W and hit the ramp', true); } catch (e) {} }
     }
@@ -26468,7 +26476,7 @@ updateRide = function(dt, In){
     else           bike.vel.addScaledVector(_f, -5.5*dt);
   }
   if (DRIVE.electric){
-    if (DRIVE.assist > 0) DRIVE.battery -= EBIKE.drain*DRIVE.assist*dt;
+    if (DRIVE.assist > 0) DRIVE.battery -= EBIKE.drain*(VEH.drainK || 1)*DRIVE.assist*dt;   // drainK: a light scooter sips the battery
     else if (In.down && Math.abs(fwd) > 2) DRIVE.battery += EBIKE.regenBrake*dt;   // regen braking
     else DRIVE.battery += EBIKE.regenCoast*dt;
     DRIVE.battery = clamp(DRIVE.battery, 0, 1);
