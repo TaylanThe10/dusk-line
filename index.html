@@ -11405,8 +11405,9 @@ function cityBlock(cx, cz, seed){
   const half = BLOCK/2, lotHalf = half - SIDEWALK_W;
   const distC = Math.max(Math.abs(cx), Math.abs(cz));
   const bias = clamp(1 - distC/(CITY_HALF*0.9), 0, 1);
-  const roll = drand();
-  if (roll < 0.88){
+  drand();                                                     // (keeps the block's drand() sequence as before)
+  const roll = mulberry32(w2seed(cx, cz, 913))();
+  if (roll < 0.95){
     w3Block(cx, cz, bias);
   } else {
     P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.10, mat:MAT.plaza });
@@ -14139,7 +14140,7 @@ function render(exposure, time){
     return;
   }
   if (scene.environment) envUpdate(false);
-  const tier = (level === 'high') ? AO_TIER.high : (level === 'medium' && !COARSE ? AO_TIER.medium : null);
+  const tier = (level === 'high') ? AO_TIER.high : null /* R13.2: AO on Ultra only */;
 
   renderer.setRenderTarget(rtScene);
   renderer.clear();
@@ -20823,7 +20824,7 @@ registerSetting({
   onChange(v){ FPSX.mode = v; fpsApply(); }
 });
 registerSetting({
-  id:'detail', label:'Detail', group:'view', type:'choice', def:'auto',
+  id:'detail', label:'Detail', group:'view', type:'choice', def:(matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches ? 'auto' : 'high'),
   options:[
     { v:'auto',   label:'Auto',   hint:'Lowers extra detail by itself when the frame rate drops, raises it again when there is room' },
     { v:'low',    label:'Low',    hint:'Fewest props, pedestrians and effects: the fastest' },
@@ -43124,11 +43125,14 @@ function tk13UiRefresh(){
   }
   // a locked row's Shop button (the trick menu is rebuilt on every render, so listen on the page)
   addEventListener('click', e=>{
-    const b = e.target && e.target.closest ? e.target.closest('[data-buy]') : null;
+    // only the trick menu's own Shop buttons (.tkBuy): the Shop's Buy buttons and the stores' counters use data-buy too
+    // (Release 13.2 fix: this listener used to catch every Buy click in the Shop and jump to the Tricks tab)
+    const b = e.target && e.target.closest ? e.target.closest('.tkBuy[data-buy]') : null;
     if (!b) return;
     const os = tk13Api('openShop');
     if (!os) return;
-    try { if (typeof closeTrickMenu === 'function') closeTrickMenu(); os('tricks'); } catch(err){ console.warn('tricks13: shop', err); }
+    const id = b.getAttribute('data-buy');
+    try { if (typeof closeTrickMenu === 'function') closeTrickMenu(); os('tricks', id ? { key:'trick:' + id } : undefined); } catch(err){ console.warn('tricks13: shop', err); }
   });
   injectCSS(
     '.tmRow.tkLocked .tmNm b{ opacity:.62; }\n' +
@@ -45117,6 +45121,35 @@ if (typeof openShop === 'function'){
 }
 /* buttons that captured the original openShop still get the box: look for the shop once a second until it is there */
 const CHEAT13_TM = setInterval(function(){ try { cheat13ShopBox(); if (document.getElementById('s13Code')) clearInterval(CHEAT13_TM); } catch(e){} }, 1000);
+/* =========================================================================
+   RELEASE 13.2 HOTFIX
+   1. On a computer the game no longer lowers its own quality while you ride: auto resolution is switched off once
+      (it is still there in Settings > Graphics if you want it), and Detail now starts on High instead of Auto
+      (see patches/zzzzzz_hotfix132.py). Phones keep both automatic, they need them.
+   2. A lighter, cleaner picture: no film grain and a much softer vignette (the grade sets both every frame, so they
+      are capped right before the frame is drawn), and no ambient-occlusion pass on High (Ultra keeps it).
+   ========================================================================= */
+(function(){
+  const KEY = 'dusk_line_hotfix132';
+  let done = false;
+  try { done = localStorage.getItem(KEY) === '1'; } catch(e){}
+  const phone = matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches;
+  if (!done){
+    try { if (!phone && typeof perfSetAuto === 'function' && PERF.auto) perfSetAuto(false); } catch(e){ console.warn('[hotfix132] auto resolution', e); }
+    try { localStorage.setItem(KEY, '1'); } catch(e){}
+  }
+  if (typeof POST !== 'undefined' && typeof POST.render === 'function'){
+    const r0 = POST.render;
+    POST.render = function(){
+      const U = POST.U;
+      if (U){
+        if (U.uGrain) U.uGrain.value = 0;
+        if (U.uVignette && U.uVignette.value > 0.07) U.uVignette.value = 0.07;
+      }
+      return r0.apply(this, arguments);
+    };
+  }
+})();
 /*@@LATE@@*/
 $('startBtn').onclick  = startRun;
 $('ctrlBtn').onclick   = ()=> show('controls');
