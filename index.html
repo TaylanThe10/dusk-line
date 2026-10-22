@@ -2263,6 +2263,22 @@ html.touchUI .st13Prompt b{ width:32px; height:32px; }
   #touch .mbW13Use{ display:none; border-color:rgba(255,196,107,.75); letter-spacing:.14em; }
   #touch.w13on .mbW13Use.on{ display:flex; }
   #touch.w13on .mbTrick, #touch.w13on .mb[data-k="manual"], #touch.w13on .mb[data-k="drift"], #touch.w13on .mb[data-k="stoppie"]{ display:none; }
+/* cheat codes (Release 13.1): the Shop's "Got a code?" box next to your cash */
+.s13Code{ position:relative; display:flex; align-items:center; gap:8px; margin-right:12px; }
+.s13CodeBtn{ height:36px; padding:0 14px; font-family:var(--dl-cond,"Barlow Condensed",Arial,sans-serif); font-weight:800; font-size:14px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--dl-paper,#f3ede1); background:#16181d; border:2px solid rgba(243,237,225,.25); box-shadow:3px 3px 0 #000; cursor:pointer; }
+.s13CodeBtn:hover{ border-color:var(--dl-yellow,#ffd23f); color:var(--dl-yellow,#ffd23f); }
+.s13CodeForm{ display:none; position:absolute; top:calc(100% + 10px); right:0; z-index:5; align-items:center; gap:8px; padding:10px; background:#111113;
+  border:2px solid rgba(243,237,225,.25); box-shadow:4px 4px 0 #000; white-space:nowrap; }
+.s13Code.open .s13CodeForm{ display:flex; }
+.s13CodeForm input{ width:150px; height:36px; padding:0 10px; font-family:var(--dl-cond,"Barlow Condensed",Arial,sans-serif); font-weight:800; font-size:18px; letter-spacing:.12em;
+  color:#111113; background:var(--dl-paper,#f3ede1); border:2px solid #000; outline:none; }
+.s13CodeForm input::placeholder{ font-size:14px; letter-spacing:.02em; color:rgba(17,17,19,.45); }
+.s13CodeGo{ height:36px; padding:0 14px; font-family:var(--dl-cond,"Barlow Condensed",Arial,sans-serif); font-weight:800; font-size:14px; text-transform:uppercase;
+  color:#111113; background:var(--dl-yellow,#ffd23f); border:2px solid #000; cursor:pointer; }
+.s13CodeMsg{ font-family:var(--dl-cond,"Barlow Condensed",Arial,sans-serif); font-weight:800; font-size:14px; }
+.s13CodeMsg.ok{ color:#57e389; } .s13CodeMsg.bad{ color:#ff6b5a; }
+@media (max-width:700px){ .s13CodeBtn{ height:32px; padding:0 10px; font-size:12px; } .s13Code{ margin-right:6px; } .s13CodeForm input{ width:120px; } }
 /* integ12: the garage speaks the menu's language (Release 12 menu fonts + ink / paper / yellow, chunky sticker buttons).
    #garage prefix: GARAGE_CSS is injected at runtime after this sheet, so these rules need the higher specificity. */
 #garage{ background:radial-gradient(120% 90% at 62% 38%, #23262d 0, #121418 55%, #0a0b0d 100%); }
@@ -38586,7 +38602,7 @@ function mnyLoad(S){
   if (!d || typeof d !== 'object' || Array.isArray(d)){ if (raw && d !== null) S.bad = true; return; }
   S.found = true;
   S.extra = d;                                       // fields a newer build added are written back untouched
-  S.cash  = mnyInt(d.cash, 0, 999999999);
+  S.cash  = mnyInt(d.cash, 0, 9999999999);
   S.xp    = mnyInt(d.xp, 0, 999999999);
   S.life  = mnyInt(d.life, 0, 1e12);
   S.spent = mnyInt(d.spent, 0, 1e12);
@@ -38629,7 +38645,7 @@ function mnyMigrate(){
   } catch(e){ return; }                              // no old save object at all: nothing to migrate
   if (!S.mig){
     // first run of this build (or the wallet's save was lost: the old save holds a copy of the balance -> restored)
-    S.cash = Math.min(999999999, S.cash + mnyInt(old, 0, 999999999));
+    S.cash = Math.min(9999999999, S.cash + mnyInt(old, 0, 999999999));
     if (L) S.life = Math.max(S.life, mnyInt(L.totalRepEarned, 0, 1e12));
     S.mig = 1;
     S.migrated = mnyInt(old, 0, 999999999);
@@ -38654,7 +38670,7 @@ function cashAdd(n, why, x, z, opts){
   const S = mnyS();
   n = Math.round(Number(n));
   if (!(n > 0)) return S.cash;
-  n = Math.min(n, 999999999 - S.cash);
+  n = Math.min(n, 9999999999 - S.cash);      // the cash cap: $9,999,999,999 (the 0000 cheat fills it)
   if (n <= 0) return S.cash;
   S.cash += n; S.life += n;
   const cat = opts && opts.cat;
@@ -45030,6 +45046,77 @@ window.__walkIA = WIA;
   });
 })();
 
+/* =========================================================================
+   CHEAT CODES (Release 13.1)
+     0000   -> the wallet goes to $9,999,999,999
+   Two ways in: type the code anywhere (menu or riding, not while typing in a text box), or open the Shop and press
+   CODE next to your cash ("Got a code?" box - works on phones too).
+   ========================================================================= */
+const CHEAT13 = { buf:'', max:9999999999 };
+const CHEAT13_CODES = {
+  '0000': function(){
+    if (typeof cashGet !== 'function' || typeof cashAdd !== 'function') return { ok:false, msg:'Money is not available' };
+    const have = cashGet(), add = CHEAT13.max - have;
+    if (add <= 0) return { ok:true, msg:'Already maxed: $9,999,999,999' };
+    cashAdd(add, 'cheat code');
+    try {   // an open Shop shows the new balance and enables its Buy buttons at once
+      if (typeof shopIsOpen === 'function' && shopIsOpen()){
+        if (typeof sh13Head === 'function') sh13Head();
+        if (typeof sh13RenderTab === 'function') sh13RenderTab(false);
+      }
+    } catch(e){}
+    return { ok:true, msg:'Cheat on: $9,999,999,999' };
+  }
+};
+function cheat13Try(code){
+  const k = String(code === undefined || code === null ? '' : code).trim().toLowerCase();
+  const fn = CHEAT13_CODES[k];
+  if (!fn) return { ok:false, msg:'Not a valid code' };
+  let r;
+  try { r = fn(); } catch(e){ console.warn('[cheat13]', e); r = { ok:false, msg:'That code did not work' }; }
+  try { if (typeof toast === 'function') toast(r.msg, false); } catch(e){}
+  return r;
+}
+/* typed anywhere: the last keystrokes end in a code */
+addEventListener('keydown', function(e){
+  const ae = document.activeElement;
+  if (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return;
+  if (ae && ae.isContentEditable) return;
+  const ch = (e.key && e.key.length === 1) ? e.key : '';
+  if (!ch) return;
+  CHEAT13.buf = (CHEAT13.buf + ch).slice(-8);
+  for (const code in CHEAT13_CODES){
+    if (CHEAT13.buf.endsWith(code)){ CHEAT13.buf = ''; cheat13Try(code); break; }
+  }
+});
+/* the Shop's "Got a code?" box, next to your cash */
+function cheat13ShopBox(){
+  const root = document.getElementById('shop13');
+  if (!root || document.getElementById('s13Code')) return;
+  const close = document.getElementById('s13Close');
+  if (!close || !close.parentNode) return;
+  const wrap = document.createElement('div');
+  wrap.id = 's13Code'; wrap.className = 's13Code';
+  wrap.innerHTML = '<button type="button" class="s13CodeBtn" id="s13CodeBtn" title="Got a code?">Code</button>' +
+    '<form class="s13CodeForm" id="s13CodeForm" autocomplete="off"><input id="s13CodeIn" type="text" inputmode="numeric" maxlength="24" placeholder="Got a code?" aria-label="Cheat code" spellcheck="false">' +
+    '<button type="submit" class="s13CodeGo">Redeem</button><span id="s13CodeMsg" class="s13CodeMsg"></span></form>';
+  close.parentNode.insertBefore(wrap, close);
+  const form = wrap.querySelector('form'), inp = wrap.querySelector('input'), msg = wrap.querySelector('.s13CodeMsg');
+  wrap.querySelector('#s13CodeBtn').onclick = function(){ wrap.classList.toggle('open'); if (wrap.classList.contains('open')) setTimeout(function(){ try { inp.focus(); } catch(e){} }, 0); };
+  form.onsubmit = function(ev){
+    ev.preventDefault();
+    const r = cheat13Try(inp.value);
+    msg.textContent = r.msg; msg.className = 's13CodeMsg ' + (r.ok ? 'ok' : 'bad');
+    if (r.ok){ inp.value = ''; inp.blur(); setTimeout(function(){ wrap.classList.remove('open'); msg.textContent = ''; }, 1800); }
+  };
+  inp.addEventListener('keydown', function(ev){ ev.stopPropagation(); if (ev.key === 'Escape'){ wrap.classList.remove('open'); inp.blur(); } });
+}
+if (typeof openShop === 'function'){
+  const _cheat13Open = openShop;
+  openShop = function(){ const r = _cheat13Open.apply(this, arguments); try { cheat13ShopBox(); } catch(e){ console.warn('[cheat13] box', e); } return r; };
+}
+/* buttons that captured the original openShop still get the box: look for the shop once a second until it is there */
+const CHEAT13_TM = setInterval(function(){ try { cheat13ShopBox(); if (document.getElementById('s13Code')) clearInterval(CHEAT13_TM); } catch(e){} }, 1000);
 /*@@LATE@@*/
 $('startBtn').onclick  = startRun;
 $('ctrlBtn').onclick   = ()=> show('controls');
