@@ -57363,6 +57363,725 @@ window.__walkIA = WIA;
 })();
 
 /* =========================================================================
+   AERIAL15 -- both maps look like the real world from above (Release 15, "make the map look better ... like the
+   actual map not the tab": the user picked "the Tab map and the corner minimap show the real world from above,
+   like a satellite picture of the actual roads, buildings, parks, trees and water, with you and friends as bikes").
+
+   Everything is painted from the SAME data the 3D world is built from, so the picture matches what you ride:
+     terrain colour (rgFarColor: grass, fields, rock, sand, snow) + hill shading from landH, water from waterLevelAt,
+     every road / highway / trail ribbon (ROADS: true widths, shoulders, sidewalks, lane markings), the city's real
+     pieces (PIECES: sidewalks, plazas, lots, ramps, bowls, every building footprint with its roof and its shadow),
+     the city's trees (captured from tree()), forests as canopy (rgForestAt), suburbs and towns (SBP.items: houses with
+     gable roofs, shops, churches, gas stations, farms, squares), creeks, the river and the bay. Day-lit, always.
+
+   Levels:  world  2048 px over +-8192 m (8 m/px), painted once in the background after the boot
+            L1     256 px tiles of 512 m (2 m/px)    -- the minimap, a zoomed Tab map
+            L2     256 px tiles of 128 m (0.5 m/px)  -- close zoom on the Tab map
+            Tiles are painted on demand (nearest the view first) in small time slices from a frame hook, kept in an LRU.
+   Riders:  rgMapArrow (used for you and friends on both maps) now draws a little top-down bike + rider in their colour.
+   Cost:    no shaders, no per-frame work while nothing is missing; the minimap is a few drawImage calls.
+   ========================================================================= */
+const AER = {
+  on:false, world:null, wgen:null, tiles:new Map(), want:new Map(), gen:null, genKey:'', pIdx:null, pIdxN:0, pCell:64,
+  trees:[], tIdx:null, sIdx:null, matCol:new Map(), grain:null, max:96, rev:0, busyT:0, lastOpenRender:0
+};
+const AER_LV = [ { mpp:8 }, { mpp:2, span:512 }, { mpp:0.5, span:128 } ];
+const AER_TS = 256;                                  // tile pixels
+
+/* ---------------------------------------------------------------- small helpers */
+function aerHash(a, b, c){ let h = (a | 0)*374761393 + (b | 0)*668265263 + (c | 0)*2147483647; h = (h ^ (h >>> 13))*1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function aerClamp(v, a, b){ return v < a ? a : v > b ? b : v; }
+function aerHex(r, g, b){ return 'rgb(' + Math.round(aerClamp(r, 0, 255)) + ',' + Math.round(aerClamp(g, 0, 255)) + ',' + Math.round(aerClamp(b, 0, 255)) + ')'; }
+/* a world-anchored grain field (value noise, 256 x 256, tiled) so neighbouring tiles join without seams */
+function aerGrain(){
+  if (AER.grain) return AER.grain;
+  const N = 256, a = new Float32Array(N*N), c = new Float32Array(32*32);
+  for (let i = 0; i < c.length; i++) c[i] = aerHash(i, 7, 3) - 0.5;
+  const at = (x, y)=> c[((y & 31) << 5) | (x & 31)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const fx = x/8, fy = y/8, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+    const sx = tx*tx*(3 - 2*tx), sy = ty*ty*(3 - 2*ty);
+    const v = (at(ix, iy)*(1 - sx) + at(ix + 1, iy)*sx)*(1 - sy) + (at(ix, iy + 1)*(1 - sx) + at(ix + 1, iy + 1)*sx)*sy;
+    a[y*N + x] = v*0.7 + (aerHash(x, y, 11) - 0.5)*0.3;
+  }
+  return (AER.grain = a);
+}
+/* the colour a material shows from above: its colour x the average of its texture (cached) */
+function aerMatRGB(m){
+  if (!m) return [128, 128, 128];
+  let c = AER.matCol.get(m);
+  if (c) return c;
+  let r = 1, g = 1, b = 1;
+  if (m.color){ r = m.color.r; g = m.color.g; b = m.color.b; }
+  let tr = 1, tg = 1, tb = 1;
+  const img = m.map && m.map.image;
+  if (img && (img.width || img.videoWidth)){
+    try {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 4;
+      const x = cv.getContext('2d'); x.drawImage(img, 0, 0, 4, 4);
+      const d = x.getImageData(0, 0, 4, 4).data; let sr = 0, sg = 0, sb = 0;
+      for (let i = 0; i < 64; i += 4){ sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; }
+      tr = sr/16/255; tg = sg/16/255; tb = sb/16/255;
+    } catch(e){}
+  }
+  // material colours are linear (the renderer encodes to sRGB): bring them to display space
+  const s = v=> Math.pow(aerClamp(v, 0, 1), 1/2.2)*255;
+  c = [s(r*tr*tr), s(g*tg*tg), s(b*tb*tb)];
+  if (m.map && m.color && m.color.r > 0.95 && m.color.g > 0.95 && m.color.b > 0.95) c = [tr*255, tg*255, tb*255];
+  AER.matCol.set(m, c);
+  return c;
+}
+
+/* ---------------------------------------------------------------- the city's trees: every tree() call while the city builds */
+(function aerTreeHook(){
+  if (typeof tree !== 'function') return;
+  const base = tree;
+  tree = function(x, z, sc){ try { AER.trees.push(x, z, sc || 1); } catch(e){} return base.apply(this, arguments); };
+})();
+
+/* ---------------------------------------------------------------- spatial indexes (built once the city stands) */
+function aerIndex(){
+  if (AER.pIdx && AER.pIdxN === PIECES.length) return;
+  const C = AER.pCell, m = new Map();
+  for (let n = 0; n < PIECES.length; n++){
+    const p = PIECES[n];
+    if (!p || typeof p.x !== 'number' || p.novisMap) continue;
+    const rx = Math.abs(p.w || 0), rz = Math.abs(p.d || 0), rr = Math.max(rx, rz)*(p.rot ? 1.42 : 1);
+    if (rr > 1000) continue;
+    const i0 = Math.floor((p.x - rr)/C), i1 = Math.floor((p.x + rr)/C), j0 = Math.floor((p.z - rr)/C), j1 = Math.floor((p.z + rr)/C);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++){
+      const k = i*65536 + j; let a = m.get(k); if (!a){ a = []; m.set(k, a); } a.push(n);
+    }
+  }
+  AER.pIdx = m; AER.pIdxN = PIECES.length;
+  const tm = new Map(), T = AER.trees;
+  for (let n = 0; n < T.length; n += 3){ const k = Math.floor(T[n]/C)*65536 + Math.floor(T[n + 1]/C); let a = tm.get(k); if (!a){ a = []; tm.set(k, a); } a.push(n); }
+  AER.tIdx = tm;
+  if (typeof SBP !== 'undefined' && SBP.items){
+    const sm = new Map();
+    SBP.items.forEach((it, n)=>{ const r = Math.max(it.hw || it.w || 10, it.hd || it.d || 10) + 6;
+      for (let i = Math.floor((it.x - r)/C); i <= Math.floor((it.x + r)/C); i++) for (let j = Math.floor((it.z - r)/C); j <= Math.floor((it.z + r)/C); j++){
+        const k = i*65536 + j; let a = sm.get(k); if (!a){ a = []; sm.set(k, a); } a.push(n); } });
+    AER.sIdx = sm;
+  }
+}
+function aerQuery(idx, x0, z0, x1, z1){
+  const C = AER.pCell, out = new Set();
+  if (!idx) return out;
+  for (let i = Math.floor(x0/C); i <= Math.floor(x1/C); i++) for (let j = Math.floor(z0/C); j <= Math.floor(z1/C); j++){
+    const a = idx.get(i*65536 + j); if (a) for (let k = 0; k < a.length; k++) out.add(a[k]);
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- terrain: sampled colours + heights, bilinear per pixel */
+const AER_CITYC = [64, 65, 68];
+function* aerTerrain(D, x0, z0, mpp, N, gs){
+  const span = N*mpp, n = Math.ceil(span/gs) + 3;
+  const H = new Float32Array(n*n), R = new Float32Array(n*n), G = new Float32Array(n*n), B = new Float32Array(n*n), FO = new Float32Array(n*n);
+  const slab = RG.slab;
+  let c = 0;
+  for (let j = 0; j < n; j++){
+    const z = z0 + (j - 1)*gs;
+    for (let i = 0; i < n; i++){ const x = x0 + (i - 1)*gs; H[j*n + i] = (Math.abs(x) < slab && Math.abs(z) < slab) ? 0 : landH(x, z); }
+    if (++c % 6 === 0) yield;
+  }
+  const col = [0, 0, 0];
+  for (let j = 1; j < n - 1; j++){
+    const z = z0 + (j - 1)*gs;
+    for (let i = 1; i < n - 1; i++){
+      const k = j*n + i, x = x0 + (i - 1)*gs, h = H[k];
+      if (Math.abs(x) < slab && Math.abs(z) < slab){ R[k] = AER_CITYC[0]; G[k] = AER_CITYC[1]; B[k] = AER_CITYC[2]; continue; }
+      const gx = (H[k + 1] - H[k - 1])/(2*gs), gz = (H[k + n] - H[k - n])/(2*gs), ny = 1/Math.sqrt(1 + gx*gx + gz*gz);
+      const wl = waterLevelAt(x, z);
+      if (wl === wl && h < wl - 0.15){
+        const d = Math.min(1, (wl - h)/9), sh = Math.min(1, (wl - h)/1.2);
+        R[k] = 104 - 70*d + (1 - sh)*40; G[k] = 152 - 74*d + (1 - sh)*30; B[k] = 158 - 50*d + (1 - sh)*12;
+        FO[k] = -1;
+        continue;
+      }
+      rgFarColor(x, z, h, ny, col);
+      const shade = aerClamp(1 + (-gx - gz)*1.9, 0.5, 1.45), alt = rgSstep(80, 700, h);
+      R[k] = Math.sqrt(Math.max(0, (col[0]*1.5 + alt*0.08)*shade))*255;
+      G[k] = Math.sqrt(Math.max(0, (col[1]*1.42 + alt*0.07)*shade))*255;
+      B[k] = Math.sqrt(Math.max(0, (col[2]*1.38 + alt*0.08)*shade))*255;
+      const fo = rgForestAt(x, z); FO[k] = fo;
+      if (fo > 0.08){ const t = Math.min(1, fo*1.1)*0.55; R[k] = R[k]*(1 - t) + 58*t; G[k] = G[k]*(1 - t) + 90*t; B[k] = B[k]*(1 - t) + 50*t; }
+    }
+    if (++c % 3 === 0) yield;
+  }
+  const gr = aerGrain(), wpx = Math.round(x0/mpp), wpz = Math.round(z0/mpp);
+  const fields = mpp <= 1 && typeof rgFieldAt === 'function' && typeof RG_FIELD !== 'undefined';
+  for (let py = 0; py < N; py++){
+    const z = z0 + (py + 0.5)*mpp, fy = (z - (z0 - gs))/gs, j = Math.min(n - 2, Math.max(0, Math.floor(fy))), ty = fy - j;
+    const grow = ((wpz + py) & 255) << 8;
+    for (let px = 0; px < N; px++){
+      const x = x0 + (px + 0.5)*mpp, fx = (x - (x0 - gs))/gs, i = Math.min(n - 2, Math.max(0, Math.floor(fx))), tx = fx - i;
+      const k = j*n + i, k2 = k + n;
+      const w00 = (1 - tx)*(1 - ty), w10 = tx*(1 - ty), w01 = (1 - tx)*ty, w11 = tx*ty;
+      let r = R[k]*w00 + R[k + 1]*w10 + R[k2]*w01 + R[k2 + 1]*w11;
+      let g = G[k]*w00 + G[k + 1]*w10 + G[k2]*w01 + G[k2 + 1]*w11;
+      let b = B[k]*w00 + B[k + 1]*w10 + B[k2]*w01 + B[k2 + 1]*w11;
+      const fo = FO[k]*w00 + FO[k + 1]*w10 + FO[k2]*w01 + FO[k2 + 1]*w11;
+      const nv = gr[grow | ((wpx + px) & 255)];
+      let amp = 0.11;
+      if (fo < -0.2) amp = 0.035;
+      else if (fo > 0.08 && mpp >= 4){                              // the world view: soft canopy texture instead of drawn trees
+        const t = Math.min(1, fo*1.2), m = 1 - t*(0.10 + nv*0.55);
+        r *= m; g *= m; b *= m; amp = 0.05;
+      }
+      if (fields && fo >= 0){
+        const f = rgFieldAt(x, z);
+        if (f === 1 || f === 2){
+          const u = RG_FIELD.dir > 0 ? (x*RG_FIELD_C - z*RG_FIELD_S) : (x*RG_FIELD_S + z*RG_FIELD_C);
+          const row = 1 + 0.09*Math.sin(u*6.283/(f === 1 ? 1.1 : 0.8));
+          r *= row; g *= row; b *= row;
+        }
+      }
+      const m2 = 1 + nv*amp*2;
+      const q = (py*N + px)*4;
+      D[q] = r*m2; D[q + 1] = g*m2; D[q + 2] = b*m2; D[q + 3] = 255;
+    }
+    if ((py & 15) === 15) yield;
+  }
+}
+
+/* ---------------------------------------------------------------- roads, trails, highways: true widths + markings */
+const AER_SURF = { asphalt:[78, 79, 82], concrete:[150, 148, 142], gravel:[158, 148, 128], dirt:[138, 106, 70], sand:[196, 178, 140] };
+function aerRoadPath(g, r, mpp, off){
+  const P = r.pts, n = P.length, step = Math.max(1, Math.floor(mpp/3));
+  g.beginPath();
+  for (let i = 0; i < n; i += step){
+    let x = P[i][0], z = P[i][1];
+    if (off){ x += r.tz[i]*off; z -= r.tx[i]*off; }
+    if (i) g.lineTo(x, z); else g.moveTo(x, z);
+  }
+  let x = P[n - 1][0], z = P[n - 1][1];
+  if (off){ x += r.tz[n - 1]*off; z -= r.tx[n - 1]*off; }
+  g.lineTo(x, z);
+}
+function* aerRoads(g, x0, z0, x1, z1, mpp, lvl){
+  if (typeof ROADS === 'undefined') return;
+  const list = [];
+  for (const r of ROADS){
+    if (!r || !r.pts || r.pts.length < 2) continue;
+    const m = (r.half || r.width) + 4;
+    if (r.x1 + m < x0 || r.x0 - m > x1 || r.z1 + m < z0 || r.z0 - m > z1) continue;
+    list.push(r);
+  }
+  // wider / more important roads draw last so they sit on top where two meet
+  const rank = r=> r.kind === 'highway' ? 5 : r.kind === 'ramp' ? 4 : r.kind === 'arterial' ? 3 : r.kind === 'road' ? 2 : r.surface === 'asphalt' ? 1 : 0;
+  list.sort((a, b)=> rank(a) - rank(b));
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  // 1) verges / sidewalks / shadows of bridges
+  for (const r of list){
+    if (r.sidewalk){
+      aerRoadPath(g, r, mpp, 0);
+      g.strokeStyle = 'rgb(176,172,164)'; g.lineWidth = r.width + 2*(r.shoulder || 0) + 2*r.sidewalk + 0.8; g.stroke();
+    } else if (r.surface === 'asphalt' && (r.kind === 'highway' || r.kind === 'arterial' || r.kind === 'road')){
+      aerRoadPath(g, r, mpp, 0);
+      g.strokeStyle = 'rgba(40,38,32,.28)'; g.lineWidth = r.width + 2*(r.shoulder || 0) + 2.5; g.stroke();
+    }
+  }
+  yield;
+  // 2) surfaces
+  for (const r of list){
+    const s = AER_SURF[r.surface] || AER_SURF.asphalt;
+    let c = s;
+    if (r.surface === 'asphalt') c = r.kind === 'highway' ? [70, 71, 75] : r.kind === 'street' ? [86, 87, 90] : s;
+    aerRoadPath(g, r, mpp, 0);
+    const paved = r.surface === 'asphalt';
+    const w = Math.max(mpp*1.1, r.width + (paved ? 2*(r.shoulder || 0) : 0));
+    if (!paved){ g.strokeStyle = 'rgba(70,52,34,.45)'; g.lineWidth = w + Math.max(0.6, mpp*0.6); g.stroke(); }
+    g.strokeStyle = aerHex(c[0], c[1], c[2]); g.lineWidth = w; g.stroke();
+    if (paved && lvl >= 1 && r.width > 5){                     // tyre-polished wheel paths
+      g.strokeStyle = 'rgba(255,255,255,.035)'; g.lineWidth = r.width*0.5; g.stroke();
+    }
+  }
+  yield;
+  // 3) lane markings (crisp at close zoom, a faint hint further out)
+  if (lvl >= 1){
+    const lw = Math.max(0.16, mpp*0.8), a = lvl >= 2 ? 0.92 : 0.38;
+    for (const r of list){
+      if (r.surface !== 'asphalt' || r.markings === false || r.kind === 'trail') continue;
+      const hw = r.width/2;
+      g.lineWidth = lw;
+      if (r.kind === 'highway' || r.kind === 'ramp'){
+        g.strokeStyle = 'rgba(240,240,236,' + a + ')'; g.setLineDash([]);
+        aerRoadPath(g, r, mpp, hw - 0.35); g.stroke(); aerRoadPath(g, r, mpp, -hw + 0.35); g.stroke();
+        const L = Math.max(1, r.lanes || (r.kind === 'ramp' ? 1 : 3)), ln = r.width/L;
+        g.setLineDash([3, 9]);
+        for (let k = 1; k < L; k++){ aerRoadPath(g, r, mpp, -hw + k*ln); g.stroke(); }
+        g.setLineDash([]);
+      } else if (r.kind === 'arterial' || r.kind === 'road'){
+        g.strokeStyle = 'rgba(232,186,72,' + a + ')';
+        aerRoadPath(g, r, mpp, 0.14); g.stroke(); aerRoadPath(g, r, mpp, -0.14); g.stroke();
+        g.strokeStyle = 'rgba(240,240,236,' + (a*0.8) + ')';
+        aerRoadPath(g, r, mpp, hw - 0.3); g.stroke(); aerRoadPath(g, r, mpp, -hw + 0.3); g.stroke();
+        if ((r.lanes || 2) >= 4){ g.setLineDash([3, 9]); aerRoadPath(g, r, mpp, hw/2); g.stroke(); aerRoadPath(g, r, mpp, -hw/2); g.stroke(); g.setLineDash([]); }
+      }
+    }
+    g.setLineDash([]);
+  }
+}
+
+/* ---------------------------------------------------------------- forests + countryside trees (canopy from above) */
+function* aerForest(g, x0, z0, x1, z1, mpp){
+  if (mpp >= 4) return;
+  const sp = mpp >= 1.5 ? 7 : 5, slab = RG.slab;
+  let c = 0;
+  for (let gz = Math.floor(z0/sp) - 1; gz <= Math.ceil(z1/sp); gz++){
+    for (let gx = Math.floor(x0/sp) - 1; gx <= Math.ceil(x1/sp); gx++){
+      const x = (gx + aerHash(gx, gz, 5))*sp, z = (gz + aerHash(gx, gz, 9))*sp;
+      if (Math.abs(x) < slab + 4 && Math.abs(z) < slab + 4) continue;
+      const fo = rgForestAt(x, z), pick = aerHash(gx, gz, 13);
+      if (pick > fo*1.05 + 0.006) continue;
+      const wl = waterLevelAt(x, z);
+      if (wl === wl && landH(x, z) < wl + 0.3) continue;
+      if (typeof rgRoadNearest === 'function'){ const nr = rgRoadNearest(x, z, 12); if (nr && nr.d < nr.road.width/2 + 1.5) continue; }
+      const con = aerHash(gx, gz, 21) < 0.5, r = sp*(con ? 0.42 : 0.55)*(0.75 + aerHash(gx, gz, 17)*0.55);
+      g.fillStyle = 'rgba(8,16,8,.34)';
+      g.beginPath(); g.ellipse(x + r*0.42, z + r*0.5, r, r*0.92, 0, 0, 6.2832); g.fill();
+      const v = aerHash(gx, gz, 29);
+      g.fillStyle = con ? aerHex(30 + v*16, 58 + v*18, 40 + v*10) : aerHex(52 + v*26, 82 + v*24, 34 + v*14);
+      g.beginPath(); g.arc(x, z, r, 0, 6.2832); g.fill();
+      g.fillStyle = con ? 'rgba(120,160,110,.22)' : 'rgba(170,200,110,.24)';
+      g.beginPath(); g.arc(x - r*0.28, z - r*0.3, r*0.55, 0, 6.2832); g.fill();
+      if (++c % 160 === 0) yield;
+    }
+  }
+}
+function aerTreeDraw(g, x, z, s){
+  const r = 2.3*s + 0.6;
+  g.fillStyle = 'rgba(10,18,10,.32)'; g.beginPath(); g.ellipse(x + r*0.45, z + r*0.55, r, r*0.9, 0, 0, 6.2832); g.fill();
+  const v = aerHash(Math.round(x*3), Math.round(z*3), 41);
+  g.fillStyle = aerHex(56 + v*24, 90 + v*26, 38 + v*12); g.beginPath(); g.arc(x, z, r, 0, 6.2832); g.fill();
+  g.fillStyle = 'rgba(190,215,120,.26)'; g.beginPath(); g.arc(x - r*0.3, z - r*0.3, r*0.5, 0, 6.2832); g.fill();
+}
+
+/* ---------------------------------------------------------------- the city: every piece as seen from above */
+const AER_ROOFS = [[96, 96, 100], [122, 120, 116], [74, 76, 80], [140, 136, 128], [108, 100, 94], [86, 92, 98], [152, 148, 140], [62, 64, 68], [118, 108, 96]];
+function aerShade(c, k){ return aerHex(c[0]*k, c[1]*k, c[2]*k); }
+function aerPieceXf(g, p){ const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0); g.translate(p.x, p.z); g.transform(c, -s, s, c, 0, 0); }
+function aerDrawPiece(g, p, mpp){
+  const col = aerMatRGB(p.mat);
+  g.save(); aerPieceXf(g, p);
+  if (p.type === 'flat'){
+    g.fillStyle = aerShade(col, 1); g.fillRect(-p.w, -p.d, 2*p.w, 2*p.d);
+    if (p.holes) for (const ho of p.holes){
+      const gr = g.createRadialGradient(ho.x - ho.r*0.3, ho.z - ho.r*0.3, ho.r*0.1, ho.x, ho.z, ho.r);
+      gr.addColorStop(0, aerShade(col, 0.62)); gr.addColorStop(0.8, aerShade(col, 0.86)); gr.addColorStop(1, aerShade(col, 1.12));
+      g.fillStyle = gr; g.beginPath(); g.arc(ho.x, ho.z, ho.r, 0, 6.2832); g.fill();
+      g.strokeStyle = 'rgba(225,228,232,.9)'; g.lineWidth = Math.max(0.25, mpp*0.6); g.stroke();
+    }
+  } else if (p.type === 'bank' || p.type === 'quarter'){
+    const L = p.type === 'bank' ? p.len : p.R*Math.sin((p.maxDeg || 76)*Math.PI/180), deck = p.deck || 0;
+    const gr = g.createLinearGradient(0, 0, 0, L);
+    gr.addColorStop(0, aerShade(col, 0.92)); gr.addColorStop(1, aerShade(col, p.type === 'quarter' ? 1.24 : 1.12));
+    g.fillStyle = gr; g.fillRect(-p.w, 0, 2*p.w, L);
+    if (deck > 0){ g.fillStyle = aerShade(col, 1.05); g.fillRect(-p.w, L, 2*p.w, deck); }
+    g.strokeStyle = p.type === 'quarter' ? 'rgba(220,224,230,.95)' : 'rgba(30,30,30,.25)'; g.lineWidth = Math.max(0.2, mpp*0.5);
+    g.beginPath(); g.moveTo(-p.w, L); g.lineTo(p.w, L); g.stroke();
+    g.strokeStyle = 'rgba(20,20,20,.22)'; g.strokeRect(-p.w, 0, 2*p.w, L + deck);
+  } else if (p.type === 'bowl'){
+    const U = p.R*Math.sin((p.maxDeg || 76)*Math.PI/180), R1 = p.r0 + U, R2 = R1 + (p.deck || 0);
+    g.fillStyle = aerShade(col, 1.04); g.beginPath(); g.arc(0, 0, R2, 0, 6.2832); g.fill();
+    const gr = g.createRadialGradient(-R1*0.25, -R1*0.25, p.r0*0.3, 0, 0, R1);
+    gr.addColorStop(0, aerShade(col, 0.7)); gr.addColorStop(Math.min(0.95, p.r0/R1), aerShade(col, 0.8)); gr.addColorStop(1, aerShade(col, 1.15));
+    g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R1, 0, 6.2832); g.fill();
+    g.strokeStyle = 'rgba(225,228,232,.9)'; g.lineWidth = Math.max(0.25, mpp*0.6); g.stroke();
+  }
+  g.restore();
+}
+function aerRoof(p){
+  const h = Math.round(p.x*7 + p.z*13);
+  const base = AER_ROOFS[((h % AER_ROOFS.length) + AER_ROOFS.length) % AER_ROOFS.length];
+  const top = (p.base || 0) + (p.h || 0);
+  if (top > 60) return [Math.min(255, base[0] + 26), Math.min(255, base[1] + 28), Math.min(255, base[2] + 32)];
+  return base;
+}
+function* aerCity(g, x0, z0, x1, z1, mpp, lvl){
+  if (typeof PIECES === 'undefined' || typeof CITY_HALF === 'undefined') return;
+  const B = (typeof BOUND !== 'undefined') ? BOUND : CITY_HALF + 60;
+  if (x1 < -B || x0 > B || z1 < -B || z0 > B) return;
+  aerIndex();
+  const ids = [...aerQuery(AER.pIdx, x0 - 16, z0 - 16, x1 + 16, z1 + 16)];
+  const top = n=> { const p = PIECES[n]; return (p.base || 0) + (p.type === 'flat' ? (p.h || 0) : (p.h || 1)); };
+  ids.sort((a, b)=> top(a) - top(b));
+  // 1) the ground: sidewalks, plazas, lots, ramps, bowls (everything that is not a building)
+  let c = 0;
+  for (const n of ids){
+    const p = PIECES[n];
+    if (p.bld) continue;
+    if (p.type === 'flat' && (p.w*p.d < 0.02)) continue;
+    aerDrawPiece(g, p, mpp);
+    if (++c % 250 === 0) yield;
+  }
+  // 2) lane markings + crosswalks on the city grid (close zoom)
+  if (lvl >= 2 && typeof CELL !== 'undefined'){
+    g.lineWidth = 0.16;
+    const i0 = Math.max(-GRID_N - 1, Math.floor(x0/CELL) - 1), i1 = Math.min(GRID_N, Math.ceil(x1/CELL) + 1);
+    const j0 = Math.max(-GRID_N - 1, Math.floor(z0/CELL) - 1), j1 = Math.min(GRID_N, Math.ceil(z1/CELL) + 1);
+    const be = (i, j)=> typeof blockExists === 'function' ? blockExists(i, j) : true;
+    g.strokeStyle = 'rgba(232,186,72,.9)'; g.setLineDash([3, 5]);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++){
+      const rx = (i + 0.5)*CELL, rz = (j + 0.5)*CELL;
+      if (be(i, j) || be(i + 1, j)){ g.beginPath(); g.moveTo(rx, j*CELL - BLOCK/2 + 1); g.lineTo(rx, j*CELL + BLOCK/2 - 1); g.stroke(); }
+      if (be(i, j) || be(i, j + 1)){ g.beginPath(); g.moveTo(i*CELL - BLOCK/2 + 1, rz); g.lineTo(i*CELL + BLOCK/2 - 1, rz); g.stroke(); }
+    }
+    g.setLineDash([]);
+    g.fillStyle = 'rgba(236,236,232,.85)';
+    const half = ROAD_W/2 - 0.6;
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++){
+      if (!(be(i, j) || be(i + 1, j + 1) || be(i + 1, j) || be(i, j + 1))) continue;
+      const cx = (i + 0.5)*CELL, cz = (j + 0.5)*CELL, o = ROAD_W/2 + 0.6;
+      for (let s = -half; s < half; s += 1.1){
+        g.fillRect(cx + s, cz - o - 3, 0.55, 3); g.fillRect(cx + s, cz + o, 0.55, 3);
+        g.fillRect(cx - o - 3, cz + s, 3, 0.55); g.fillRect(cx + o, cz + s, 3, 0.55);
+      }
+    }
+    yield;
+  }
+  // 3) trees of the streets and parks
+  if (lvl >= 1 && AER.tIdx){
+    const T = AER.trees;
+    for (const k of aerQuery(AER.tIdx, x0 - 6, z0 - 6, x1 + 6, z1 + 6)){ aerTreeDraw(g, T[k], T[k + 1], T[k + 2]); if (++c % 300 === 0) yield; }
+  }
+  // 4) buildings: shadows to the south-east first, then the roofs (low to high)
+  const bl = ids.filter(n=> PIECES[n].bld);
+  g.fillStyle = 'rgba(16,18,24,.30)';
+  for (const n of bl){
+    const p = PIECES[n], h = (p.base || 0) + (p.h || 0), d = Math.min(14, Math.max(0.6, h*0.22));
+    g.save(); g.translate(d*0.72, d*0.92); aerPieceXf(g, p); g.fillRect(-p.w, -p.d, 2*p.w, 2*p.d); g.restore();
+    if (++c % 300 === 0) yield;
+  }
+  const lw = Math.max(0.35, mpp*0.7);
+  for (const n of bl){
+    const p = PIECES[n], rc = aerRoof(p);
+    g.save(); aerPieceXf(g, p);
+    g.fillStyle = aerShade(rc, 1); g.fillRect(-p.w, -p.d, 2*p.w, 2*p.d);
+    if (lvl >= 1 && p.w > 1.5 && p.d > 1.5){
+      g.strokeStyle = aerShade(rc, 1.22); g.lineWidth = lw; g.strokeRect(-p.w + lw/2, -p.d + lw/2, 2*p.w - lw, 2*p.d - lw);
+      if (lvl >= 2 && p.w > 4 && p.d > 4){
+        const hh = aerHash(Math.round(p.x), Math.round(p.z), 61), nb = 1 + Math.floor(hh*3);
+        for (let b = 0; b < nb; b++){
+          const bx = (aerHash(Math.round(p.x), b, 63) - 0.5)*(p.w - 2.5)*1.6, bz = (aerHash(Math.round(p.z), b, 67) - 0.5)*(p.d - 2.5)*1.6;
+          g.fillStyle = 'rgba(16,18,24,.28)'; g.fillRect(bx - 0.9 + 0.5, bz - 0.7 + 0.6, 1.8, 1.4);
+          g.fillStyle = aerShade(rc, 1.3); g.fillRect(bx - 0.9, bz - 0.7, 1.8, 1.4);
+        }
+      }
+    }
+    g.restore();
+    if (++c % 250 === 0) yield;
+  }
+}
+
+/* ---------------------------------------------------------------- suburbs, towns, farms (the suburbs plan: every lot) */
+const AER_HOUSE_ROOFS = [[92, 90, 88], [128, 78, 62], [70, 76, 86], [136, 124, 106], [84, 96, 82], [58, 58, 62], [150, 100, 74], [108, 108, 114], [120, 96, 80]];
+/* a rectangle in an item's own frame (x right, z back from its front; the builders' sbItemF convention) */
+function aerLRect(g, it, lx0, lx1, lz0, lz1, fill){
+  g.save(); g.translate(it.x, it.z); const c = Math.cos(it.yaw || 0), s = Math.sin(it.yaw || 0); g.transform(c, -s, s, c, 0, 0);
+  g.fillStyle = fill; g.fillRect(lx0, lz0, lx1 - lx0, lz1 - lz0); g.restore();
+}
+function aerLRoof(g, it, lx0, lx1, lz0, lz1, rc, mpp, h, gable){
+  const d = Math.min(9, Math.max(0.8, (h || 6)*0.22));
+  g.save(); g.translate(d*0.72, d*0.92); aerLRect(g, it, lx0, lx1, lz0, lz1, 'rgba(16,18,24,.30)'); g.restore();
+  g.save(); g.translate(it.x, it.z); const c = Math.cos(it.yaw || 0), s = Math.sin(it.yaw || 0); g.transform(c, -s, s, c, 0, 0);
+  if (gable){
+    const alongX = (lx1 - lx0) >= (lz1 - lz0) ? gable !== 'z' : gable === 'x';
+    const mx = (lx0 + lx1)/2, mz = (lz0 + lz1)/2;
+    // which half faces the north-west light (world direction of the local -z / -x half)
+    const n = alongX ? [s, -c] : [-c, -s], lit = (-n[0] - n[1]) > 0, kA = lit ? 1.16 : 0.84, kB = lit ? 0.84 : 1.16;
+    g.fillStyle = aerShade(rc, kA); if (alongX) g.fillRect(lx0, lz0, lx1 - lx0, mz - lz0); else g.fillRect(lx0, lz0, mx - lx0, lz1 - lz0);
+    g.fillStyle = aerShade(rc, kB); if (alongX) g.fillRect(lx0, mz, lx1 - lx0, lz1 - mz); else g.fillRect(mx, lz0, lx1 - mx, lz1 - lz0);
+    g.strokeStyle = aerShade(rc, 1.38); g.lineWidth = Math.max(0.18, mpp*0.6);
+    g.beginPath(); if (alongX){ g.moveTo(lx0, mz); g.lineTo(lx1, mz); } else { g.moveTo(mx, lz0); g.lineTo(mx, lz1); } g.stroke();
+  } else {
+    g.fillStyle = aerShade(rc, 1); g.fillRect(lx0, lz0, lx1 - lx0, lz1 - lz0);
+    const lw = Math.max(0.35, mpp*0.7); g.strokeStyle = aerShade(rc, 1.25); g.lineWidth = lw;
+    g.strokeRect(lx0 + lw/2, lz0 + lw/2, lx1 - lx0 - lw, lz1 - lz0 - lw);
+  }
+  g.restore();
+}
+/* the roof colour the suburbs builder picks for a house (same random sequence) */
+function aerHouseRoof(it){
+  try {
+    if (typeof rgRng === 'function' && typeof SB_ROOFS !== 'undefined' && typeof sbPick === 'function'){
+      const R = rgRng(it.seed), st = it.style;
+      const brick = st !== 'bungalow' && st !== 'cape' && R() < (st === 'colonial' ? 0.4 : 0.28);
+      sbPick(R, brick ? (typeof SB_BRICK !== 'undefined' ? SB_BRICK : SB_ROOFS) : (typeof SB_WALLS !== 'undefined' ? SB_WALLS : SB_ROOFS));
+      const hex = sbPick(R, SB_ROOFS), v = parseInt(hex.slice(1), 16);
+      return [(v >> 16) & 255, (v >> 8) & 255, v & 255].map(c=> Math.min(255, c*1.25 + 14));
+    }
+  } catch(e){}
+  return AER_HOUSE_ROOFS[((it.seed >>> 0) || 0) % AER_HOUSE_ROOFS.length];
+}
+function* aerSuburbs(g, x0, z0, x1, z1, mpp, lvl){
+  if (!AER.sIdx || typeof SBP === 'undefined') return;
+  let c = 0;
+  const items = [...aerQuery(AER.sIdx, x0 - 24, z0 - 24, x1 + 24, z1 + 24)].map(n=> SBP.items[n]);
+  // lots first: lawns, driveways, forecourts, playing fields (so no lawn ever covers a neighbour's roof)
+  if (lvl >= 1) for (const it of items){
+    if (it.t === 'house'){
+      const hw = (it.w || 10)/2, d = it.d || 9, sb = it.setb || 6, gs = it.gar || 0, gw = gs ? 6.6 : 0;
+      aerLRect(g, it, -hw - 4 - (gs < 0 ? gw : 0), hw + 4 + (gs > 0 ? gw : 0), -sb, d + 11, 'rgba(122,156,80,.62)');
+      if (gs){ const gc = gs > 0 ? hw + gw/2 : -hw - gw/2; aerLRect(g, it, gc - 2.9, gc + 2.9, -(sb + 2.4), 0.7, 'rgb(200,196,186)'); }
+    } else if (it.t === 'gas'){
+      aerLRect(g, it, -it.hw, it.hw, -it.hd, it.hd, 'rgb(184,180,170)');
+    } else if (it.t === 'mall'){
+      aerLRect(g, it, -it.hw, it.hw, -it.hd, it.hd, 'rgb(92,93,96)');
+      if (lvl >= 2){ g.save(); g.translate(it.x, it.z); const cc = Math.cos(it.yaw || 0), sn = Math.sin(it.yaw || 0); g.transform(cc, -sn, sn, cc, 0, 0);
+        g.strokeStyle = 'rgba(236,236,230,.8)'; g.lineWidth = 0.14;
+        for (let x = -it.hw + 3; x < it.hw - 2; x += 2.7){ g.beginPath(); g.moveTo(x, -it.hd + 4); g.lineTo(x, -it.hd + 9); g.moveTo(x, it.hd - 30); g.lineTo(x, it.hd - 25); g.stroke(); }
+        g.restore(); }
+    } else if (it.t === 'school' || it.t === 'park'){
+      aerLRect(g, it, -it.hw, it.hw, -it.hd, it.hd, 'rgb(118,152,82)');
+      if (it.t === 'park') aerLRect(g, it, -it.hw + 3, -it.hw + 33, -it.hd + 3, -it.hd + 23, 'rgb(184,182,176)');
+    } else if (it.t === 'square'){
+      aerLRect(g, it, -it.hw, it.hw, -it.hd, it.hd, 'rgb(205,191,168)');
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) aerLRect(g, it, sx > 0 ? 4 : -it.hw + 3, sx > 0 ? it.hw - 3 : -4, sz > 0 ? 4 : -it.hd + 3, sz > 0 ? it.hd - 3 : -4, 'rgb(82,122,52)');
+    } else if (it.t === 'farm'){
+      aerLRect(g, it, -it.hw, it.hw, -it.hd, it.hd, 'rgba(156,138,104,.65)');
+    }
+    if (++c % 300 === 0) yield;
+  }
+  for (const it of items){
+    const hw = it.hw || (it.w || 12)/2, hd = it.hd || (it.d || 10)/2;
+    switch (it.t){
+      case 'house': {
+        const w2 = (it.w || 10)/2, d = it.d || 9, gs = it.gar || 0, gw = gs ? 6.6 : 0, rc = aerHouseRoof(it);
+        const fg = it.style === 'bungalow' || it.style === 'town';
+        aerLRoof(g, it, -w2, w2, 0, d, rc, mpp, it.style === 'colonial' || it.style === 'farmhouse' || it.style === 'town' ? 8 : 5, fg ? 'z' : 'x');
+        if (gs){ const gx0 = gs > 0 ? w2 : -w2 - gw, gx1 = gs > 0 ? w2 + gw : -w2; aerLRoof(g, it, gx0, gx1, 0.7, 7.7, rc, mpp, 3, 'z');
+          if (it.car && lvl >= 1){ const gc = (gx0 + gx1)/2; aerLRect(g, it, gc - 0.95, gc + 0.95, -(it.setb || 6) + 0.2, -(it.setb || 6) + 4.6, aerShade(AER_HOUSE_ROOFS[((it.seed >>> 4) || 1) % AER_HOUSE_ROOFS.length], 1.3)); } }
+        break;
+      }
+      case 'bulb': {
+        const r = it.r || it.hw || 14;
+        g.fillStyle = 'rgb(86,87,90)'; g.beginPath(); g.arc(it.x, it.z, r, 0, 6.2832); g.fill();
+        g.fillStyle = 'rgb(108,142,72)'; g.beginPath(); g.arc(it.x, it.z, r*0.32, 0, 6.2832); g.fill();
+        break;
+      }
+      case 'square': case 'park': break;
+      case 'quay': aerLRect(g, it, -hw, hw, -10, 8, 'rgb(164,160,150)'); break;
+      case 'mall': aerLRoof(g, it, -hw, hw, hd - 17, hd, [96, 96, 94], mpp, 7); break;
+      case 'mill': aerLRoof(g, it, -6, 6, -6, 6, [96, 84, 72], mpp, 9, 'x'); break;
+      case 'row': { const w2 = (it.units || 3)*3.2; aerLRoof(g, it, -w2, w2, 0, it.d || 10, aerHouseRoof(it), mpp, 8, 'x'); break; }
+      case 'tower': {
+        g.fillStyle = 'rgba(16,18,24,.3)'; g.beginPath(); g.arc(it.x + 6, it.z + 8, 5, 0, 6.2832); g.fill();
+        g.fillStyle = 'rgb(198,204,210)'; g.beginPath(); g.arc(it.x, it.z, 5, 0, 6.2832); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(it.x - 1.4, it.z - 1.4, 2.2, 0, 6.2832); g.fill();
+        break;
+      }
+      case 'gas':
+        aerLRoof(g, it, -hw + 2, 4, -hd + 3, -hd + 15, [236, 236, 232], mpp, 5.7);
+        aerLRoof(g, it, -2, hw - 1, 5, hd - 0.5, [112, 110, 106], mpp, 4.5);
+        break;
+      case 'school':
+        aerLRoof(g, it, -32, 40, 18, 34, [104, 100, 96], mpp, 8);
+        aerLRoof(g, it, 26, 40, -6, 18, [104, 100, 96], mpp, 4.4);
+        break;
+      case 'farm': {
+        aerLRoof(g, it, -hw + 6, -hw + 18, -hd + 10, -hd + 19, [120, 104, 92], mpp, 7, 'x');                     // farmhouse
+        aerLRoof(g, it, 8 - 9, 8 + 9, 6 - 12, 6 + 12, [152, 54, 44], mpp, 10, 'z');                               // barn
+        for (const sz of [-2, 6]){ const q = [it.x + (hw - 8)*Math.cos(it.yaw || 0) + sz*Math.sin(it.yaw || 0), it.z - (hw - 8)*Math.sin(it.yaw || 0) + sz*Math.cos(it.yaw || 0)];
+          g.fillStyle = 'rgba(16,18,24,.3)'; g.beginPath(); g.arc(q[0] + 5, q[1] + 6, 3.2, 0, 6.2832); g.fill();
+          g.fillStyle = 'rgb(196,200,204)'; g.beginPath(); g.arc(q[0], q[1], 3.2, 0, 6.2832); g.fill(); }
+        break;
+      }
+      case 'church': aerLRoof(g, it, -6, 6, -hd + 5, hd - 0.5, [84, 84, 92], mpp, 10, 'z'); break;
+      case 'shop': aerLRoof(g, it, -hw, hw, -hd, hd, [74, 73, 70], mpp, 7); break;
+      case 'bikeshop': case 'diner': aerLRoof(g, it, -hw + 0.4, hw - 0.4, -hd + 0.4, hd - 0.4, [92, 94, 98], mpp, 5); break;
+      default:
+        if (hw*hd > 20) aerLRoof(g, it, -hw, hw, -hd, hd, AER_ROOFS[((it.seed >>> 0) || 0) % AER_ROOFS.length], mpp, 6);
+    }
+    if (++c % 200 === 0) yield;
+  }
+}
+function* aerCreeks(g, x0, z0, x1, z1, mpp){
+  if (typeof FR === 'undefined' || !FR.creeks) return;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const k of FR.creeks){
+    const P = k.pts; if (!P || P.length < 2) continue;
+    g.beginPath(); P.forEach((p, i)=>{ const x = p[0] !== undefined ? p[0] : p.x, z = p[1] !== undefined ? p[1] : p.z; if (i) g.lineTo(x, z); else g.moveTo(x, z); });
+    g.strokeStyle = 'rgba(40,60,50,.5)'; g.lineWidth = Math.max(mpp, (k.w0 || 1)*2.6 + 0.8); g.stroke();
+    g.strokeStyle = 'rgb(86,132,150)'; g.lineWidth = Math.max(mpp*0.8, (k.w0 || 1)*2.2); g.stroke();
+  }
+  yield;
+}
+
+/* ---------------------------------------------------------------- an area (the world image or one tile) */
+function* aerPaintArea(cv, x0, z0, mpp, N, lvl){
+  const g = cv.getContext('2d');
+  const img = g.createImageData(N, N);
+  const gs = mpp >= 8 ? 32 : mpp >= 2 ? 8 : 4;
+  yield* aerTerrain(img.data, x0, z0, mpp, N, gs);
+  g.putImageData(img, 0, 0);
+  g.setTransform(1/mpp, 0, 0, 1/mpp, -x0/mpp, -z0/mpp);
+  const x1 = x0 + N*mpp, z1 = z0 + N*mpp;
+  yield* aerRiver(g, x0, z0, x1, z1, mpp);
+  yield* aerCreeks(g, x0, z0, x1, z1, mpp);
+  yield* aerForest(g, x0, z0, x1, z1, mpp);
+  yield* aerSuburbs(g, x0, z0, x1, z1, mpp, 0 === lvl ? 0 : lvl);
+  yield* aerRoads(g, x0, z0, x1, z1, mpp, lvl);
+  yield* aerCity(g, x0, z0, x1, z1, mpp, lvl);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  // a fine grain over the painted shapes too, so flat fills read like a photo (world-anchored: tiles join)
+  const im = g.getImageData(0, 0, N, N), D = im.data, gr = aerGrain(), wpx = Math.round(x0/mpp), wpz = Math.round(z0/mpp);
+  for (let py = 0; py < N; py++){
+    const grow = ((wpz + py) & 255) << 8;
+    for (let px = 0; px < N; px++){
+      const q = (py*N + px)*4, m = 1 + gr[grow | ((wpx + px + 97) & 255)]*0.09;
+      D[q] *= m; D[q + 1] *= m; D[q + 2] *= m;
+    }
+    if ((py & 63) === 63) yield;
+  }
+  g.putImageData(im, 0, 0);
+}
+function* aerRiver(g, x0, z0, x1, z1, mpp){
+  if (typeof RG_RIVER === 'undefined' || !RG_RIVER.pl) return;
+  const P = RG_RIVER.pl.pts, w = Math.max(14, (typeof rgRiverW === 'function' ? rgRiverW(RG_RIVER.pl.len*0.6) : 12)*2);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const path = ()=>{ g.beginPath(); for (let i = 0; i < P.length; i++){ if (i) g.lineTo(P[i][0], P[i][1]); else g.moveTo(P[i][0], P[i][1]); } };
+  path(); g.strokeStyle = 'rgb(176,164,128)'; g.lineWidth = w + 7; g.stroke();          // sandy banks
+  path(); g.strokeStyle = 'rgb(84,130,140)'; g.lineWidth = w; g.stroke();
+  path(); g.strokeStyle = 'rgb(52,94,118)'; g.lineWidth = w*0.55; g.stroke();
+  yield;
+}
+function* aerWorldGen(){
+  aerIndex();
+  const c = document.createElement('canvas'); c.width = c.height = 2048;
+  yield* aerPaintArea(c, -8192, -8192, 8, 2048, 0);
+  AER.world = c; RGMAP.base = c; RGMAP.ready = true; AER.rev++;
+}
+
+/* ---------------------------------------------------------------- tiles: on demand, nearest first, LRU */
+const aerKey = (l, i, j)=> l + ':' + i + ':' + j;
+function aerTileGet(l, i, j){ const t = AER.tiles.get(aerKey(l, i, j)); if (!t) return null; t.used = performance.now(); return t.c; }
+function aerWant(l, i, j, pri){
+  const k = aerKey(l, i, j);
+  if (AER.tiles.has(k) || k === AER.genKey) return;
+  const w = AER.want.get(k);
+  if (!w || w.pri > pri) AER.want.set(k, { l, i, j, pri, t:performance.now() }); else w.t = performance.now();
+}
+function aerEvict(){
+  if (AER.tiles.size <= AER.max) return;
+  const a = [...AER.tiles.entries()].sort((p, q)=> p[1].used - q[1].used);
+  for (let n = 0; n < a.length && AER.tiles.size > AER.max; n++){ if (performance.now() - a[n][1].used < 1500) break; AER.tiles.delete(a[n][0]); }
+}
+function aerPump(budget){
+  const t0 = performance.now();
+  while (performance.now() - t0 < budget){
+    if (!AER.gen){
+      let best = null; const now = performance.now();
+      for (const [k, w] of AER.want){ if (now - w.t > 8000){ AER.want.delete(k); continue; } if (!best || w.pri < best.pri) best = w; }
+      if (!best) return;
+      const k = aerKey(best.l, best.i, best.j); AER.want.delete(k);
+      const L = AER_LV[best.l], c = document.createElement('canvas'); c.width = c.height = AER_TS;
+      AER.genKey = k; AER.genC = c;
+      AER.gen = aerPaintArea(c, best.i*L.span, best.j*L.span, L.mpp, AER_TS, best.l);
+    }
+    let s;
+    try { s = AER.gen.next(); } catch(e){ console.warn('[aerial15] tile', AER.genKey, e); s = { done:true }; AER.genC = null; }
+    if (s.done){
+      if (AER.genC) AER.tiles.set(AER.genKey, { c:AER.genC, used:performance.now() });
+      AER.gen = null; AER.genKey = ''; AER.genC = null; AER.rev++; aerEvict();
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- drawing the maps */
+function aerMapDraw(g, W, H, cx, cz, k, opt){
+  opt = opt || {};
+  g.save();
+  g.fillStyle = '#24313a'; g.fillRect(0, 0, W, H);
+  const ox = W/2, oy = H/2;
+  const X = x=> ox + (x - cx)*k, Y = z=> oy + (z - cz)*k;
+  g.imageSmoothingEnabled = true;
+  if (RGMAP.base) g.drawImage(RGMAP.base, X(-8192), Y(-8192), 16384*k, 16384*k);
+  if (AER.on){
+    const dk = opt.mini ? k : k*Math.min(2, window.devicePixelRatio || 1);       // device pixels per metre
+    const lvl = dk >= 1.3 ? 2 : dk >= 0.17 ? 1 : 0;
+    const wx0 = cx - ox/k, wx1 = cx + (W - ox)/k, wz0 = cz - oy/k, wz1 = cz + (H - oy)/k;
+    for (let l = 1; l <= lvl; l++){
+      const S = AER_LV[l].span;
+      for (let j = Math.floor(wz0/S); j <= Math.floor(wz1/S); j++) for (let i = Math.floor(wx0/S); i <= Math.floor(wx1/S); i++){
+        if (Math.abs(i*S) > 8800 || Math.abs(j*S) > 8800) continue;
+        const c = aerTileGet(l, i, j);
+        if (c){ g.drawImage(c, X(i*S) - 0.3, Y(j*S) - 0.3, S*k + 0.6, S*k + 0.6); }
+        else if (l === lvl){ const dx = (i + 0.5)*S - cx, dz = (j + 0.5)*S - cz; aerWant(l, i, j, dx*dx + dz*dz); }
+      }
+    }
+  }
+  g.restore();
+  return { X, Y };
+}
+/* a rider seen from above: two wheels, frame, bars, the rider's back + helmet, in their colour */
+function aerBikeIcon(g, x, y, yaw, size, fill){
+  g.save(); g.translate(x, y); g.rotate(-yaw); g.scale(size, size);
+  g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(0.9, 1.1, 2.9, 7.6, 0, 0, 6.2832); g.fill();
+  g.fillStyle = '#121418';
+  g.beginPath(); g.ellipse(0, 4.6, 0.95, 2.5, 0, 0, 6.2832); g.fill();             // front wheel (the bike faces +y)
+  g.beginPath(); g.ellipse(0, -4.6, 1.05, 2.5, 0, 0, 6.2832); g.fill();            // rear wheel
+  g.strokeStyle = fill; g.lineWidth = 1.25; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(0, -4.2); g.lineTo(0, 3.9); g.stroke();                  // frame
+  g.strokeStyle = '#f2f2f0'; g.lineWidth = 0.75;
+  g.beginPath(); g.moveTo(-2.9, 3.0); g.lineTo(2.9, 3.0); g.stroke();              // bars
+  g.fillStyle = fill; g.strokeStyle = 'rgba(12,14,18,.9)'; g.lineWidth = 0.55;
+  g.beginPath(); g.ellipse(0, 0.2, 2.5, 1.7, 0, 0, 6.2832); g.fill(); g.stroke();   // shoulders / back
+  g.beginPath(); g.ellipse(-1.9, 1.8, 0.55, 1.4, -0.5, 0, 6.2832); g.fill(); g.stroke();   // arms to the bars
+  g.beginPath(); g.ellipse(1.9, 1.8, 0.55, 1.4, 0.5, 0, 6.2832); g.fill(); g.stroke();
+  g.fillStyle = '#f5f2ea'; g.beginPath(); g.arc(0, 1.15, 1.15, 0, 6.2832); g.fill(); g.stroke();   // helmet
+  g.restore();
+}
+
+/* ---------------------------------------------------------------- wiring */
+function aerStart(){
+  AER.on = true;
+  AER.max = (typeof isTouch !== 'undefined' && isTouch) ? 40 : 96;
+  rgMapPaint = function(){ return aerWorldGen(); };                 // the base image, painted by the region UI's own driver
+  rgMapDraw = aerMapDraw;
+  rgMapArrow = aerBikeIcon;
+  if (!AER.world){ RGMAP.ready = false; RGMAP.gen = null; }       // (re)paint the base in the new style; the old image stays up meanwhile
+  const baseRender = rgMapRender;
+  rgMapRender = function(){
+    const r = baseRender.apply(this, arguments);
+    try { aerMapExtras(); } catch(e){}
+    return r;
+  };
+}
+/* the full map: friends' names, a scale bar */
+function aerMapExtras(){
+  const d = RGMAP.dom; if (!d || !RGMAP.open) return;
+  const cv = d.querySelector('#rgMapCv'), g = cv.getContext('2d'), V = RGMAP.view, W = innerWidth, H = innerHeight;
+  const X = x=> W/2 + (x - V.cx)*V.scale, Y = z=> H/2 + (z - V.cz)*V.scale;
+  g.font = '700 12px Barlow Condensed, Arial Narrow, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+  if (typeof REMOTES !== 'undefined') for (const id in REMOTES){
+    const r = REMOTES[id], x = X(r.cur.x), y = Y(r.cur.z) - 16;
+    const t = String(r.name || 'Rider'); const w = g.measureText(t).width + 10;
+    g.fillStyle = 'rgba(10,12,16,.72)'; g.fillRect(x - w/2, y - 15, w, 15);
+    g.fillStyle = '#f4ecd8'; g.fillText(t, x, y - 2);
+  }
+  // scale bar (bottom left, above the footer)
+  const want = 110/V.scale, steps = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+  let m = steps[0]; for (const s of steps) if (s <= want) m = s;
+  const px = m*V.scale, x0 = 22, y0 = H - 64;
+  g.fillStyle = 'rgba(10,12,16,.62)'; g.fillRect(x0 - 8, y0 - 22, px + 16, 30);
+  g.fillStyle = '#f4ecd8'; g.fillRect(x0, y0, px, 3); g.fillRect(x0, y0 - 5, 2, 8); g.fillRect(x0 + px - 2, y0 - 5, 2, 8);
+  g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillText(m >= 1000 ? (m/1000) + ' km' : m + ' m', x0, y0 - 4);
+}
+addFrameHook(function aerTick(){
+  if (!AER.on){
+    if (typeof RGX !== 'undefined' && RGX.on && RGX.started && typeof RGMAP !== 'undefined') aerStart();
+    else return;
+  }
+  const open = RGMAP.open;
+  // the base image: the region UI drives it in small slices; with the full map open, give it more time
+  if (open && RGMAP.gen){ const t0 = performance.now(); while (performance.now() - t0 < 8){ const s = RGMAP.gen.next(); if (s.done){ RGMAP.gen = null; break; } } }
+  if (AER.want.size || AER.gen) aerPump(open ? 9 : (GAME === 'play' ? 1.6 : 4));
+  if (open && AER.rev !== AER.openRev && performance.now() - AER.lastOpenRender > 150){ AER.openRev = AER.rev; AER.lastOpenRender = performance.now(); rgMapRender(); }
+});
+/* =========================================================================
    CHEAT CODES (Release 13.1)
      0000   -> the wallet goes to $9,999,999,999
    Two ways in: type the code anywhere (menu or riding, not while typing in a text box), or open the Shop and press
