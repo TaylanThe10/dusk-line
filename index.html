@@ -60332,16 +60332,16 @@ const TRICKSETS = {
       desc:'Hold with W: the motor goes to full power and you tuck in (drains the battery fast).',
       a:{ ro:[0, 0.02, 0.08], le:0.60, nd:-0.2 } },
     { slot:'sup', id:'eb_feetup', name:'Feet Up', short:'FEET UP', kind:'ground', pts:180, pps:120, cap:8, hold:1.0, rate:4.5,
-      g:{ v0:3.5, noup:1 },
-      desc:'Coasting at speed: both feet off the pedals and stuck out in front.',
+      g:{ v0:3.5, noup:1, thumb:1 },
+      desc:'Coasting at speed: both feet off the pedals and stuck out in front. In a wheelie the thumb throttle (W) still works.',
       a:{ f:tk13Sym('R', 0.30, 0.48, 0.55), le:-0.35, ro:[0, 0.02, -0.04] } },
     { slot:'xup', id:'eb_pedalstand', name:'Pedal Stand', short:'STAND', kind:'ground', pts:220, pps:130, cap:8, hold:1.0, rate:4.5,
       g:{ v0:2.5 },
       desc:'Stand up on one pedal, the other leg stretched out behind you.',
       a:{ f:[null, ['R', -0.12, 0.62, -0.85]], ro:[0, 0.26, 0.02], le:0.35 } },
     { slot:'noh', id:'eb_footout', name:'Foot Out', short:'FOOT', kind:'ground', pts:160, pps:130, cap:6, hold:0.8, rate:5.0,
-      g:{ v0:4 },
-      desc:'Flat-track style: left foot out front skimming the road.',
+      g:{ v0:4, ph:'flat' },
+      desc:'Flat-track style: left foot out front skimming the road. In a powerslide (X) the foot holds it: you slide on much longer.',
       a:{ f:[['R', 0.48, 0.10, 0.42], null], le:0.25, rr:-0.12 } },
     { slot:'can', id:'eb_laydown', name:'Lay-Down', short:'LAY', kind:'hold', pts:520, rate:5.5, hold:0.30, locked:true, price:400,
       desc:'In the air, lay the heavy bike over on its side under you.',
@@ -60349,7 +60349,28 @@ const TRICKSETS = {
     { slot:'tab', id:'eb_360', name:'Heavy 360', short:'360', kind:'spin', pts:900, rate:5.5, locked:true, price:700,
       multi:['Heavy 360', 'Heavy 720'],
       desc:'A full flat spin on a 25 kg e-bike. It needs a big jump.',
-      a:{ yw:TK13_TAU, le:0.35, lk:0.60 } }
+      a:{ yw:TK13_TAU, le:0.35, lk:0.60 } },
+    /* Release 15.3: the five keys that did nothing on an e-bike (N Y ; , .) -- and the pieces for the e-bike combos
+       (combos15.js: two of these held at once are one named trick) */
+    { slot:'not', id:'eb_rodeo', name:'Rodeo', short:'RODEO', kind:'ground', pts:200, pps:120, cap:8, hold:0.8, rate:5.0,
+      g:{ v0:2.5 }, air:{ hold:0.25, pts:380 },
+      desc:'One hand off and swinging round over your head like a lasso. Rolling or in the air.',
+      a:{ h:[['H', 0.24, 0.98, 0.06], null], osc:[['wave', 0.16, 1.7]], le:-0.25, sb:-0.10, tw:0.12, lk:0.20 } },
+    { slot:'decade', id:'eb_skid180', name:'Skid 180', short:'SKID', kind:'ground', pts:480, hold:0, rate:6.0,
+      g:{ v0:4.5, once:1, noman:1, ph:'skid180' },
+      desc:'At speed, tap it: the back wheel locks and the tail swings round. You slide to a stop facing the other way. A / D picks the side.',
+      a:{ ro:[0, 0.12, 0.06], le:0.35, nd:0.10 } },
+    { slot:'oneh', id:'eb_lazycruise', name:'Lazy Cruise', short:'LAZY', kind:'ground', pts:260, pps:150, cap:10, hold:1.2, rate:3.5, locked:true, price:450,
+      g:{ v0:3, batt:0.05, ph:'cruise' },
+      desc:'Lean back, feet up on the bars, hands behind your head: you steer with your feet and the motor holds your speed (uses battery).',
+      a:{ f:tk13Sym('B', 0.17, 0.03, 0.04), h:tk13Sym('H', 0.14, 0.58, -0.26), le:-0.80, ro:[0, 0.02, -0.06], nd:-0.12 } },
+    { slot:'seat', id:'eb_starfish', name:'Starfish', short:'STAR', kind:'hold', pts:1050, rate:5.0, hold:0.34, locked:true, price:850,
+      desc:'In the air, let go of everything: arms up, legs spread wide like a starfish. Get back on before you land.',
+      a:{ h:tk13Sym('H', 0.58, 0.95, 0.02), f:tk13Sym('R', 0.60, 0.82, -0.04), ro:[0, 0.20, 0.0], le:-0.25, nd:-0.15 } },
+    { slot:'lookb', id:'eb_lookback', name:'Look Back', short:'LOOK', kind:'ground', pts:180, pps:110, cap:8, hold:1.0, rate:4.5,
+      g:{ v0:2.5 }, air:{ hold:0.25, pts:320 },
+      desc:'Twist round, one hand on the saddle behind you, and look back at whoever you just passed. Rolling or in the air.',
+      a:{ h:[null, ['S', -0.06, 0.06, -0.20, 1]], tw:-0.60, lk:-1.20, le:-0.10, sb:0.05 } }
   ]
 };
 
@@ -60514,19 +60535,21 @@ resetTricks = function(){
     const s = TS[TK13_SLOTS[i]];
     s.p = 0; s.held = 0; s.turns = 0; s.done = false; s.live = false; s.fin = false; s.ga = false; s.gt = 0; s.gd = false;
   }
-  TK13.gLive = false;
+  TK13.gLive = false; TK13.skid = null;
 };
 
 /* ---------------------------------------------------------------- ground tricks (while rolling) */
 const TK13_WHY = { slow:'go faster first', fast:'slow right down first (S)', up:'hold W as well', noup:'let go of W and coast',
-                   back:'roll backwards first: land a 180', batt:'needs battery' };
+                   back:'roll backwards first: land a 180', batt:'needs battery', noman:'both wheels down first' };
 function tk13Cond(t, spd, fwd, In, active){
   const g = t.g, vmin = (active && g.vk !== undefined) ? g.vk : g.v0;     // vk: the speed it keeps going down to once started
   if (g.back){ if (fwd > -(vmin || 1)) return 'back'; }
   else if (vmin && spd < vmin) return 'slow';
   if (g.v1 && spd > g.v1) return 'fast';
   if (g.up && !In.up) return 'up';
-  if (g.noup && In.up) return 'noup';
+  // thumb: an e-bike's throttle is on the bars, so W still works with your feet off -- in a wheelie (Feet-Up Wheelie)
+  if (g.noup && In.up && !(g.thumb && bike.manualT > 0 && typeof PHYS !== 'undefined' && PHYS.mode === 'wheelie')) return 'noup';
+  if (g.noman && bike.manualT > 0) return 'noman';
   if (g.batt && !(DRIVE.electric && DRIVE.battery > g.batt) && !DRIVE.dirt) return 'batt';
   return '';
 }
@@ -60564,6 +60587,57 @@ function tk13GPhys(t, s, dt, In, spd, fwd){
     bike.charge = 0;
     bike.vel.y += 3.0;
     bike.pos.addScaledVector(bike.vel, dt);
+  } else if (ph === 'cruise'){                                 // lazy cruise: the motor holds the speed you set it at
+    if (!(s.cv > 0)) s.cv = Math.max(spd, t.g.v0 || 0);
+    if (spd < s.cv && (DRIVE.battery > 0.02 || DRIVE.dirt)){ tk13Push(Math.min(2.4, (s.cv - spd)*3.0)*dt); tk13Drain(0.035*dt); }
+  } else if (ph === 'flat'){                                   // foot out in a powerslide: the foot holds the slide, far less scrub
+    if (bike.driftAmt > 0.35 && spd > 0.5){
+      s.cv = Math.max(spd, (s.cv > 0 ? s.cv : spd) - 1.8*dt);  // it may lose 1.8 m/s a second at most (a bare slide: ~6)
+      if (spd < s.cv){ const k = s.cv/spd; bike.vel.x *= k; bike.vel.z *= k; }
+    } else s.cv = 0;
+  } else if (ph === 'skid180' && !s.gd){                       // skid 180: starts here, runs on its own (tk13Skid)
+    s.gd = true;
+    tk13SkidStart(t, In, spd);
+  }
+}
+/* the Skid 180 (e-bike, Release 15.3): once started it runs to the end by itself -- the back wheel locks, the tail swings a
+   half turn round while the bike slides on along its old line and scrubs off speed, and you stop facing the way you came.
+   It scores when it gets all the way round; hopping or crashing out of it scores nothing. */
+function tk13SkidStart(t, In, spd){
+  if (TK13.skid) return;
+  const st = (In && In.steer) || 0;
+  const dir = st > 0.2 ? -1 : (st < -0.2 ? 1 : (TK13.skidDir = -(TK13.skidDir || -1)));     // A / D picks the side, else it alternates
+  const rk = Math.max(0.7, Math.min(1.2, VEH.rot || 1));                                     // heavy bikes come round slower
+  const dur = Math.max(0.45, Math.min(1.0, spd/7.5))/rk;
+  const inv = 1/Math.max(spd, 1e-3);
+  TK13.skid = { t, slot:t.slot, k:0, dur, dec:0.85*spd/dur, yaw0:bike.yaw, dir, dx:bike.vel.x*inv, dz:bike.vel.z*inv, v0:spd, v:spd };
+}
+function tk13SkidEnd(K){
+  TK13.skid = null;
+  const s = TS[K.slot];
+  if (s){ s.ga = false; s.gt = 0; }                           // holding the key on afterwards does not keep a line alive
+}
+function tk13Skid(dt){
+  const K = TK13.skid;
+  if (!K) return;
+  if (bike.state !== 'ride' || bike.manualT > 0){ tk13SkidEnd(K); return; }
+  K.k = Math.min(1, K.k + dt/K.dur);
+  const e = 1 - (1 - K.k)*(1 - K.k);                          // quick to start, settles at the end
+  bike.yaw = K.yaw0 + K.dir*Math.PI*e;
+  // the chase camera never swings past a quarter turn by itself (so a fakie roll does not whip it round): carry it most of the
+  // way round with the bike, so you come out of it looking the way you will ride off
+  if (typeof camYaw !== 'undefined') camYaw += K.dir*Math.PI*0.8*(e - (K.e || 0));
+  K.e = e;
+  K.v = Math.max(0, K.v - K.dec*dt);
+  bike.vel.x = K.dx*K.v; bike.vel.z = K.dz*K.v;               // it slides on along the line it had
+  bike.roll = K.dir*0.16*Math.sin(K.k*Math.PI);
+  if (typeof physSmoke === 'function') physSmoke(dt, 0.9, Math.max(K.v, 2));
+  const s = TS[K.slot];
+  if (s) s.p = Math.max(s.p, 1 - K.k*K.k*K.k);
+  TK13.gLive = true;                                          // the line stays alive through it
+  if (K.k >= 1){
+    tk13SkidEnd(K);
+    addTrick(K.t.name, Math.round(K.t.pts*(1 + 0.06*Math.max(0, K.v0 - (K.t.g.v0 || 0)))));
   }
 }
 function tk13GroundEnd(s, t){
@@ -60595,7 +60669,7 @@ function tk13Ground(dt, In){
       if (why){ ok = false; if (edge) tk13Hint(slot, t, why); }
     }
     if (ok){
-      if (!s.ga){ s.ga = true; s.gt = 0; s.gd = false; }
+      if (!s.ga){ s.ga = true; s.gt = 0; s.gd = false; s.cv = 0; }
       s.gt += dt;
       s.p = Math.min(1, s.p + t.rate*dt);
       tk13GPhys(t, s, dt, In, spd, fwd);
@@ -60620,6 +60694,7 @@ function tk13GroundBankAll(){
   updateRide = function(dt, In){
     ride(dt, In);
     if (bike.state === 'ride') tk13Ground(dt, In);
+    if (TK13.skid) tk13Skid(dt);
   };
   const air = goAir;
   goAir = function(){
@@ -60683,10 +60758,13 @@ function tk13Limb(tp, hand, k, spec, w){
   else if (w > tp.fw[k]) tp.fw[k] = w;
   return e;
 }
-function tk13Pose(cat, tv, tp, now){
+function tk13Pose(cat, tv, tp, now, man){
   tk13Clear(tp);
   const set = TK13_BYSLOT[cat];
   if (!set || !tv) return tp;
+  // up on the back wheel the bike already tips the rider back: a trick's own lean-back is mostly left out there
+  // (a No-Hand Wheelie sits up, it does not lie down). man = the wheelie / stoppie pitch (bike.manual, a ghost's st.manual)
+  const wk = 1 - 0.65*Math.max(0, Math.min(1, -(man || 0)/0.45));
   for (let i = 0; i < TK13_SLOTS.length; i++){
     const slot = TK13_SLOTS[i], v = tv[TK13_LET[slot]];
     if (!v || (v < 0.002 && v > -0.002)) continue;
@@ -60715,7 +60793,7 @@ function tk13Pose(cat, tv, tp, now){
     if (a.rr) tp.rroll += a.rr*r;
     if (a.rp) tp.rpitch += a.rp*r;
     if (a.ro){ tp.root[0] += a.ro[0]*w; tp.root[1] += a.ro[1]*w; tp.root[2] += a.ro[2]*w; }
-    if (a.le) tp.lean += a.le*w;
+    if (a.le) tp.lean += a.le*w*(a.le < 0 ? wk : 1);
     if (a.tw) tp.twist += a.tw*w;
     if (a.sb) tp.side += a.sb*w;
     if (a.lk) tp.look += a.lk*w;
@@ -60761,7 +60839,7 @@ function trick13Rig(dt){
   trickSync();
   const tv = TK13.tvL;
   for (let i = 0; i < TK13_SLOTS.length; i++){ const sl = TK13_SLOTS[i]; tv[TK13_LET[sl]] = TS[sl].p; }
-  tk13Pose(TK13.cat, tv, TK13.tpL, performance.now()/1000);
+  tk13Pose(TK13.cat, tv, TK13.tpL, performance.now()/1000, bike.state === 'ride' ? bike.manual : 0);
   tk13Rig(TK13.tpL, whipG, barG, bikeG, riderG, barG.position.z, RS, bike.crouch, typeof dirtFront !== 'undefined' ? dirtFront : null);
 }
 function trick13RiderG(){ tk13RiderG(TK13.tpL, riderG, barG.position.z, RS, bike.crouch); }
@@ -60770,7 +60848,7 @@ function trick13LocalTP(){ return TK13.tpL; }
 function trick13GhostRig(g, st, dt){
   const tp = g.tp || (g.tp = tk13NewTP());
   const cat = (g.v && TRICKSETS[g.v.cat]) ? g.v.cat : (g.dirt ? 'edirt' : 'bmx');
-  tk13Pose(cat, st.t || TK13_T0, tp, performance.now()/1000);
+  tk13Pose(cat, st.t || TK13_T0, tp, performance.now()/1000, st.state === 'ride' ? st.manual : 0);
   tk13Rig(tp, g.whip, g.bar, g.bikeG, g.riderG, g.bar.position.z, g.RS, st.crouch || 0, null);
   if (g.acc && typeof custAccTick === 'function') custAccTick(g.acc, st.speed, dt);
 }
@@ -64360,6 +64438,190 @@ function _b15gProxyGc(){
     const put = boot15GpuCull();
     try { return base.apply(this, arguments); } finally { if (put) boot15GpuUncull(); }
   };
+})();
+/* =========================================================================
+   COMBOS15 -- named trick combos (Release 15.3). Hold two moves AT ONCE and they turn into one named trick, scored on top
+   of the two: a wheelie with Hands-Free is a No-Hand Wheelie, a powerslide with Foot Out is a Flat-Track Slide, a Heavy
+   360 with your arms folded is a No-Hand 360 ... The first set is the e-bike's ("the trick combos on an e-bike").
+
+     TRICKCOMBOS[cat] -> [{ id, name, need:[token, token], pts, pps?, cap?, min, air?, desc }]
+       token  'wheelie' | 'stoppie' | 'slide' (powerslide / drift) | a trick SLOT ('whip' ... 'lookb': that ride's trick on
+              that key, tricks13_data.js). A locked trick has to be bought first.
+       min    seconds both have to be held together before it counts -- the callout fires then
+       pts    + pps for every second held past min (up to cap s), banked through addTrick when one of the two ends, so the
+              combo line, the multiplier, money and multiplayer all see it like any other trick
+   Hooks (by assignment, after the originals exist): stepPhysics (one look per frame after the physics), physPillText (the
+   live combo's name in the state pill), trick13MenuHTML (a Combos list under the ride's own tricks).
+   A bail drops a live combo (the line is lost anyway). Nothing here touches the physics.
+   ========================================================================= */
+const TRICKCOMBOS = {
+  ebike: [
+    { id:'ebc_nohand', name:'No-Hand Wheelie', need:['wheelie', 'whip'], pts:650, pps:260, cap:8, min:0.8,
+      desc:'Front wheel up, arms folded. The classic.' },
+    { id:'ebc_rocket', name:'Rocket Wheelie', need:['wheelie', 'bar'], pts:750, pps:320, cap:6, min:0.5,
+      desc:'A wheelie on full Turbo. The front keeps climbing: let go before you loop it.' },
+    { id:'ebc_scissor', name:'Scissor Wheelie', need:['wheelie', 'xup'], pts:620, pps:250, cap:8, min:0.8,
+      desc:'Up on one pedal, the other leg stretched out behind, front wheel in the air.' },
+    { id:'ebc_feetup', name:'Feet-Up Wheelie', need:['wheelie', 'sup'], pts:700, pps:280, cap:8, min:0.8,
+      desc:'Both feet off and out in front. The thumb throttle (W) still holds the front up.' },
+    { id:'ebc_rodeo', name:'Rodeo Wheelie', need:['wheelie', 'not'], pts:680, pps:270, cap:8, min:0.8,
+      desc:'One hand on the bars, the other lassoing over your head.' },
+    { id:'ebc_couch', name:'Couch Wheelie', need:['wheelie', 'oneh'], pts:950, pps:340, cap:8, min:0.8,
+      desc:'Feet on the bars, hands behind your head, front wheel up.' },
+    { id:'ebc_lookback', name:'Look-Back Wheelie', need:['wheelie', 'lookb'], pts:600, pps:240, cap:8, min:0.8,
+      desc:'Wheelie past them and look back.' },
+    { id:'ebc_rodeostop', name:'Rodeo Stoppie', need:['stoppie', 'not'], pts:700, pps:300, cap:6, min:0.7,
+      desc:'Back wheel up on the front brake, the free hand swinging over your head.' },
+    { id:'ebc_flattrack', name:'Flat-Track Slide', need:['slide', 'noh'], pts:620, pps:260, cap:8, min:0.6,
+      desc:'Powerslide with your foot out, dirt-track style: the foot holds the slide.' },
+    { id:'ebc_ghost', name:'Ghost Ride', need:['whip', 'sup'], pts:520, pps:220, cap:8, min:1.0,
+      desc:'No hands, no feet: only the saddle touches you.' },
+    { id:'ebc_nohand360', name:'No-Hand 360', need:['tab', 'whip'], pts:950, min:0.3, air:1,
+      desc:'A Heavy 360 with your arms folded.' },
+    { id:'ebc_rodeo360', name:'Rodeo 360', need:['tab', 'not'], pts:900, min:0.3, air:1,
+      desc:'A Heavy 360 with one hand lassoing.' },
+    { id:'ebc_star360', name:'Starfish 360', need:['tab', 'seat'], pts:1500, min:0.3, air:1,
+      desc:'Spin it AND let go of everything. Get back on before you land.' }
+  ]
+};
+const CB15 = { st:{}, cat:'', live:null, tipT:0, tipDone:false };
+(function(){ try { CB15.tipDone = localStorage.getItem('dusk_line_cb15_tip') === '1'; } catch(e){} })();
+
+/* ---------------------------------------------------------------- is this piece of a combo going right now? */
+function cb15On(tok, In){
+  const st = bike.state;
+  if (tok === 'wheelie') return st === 'ride' && bike.manualT > 0 && PHYS.mode === 'wheelie';
+  if (tok === 'stoppie') return st === 'ride' && bike.manualT > 0 && PHYS.mode === 'stoppie';
+  if (tok === 'slide')   return st === 'ride' && bike.driftAmt > 0.35 && PHYS.driftT > 0;
+  const t = TK13.bySlot ? TK13.bySlot[tok] : null, s = TS[tok];
+  if (!t || !s || !trickAllowed(t.id)) return false;
+  if (st === 'ride') return t.kind === 'ground' && !!s.ga;
+  if (st === 'air'){
+    if (t.spin) return !!s.live;
+    if (t.kind === 'ground' && !t.air) return false;
+    return !!(In && In[tok]) && s.p > 0.5;
+  }
+  return false;
+}
+function cb15Reset(){ for (const k in CB15.st){ CB15.st[k].t = 0; CB15.st[k].q = false; } CB15.live = null; }
+function cb15Pts(c, t){ return Math.round(c.pts + (c.pps || 0)*Math.max(0, Math.min(t, c.min + (c.cap || 0)) - c.min)); }
+function cb15Call(c){
+  try {
+    if (typeof feelToast === 'function') feelToast('callout', '<b>' + tk13Esc(c.name) + '</b>');
+    else toast(c.name + '!', true);
+  } catch(e){}
+  try { if (typeof feelSfx === 'function') feelSfx('trick', Math.min(12, combo.list.length + 3)); else sfxTrick(combo.list.length + 3); } catch(e){}
+  try { if (typeof addShake === 'function') addShake(0.06); } catch(e){}
+}
+/* one look per frame, after the physics */
+function cb15Step(dt, In){
+  if (TK13.cat !== CB15.cat){ CB15.cat = TK13.cat; cb15Reset(); }
+  const L = TRICKCOMBOS[CB15.cat];
+  if (!L) return;
+  const st = bike.state;
+  if ((typeof WALK !== 'undefined' && WALK.on) || (st !== 'ride' && st !== 'air')){
+    if (st !== 'bail'){ for (let i = 0; i < L.length; i++){ const S = CB15.st[L[i].id]; if (S && S.q) addTrick(L[i].name, cb15Pts(L[i], S.t)); } }
+    cb15Reset();
+    return;
+  }
+  CB15.live = null;
+  for (let i = 0; i < L.length; i++){
+    const c = L[i], S = CB15.st[c.id] || (CB15.st[c.id] = { t:0, q:false });
+    let on = true;
+    for (let j = 0; j < c.need.length && on; j++) on = cb15On(c.need[j], In);
+    if (on){
+      S.t += dt;
+      if (!S.q && S.t >= c.min){ S.q = true; cb15Call(c); }
+      if (S.q) CB15.live = c;
+    } else if (S.t > 0){
+      if (S.q) addTrick(c.name, cb15Pts(c, S.t));
+      S.t = 0; S.q = false;
+    }
+  }
+  cb15Tip(dt);
+}
+/* the first time on an e-bike: say what it can do (once per browser) */
+function cb15Tip(dt){
+  if (CB15.tipDone || CB15.cat !== 'ebike' || bike.state !== 'ride' || (typeof GAME !== 'undefined' && GAME !== 'play')) return;
+  CB15.tipT += dt;
+  if (CB15.tipT < 3) return;
+  CB15.tipDone = true;
+  try { localStorage.setItem('dusk_line_cb15_tip', '1'); } catch(e){}
+  const t = TK13.bySlot && TK13.bySlot.whip;
+  if (!t) return;
+  const touch = typeof isTouch !== 'undefined' && isTouch;
+  try {
+    toast(touch ? 'Hold a wheelie and ' + t.short + ' together: No-Hand Wheelie. The e-bike combos are in the trick list.'
+                : 'Hold SHIFT and (' + tk13KeyName('whip') + ') together for a No-Hand Wheelie · the e-bike combos are in the trick list (T)', true);
+  } catch(e){}
+}
+
+/* ---------------------------------------------------------------- the trick menu: a Combos list under the ride's tricks */
+function cb15Part(tok, cat){
+  const set = TK13_BYSLOT[cat] || {};
+  if (tok === 'wheelie') return { key:(typeof physKeyName !== 'undefined' && physKeyName.manual) || 'SHIFT', name:'Wheelie' };
+  if (tok === 'stoppie') return { key:(typeof physKeyName !== 'undefined' && physKeyName.stoppie) || 'Z', name:'Stoppie' };
+  if (tok === 'slide') return { key:(typeof physKeyName !== 'undefined' && physKeyName.drift) || 'X', more:'A/D', name:(typeof physMotor === 'function' && physMotor()) ? 'Powerslide' : 'Drift' };
+  const t = set[tok];
+  return t ? { key:tk13KeyName(tok), name:t.name, lock:!trickAllowed(t.id) } : { key:'?', name:'?', lock:true };
+}
+function cb15MenuHTML(cat){
+  const L = TRICKCOMBOS[cat];
+  if (!L || !L.length) return '';
+  const kb = k => '<kbd' + (k.length > 3 ? ' class="wide"' : '') + '>' + tk13Esc(k) + '</kbd>';
+  let h = '<h3 class="tmSub">Combos</h3><p class="tmNote">Hold two at once and they become one named trick, worth more than the two on their own. ' +
+          'Hold it longer for more. It counts once the name pops up.</p><div class="tmGrid">';
+  L.forEach(c=>{
+    const parts = c.need.map(tok=> cb15Part(tok, cat)), locked = parts.filter(p=> p.lock);
+    const keys = parts.map(p=> kb(p.key) + (p.more ? '<span class="sep">+</span>' + kb(p.more) : '')).join('<span class="sep">+</span>');
+    h += '<div class="tmRow cbRow' + (locked.length ? ' tkLocked' : '') + '" data-id="' + c.id + '">' +
+      '<div class="tmKeys">' + keys + '</div>' +
+      '<div class="tmTxt"><div class="tmNm"><b>' + tk13Esc(c.name) + '</b><em class="chip">' + (c.air ? 'Combo · air' : 'Combo') + '</em></div>' +
+      '<div class="tmDs">' + tk13Esc(parts.map(p=> p.name).join(' + ') + '. ' + c.desc) +
+        (locked.length ? ' <span class="tkLockTxt">Needs ' + tk13Esc(locked.map(p=> p.name).join(' and ')) + ' from the Shop.</span>' : '') + '</div></div>' +
+      '<div class="tmPt">' + c.pts.toLocaleString() + (c.pps ? ' + ' + c.pps + '/s' : '') + '</div></div>';
+  });
+  return h + '</div>';
+}
+
+/* ---------------------------------------------------------------- hooks */
+(function(){
+  // phones: a fifth "Trick buttons" preset, so the N / . / H tricks (the e-bike's Rodeo + Look Back, BMX Nothing + Candybar)
+  // can be thrown from a touch screen too (tricks13_core.js names the options after the ride's own tricks)
+  try {
+    const v = 'not,lookb,tab';
+    if (typeof MOB_PRESETS !== 'undefined' && !MOB_PRESETS[v]) MOB_PRESETS[v] = 'Nothing · Candy · Turn';
+    if (typeof XSET_DEFS !== 'undefined'){
+      const d = XSET_DEFS.find(x=> x.id === 'm_tricks');
+      if (d && d.options && !d.options.some(o=> o.v === v)) d.options.push({ v, label:(typeof MOB_PRESETS !== 'undefined' && MOB_PRESETS[v]) || v });
+    }
+  } catch(e){}
+  const sp = stepPhysics;
+  stepPhysics = function(dt, In){
+    const r = sp.apply(this, arguments);
+    try { cb15Step(dt, In || curIn); } catch(e){ console.warn('combos15', e); }
+    return r;
+  };
+  if (typeof physPillText === 'function'){
+    const pill = physPillText;
+    physPillText = function(){
+      const c = CB15.live;
+      if (c && (bike.state === 'ride' || bike.state === 'air')) return (bike.manualT > 0 && PHYS.warn > 0.3) ? c.name + ' · ease off' : c.name;
+      return pill.apply(this, arguments);
+    };
+  }
+  if (typeof trick13MenuHTML === 'function'){
+    const menu = trick13MenuHTML;
+    trick13MenuHTML = function(){
+      const h = menu.apply(this, arguments);
+      try { return h + cb15MenuHTML(TK13.cat); } catch(e){ return h; }
+    };
+  }
+  injectCSS(
+    '.tmSub{ margin:22px 0 8px; padding-top:14px; border-top:1px solid var(--line-soft); font-family:var(--dl-font-display, inherit); font-size:20px; font-weight:800;\n' +
+    '  font-style:italic; letter-spacing:.03em; text-transform:uppercase; color:var(--gold); }\n' +
+    '.cbRow .tmNm .chip{ color:#7fe3ff; border-color:rgba(127,227,255,.5); }\n',
+    'combos15-css');
 })();
 /* =========================================================================
    fix151 -- Release 15.1 fixes (integrator)
