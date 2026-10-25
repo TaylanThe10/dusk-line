@@ -2941,6 +2941,67 @@ html.touchUI .st13Prompt b{ width:32px; height:32px; }
   <div class="ls" id="loadMsg">Pumping up the tyres</div>
   <div class="ldTip" id="ldTip">Hold SPACE rolling up a ramp. Let go right at the lip.</div>
 </div>
+<script data-p16="watch">/* PHONE16 LOAD WATCH (Release 15.4, stream phone): runs right after the loading screen, before any game code (plain ES5).
+   A start that cannot finish says so instead of an endless loading bar: WebGL failing to start -> at once; any uncaught error
+   while loading + no progress for 30 s -> "could not start" + the reason; no progress at all for 2.5 min -> a small reload link. */
+(function(){
+  var W = window.__p16w = { err: null, t0: Date.now(), last: '', lastT: Date.now(), soft: false, card: false };
+  window.addEventListener('error', function(e){
+    if (W.err) return;
+    var m = e && (e.message || (e.error && e.error.message));
+    W.err = String(m || 'unknown error').slice(0, 180);
+  });
+  function reload(){ try { localStorage.setItem('dusk_line_p16_alive', JSON.stringify({ ph: 'away', t: Date.now(), n: 0 })); } catch(e){} location.reload(); }
+  function card(title, text){
+    if (W.card) return; W.card = true;
+    var o = document.createElement('div');
+    o.id = 'p16Load';
+    o.setAttribute('style', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:100001;display:flex;align-items:center;justify-content:center;padding:24px;' +
+      'background:rgba(8,9,12,.95);color:#f3ede1;text-align:center;font-family:"Arial Narrow",Arial,sans-serif');
+    var b = document.createElement('div');
+    b.setAttribute('style', 'max-width:360px;padding:22px;background:#111113;border:2px solid rgba(243,237,225,.22);box-shadow:6px 6px 0 #000');
+    var h = document.createElement('div');
+    h.setAttribute('style', 'font:900 24px/1.05 "Arial Black",Arial,sans-serif;text-transform:uppercase;margin-bottom:12px;text-shadow:3px 3px 0 #ff5a1f');
+    h.textContent = title;
+    var p = document.createElement('div');
+    p.setAttribute('style', 'font-size:15px;line-height:1.45;opacity:.85;margin-bottom:16px');
+    p.textContent = text;
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.textContent = 'Tap to reload';
+    btn.setAttribute('style', 'min-height:54px;padding:0 28px;border:0;border-radius:0;font:800 21px/1 "Arial Narrow",Arial,sans-serif;letter-spacing:.06em;' +
+      'text-transform:uppercase;color:#111113;background:#ffd23f;box-shadow:4px 4px 0 #000;cursor:pointer');
+    btn.onclick = reload;
+    b.appendChild(h); b.appendChild(p); b.appendChild(btn); o.appendChild(b);
+    document.body.appendChild(o);
+  }
+  function tick(){
+    var l = document.getElementById('loading');
+    if (!l || l.classList.contains('hide')) return;                   // loaded: nothing more to watch
+    var m = document.getElementById('loadMsg'), p = document.getElementById('loadPct');
+    var s = (m ? m.textContent : '') + '|' + (p ? p.textContent : '');
+    if (s !== W.last){ W.last = s; W.lastT = Date.now(); }
+    var idle = Date.now() - W.lastT;
+    if (W.err && /webgl|context|3d engine/i.test(W.err + ' ' + s)){
+      card('3D graphics could not start', 'This browser could not start WebGL right now (' + W.err + '). Close other tabs and apps, then reload.');
+      return;
+    }
+    if (W.err && idle > 30000){
+      card('Dusk Line could not start', 'Something went wrong while loading: ' + W.err + '. Reloading usually fixes it.');
+      return;
+    }
+    if (idle > 150000 && !W.soft && m && m.parentNode){
+      W.soft = true;
+      var a = document.createElement('button');
+      a.type = 'button'; a.textContent = 'Taking long? Tap to reload';
+      a.setAttribute('style', 'margin-top:14px;padding:8px 14px;border:1px solid rgba(243,237,225,.35);background:transparent;color:#f3ede1;font:600 13px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer');
+      a.onclick = reload;
+      m.parentNode.appendChild(a);
+    }
+    setTimeout(tick, 2000);
+  }
+  setTimeout(tick, 2000);
+})();
+</script>
 
 <!-- ======================= HUD ======================= -->
 <div id="hud">
@@ -7382,15 +7443,24 @@ function cellifyWorld(){
    leave a gap -- the per-mesh pass could have dropped one of them at the edge. */
 function cullCells(px, pz){
   const fr = (typeof farRange === 'function') ? farRange() : 0;
+  const m16 = typeof M16 !== 'undefined' && M16.live;
   for (let i=0;i<CULL_CELLS.length;i++){
     const c = CULL_CELLS[i];
     const dx = c.cx - px, dz = c.cz - pz;
     const d = Math.sqrt(dx*dx + dz*dz) - c.r;
-    const near = d < (c.g.visible ? RENDER_DIST_HIDE : RENDER_DIST_SHOW);
+    let near = d < (c.g.visible ? RENDER_DIST_HIDE : RENDER_DIST_SHOW);
+    // Release 15.4 (mem16): a packed cell is unpacked ahead of the show distance and shown only once all of it is ready
+    // (until then its far skyline mesh stands in); far behind, it gives its GPU buffers back (mods/mem16_city.js)
+    if (m16 && c.m16){
+      const r = m16Cell(c, d, near);
+      if (r === 2){ c.g.visible = true; if (c.far) c.far.visible = d < fr; continue; }    // its GPU upload frame (draws nothing)
+      near = r === 1;
+    }
     c.g.visible = near;
     if (c.far) c.far.visible = !near && d < fr;
     if (near && c.big && fr > 0){ const b = c.big; for (let k=0;k<b.length;k++) b[k].visible = true; }
   }
+  if (m16) m16Sched(px, pz);
 }
 function freezeStaticWorld(){
   cellifyWorld();
@@ -13430,6 +13500,7 @@ function buildCity(){
         else if (isSkyscraperCell(i,j)) skyscraperBlock(cx, cz, 1000 + i*97 + j*131 + 7, i, j);
         else cityBlock(cx, cz, 1000 + i*97 + j*131 + 7);
       }
+      if (typeof m16Drain === 'function') m16Drain();
       setLoad(45 + Math.round((n/cells.length)*14), 'Pouring concrete — ' + n.toLocaleString() + '/' + cells.length.toLocaleString() + ' blocks');
       if (n < cells.length) boot15Yield(step);
       else finishCity(resolveCity);
@@ -14840,6 +14911,7 @@ function buildPieceMeshesAsync(){
     const step = ()=>{
       const t0 = performance.now();
       for (const _sl = boot15Slice(); n<PIECES.length && performance.now() - t0 < _sl; n++) buildPieceMesh(PIECES[n]);
+      if (typeof m16Drain === 'function') m16Drain();
       setLoad(59 + Math.round((n/PIECES.length)*13), 'Casting pieces — ' + n.toLocaleString() + '/' + PIECES.length.toLocaleString());
       if (n < PIECES.length) boot15Yield(step); else resolve();
     };
@@ -15211,11 +15283,12 @@ function loadPark(park){
     buildBackdrop(s);
 
     setLoad(85, 'Stacking the city');
-    window.__batch = await batchStatic();
+    window.__batch = await ((typeof M16 !== 'undefined' && M16.on) ? m16BatchStatic() : batchStatic());
 
     setLoad(99, 'Marking the spots');
     buildCullList();
     freezeStaticWorld();
+    if (typeof m16AfterBuild === 'function') await m16AfterBuild();
   });
 }
 /* =========================================================================
@@ -15444,7 +15517,7 @@ function makeTargets(){
   const hw = Math.max(2, W >> 1), hh = Math.max(2, H >> 1);
   const qw = Math.max(2, W >> 2), qh = Math.max(2, H >> 2);
 
-  const hdr = renderer.capabilities.isWebGL2 ? T.HalfFloatType : T.UnsignedByteType;
+  const hdr = (typeof phone16HdrType === 'function') ? phone16HdrType() : (renderer.capabilities.isWebGL2 ? T.HalfFloatType : T.UnsignedByteType);
   rtScene = new T.WebGLRenderTarget(W, H, {
     minFilter:T.LinearFilter, magFilter:T.LinearFilter,
     format:T.RGBAFormat, type:hdr, encoding:T.LinearEncoding, stencilBuffer:false
@@ -41965,6 +42038,10 @@ function loadHumanQuiet(charId){
                "Frame rate" setting sets it), phones start in Low / Medium instead
                of a lowered resolution, and nothing here switches the graphics to
                Fast by itself any more.
+               Release 15.4 (stream phone): the "graphics were interrupted" card is
+               phone16_core.js's now (every device, at once, "Tap to reload"); the
+               touch buttons, minimap and toasts draw without a backdrop blur (iOS
+               re-blurs every one of them over the moving 3D view, every frame).
 
    Entry points used by the rest of the game:
        buildTouch()            -> mobBuildTouch()           (patched into the base game)
@@ -42556,25 +42633,7 @@ function mobIosTip(){
   } catch(e){}
 }
 
-/* a phone can take the GPU away (a call, another app, low memory): three.js normally recovers, but if the picture
-   has not come back after a moment, offer a reload instead of leaving a black screen (progress is saved on the device) */
-function mobContextGuard(){
-  try {
-    const cv = renderer.domElement;
-    cv.addEventListener('webglcontextlost', e=>{
-      e.preventDefault(); MOB.ctxLost = true;
-      setTimeout(()=>{
-        if (!MOB.ctxLost || $('mobCtx')) return;
-        const o = document.createElement('div');
-        o.id = 'mobCtx';
-        o.innerHTML = '<div><b>The graphics were interrupted</b><span>Your phone paused the game\'s graphics. Your progress is saved.</span><button class="btn primary" type="button">Reload the game</button></div>';
-        o.querySelector('button').onclick = ()=> location.reload();
-        document.body.appendChild(o);
-      }, 2500);
-    }, false);
-    cv.addEventListener('webglcontextrestored', ()=>{ MOB.ctxLost = false; const o = $('mobCtx'); if (o) o.remove(); }, false);
-  } catch(e){}
-}
+/* (Release 15.4: a lost GPU context is handled for every device by mods/phone16_core.js -- a "Tap to reload" card at once) */
 
 /* ---------------------------------------------------------------- CSS */
 injectCSS(`
@@ -42598,7 +42657,6 @@ html.touchUI #pause > :last-child, html.touchUI #results > :last-child, html.tou
   color:var(--paper); font-weight:600; letter-spacing:.1em; text-transform:uppercase; text-align:center; line-height:1.05;
   background:radial-gradient(circle at 50% 35%, rgba(255,255,255,.13), rgba(10,13,18,.46) 70%);
   border:1.5px solid rgba(242,237,228,.34); box-shadow:0 4px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
   transition:transform .08s ease-out, background .12s, border-color .12s, box-shadow .12s;
   -webkit-user-select:none; user-select:none; touch-action:none; }
 .mb span{ pointer-events:none; }
@@ -42654,7 +42712,10 @@ html.touchUI #trickTouchBtn{ display:none !important; }
 html.touchUI #hud::after{ height:140px; }
 #mobHint{ position:absolute; left:var(--mob-mid-x); bottom:calc(var(--mob-toast-b) + 54px); transform:translateX(-50%); max-width:min(var(--mob-mid-w),460px); text-align:center;
   padding:9px 16px; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); opacity:0; pointer-events:none;
-  border:1px solid rgba(255,196,107,.5); background:rgba(10,13,18,.74); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:2; }
+  border:1px solid rgba(255,196,107,.5); background:rgba(10,13,18,.86); z-index:2; }
+/* R15.4: nothing over the 3D view blurs what is behind it on a touch device (iOS re-blurs it every frame) */
+html.touchUI #minimap, html.touchUI .toast, html.touchUI #sheet, html.touchUI .tbtn{ -webkit-backdrop-filter:none; backdrop-filter:none; }
+html.touchUI .toast{ background:rgba(10,13,18,.86); }
 #mobHint.go{ animation:mobHintA 3.6s ease both; }
 @keyframes mobHintA{ 0%{ opacity:0; transform:translate(-50%,10px); } 9%{ opacity:1; transform:translate(-50%,0); } 82%{ opacity:1; } 100%{ opacity:0; transform:translate(-50%,-6px); } }
 
@@ -42785,10 +42846,6 @@ html.touchUI #controls .ctrlGrid{ display:none; }
 .touchGuide h4{ font-size:11px; letter-spacing:.26em; text-transform:uppercase; color:var(--hot); margin-bottom:8px; font-weight:600; }   /* restyled in menu.css */
 .tgRow{ display:flex; gap:12px; padding:9px 0; border-bottom:1px solid rgba(242,237,228,.09); font-size:13px; line-height:1.45; font-weight:300; }
 .tgRow b{ flex:0 0 92px; font-weight:600; font-size:11px; letter-spacing:.16em; text-transform:uppercase; opacity:.85; padding-top:2px; }
-#mobCtx{ position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center; background:rgba(6,8,12,.94); text-align:center; padding:24px; }
-#mobCtx div{ display:flex; flex-direction:column; gap:12px; align-items:center; max-width:340px; }
-#mobCtx b{ font-size:15px; letter-spacing:.12em; text-transform:uppercase; font-weight:600; }
-#mobCtx span{ font-size:13px; opacity:.7; line-height:1.5; }
 .mobIosTip{ margin:12px auto 0; max-width:340px; font:600 14px/1.35 var(--dl-cond, inherit); opacity:.9; text-align:center; padding:8px 12px; border:0; background:var(--dl-ink, #111); box-shadow:3px 3px 0 #000; }
 .mobIosTip u{ margin-left:6px; text-decoration:underline; cursor:pointer; color:var(--gold); }
 `, 'mob-css');
@@ -42796,7 +42853,7 @@ html.touchUI #controls .ctrlGrid{ display:none; }
 /* ---------------------------------------------------------------- boot */
 (function mobBoot(){
   if (!isTouch) return;
-  mobSettingsPanel(); mobGuide(); mobMenuTune(); mobIosTip(); mobContextGuard();
+  mobSettingsPanel(); mobGuide(); mobMenuTune(); mobIosTip();
   MOB.fpsCap = (function(){ const v = mobSetting('m_fps', '60'); return v === '30' ? 30 : (v === 'max' ? 0 : 60); })();
   window.__mob = MOB; window.mobLayoutCompute = mobLayoutCompute;
 })();
@@ -43072,6 +43129,11 @@ function farBuildCells(){
       if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.userData.noFar) return;
       const m = o.material;
       if (!m || Array.isArray(m) || !m.isMeshStandardMaterial || m.transparent || m.alphaTest > 0 || m.polygonOffset || m.visible === false || skip.has(m)) return;
+      if (o.userData.m16){                       // Release 15.4 (mem16): a packed merged mesh -- its big triangles were taken from its sources
+        const nb = B.ni;
+        if (typeof m16FarAppend === 'function' && m16FarAppend(o.userData.m16, B, ox, oz, slotOf(m), webgl2)){ big.push(o); tris += (B.ni - nb)/3; srcN++; }
+        return;
+      }
       const g = o.geometry, pa = g && g.attributes.position, na = g && g.attributes.normal;
       if (!pa || !na || pa.isInterleavedBufferAttribute || na.isInterleavedBufferAttribute || pa.itemSize !== 3) return;
       const s = slotOf(m);
@@ -43784,7 +43846,7 @@ const GFX_NAMES = { potato:'Potato', low:'Low', medium:'Medium', high:'High', ul
 const GFX_LEGACY = { off:'low', medium:'high', high:'ultra', fast:'low' };        // setGfx('off' | 'medium' | 'high') from older code / tests (why 'api')
 const GFX_DESC = {
   potato:  'The lightest: low resolution, no shadows, short view, quiet streets',
-  low:     'No post effects, simple shadows, shorter view',
+  low:     'Light: no shadows or post effects, short view - weak laptops and phones',
   medium:  'Filmic look and soft shadows, slightly softer picture',
   high:    'The full look: sharp shadows, filmic grade, long view',
   ultra:   'Adds ambient occlusion, crisper shadows, further view, busier streets',
@@ -43805,7 +43867,7 @@ const GFX_KNOBS = [
   { k:'scale',   label:'Resolution',        hint:'Render scale: pixels drawn per screen pixel (lower = faster, softer)' },
   { k:'shadows', label:'Shadows',           opts:[['off','Off'], ['low','Low'], ['medium','Medium'], ['high','High'], ['ultra','Ultra'], ['extreme','Extreme']],
     hint:'Sun shadow quality: map size, softness and how often it is redrawn' },
-  { k:'view',    label:'View distance',     opts:[[0.55,'Short'], [0.7,'Low'], [0.85,'Medium'], [1,'Normal'], [1.15,'Far'], [1.35,'Max']],
+  { k:'view',    label:'View distance',     opts:[[0.45,'Shortest'], [0.55,'Short'], [0.7,'Low'], [0.85,'Medium'], [1,'Normal'], [1.15,'Far'], [1.35,'Max']],
     hint:'How far the fog sits and how far the city is drawn in full detail' },
   { k:'detail',  label:'Detail',            opts:[[0,'Low'], [1,'Medium'], [2,'High']], hint:'Props, clutter and small details' },
   { k:'crowd',   label:'Pedestrians',       opts:[[0.35,'Few'], [0.6,'Some'], [0.8,'Medium'], [1,'Normal'], [1.35,'Busy'], [1.6,'Packed']] },
@@ -43838,12 +43900,31 @@ function gfxScaleOpts(){
   ['potato', 'low', 'medium', 'high', 'ultra', 'extreme'].forEach(id=> set.add(gfxPresetRaw(id).scale));
   return [...set].filter(v=> v <= mx + 1e-6).sort((a, b)=> a - b).map(v=> [v, (Math.round(v*100)/100) + '×']);
 }
+/* Release 15.4 (phone): a phone draws a FIXED number of pixels, picked once from its screen (~0.55 Mpx whatever the screen:
+   sharp enough on a 3x iPhone, never lowered by the game while riding) */
+function gfxPhoneScale(){
+  if (gfxPhoneScale.v) return gfxPhoneScale.v;
+  const dpr = window.devicePixelRatio || 1;
+  let a = 0; try { a = (screen.width || 0)*(screen.height || 0); } catch(e){}
+  if (!(a > 0)) a = (innerWidth || 390)*(innerHeight || 844);
+  const s = Math.max(0.8, Math.min(Math.sqrt(550000/a), dpr, 1.5));
+  return (gfxPhoneScale.v = Math.round(s*20)/20);
+}
 function gfxPresetRaw(id){
   const D = gfxDevice(), dpr = window.devicePixelRatio || 1, ph = D.phone, tch = D.touch;
   const r2 = v => Math.round(v*100)/100;
+  // Release 15.4 (phone): the PHONE PROFILE -- Potato / Low / Medium on a phone: no shadow pass, no post (Medium keeps a light
+  // version of both), a short view, quiet streets, a fixed resolution (gfxPhoneScale); Low is what a phone starts in
+  if (ph && (id === 'potato' || id === 'low' || id === 'medium')){
+    const ps = gfxPhoneScale();
+    if (id === 'potato') return { scale:Math.round(Math.max(0.7, ps*0.85)*20)/20, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
+    if (id === 'low')    return { scale:ps, shadows:'off', view:0.55, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
+    return { scale:ps, shadows:'low', view:0.7, detail:1, crowd:0.6, traffic:0.6, lamps:4, post:true, ao:0, bloom:true, fxaa:true, sharpen:false, aniso:4 };
+  }
   switch (id){
-    case 'potato':  return { scale:0.6, shadows:'off', view:0.55, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
-    case 'low':     return { scale:ph ? 0.8 : 0.75, shadows:'low', view:0.7, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
+    // Release 15.4 (phone): Potato / Low on computers are the weak-laptop modes -- no shadow pass, no post, a short view
+    case 'potato':  return { scale:0.6, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
+    case 'low':     return { scale:ph ? 0.8 : 0.75, shadows:'off', view:0.55, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
     case 'medium':  return { scale:ph ? r2(Math.min(dpr, 1)) : (tch ? 0.9 : 1), shadows:'medium', view:0.85, detail:1, crowd:0.8, traffic:0.8, lamps:6, post:true, ao:0, bloom:true, fxaa:true, sharpen:true, aniso:8 };     // R15.2: computers draw Medium at 1.0 (0.9 was soft)
     case 'ultra':   return { scale:r2(Math.min(dpr, 1.5)), shadows:'ultra', view:1.15, detail:2, crowd:1.35, traffic:1.3, lamps:9, post:true, ao:2, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };
     case 'extreme': return { scale:r2(Math.min(dpr, 2)), shadows:'extreme', view:1.35, detail:2, crowd:1.6, traffic:1.6, lamps:9, post:true, ao:2, bloom:true, fxaa:true, sharpen:true, aniso:16 };
@@ -44095,7 +44176,7 @@ function gfxCycle(dir){
 function gfxSave(){
   if (typeof SETTINGS === 'undefined') return;
   SETTINGS.gfx = { mode:GFX14.mode, base:GFX14.base, custom:GFX14.custom || {}, note:GFX14.note || '', by:GFX14.by || '',
-                   fpsCap:GFX14.fpsCap | 0, rung:GFX14.auto.rung | 0, pick15:!!GFX14.pick15 };
+                   fpsCap:GFX14.fpsCap | 0, rung:GFX14.auto.rung | 0, pick15:!!GFX14.pick15, pick16:!!GFX14.pick16 };
   try { saveSettings(); } catch(e){}
 }
 
@@ -44108,16 +44189,20 @@ function gfxGpuPick(gpu, D){
   let p = 'medium';
   if (!g) p = 'medium';
   else if (/swiftshader|llvmpipe|softpipe|lavapipe/.test(g)) p = 'high';        // headless test browsers: keep the long-standing default look
-  else if (/microsoft basic render|software renderer|software adapter/.test(g)) p = 'low';
+  else if (/microsoft basic render|software renderer|software adapter/.test(g)) p = 'potato';
   else if (apu) p = (apu[2] !== '6' && +apu[3] >= 8) ? 'high' : ((+apu[3] < (apu[2] === '6' ? 5 : 3)) ? 'low' : 'medium');
   else if (/radeon(\(tm\))?\s*80[4-6]0s\b/.test(g)) p = 'high';                   // the 32-40 CU "Strix Halo" APUs
-  else if (/uhd graphics|hd graphics|iris|radeon(\(tm\))? graphics|vega\s*\d|radeon(\(tm\))? vega/.test(g)) p = /hd graphics/.test(g) ? 'low' : 'medium';
+  // Release 15.4 (phone): Intel UHD / HD -> Potato; Iris (Xe / Plus / Pro) and the older Radeon APUs (Vega, plain "Radeon Graphics",
+  // R5-R7) -> Low; the RDNA APUs keep the table above (his Radeon 840M stays Medium)
+  else if (/\bu?hd graphics/.test(g) && !/iris/.test(g)) p = 'potato';
+  else if (/iris|radeon(\(tm\))? graphics|vega\s*\d|radeon(\(tm\))? vega|radeon(\(tm\))? r[4-7]\b/.test(g)) p = 'low';
   else if (/rtx\s*(40|50)[89]0|rtx\s*30[89]0|rx\s*7900|rx\s*9070|titan|rtx\s*a[56]000/.test(g) && !/laptop|mobile|max-q/.test(g)) p = 'extreme';
   else if (/rtx|rx\s*(6[7-9]|7[7-9]|9[0-9])\d\d|arc\s*a7|arc\s*b5|apple m\d+ (pro|max|ultra)/.test(g)) p = 'ultra';
   else if (/gtx\s*(9[6-9]\d|1[0-9]\d\d)|rx\s*[4-7]\d\d\d?(m|s|xt)?\b|apple m\d|arc\b|adreno.*\b(8\d\d)\b/.test(g)) p = 'high';
   else if (/iris|radeon|vega|\bmx\s*\d|gtx|geforce|quadro|nvidia|apple gpu|apple|adreno.*\b7\d\d\b|mali-g7\d\d|mali-g6[1-9]\d/.test(g)) p = 'medium';
   else if (/intel|mali|adreno|powervr|videocore|tegra/.test(g)) p = 'low';
-  if (D.touch) p = (p === 'potato' || p === 'low') ? 'low' : 'medium';            // phones and tablets start in Low or Medium
+  // phones start in Low = the phone profile (Potato for a software renderer); tablets in Low or Medium
+  if (D.touch) p = D.phone ? (p === 'potato' ? 'potato' : 'low') : ((p === 'potato' || p === 'low') ? 'low' : 'medium');
   return p;
 }
 function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ return false; } }
@@ -44138,6 +44223,7 @@ function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ 
     GFX14.fpsCap = D.touch ? touchCap : ([0, 30, 60].indexOf(g.fpsCap) >= 0 ? g.fpsCap : 0);
     GFX14.auto.rung = Math.max(0, g.rung | 0);
     GFX14.pick15 = g.pick15 === true;
+    GFX14.pick16 = g.pick16 === true;
   } else {
     const existing = SETTINGS.had || _gfxHas('dusk_line_save_v1') || _gfxHas('dusk_line_xset_v1');
     GFX14.fpsCap = touchCap;
@@ -44156,8 +44242,8 @@ function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ 
       const pick = gfxGpuPick(gpu, D);
       GFX14.mode = GFX14.base = pick; GFX14.custom = {};
       const real = gpu && !/swiftshader|llvmpipe|softpipe|lavapipe/i.test(gpu);
-      GFX14.note = 'Picked ' + GFX_NAMES[pick] + (real ? ' for your GPU' : ' for this device') + ' - change it any time';
-      GFX14.by = 'gpu'; GFX14.pick15 = true;
+      GFX14.note = 'Picked ' + GFX_NAMES[pick] + (D.phone ? ' for this phone' : (real ? ' for your GPU' : ' for this device')) + ' - change it any time';
+      GFX14.by = 'gpu'; GFX14.pick15 = true; GFX14.pick16 = true;
       // ...checked once by a short look at the menu's own frame rate (never on software GL: the tests' browsers)
       if (!(typeof DETAIL !== 'undefined' && DETAIL.soft) && !/[?&]gfxbench=0/.test(location.search)) GFX14.bench = { wait:1500, t:0, acc:[] };
     }
@@ -44176,6 +44262,24 @@ function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ 
         GFX14.moved = { from:cur, to:pick, told:false };
         GFX14.note = 'Picked ' + GFX_NAMES[pick] + ' for your GPU (was ' + GFX_NAMES[cur] + ') - change it any time';
       }
+    }
+  }
+  // Release 15.4 (phone): ONCE more for a mode the game set by itself (never the player's own, never Auto, never up): the new GPU table
+  // (Intel UHD -> Potato, Iris / older Radeon APUs -> Low) and phones -> the phone profile (Low); then a short look at the menu's
+  // frame rate decides whether it steps one or two presets further down (said once in Settings; never while riding)
+  if (!GFX14.pick16){
+    GFX14.pick16 = true;
+    if ((GFX14.by === 'migrated' || GFX14.by === 'gpu' || GFX14.by === 'bench') && GFX14.mode !== 'auto'){
+      const pick = gfxGpuPick(gpu, D), cur = GFX14.mode === 'custom' ? GFX14.base : GFX14.mode;
+      if (GFX_IDS.indexOf(pick) >= 0 && GFX_IDS.indexOf(cur) >= 0 && GFX_IDS.indexOf(pick) < GFX_IDS.indexOf(cur)){
+        const keep = {}, bv = gfxPreset(pick), c0 = GFX14.custom || {};
+        for (const k in c0) if (c0[k] !== bv[k]) keep[k] = c0[k];
+        GFX14.base = pick; GFX14.custom = keep; GFX14.mode = Object.keys(keep).length ? 'custom' : pick; GFX14.by = 'gpu';
+        GFX14.moved16 = { from:cur, to:pick, told:false };
+        GFX14.note = 'Picked ' + GFX_NAMES[pick] + (D.phone ? ' for this phone' : ' for your GPU') + ' (was ' + GFX_NAMES[cur] + ') - change it any time';
+      }
+      if ((GFX14.by === 'gpu' || GFX14.by === 'migrated') && !GFX14.bench && !(typeof DETAIL !== 'undefined' && DETAIL.soft && !/[?&]gfxbench=1/.test(location.search)) &&
+          !/[?&]gfxbench=0/.test(location.search)) GFX14.bench = { wait:1500, t:0, acc:[] };
     }
   }
   gfxSetPreset.ready = true;
@@ -44304,7 +44408,7 @@ function gfxBenchTick(ms){
   let s = 0; for (let i = 0; i < keep; i++) s += a[i];
   const avg = s/keep;
   GFX14.benchMs = +avg.toFixed(1);
-  if (GFX14.by !== 'gpu' || GFX_IDS.indexOf(GFX14.mode) < 0) return;              // the player already chose
+  if ((GFX14.by !== 'gpu' && GFX14.by !== 'migrated') || GFX_IDS.indexOf(GFX14.mode) < 0) return;    // the player already chose
   const steps = avg > 45 ? 2 : (avg > 26 ? 1 : 0);
   if (!steps) return;
   const i = GFX_IDS.indexOf(GFX14.mode), to = GFX_IDS[Math.max(0, i - steps)];
@@ -44322,6 +44426,11 @@ addFrameHook(function gfxBootOnce(){
     GFX14.moved.told = true;
     const gs = gfxGpuShort(GFXP.gpu), to = GFX_NAMES[GFX14.moved.to];
     setTimeout(()=>{ try { toast('Graphics: ' + to + (gs ? ' for your ' + gs : ' for this computer') + ' - change it in Settings'); } catch(e){} }, 1500);
+  }
+  if (GFX14.moved16 && !GFX14.moved16.told){                 // Release 15.4 (phone)
+    GFX14.moved16.told = true;
+    const gs = gfxGpuShort(GFXP.gpu), to = GFX_NAMES[GFX14.moved16.to], phone = gfxDevice().phone;
+    setTimeout(()=>{ try { toast('Graphics: ' + to + (phone ? ' for this phone' : (gs ? ' for your ' + gs : ' for this computer')) + ' - change it in Settings'); } catch(e){} }, 1500);
   }
   if (_gfxBlank.off) gfxReceivers(false);              // shadows off: the world built since the first apply stops sampling too
   try { if (typeof detailNotify === 'function') detailNotify(); } catch(e){}
@@ -51639,7 +51748,7 @@ function rgChunkUnload(ch){
 function rgRefresh(){
   const cam = RGX.cam, tier = rgTier();
   const det = (typeof detailLevel === 'function') ? detailLevel() : 2;
-  const R = [640, 860, 1080][tier] * (det === 0 ? 0.85 : 1) * Math.max(0.7, Math.min(1.25, rgView()));
+  const R = [640, 860, 1080][tier] * (det === 0 ? 0.85 : 1) * Math.max(0.7, Math.min(1.25, rgView())) * ((typeof p16StreamMul === 'function') ? p16StreamMul() : 1);
   RGS.radius = R;
   const fx = RGX.focus.x, fz = RGX.focus.z;
   const C0 = RG.chunk, half = RG.half + C0;
@@ -53528,7 +53637,7 @@ function regionTravel(dest){
     const wait = ()=>{
       const ci = Math.floor(t.x/RG.chunk), cj = Math.floor(t.z/RG.chunk), ch = RGS.chunks.get(rgChunkKey(ci, cj));
       const inCity = Math.abs(t.x) < RG.slab && Math.abs(t.z) < RG.slab;
-      if (inCity || (ch && ch.state === 'ready') || performance.now() - t0 > 4000){
+      if ((inCity && (typeof m16Ready !== 'function' || m16Ready(t.x, t.z))) || (ch && ch.state === 'ready') || performance.now() - t0 > ((inCity && typeof m16TravelCap === 'function') ? m16TravelCap() : 4000)){
         fade.classList.remove('on');
         if (GAME === 'map' && !RGMAP.open){ GAME = 'play'; last = performance.now(); }
         return;
@@ -64707,6 +64816,1960 @@ function hitchIdleRun(dl){
   if (typeof FRAME_HOOKS === 'undefined') return;
   FRAME_HOOKS.unshift(function hitch15Frame(){ const H = HITCH15; H.used = 0; H.frame++; if (!H.ric && (H.frame & 63) === 0) hitchIdleKick(); });
 })();
+/* =========================================================================
+   MEM16 PACK -- the compact form of the city's merged geometry (Release 15.4, stream `mem`)
+   "the game is to laggy not every laptop can play this and it dose not work on mobile"
+
+   The batched city (691 cells x ~50 merged meshes, 15.7 M triangles) was kept as non-indexed Float32 arrays: 1.3 GB of JS
+   heap, plus the same again on the GPU once a long ride had drawn it all. Every merged mesh is now written straight from its
+   sources into a CHUNK:
+     indexed      a vertex equal to one of the last few written (a quad's shared corners, a fan's centre) is used again;
+                  indexed sources keep their own index
+     quantized    positions 1/4096 m from an integer origin (Float32 has no finer step past 2 km anyway), normals int8,
+                  uv 1/65536 from an integer origin, colours uint8 (float32 when a colour is outside 0..1)
+     delta-coded  positions, uv and indices as int32 differences along the vertex order (small numbers: deflate eats them)
+   then deflated (CompressionStream, in a worker when one can be made). A chunk is unpacked into GPU-ready arrays (Float32
+   positions in world space, int8 normals, Float32 uv, uint8 colours, a 16 / 32-bit index) only for cells near the camera;
+   the CPU copy goes once it is on the GPU, and the GPU buffers go when the cell is far again (mods/mem16_city.js).
+   Same triangles in the same order, same vertex values to well under a millimetre / a 1/255 colour step.
+   ========================================================================= */
+var M16Q = 4096, M16QU = 65536, M16_WIN = 8, M16_HT = 1024;
+var M16P = { enc: 0, encMs: 0, decMs: 0, raw: 0, packed: 0, chunks: 0, worker: false, cs: false, defl: 0, deflIn: 0, fail: 0 };
+/* scratch for one source mesh (world-space floats, exactly what batchStatic's writeMesh wrote into the merged arrays) */
+var _m16S = { cap: 0, P: null, N: null, U: null, C: null };
+function _m16Scratch(n){
+  var S = _m16S;
+  if (n > S.cap){ var c = Math.max(n, S.cap*2, 4096); S.cap = c; S.P = new Float32Array(c*3); S.N = new Float32Array(c*3); S.U = new Float32Array(c*2); S.C = new Float32Array(c*3); }
+  return S;
+}
+/* a chunk being written */
+function m16Enc(uv, col){
+  return { uv: !!uv, col: !!col, nv: 0, ni: 0, vc: 0, ic: 0, P: null, N: null, U: null, C: null, CF: null, I: null,
+           o: null, uo: 0, vo: 0, win: new Int32Array(M16_HT),
+           box: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], src: 0, tris: 0 };
+}
+function _m16Grow(E, nv, ni){
+  if (E.nv + nv > E.vc){
+    var c = Math.max(E.nv + nv, E.vc*2, 1024);
+    var g = function(a, k, T){ var b = new T(c*k); if (a) b.set(a.subarray(0, E.nv*k)); return b; };
+    E.P = g(E.P, 3, Int32Array); E.N = g(E.N, 3, Int8Array);
+    if (E.uv) E.U = g(E.U, 2, Int32Array);
+    if (E.col){ if (E.CF) E.CF = g(E.CF, 3, Float32Array); else E.C = g(E.C, 3, Uint8Array); }
+    E.vc = c;
+  }
+  if (E.ni + ni > E.ic){
+    var ci = Math.max(E.ni + ni, E.ic*2, 2048), bi = new Uint32Array(ci);
+    if (E.I) bi.set(E.I.subarray(0, E.ni));
+    E.I = bi; E.ic = ci;
+  }
+}
+/* colours outside 0..1 (or not finite): this chunk keeps float colours from now on */
+function _m16ColF(E, nv){
+  if (E.CF) return;
+  var cf = new Float32Array(E.vc*3);
+  for (var i = 0; i < nv*3; i++) cf[i] = E.C[i]/255;
+  E.CF = cf; E.C = null;
+}
+/* transform one source into the scratch arrays: the same maths as batchStatic's writeMesh / writeMeshIndexed (boot15 fast
+   path included), stored as Float32 exactly like the merged arrays were. Returns the vertex count written (expanded for a
+   non-indexed write, the source's own vertex count for an indexed one). */
+/* three r128's Matrix3.getNormalMatrix(m4) (setFromMatrix4 -> invert -> transpose), the same arithmetic in the same order,
+   without three (this file also runs in the packing worker) */
+var _m16NE = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+function m16NormalMatrix(e){
+  var t = _m16NE;
+  t[0] = e[0]; t[3] = e[4]; t[6] = e[8]; t[1] = e[1]; t[4] = e[5]; t[7] = e[9]; t[2] = e[2]; t[5] = e[6]; t[8] = e[10];
+  var a = t[0], n = t[1], i = t[2], r = t[3], s = t[4], b = t[5], o = t[6], l = t[7], c = t[8];
+  var h = c*s - b*l, u = b*o - c*r, d = l*r - s*o, p = a*h + n*u + i*d;
+  if (p === 0){ for (var z = 0; z < 9; z++) t[z] = 0; }
+  else {
+    var m = 1/p;
+    t[0] = h*m; t[1] = (i*l - c*n)*m; t[2] = (b*n - i*s)*m; t[3] = u*m; t[4] = (c*a - i*o)*m; t[5] = (i*r - b*a)*m;
+    t[6] = d*m; t[7] = (n*o - l*a)*m; t[8] = (s*a - n*r)*m;
+  }
+  var q = t[1]; t[1] = t[3]; t[3] = q; q = t[2]; t[2] = t[6]; t[6] = q; q = t[5]; t[5] = t[7]; t[7] = q;
+  return t;
+}
+function m16Xform(g, me, indexed, uv, col){
+  var A = g.attributes, pa = A.position.array, na = A.normal.array;
+  var ua = uv ? A.uv.array : null, cA = col ? A.color : null, ca = cA ? cA.array : null, cs = cA ? cA.itemSize : 3;
+  var idx = (!indexed && g.index) ? g.index.array : null;
+  var cnt = indexed ? A.position.count : (g.index ? g.index.count : A.position.count);
+  var S = _m16Scratch(cnt), P = S.P, N = S.N, U = S.U, C = S.C, e = me;
+  var tr = !e || (e[0] === 1 && e[1] === 0 && e[2] === 0 && e[4] === 0 && e[5] === 1 && e[6] === 0 && e[8] === 0 && e[9] === 0 && e[10] === 1);
+  if (tr){                                  // a pure translation (boot15's fast path; the same numbers for an indexed write)
+    var ox = e ? e[12] : 0, oy = e ? e[13] : 0, oz = e ? e[14] : 0;
+    for (var k = 0; k < cnt; k++){
+      var v = idx ? idx[k] : k, o = k*3, v3 = v*3;
+      P[o] = pa[v3] + ox; P[o+1] = pa[v3+1] + oy; P[o+2] = pa[v3+2] + oz;
+      var a = na[v3], b = na[v3+1], c = na[v3+2], l = Math.sqrt(a*a + b*b + c*c) || 1;
+      N[o] = a/l; N[o+1] = b/l; N[o+2] = c/l;
+      if (ua){ U[k*2] = ua[v*2]; U[k*2+1] = ua[v*2+1]; }
+      if (ca){ var vc = v*cs; C[o] = ca[vc]; C[o+1] = ca[vc+1]; C[o+2] = ca[vc+2]; }
+    }
+    return cnt;
+  }
+  var ne = m16NormalMatrix(e);
+  for (var k2 = 0; k2 < cnt; k2++){
+    var v2 = idx ? idx[k2] : k2, o2 = k2*3, w3 = v2*3;
+    var x = pa[w3], y = pa[w3+1], z = pa[w3+2];
+    P[o2]   = e[0]*x + e[4]*y + e[8]*z  + e[12];
+    P[o2+1] = e[1]*x + e[5]*y + e[9]*z  + e[13];
+    P[o2+2] = e[2]*x + e[6]*y + e[10]*z + e[14];
+    var a2 = na[w3], b2 = na[w3+1], c2 = na[w3+2];
+    var tx = ne[0]*a2 + ne[3]*b2 + ne[6]*c2, ty = ne[1]*a2 + ne[4]*b2 + ne[7]*c2, tz = ne[2]*a2 + ne[5]*b2 + ne[8]*c2;
+    var l2 = Math.sqrt(tx*tx + ty*ty + tz*tz) || 1;
+    N[o2] = tx/l2; N[o2+1] = ty/l2; N[o2+2] = tz/l2;
+    if (ua){ U[k2*2] = ua[v2*2]; U[k2*2+1] = ua[v2*2+1]; }
+    if (ca){ var vc2 = v2*cs; C[o2] = ca[vc2]; C[o2+1] = ca[vc2+1]; C[o2+2] = ca[vc2+2]; }
+  }
+  return cnt;
+}
+/* append the scratch (n vertices; srcIdx = the source's own index for an indexed write, else null) to the chunk */
+function m16EncPut(E, n, srcIdx, from){
+  var S = _m16S, P = S.P, N = S.N, U = S.U, C = S.C;
+  var ni = srcIdx ? srcIdx.length : n, k0 = from || 0;
+  _m16Grow(E, n, ni);
+  if (!E.o && n){ E.o = [Math.floor(P[k0*3]), Math.floor(P[k0*3+1]), Math.floor(P[k0*3+2])]; if (E.uv){ E.uo = Math.floor(U[k0*2]); E.vo = Math.floor(U[k0*2+1]); } }
+  var ox = E.o ? E.o[0] : 0, oy = E.o ? E.o[1] : 0, oz = E.o ? E.o[2] : 0, uo = E.uo, vo = E.vo;
+  var EP = E.P, EN = E.N, EU = E.U, EI = E.I, B = E.box, win = E.win, uv = E.uv, col = E.col;
+  var x0 = B[0], y0 = B[1], z0 = B[2], x1 = B[3], y1 = B[4], z1 = B[5];
+  var base = E.nv, nv = E.nv, ii = E.ni, HM = M16_HT - 1, Q = M16Q, QU = M16QU;
+  for (var k = k0, kn = k0 + n; k < kn; k++){
+    var o = k*3, x = P[o], y = P[o+1], z = P[o+2];
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+    var qx = Math.round((x - ox)*Q), qy = Math.round((y - oy)*Q), qz = Math.round((z - oz)*Q);
+    var nx = Math.round(N[o]*127), ny = Math.round(N[o+1]*127), nz = Math.round(N[o+2]*127);
+    var qu = 0, qv = 0;
+    if (uv){ qu = Math.round((U[k*2] - uo)*QU); qv = Math.round((U[k*2+1] - vo)*QU); }
+    var cr = 0, cg = 0, cb = 0;
+    if (col){
+      cr = C[o]; cg = C[o+1]; cb = C[o+2];
+      if (!E.CF && !(cr >= 0 && cr <= 1 && cg >= 0 && cg <= 1 && cb >= 0 && cb <= 1)) _m16ColF(E, nv);
+      if (!E.CF){ cr = Math.round(cr*255); cg = Math.round(cg*255); cb = Math.round(cb*255); }
+    }
+    var id = -1, h = 0;
+    if (!srcIdx){
+      // a vertex written recently with the same values (a quad's second triangle, a fan's centre, a strip): one look-up in a
+      // small table keyed by a hash of the quantised values (the last vertex with that hash), then an exact compare
+      h = Math.imul(qx ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(qy, 0xc2b2ae35) ^ Math.imul(qz, 0x27d4eb2f) ^ Math.imul(nx + 7*ny + 49*nz, 0x165667b1);
+      if (uv) h ^= Math.imul(qu, 0x9e3779b1) ^ Math.imul(qv, 0x7feb352d);
+      if (col) h ^= Math.imul((cr*31 + cg)*31 + cb, 0x846ca68b);
+      h = (h ^ (h >>> 15)) & HM;
+      var c = win[h] - 1;
+      if (c >= 0){
+        var c3 = c*3;
+        if (EP[c3] === qx && EP[c3+1] === qy && EP[c3+2] === qz && EN[c3] === nx && EN[c3+1] === ny && EN[c3+2] === nz &&
+            (!uv || (EU[c*2] === qu && EU[c*2+1] === qv)) &&
+            (!col || (E.CF ? (E.CF[c3] === Math.fround(cr) && E.CF[c3+1] === Math.fround(cg) && E.CF[c3+2] === Math.fround(cb))
+                           : (E.C[c3] === cr && E.C[c3+1] === cg && E.C[c3+2] === cb)))) id = c;
+      }
+    }
+    if (id < 0){
+      id = nv++; var i3 = id*3;
+      EP[i3] = qx; EP[i3+1] = qy; EP[i3+2] = qz; EN[i3] = nx; EN[i3+1] = ny; EN[i3+2] = nz;
+      if (uv){ EU[id*2] = qu; EU[id*2+1] = qv; }
+      if (col){ if (E.CF){ E.CF[i3] = cr; E.CF[i3+1] = cg; E.CF[i3+2] = cb; } else { E.C[i3] = cr; E.C[i3+1] = cg; E.C[i3+2] = cb; } }
+      if (!srcIdx) win[h] = id + 1;
+    }
+    if (!srcIdx) EI[ii++] = id;
+  }
+  if (srcIdx){ for (var j = 0; j < srcIdx.length; j++) EI[ii++] = base + srcIdx[j]; }
+  B[0] = x0; B[1] = y0; B[2] = z0; B[3] = x1; B[4] = y1; B[5] = z1;
+  E.nv = nv; E.ni = ii; E.src++; E.tris += ni/3;
+}
+/* the chunk's bytes (raw, not deflated yet): [float32 colours x3 when outside 0..1] [zigzag varints: position deltas x3,
+   uv deltas x2, index deltas] [int8 normals x3] [uint8 colours x3], every component's run together (structure of arrays):
+   half the bytes of plain int32s and the deflate after it runs ~2x faster and ends smaller */
+var _m16VB = null;
+function m16EncDone(E){
+  var nv = E.nv, ni = E.ni, uv = E.uv, col = E.col, cf = !!E.CF;
+  var nvals = nv*3 + (uv ? nv*2 : 0) + ni, nF = (col && cf) ? nv*3 : 0;
+  if (!_m16VB || _m16VB.length < nvals*5) _m16VB = new Uint8Array(Math.max(nvals*5, 1 << 16));
+  var V = _m16VB, o = 0, k, v, prev, q, z;
+  for (k = 0; k < 3; k++){ prev = 0; var P = E.P; for (v = 0; v < nv; v++){ q = P[v*3 + k]; z = ((q - prev) << 1) ^ ((q - prev) >> 31); prev = q; z >>>= 0; while (z >= 0x80){ V[o++] = (z & 0x7f) | 0x80; z >>>= 7; } V[o++] = z; } }
+  if (uv) for (k = 0; k < 2; k++){ prev = 0; var U = E.U; for (v = 0; v < nv; v++){ q = U[v*2 + k]; z = ((q - prev) << 1) ^ ((q - prev) >> 31); prev = q; z >>>= 0; while (z >= 0x80){ V[o++] = (z & 0x7f) | 0x80; z >>>= 7; } V[o++] = z; } }
+  prev = 0; var I = E.I;
+  for (v = 0; v < ni; v++){ q = I[v]; z = ((q - prev) << 1) ^ ((q - prev) >> 31); prev = q; z >>>= 0; while (z >= 0x80){ V[o++] = (z & 0x7f) | 0x80; z >>>= 7; } V[o++] = z; }
+  var vlen = o, len = nF*4 + vlen + nv*3 + ((col && !cf) ? nv*3 : 0);
+  var buf = new ArrayBuffer((len + 3) & ~3), off = 0;
+  if (nF){ var F = new Float32Array(buf, 0, nF), CF = E.CF; for (k = 0; k < 3; k++) for (v = 0; v < nv; v++) F[k*nv + v] = CF[v*3 + k]; off = nF*4; }
+  new Uint8Array(buf, off, vlen).set(V.subarray(0, vlen)); off += vlen;
+  var B8 = new Int8Array(buf, off, nv*3), N = E.N;
+  for (k = 0; k < 3; k++) for (v = 0; v < nv; v++) B8[k*nv + v] = N[v*3 + k];
+  off += nv*3;
+  if (col && !cf){ var C8 = new Uint8Array(buf, off, nv*3), C = E.C; for (k = 0; k < 3; k++) for (v = 0; v < nv; v++) C8[k*nv + v] = C[v*3 + k]; }
+  var ch = { nv: nv, ni: ni, uv: uv, col: col, cf: cf, vlen: vlen, o: E.o || [0, 0, 0], uo: E.uo, vo: E.vo, box: E.box.slice(), tris: E.tris,
+             bytes: new Uint8Array(buf), z: false, len: buf.byteLength };
+  M16P.chunks++; M16P.raw += buf.byteLength;
+  return ch;
+}
+/* decode a chunk (its raw bytes, inflated; 4-byte aligned) into GPU-ready arrays at vertex offset vb / index offset ib */
+function m16Dec(ch, raw, G, vb, ib){
+  var nv = ch.nv, ni = ch.ni, buf = raw.buffer, bo = raw.byteOffset, B = raw, p = 0, k, v, b, x, s, acc, d;
+  var off = 0;
+  if (ch.col && ch.cf){
+    var F = new Float32Array(buf, bo, nv*3), cf = G.colF;
+    for (k = 0; k < 3; k++){ d = vb*3 + k; for (v = 0; v < nv; v++){ cf[d] = F[k*nv + v]; d += 3; } }
+    off = nv*12;
+  }
+  p = off;
+  var pos = G.pos, inv = 1/M16Q;
+  for (k = 0; k < 3; k++){
+    acc = 0; var o0 = ch.o[k]; d = vb*3 + k;
+    for (v = 0; v < nv; v++){
+      b = B[p++]; x = b & 127; s = 7; while (b & 128){ b = B[p++]; x |= (b & 127) << s; s += 7; }
+      acc += (x >>> 1) ^ -(x & 1); pos[d] = o0 + acc*inv; d += 3;
+    }
+  }
+  if (ch.uv){
+    var uvA = G.uv, invu = 1/M16QU;
+    for (k = 0; k < 2; k++){
+      acc = 0; var u0 = k ? ch.vo : ch.uo; d = vb*2 + k;
+      for (v = 0; v < nv; v++){
+        b = B[p++]; x = b & 127; s = 7; while (b & 128){ b = B[p++]; x |= (b & 127) << s; s += 7; }
+        acc += (x >>> 1) ^ -(x & 1); uvA[d] = u0 + acc*invu; d += 2;
+      }
+    }
+  }
+  var idx = G.idx; acc = 0;
+  for (var j = 0; j < ni; j++){
+    b = B[p++]; x = b & 127; s = 7; while (b & 128){ b = B[p++]; x |= (b & 127) << s; s += 7; }
+    acc += (x >>> 1) ^ -(x & 1); idx[ib + j] = acc + vb;
+  }
+  off = off + ch.vlen;
+  var N8 = new Int8Array(buf, bo + off, nv*3), nrm = G.nrm;
+  for (k = 0; k < 3; k++){ d = vb*4 + k; for (v = 0; v < nv; v++){ nrm[d] = N8[k*nv + v]; d += 4; } }
+  off += nv*3;
+  if (ch.col && !ch.cf){
+    var C8 = new Uint8Array(buf, bo + off, nv*3);
+    if (G.colF){ var cf2 = G.colF; for (k = 0; k < 3; k++){ d = vb*3 + k; for (v = 0; v < nv; v++){ cf2[d] = C8[k*nv + v]/255; d += 3; } } }
+    else { var c8 = G.col; for (k = 0; k < 3; k++){ d = vb*3 + k; for (v = 0; v < nv; v++){ c8[d] = C8[k*nv + v]; d += 3; } } }
+  }
+}
+/* ---------------------------------------------------------------- the far skyline's big triangles, taken as the sources pass
+   (mods/far12_view.js farBuildCells' own tests: area, width, no undersides; cfg = { aMin, hMin, gx, gz }: the material's
+   thresholds and the group's cell centre, positions kept at 1/16 m from it) */
+function m16FarNew(wantUv, wantCol){ return { n: 0, ni: 0, vc: 0, ic: 0, pos: null, nrm: null, uv: wantUv ? true : null, col: wantCol ? true : null, idx: null }; }
+function _m16FarGrow(F, nv, ni){
+  if (F.n + nv > F.vc){
+    var c = Math.max(F.n + nv, F.vc*2, 256), g = function(a, k, Ty){ var b = new Ty(c*k); if (a && a !== true) b.set(a.subarray(0, F.n*k)); return b; };
+    F.pos = g(F.pos, 3, Int32Array); F.nrm = g(F.nrm, 3, Int8Array);
+    if (F.uv) F.uv = g(F.uv, 2, Float32Array);
+    if (F.col) F.col = g(F.col, 3, Float32Array);
+    F.vc = c;
+  }
+  if (F.ni + ni > F.ic){ var ci = Math.max(F.ni + ni, F.ic*2, 512), bi = new Uint32Array(ci); if (F.idx) bi.set(F.idx.subarray(0, F.ni)); F.idx = bi; F.ic = ci; }
+}
+/* the far buffer trimmed to its contents (what is kept / sent back from the worker) */
+function m16FarTrim(F){
+  if (!F || !F.ni) return null;
+  return { n: F.n, ni: F.ni, pos: F.pos.slice(0, F.n*3), nrm: F.nrm.slice(0, F.n*3), uv: F.uv ? F.uv.slice(0, F.n*2) : null,
+           col: F.col ? F.col.slice(0, F.n*3) : null, idx: F.idx.slice(0, F.ni) };
+}
+var _m16FR = null;
+/* the scratch (n vertices from m16Xform) -> the kept triangles; returns how many */
+function m16FarPut(cfg, F, n, srcIdx, from){
+  var S = _m16S, P = S.P, N = S.N, U = S.U, C = S.C, k0 = from || 0;
+  var ni = srcIdx ? srcIdx.length : n, aMin2 = cfg.aMin*2, hMin = cfg.hMin, gx = cfg.gx, gz = cfg.gz;
+  if (srcIdx){ if (!_m16FR || _m16FR.length < n) _m16FR = new Int32Array(Math.max(n, 4096)); }
+  var touched = srcIdx ? [] : null, kept = 0;
+  for (var t = 0; t + 2 < ni; t += 3){
+    var i0 = srcIdx ? srcIdx[t] : k0 + t, i1 = srcIdx ? srcIdx[t+1] : k0 + t+1, i2 = srcIdx ? srcIdx[t+2] : k0 + t+2;
+    var p0 = i0*3, p1 = i1*3, p2 = i2*3;
+    var ax = P[p1] - P[p0], ay = P[p1+1] - P[p0+1], az = P[p1+2] - P[p0+2], bx = P[p2] - P[p0], by = P[p2+1] - P[p0+1], bz = P[p2+2] - P[p0+2];
+    var cx = ay*bz - az*by, cy = az*bx - ax*bz, cz = ax*by - ay*bx, a22 = cx*cx + cy*cy + cz*cz;
+    if (a22 < aMin2*aMin2*0.999) continue;                   // (most triangles: no square root needed)
+    var a2 = Math.sqrt(a22);
+    if (a2 < aMin2) continue;
+    var dx = P[p2] - P[p1], dy = P[p2+1] - P[p1+1], dz = P[p2+2] - P[p1+2];
+    var lmax = Math.sqrt(Math.max(ax*ax + ay*ay + az*az, bx*bx + by*by + bz*bz, dx*dx + dy*dy + dz*dz));
+    if (a2 / lmax < hMin) continue;
+    var nx0 = N[p0], ny0 = N[p0+1], nz0 = N[p0+2];
+    if (ny0 < -0.7*Math.sqrt(nx0*nx0 + ny0*ny0 + nz0*nz0)) continue;
+    _m16FarGrow(F, 3, 3);
+    for (var k = 0; k < 3; k++){
+      var vi = k === 0 ? i0 : k === 1 ? i1 : i2, w = srcIdx ? _m16FR[vi] - 1 : -1;
+      if (w < 0){
+        w = F.n++;
+        if (srcIdx){ _m16FR[vi] = w + 1; touched.push(vi); }
+        var q = vi*3;
+        F.pos[w*3] = Math.round((P[q] - gx)*16); F.pos[w*3+1] = Math.round(P[q+1]*16); F.pos[w*3+2] = Math.round((P[q+2] - gz)*16);
+        var nx = N[q], ny = N[q+1], nz = N[q+2], l = Math.sqrt(nx*nx + ny*ny + nz*nz) || 1;
+        F.nrm[w*3] = Math.round(nx/l*127); F.nrm[w*3+1] = Math.round(ny/l*127); F.nrm[w*3+2] = Math.round(nz/l*127);
+        if (F.uv){ F.uv[w*2] = U[vi*2]; F.uv[w*2+1] = U[vi*2+1]; }
+        if (F.col){ F.col[w*3] = C[q]; F.col[w*3+1] = C[q+1]; F.col[w*3+2] = C[q+2]; }
+      }
+      F.idx[F.ni++] = w;
+    }
+    kept++;
+  }
+  if (touched) for (var j = 0; j < touched.length; j++) _m16FR[touched[j]] = 0;
+  return kept;
+}
+
+/* ---------------------------------------------------------------- the packing worker's job (also run in-page without a worker)
+   d = { id, cells: [{ chunks: [{ uv, col, far: { aMin, hMin, gx, gz, fUv, fCol } | null,
+                                  items: [{ P, N, U, C, cs, I, idx, e, from, cnt }] }] }] }
+   -> Promise of { msg: { t: 'enc', id, cells: [{ len, z | raw (ArrayBuffer), chunks: [chunk meta + far] }] }, tr: [buffers] }.
+   Each cell's chunks are concatenated (4-byte aligned) into one blob and deflated (zip(u8) -> Promise of ArrayBuffer). */
+function m16EncBatch(d, zip){
+  var cells = [], tr = [], waits = [], lastP = null, lastE = null, lastN = 0;
+  for (var ci = 0; ci < d.cells.length; ci++){
+    var spec = d.cells[ci], metas = [], bytes = [], tot = 0;
+    for (var k = 0; k < spec.chunks.length; k++){
+      var s = spec.chunks[k], E = m16Enc(s.uv, s.col), F = s.far ? m16FarNew(s.far.fUv, s.far.fCol) : null;
+      for (var j = 0; j < s.items.length; j++){
+        var it = s.items[j];
+        var g = { attributes: { position: { array: it.P, count: it.P.length/3 }, normal: { array: it.N } }, index: it.I ? { array: it.I, count: it.I.length } : null };
+        if (it.U) g.attributes.uv = { array: it.U };
+        if (it.C) g.attributes.color = { array: it.C, itemSize: it.cs };
+        var n;
+        if (it.cnt != null && it.P === lastP && it.e === lastE) n = lastN;          // the next piece of a big soup: already transformed
+        else { n = m16Xform(g, it.e, it.idx, s.uv, s.col); lastP = it.P; lastE = it.e; lastN = n; }
+        if (it.cnt != null){ m16EncPut(E, it.cnt, null, it.from); if (F) m16FarPut(s.far, F, it.cnt, null, it.from); }
+        else { m16EncPut(E, n, it.idx ? it.I : null); if (F) m16FarPut(s.far, F, n, it.idx ? it.I : null); lastP = null; }
+      }
+      var ch = m16EncDone(E), far = m16FarTrim(F);
+      metas.push({ nv: ch.nv, ni: ch.ni, uv: ch.uv, col: ch.col, cf: ch.cf, vlen: ch.vlen, o: ch.o, uo: ch.uo, vo: ch.vo, box: ch.box,
+                   tris: ch.tris, len: ch.len, off: tot, far: far });
+      if (far){ tr.push(far.pos.buffer, far.nrm.buffer, far.idx.buffer); if (far.uv) tr.push(far.uv.buffer); if (far.col) tr.push(far.col.buffer); }
+      bytes.push(ch.bytes); tot += (ch.len + 3) & ~3;
+    }
+    var raw = new Uint8Array(tot), off = 0;
+    for (var q = 0; q < bytes.length; q++){ raw.set(bytes[q], off); off += (bytes[q].length + 3) & ~3; }
+    var cell = { len: tot, raw: null, z: null, chunks: metas };
+    cells.push(cell);
+    (function(cell, raw){
+      if (!zip){ cell.raw = raw.buffer; return; }
+      waits.push(Promise.resolve().then(function(){ return zip(raw, false); }).then(function(z){ if (z && z.byteLength) cell.z = z; else cell.raw = raw.buffer; },
+                                                                                    function(){ cell.raw = raw.buffer; }));
+    })(cell, raw);
+  }
+  return Promise.all(waits).then(function(){
+    cells.forEach(function(c){ if (c.z) tr.push(c.z); if (c.raw) tr.push(c.raw); });
+    return { msg: { t: 'enc', id: d.id, cells: cells }, tr: tr };
+  });
+}
+/* GPU-ready arrays for a list of chunks (one merged mesh) */
+function m16Alloc(chunks, uv, col){
+  var nv = 0, ni = 0, cf = false;
+  for (var i = 0; i < chunks.length; i++){ nv += chunks[i].nv; ni += chunks[i].ni; if (chunks[i].cf) cf = true; }
+  return { nv: nv, ni: ni, pos: new Float32Array(nv*3), nrm: new Int8Array(nv*4), uv: uv ? new Float32Array(nv*2) : null,
+           col: (col && !cf) ? new Uint8Array(nv*3) : null, colF: (col && cf) ? new Float32Array(nv*3) : null,
+           idx: nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni) };
+}
+function m16Geometry(G, sphere){
+  var g = new T.BufferGeometry();
+  g.setAttribute('position', new T.BufferAttribute(G.pos, 3));
+  g.setAttribute('normal', new T.BufferAttribute(G.nrm, 4, true));
+  if (G.uv) g.setAttribute('uv', new T.BufferAttribute(G.uv, 2));
+  if (G.col) g.setAttribute('color', new T.BufferAttribute(G.col, 3, true));
+  else if (G.colF) g.setAttribute('color', new T.BufferAttribute(G.colF, 3));
+  g.setIndex(new T.BufferAttribute(G.idx, 1));
+  if (sphere) g.boundingSphere = sphere.clone();
+  return g;
+}
+/* =========================================================================
+   MEM16 CITY -- the city's memory + loading (Release 15.4, stream `mem`)
+   "the game is to laggy not every laptop can play this and it dose not work on mobile" (iPhone: crashes / reloads, stuck loading)
+
+   Measured in 15.3: 1,535 MB of JS heap at the menu (1.3 GB of it the batched city's Float32 arrays: 676 cells, 23k merged
+   meshes, 15.6 M triangles), a 1.93 GB peak while loading (~1 GB of per-block arrays alive at once, then the merged copies),
+   and the whole city uploaded to the GPU during the loading screen. Now:
+   1. PROGRESSIVE BATCH. Every slice of the city build (and of the piece casting) hands its virtual meshes (VMESH) to m16Drain():
+      each goes into its merge group right away -- batchStatic's own key (220 m cell x material x shadow flags x depth
+      material x uv / colour) -- and is dropped. A geometry seen before (lamp posts, tree lobes, rails, boxes of one size: a
+      third of the city) is kept ONCE as a frozen copy + each use's matrix (a "recipe"); everything else is written into a
+      packed chunk (mods/mem16_pack.js: indexed, quantized, varint delta-coded) and the chunks of a drain are deflated per cell
+      (CompressionStream). With a worker (a blob URL; the same pack functions) the main thread only hands over copies of the
+      drain's arrays and the worker transforms, packs, takes the far triangles and deflates; without one (a strict page
+      policy) all of it runs here, and the data stays raw if there is no CompressionStream either.
+      batchStatic itself (m16BatchStatic) does the rest the same way: leftover virtual meshes, then the real meshes (same
+      filter; one real mesh alone in its group stays as it is, exactly as before), and makes ONE merged mesh per group as
+      before -- holding a stub geometry with its bounds. The far skyline's big triangles are taken from the sources as
+      they pass (mods/far12_view.js reads them instead of the merged arrays).
+   2. RESIDENCY. Every cull pass: a cell within the show distance + M16.cfg.pre (x the mode's view) is unpacked (nearest first, in slices under a
+      per-frame budget: 1.5 ms riding, more in the menu / behind the fast-travel fade); it is only shown once all of it is
+      ready -- until then its far skyline mesh stands in, as it already did beyond the show distance (no holes, no half
+      cells). Uploaded arrays let go of their CPU copy (onUpload); a cell that falls M16.cfg.rel behind gives its GPU
+      buffers back. The cells around the spawn are unpacked inside the loading screen, so the menu opens on the full city.
+   Same triangles in the same order, every vertex value within 1/8192 m / an int8 normal step / a 1/255 colour step.
+   Packed meshes hold a shared empty geometry of their attribute layout (the same programs as the real one); during the
+   loading screen one empty proxy per material x shadow flags x layout makes the prewarm compile every program the old boot
+   compiled by drawing the whole city. A restored GL context sends every unpacked cell back to packed.
+   ?mem16=0 = the old pipeline, ?m16we=0 = pack on this thread, ?m16w=0 = no worker at all, ?m16z=0 = no deflate.
+   M16.report() = sizes, residency, timings (tests: test/t_mem16_*.js).
+   ========================================================================= */
+var M16 = {
+  on: !/[?&]mem16=0\b/.test(location.search),
+  groups: new Map(), glist: [], seen: new WeakMap(), open: [], pend: [], blobs: [], orphans: [], hold: new Map(), rcur: 0,
+  vseq: 0, rseq: 0, final: false, built: false, live: false,
+  queue: [], qDirty: false, job: null, next: null, warmQ: [], warming: [], boostUntil: 0, travelUntil: 0, pre: 130, rel: 250, camX: NaN, camZ: NaN, cells: 0,
+  zq: [], zIn: 0, zWait: [], w: undefined, wjobs: new Map(), wid: 0, zMode: '', wEnc: null, wOk: false, encBatches: new Map(), encPending: 0, encId: 0, wq: 0,
+  // travel / ahead / travelCap: behind the fast-travel fade (the screen is covered): ms of unpacking a frame, cells whose
+  // inflates go out at once, and how long the fade may wait for a city destination's cells (region14 keeps 4 s elsewhere)
+  cfg: { pre: 130, rel: 250, chunkV: 16384, play: 1.5, menu: 6, fade: 10, boost: 14, zFlight: 24, recSlice: 64, travel: 60, ahead: 64, travelCap: 12000 },
+  st: { drains: 0, drainMs: 0, src: 0, data: 0, recipes: 0, snaps: 0, generic: 0, dataVerts: 0, chunks: 0, blobs: 0, rawB: 0, zB: 0,
+        zFail: 0, recB: 0, farV: 0, finalMs: 0, zWaitMs: 0, loads: 0, releases: 0, loadMs: 0, decMs: 0, maxStep: 0, preloadMs: 0, preCells: 0,
+        removed: 0, merged: 0, groups: 0, singles: 0, maxUnit: 0, maxUnitWhat: '', wqMax: 0 }
+};
+window.M16 = M16;
+
+/* ---------------------------------------------------------------- compression (a worker when possible) */
+/* the worker: the pack core (mods/mem16_pack.js, the same functions) + deflate / inflate */
+function m16WorkerSrc(){
+  var fns = [_m16Scratch, m16Enc, _m16Grow, _m16ColF, m16NormalMatrix, m16Xform, m16EncPut, m16EncDone, m16FarNew, _m16FarGrow, m16FarTrim, m16FarPut, m16EncBatch];
+  return 'var M16Q=' + M16Q + ',M16QU=' + M16QU + ',M16_WIN=' + M16_WIN + ',M16_HT=' + M16_HT + ';\n' +
+    'var M16P={enc:0,encMs:0,decMs:0,raw:0,packed:0,chunks:0};var _m16S={cap:0,P:null,N:null,U:null,C:null};var _m16NE=[1,0,0,0,1,0,0,0,1];var _m16VB=null;var _m16FR=null;\n' +
+    fns.map(function(f){ return f.toString(); }).join('\n') + '\n' +
+    'function zip(u8,inflate){var s=inflate?new DecompressionStream("deflate"):new CompressionStream("deflate");var w=s.writable.getWriter();w.write(u8);w.close();return new Response(s.readable).arrayBuffer();}\n' +
+    'self.onmessage=function(ev){var d=ev.data;\n' +
+    ' if(d.t==="enc"){try{m16EncBatch(d,zip).then(function(r){self.postMessage(r.msg,r.tr);},function(e){self.postMessage({t:"enc",id:d.id,err:String(e)});});}catch(e){self.postMessage({t:"enc",id:d.id,err:String(e&&e.stack||e)});}return;}\n' +
+    ' try{zip(d.b,d.u).then(function(o){self.postMessage({i:d.i,b:o},[o]);},function(e){self.postMessage({i:d.i,err:String(e)});});}catch(e){self.postMessage({i:d.i,err:String(e)});}};\n';
+}
+function m16Worker(){
+  if (M16.w !== undefined) return M16.w;
+  M16.w = null;
+  if (/[?&]m16w=0\b/.test(location.search)) return null;
+  try {
+    if (typeof Worker !== 'function' || typeof Blob !== 'function' || typeof URL === 'undefined' || typeof CompressionStream !== 'function') return null;
+    var w = new Worker(URL.createObjectURL(new Blob([m16WorkerSrc()], { type: 'text/javascript' })));
+    w.onmessage = function(ev){
+      var d = ev.data;
+      if (d.t === 'enc'){ if (d.err){ m16WorkerDead('enc: ' + d.err); return; } m16EncReply(d); return; }
+      var j = M16.wjobs.get(d.i);
+      if (!j) return;
+      M16.wjobs.delete(d.i);
+      if (d.err){ m16WorkerDead('job: ' + d.err); m16ZipHere(j.b, j.u, j.cb); }
+      else j.cb(new Uint8Array(d.b));
+    };
+    w.onerror = function(e){ m16WorkerDead('error: ' + (e && e.message || e)); };
+    M16.w = w; M16.zMode = 'worker';
+  } catch(e){ M16.w = null; }
+  return M16.w;
+}
+/* the worker failed (a strict page policy, no streams there): what it still had goes through this thread */
+function m16WorkerDead(why){
+  if (!M16.w) return;
+  try { M16.w.terminate(); } catch(e){}
+  M16.w = null; M16.zMode = 'here'; M16.st.wDead = why;
+  var left = []; M16.wjobs.forEach(function(j){ left.push(j); }); M16.wjobs.clear();
+  left.forEach(function(j){ m16ZipHere(j.b, j.u, j.cb); });
+  // packing batches it had not answered: packed on this thread from the sources they kept
+  M16.wEnc = false;
+  var batches = []; M16.encBatches.forEach(function(b){ batches.push(b); }); M16.encBatches.clear();
+  batches.forEach(function(b){ M16.encPending--; if (b.cells.every(function(L){ return L.every(function(pe){ return !!pe.spec.src; }); })) m16EncLocal(b); else M16.st.lost = (M16.st.lost || 0) + 1; });
+  m16ZCheck();
+}
+function m16ZipHere(u8, inflate, cb){
+  try {
+    if (typeof CompressionStream !== 'function'){ cb(null); return; }
+    var s = inflate ? new DecompressionStream('deflate') : new CompressionStream('deflate');
+    var w = s.writable.getWriter(); w.write(u8); w.close();
+    new Response(s.readable).arrayBuffer().then(function(o){ cb(new Uint8Array(o)); }, function(){ cb(null); });
+  } catch(e){ cb(null); }
+}
+/* deflate (inflate = false) or inflate u8 -> cb(Uint8Array | null). The data is copied to the worker, never transferred:
+   nothing is lost if it fails. */
+function m16Zip(u8, inflate, cb){
+  var w = m16Worker();
+  if (w){
+    var id = ++M16.wid;
+    M16.wjobs.set(id, { b: u8, u: inflate, cb: cb });
+    try { w.postMessage({ i: id, u: inflate ? 1 : 0, b: u8 }); return; }
+    catch(e){ M16.wjobs.delete(id); m16WorkerDead('post: ' + e.message); }
+  }
+  if (!M16.zMode) M16.zMode = typeof CompressionStream === 'function' ? 'here' : 'none';
+  m16ZipHere(u8, inflate, cb);
+}
+function m16ZQueue(b){
+  if (typeof CompressionStream !== 'function' || /[?&]m16z=0\b/.test(location.search)) return;
+  M16.zq.push(b); m16ZPump();
+}
+function m16ZPump(){
+  while (M16.zIn < M16.cfg.zFlight && M16.zq.length){
+    var b = M16.zq.shift();
+    M16.zIn++;
+    (function(b){
+      m16Zip(b.raw, false, function(out){
+        M16.zIn--;
+        if (out && out.length){ b.z = out; b.raw = null; M16.st.zB += out.length; }
+        else M16.st.zFail++;
+        m16ZPump(); m16ZCheck();
+      });
+    })(b);
+  }
+}
+function m16ZCheck(){ if (!M16.zIn && !M16.zq.length && !M16.encPending && M16.zWait.length){ var w = M16.zWait.splice(0); w.forEach(function(f){ f(); }); } }
+function m16ZDone(){ return new Promise(function(res){ M16.zWait.push(res); m16ZCheck(); }); }
+
+/* ---------------------------------------------------------------- groups (batchStatic's key) */
+function m16FarOk(m){
+  if (!m || Array.isArray(m) || !m.isMeshStandardMaterial || m.transparent || m.alphaTest > 0 || m.polygonOffset || m.visible === false) return false;
+  try { if (STOREFRONTS.indexOf(m) >= 0) return false; } catch(e){}
+  try { if ((W2_SIGN.mat && m === W2_SIGN.mat) || (W2_GLOW.mat && m === W2_GLOW.mat)) return false; } catch(e){}
+  return typeof farBuild === 'function';
+}
+function m16Key(o, cx, cz){
+  var g = o.geometry, A = g.attributes;
+  return cx + ',' + cz + '|' + o.material.uuid + '|' + (o.castShadow ? 1 : 0) + (o.receiveShadow ? 1 : 0) + '|' +
+         (o.customDepthMaterial ? o.customDepthMaterial.uuid : '') + '|' + (A.uv ? 'u' : '') + (A.color ? 'c' : '');
+}
+function m16Group(key, cx, cz, o, virt){
+  var A = o.geometry.attributes, m = o.material;
+  var far = m16FarOk(m), wo = (m.userData && m.userData.worldOpts) || {}, fac = (wo.win || 0) > 0;
+  var G = { key: key, cx: cx, cz: cz, gx: cx*BATCH_CHUNK + BATCH_CHUNK/2, gz: cz*BATCH_CHUNK + BATCH_CHUNK/2,
+            mat: m, cast: !!o.castShadow, recv: !!o.receiveShadow, depth: o.customDepthMaterial || null,
+            uv: !!A.uv, col: !!A.color, parts: [], rparts: [], enc: null,
+            box: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity],
+            farOn: far, fUv: !!A.uv && !!(m.map || m.emissiveMap), fCol: !!A.color && !!m.vertexColors,
+            aMin: fac ? FAR_A_MIN_FAC : FAR_A_MIN, hMin: fac ? FAR_H_MIN_FAC : FAR_H_MIN,
+            firstV: virt ? M16.vseq : Infinity, firstR: virt ? Infinity : M16.rseq, mesh: null, stub: null, nv: 0, ni: 0, cf: false, gpuB: 0 };
+  M16.groups.set(key, G); M16.glist.push(G);
+  return G;
+}
+function m16Plain(g, uv, col){
+  var a = g.attributes, ix = g.index;
+  var p = function(x, n){ return !!x && !x.isInterleavedBufferAttribute && x.itemSize === n && !x.normalized; };
+  return p(a.position, 3) && p(a.normal, 3) && (!uv || p(a.uv, 2)) &&
+         (!col || (!!a.color && !a.color.isInterleavedBufferAttribute && a.color.itemSize >= 3 && !a.color.normalized)) &&
+         (!ix || !ix.isInterleavedBufferAttribute);
+}
+/* one source mesh (virtual or real) into its group */
+function m16Source(o, virt){
+  var e = o.matrixWorld.elements;
+  var cx = Math.floor(e[12] / BATCH_CHUNK), cz = Math.floor(e[14] / BATCH_CHUNK);
+  var key = m16Key(o, cx, cz);
+  var G = M16.groups.get(key) || m16Group(key, cx, cz, o, virt);
+  if (virt){ if (G.firstV === Infinity) G.firstV = M16.vseq; }
+  else if (G.firstR === Infinity) G.firstR = M16.rseq;
+  m16Put(G, o, virt);
+}
+function m16Put(G, o, virt){
+  var g = o.geometry, e = o.matrixWorld.elements, list = virt ? G.parts : G.rparts;
+  M16.st.src++;
+  if (!m16Plain(g, G.uv, G.col)){
+    // interleaved / normalised data: batchStatic's generic path (toNonIndexed + applyMatrix4, the raw arrays)
+    var g2 = g.index ? g.toNonIndexed() : g.clone();
+    g2.applyMatrix4(o.matrixWorld);
+    if (g2.attributes.color && g2.attributes.color.itemSize !== 3){
+      var ca = g2.attributes.color.array, n3 = g2.attributes.position.count*3;
+      g2.setAttribute('color', new T.BufferAttribute(ca.subarray(0, n3).slice(), 3));
+    }
+    ['position', 'normal', 'uv', 'color'].forEach(function(k){ var a = g2.attributes[k]; if (a && (a.normalized || a.isInterleavedBufferAttribute)) g2.setAttribute(k, new T.BufferAttribute(Float32Array.from(a.array), a.itemSize)); });
+    M16.st.generic++;
+    m16PutData(G, list, g2, null, false);
+    return;
+  }
+  var rec = M16.seen.get(g);
+  if (!rec){ rec = { n: 0, snap: null }; M16.seen.set(g, rec); }
+  rec.n++;
+  if (rec.n === 1){ m16PutData(G, list, g, e, !!g.index); return; }
+  if (!rec.snap || !m16SnapSame(rec.snap, g)){ rec.snap = m16Snap(g, G.uv, G.col); M16.st.snaps++; }
+  m16PutRecipe(G, list, rec.snap, e);
+}
+/* is the packing done in the worker? (decided at the first drain: a worker that can be made, ?m16we=0 = never) */
+function m16WEnc(){
+  if (M16.wEnc === null) M16.wEnc = !/[?&]m16we=0\b/.test(location.search) && !!m16Worker() ? 'worker' : false;
+  return M16.wEnc;
+}
+function m16Open(G, list){
+  var E;
+  if (m16WEnc()) E = G.enc = { spec: true, items: [], src: [], est: 0, nv: 0 };
+  else { E = G.enc = m16Enc(G.uv, G.col); if (G.farOn) E.far = m16FarNew(G.fUv, G.fCol); }
+  E.list = list; E.part = { k: 0, ch: null, far: null }; list.push(E.part);
+  M16.open.push(G);
+  return E;
+}
+/* copies of a source's arrays for the worker (the geometry itself may be used again: never detach it) */
+function m16Arrays(g, uv, col, e){
+  var A = g.attributes, cs = col ? A.color.itemSize : 3;
+  return { P: A.position.array.slice(0, A.position.count*3), N: A.normal.array.slice(0, A.normal.count*3),
+           U: uv ? A.uv.array.slice(0, A.uv.count*2) : null, C: col ? A.color.array.slice(0, A.color.count*cs) : null, cs: cs,
+           I: g.index ? g.index.array.slice(0, g.index.count) : null, e: e ? Float64Array.from(e) : null };
+}
+function m16PutSpec(G, list, g, e, indexed){
+  var E = G.enc;
+  if (E && (E.list !== list || E.est >= M16.cfg.chunkV*1.5)){ m16Seal(G); E = null; }
+  if (!E) E = m16Open(G, list);
+  var A = g.attributes, n = indexed ? A.position.count : (g.index ? g.index.count : A.position.count), arr = m16Arrays(g, G.uv, G.col, e);
+  if (!indexed && n > M16.cfg.chunkV*2){
+    for (var a = 0; a < n; ){
+      var b = Math.min(n, a + M16.cfg.chunkV*3);
+      if (E.est >= M16.cfg.chunkV){ m16Seal(G); E = m16Open(G, list); }
+      E.items.push({ P: arr.P, N: arr.N, U: arr.U, C: arr.C, cs: arr.cs, I: arr.I, e: arr.e, idx: false, from: a, cnt: b - a });
+      E.src.push({ g: g, e: e, idx: false, from: a, cnt: b - a });
+      E.est += b - a; a = b;
+    }
+  } else {
+    E.items.push({ P: arr.P, N: arr.N, U: arr.U, C: arr.C, cs: arr.cs, I: arr.I, e: arr.e, idx: indexed });
+    E.src.push({ g: g, e: e, idx: indexed });
+    E.est += n;
+  }
+  M16.st.data++; M16.st.dataVerts += n;
+}
+function m16PutData(G, list, g, e, indexed){
+  if (m16WEnc()){ m16PutSpec(G, list, g, e, indexed); return; }
+  var E = G.enc;
+  if (E && (E.list !== list || E.nv >= M16.cfg.chunkV)){ m16Seal(G); E = null; }
+  if (!E) E = m16Open(G, list);
+  var n = m16Xform(g, e, indexed, G.uv, G.col);
+  if (!indexed && n > M16.cfg.chunkV*2){
+    // a very big triangle soup goes into several chunks (whole triangles each): every unpack step stays small
+    for (var a = 0; a < n; ){
+      var b = Math.min(n, a + M16.cfg.chunkV*3), cnt = b - a;
+      if (E.nv >= M16.cfg.chunkV){ m16Seal(G); E = m16Open(G, list); }
+      m16EncPut(E, cnt, null, a);
+      if (G.farOn) M16.st.farV += m16FarPut(G, E.far, cnt, null, a);
+      a = b;
+    }
+  } else {
+    m16EncPut(E, n, indexed ? g.index.array : null);
+    if (G.farOn) M16.st.farV += m16FarPut(G, E.far, n, indexed ? g.index.array : null);
+  }
+  M16.st.data++; M16.st.dataVerts += n;
+}
+function m16PutRecipe(G, list, s, e){
+  if (G.enc && G.enc.list === list) m16Seal(G);                 // the order of the merged triangles: what came before ends here
+  var R = list.length ? list[list.length - 1] : null;
+  if (!R || R.k !== 1 || R.snap !== s){ R = { k: 1, snap: s, m: new Float64Array(12*8), n: 0, far: null, F: null }; list.push(R); }
+  if ((R.n + 1)*12 > R.m.length){ var nm = new Float64Array(R.m.length*2); nm.set(R.m); R.m = nm; }
+  var o = R.n*12, m = R.m;
+  m[o] = e[0]; m[o+1] = e[1]; m[o+2] = e[2]; m[o+3] = e[4]; m[o+4] = e[5]; m[o+5] = e[6];
+  m[o+6] = e[8]; m[o+7] = e[9]; m[o+8] = e[10]; m[o+9] = e[12]; m[o+10] = e[13]; m[o+11] = e[14];
+  R.n++;
+  // exact bounds: the template's corners through the matrix
+  var P = s.tP, B = G.box;
+  for (var v = 0, n = s.tv; v < n; v++){
+    var x = P[v*3], y = P[v*3+1], z = P[v*3+2];
+    var X = e[0]*x + e[4]*y + e[8]*z + e[12], Y = e[1]*x + e[5]*y + e[9]*z + e[13], Z = e[2]*x + e[6]*y + e[10]*z + e[14];
+    if (X < B[0]) B[0] = X; if (X > B[3]) B[3] = X; if (Y < B[1]) B[1] = Y; if (Y > B[4]) B[4] = Y; if (Z < B[2]) B[2] = Z; if (Z > B[5]) B[5] = Z;
+  }
+  // far skyline: only a shape that can have a big enough triangle at this scale
+  if (G.farOn){
+    var sx = e[0]*e[0] + e[1]*e[1] + e[2]*e[2], sy = e[4]*e[4] + e[5]*e[5] + e[6]*e[6], sz = e[8]*e[8] + e[9]*e[9] + e[10]*e[10];
+    var s2 = Math.max(sx, sy, sz);
+    if (s.a2max*s2 >= G.aMin*2*0.999){
+      var k = m16Xform(s.g, e, s.idx, G.uv, G.col);
+      if (!R.F) R.F = m16FarNew(G.fUv, G.fCol);
+      M16.st.farV += m16FarPut(G, R.F, k, s.idx ? s.g.index.array : null);
+    }
+  }
+  M16.st.recipes++;
+}
+/* a frozen copy of a geometry used again + its template (unique corners, local index) for the unpack */
+function m16Snap(g, uv, col){
+  var c = new T.BufferGeometry(), A = g.attributes;
+  c.setAttribute('position', new T.BufferAttribute(A.position.array.slice(0, A.position.count*3), 3));
+  c.setAttribute('normal', new T.BufferAttribute(A.normal.array.slice(0, A.normal.count*3), 3));
+  if (uv) c.setAttribute('uv', new T.BufferAttribute(A.uv.array.slice(0, A.uv.count*2), 2));
+  if (col){ var cs = A.color.itemSize; c.setAttribute('color', new T.BufferAttribute(A.color.array.slice(0, A.color.count*cs), cs)); }
+  if (g.index) c.setIndex(new T.BufferAttribute(g.index.array.slice(0, g.index.count), 1));
+  var s = { g: c, idx: !!g.index, uv: uv, col: col, tv: 0, ti: 0, tP: null, tN: null, tU: null, tC: null, tI: null, colF: false, a2max: 0 };
+  // the template: an indexed geometry keeps its own index; a triangle soup shares equal corners among the last few
+  var P = c.attributes.position.array, N = c.attributes.normal.array, U = uv ? c.attributes.uv.array : null;
+  var C = col ? c.attributes.color.array : null, cs2 = col ? c.attributes.color.itemSize : 3;
+  var nv = c.attributes.position.count, I = c.index ? c.index.array : null, ni = I ? I.length : nv;
+  var tP = [], tN = [], tU = [], tC = [], tI = new Uint32Array(ni), map = I ? new Int32Array(nv).fill(-1) : null, win = [], tv = 0;
+  for (var k = 0; k < ni; k++){
+    var v = I ? I[k] : k, id = -1;
+    if (map){ id = map[v]; }
+    else {
+      for (var w = win.length - 1; w >= Math.max(0, win.length - M16_WIN); w--){
+        var q = win[w][0], qq = win[w][1];
+        if (P[q*3] === P[v*3] && P[q*3+1] === P[v*3+1] && P[q*3+2] === P[v*3+2] && N[q*3] === N[v*3] && N[q*3+1] === N[v*3+1] && N[q*3+2] === N[v*3+2] &&
+            (!U || (U[q*2] === U[v*2] && U[q*2+1] === U[v*2+1])) && (!C || (C[q*cs2] === C[v*cs2] && C[q*cs2+1] === C[v*cs2+1] && C[q*cs2+2] === C[v*cs2+2]))){ id = qq; break; }
+      }
+    }
+    if (id < 0){
+      id = tv++;
+      tP.push(P[v*3], P[v*3+1], P[v*3+2]); tN.push(N[v*3], N[v*3+1], N[v*3+2]);
+      if (U) tU.push(U[v*2], U[v*2+1]);
+      if (C){ var r = C[v*cs2], gg = C[v*cs2+1], b = C[v*cs2+2]; tC.push(r, gg, b); if (!(r >= 0 && r <= 1 && gg >= 0 && gg <= 1 && b >= 0 && b <= 1)) s.colF = true; }
+      if (map) map[v] = id; else { win.push([v, id]); if (win.length > 64) win.splice(0, 32); }
+    }
+    tI[k] = id;
+  }
+  s.tv = tv; s.ti = ni; s.tP = Float32Array.from(tP); s.tN = Float32Array.from(tN); s.tU = U ? Float32Array.from(tU) : null; s.tC = C ? Float32Array.from(tC) : null; s.tI = tI;
+  // the biggest triangle (2 x area) in the shape's own space: decides whether a scaled copy can reach the far skyline
+  for (var t = 0; t + 2 < ni; t += 3){
+    var a = (I ? I[t] : t)*3, b2 = (I ? I[t+1] : t+1)*3, d = (I ? I[t+2] : t+2)*3;
+    var ax = P[b2] - P[a], ay = P[b2+1] - P[a+1], az = P[b2+2] - P[a+2], bx = P[d] - P[a], by = P[d+1] - P[a+1], bz = P[d+2] - P[a+2];
+    var cx = ay*bz - az*by, cy = az*bx - ax*bz, cz = ax*by - ay*bx, a2 = Math.sqrt(cx*cx + cy*cy + cz*cz);
+    if (a2 > s.a2max) s.a2max = a2;
+  }
+  M16.st.recB += (P.byteLength + N.byteLength + (U ? U.byteLength : 0) + (C ? C.byteLength : 0) + (I ? I.byteLength : 0))*2 + tI.byteLength;
+  return s;
+}
+function m16SnapSame(s, g){
+  var A = g.attributes, c = s.g.attributes, same = function(a, b){ if (!a || !b) return a === b; var x = a.array, y = b.array; if (x.length < y.length) return false; for (var i = 0, n = y.length; i < n; i++) if (x[i] !== y[i]) return false; return true; };
+  if (A.position.count !== c.position.count || !!g.index !== s.idx || (g.index && g.index.count !== s.g.index.count)) return false;
+  return same(A.position, c.position) && same(A.normal, c.normal) && (!s.uv || same(A.uv, c.uv)) && (!s.col || same(A.color, c.color)) && (!g.index || same(g.index, s.g.index));
+}
+
+/* ---------------------------------------------------------------- the far skyline's big triangles (m16FarPut in mods/mem16_pack.js) */
+/* far12_view.js farBuildCells: a packed merged mesh's kept triangles into the cell's far buffer (the cell origin ox, oz;
+   the material's slot decides colour, atlas tiles and uv exactly as for a live mesh). true = it had some. */
+function m16FarAppend(G, B, ox, oz, s, webgl2){
+  var any = false, useUv = webgl2 && G.uv && (s.mt !== 255 || s.et !== 255), all = G.all || [];
+  var dx = (G.gx - ox)*16, dz = (G.gz - oz)*16;
+  for (var pi = 0; pi < all.length; pi++){
+    var part = all[pi], F = part.far || (part.F ? (part.far = m16FarTrim(part.F)) : null);
+    part.F = null;
+    if (!F || !F.ni) continue;
+    any = true;
+    var base = B.n;
+    farGrowBuf(B, F.n);
+    if (B.ni + F.ni > B.idx.length){ var nu = new Uint32Array(Math.max(B.idx.length*2, B.ni + F.ni)); nu.set(B.idx); B.idx = nu; }
+    for (var v = 0; v < F.n; v++){
+      var w = B.n++;
+      B.pos[w*3]   = clamp(F.pos[v*3] + dx, -32767, 32767);
+      B.pos[w*3+1] = clamp(F.pos[v*3+1], -32767, 32767);
+      B.pos[w*3+2] = clamp(F.pos[v*3+2] + dz, -32767, 32767);
+      B.nrm[w*3] = F.nrm[v*3]; B.nrm[w*3+1] = F.nrm[v*3+1]; B.nrm[w*3+2] = F.nrm[v*3+2];
+      var r = s.r, gg = s.g, bb = s.b;
+      if (F.col){ r *= F.col[v*3]; gg *= F.col[v*3+1]; bb *= F.col[v*3+2]; }
+      B.col[w*3]   = Math.round(Math.sqrt(clamp(r, 0, 1))*255);
+      B.col[w*3+1] = Math.round(Math.sqrt(clamp(gg, 0, 1))*255);
+      B.col[w*3+2] = Math.round(Math.sqrt(clamp(bb, 0, 1))*255);
+      B.inf[w*4] = useUv ? s.mt : 255; B.inf[w*4+1] = useUv ? s.et : 255; B.inf[w*4+2] = s.glass; B.inf[w*4+3] = s.wet;
+      if (B.uv){
+        var u = 0, vv = 0, mu = 0, mv = 0, eu = 0, ev = 0;
+        if (useUv && F.uv){ u = F.uv[v*2]; vv = F.uv[v*2+1]; }
+        if (useUv && s.mx){ var M = s.mx; mu = M[0]*u + M[3]*vv + M[6]; mv = M[1]*u + M[4]*vv + M[7]; }
+        if (useUv && s.ex){ var X = s.ex; eu = X[0]*u + X[3]*vv + X[6]; ev = X[1]*u + X[4]*vv + X[7]; }
+        B.uv[w*4] = mu; B.uv[w*4+1] = mv; B.uv[w*4+2] = eu; B.uv[w*4+3] = ev;
+      }
+    }
+    for (var k = 0; k < F.ni; k++) B.idx[B.ni++] = base + F.idx[k];
+  }
+  return any;
+}
+
+/* ---------------------------------------------------------------- drains + sealing */
+function m16Seal(G){
+  var E = G.enc;
+  if (!E) return;
+  G.enc = null;
+  var list = E.list, part = E.part;
+  if (E.spec){
+    if (!E.items.length){ var i0 = list.indexOf(part); if (i0 >= 0) list.splice(i0, 1); return; }
+    M16.pend.push({ spec: E, G: G, part: part, ck: G.cx + ',' + G.cz });
+    return;
+  }
+  if (!E.nv){ var i = list.indexOf(part); if (i >= 0) list.splice(i, 1); return; }
+  var ch = m16EncDone(E), B = G.box, b = ch.box;
+  if (b[0] < B[0]) B[0] = b[0]; if (b[1] < B[1]) B[1] = b[1]; if (b[2] < B[2]) B[2] = b[2];
+  if (b[3] > B[3]) B[3] = b[3]; if (b[4] > B[4]) B[4] = b[4]; if (b[5] > B[5]) B[5] = b[5];
+  part.ch = ch; ch.ck = G.cx + ',' + G.cz;
+  part.far = m16FarTrim(E.far); E.far = null;
+  M16.pend.push(ch);
+}
+/* every open chunk ends; this drain's chunks become one blob per cell (deflated in the background) */
+function m16SealAll(){
+  for (var i = 0; i < M16.open.length; i++) m16Seal(M16.open[i]);
+  M16.open.length = 0;
+  var P = M16.pend;
+  if (!P.length) return;
+  M16.pend = [];
+  var specs = P.filter(function(x){ return x.spec; });
+  if (specs.length){
+    P = P.filter(function(x){ return !x.spec; });
+    if (M16.wEnc === 'inproc' || (M16.wEnc && M16.w)) m16EncPost(specs);
+    else m16EncLocal({ cells: [specs] });               // (the worker went away meanwhile)
+    if (!P.length) return;
+  }
+  var by = new Map();
+  for (var j = 0; j < P.length; j++){ var L = by.get(P[j].ck); if (!L){ L = []; by.set(P[j].ck, L); } L.push(P[j]); }
+  by.forEach(function(L){
+    var tot = 0;
+    for (var k = 0; k < L.length; k++) tot += (L[k].len + 3) & ~3;          // 4-byte aligned: the int32 / float32 views
+    var raw = new Uint8Array(tot), blob = { raw: raw, z: null, n: L.length, len: tot }, off = 0;
+    for (var k2 = 0; k2 < L.length; k2++){
+      var ch = L[k2];
+      raw.set(ch.bytes, off); ch.blob = blob; ch.off = off; ch.bytes = null;
+      off += (ch.len + 3) & ~3;
+    }
+    M16.blobs.push(blob); M16.st.blobs++; M16.st.rawB += tot;
+    m16ZQueue(blob);
+  });
+}
+/* batchStatic's filter for a real mesh it merges */
+function m16Batchable(o){
+  if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) return false;
+  if (o.userData.noBatch || Array.isArray(o.material)) return false;
+  var g = o.geometry;
+  if (!g || !g.attributes.position || !g.attributes.normal) return false;
+  if (o.material.transparent && o.material !== PROP.lampGlow) return false;
+  return true;
+}
+function m16KeyOf(o){ var e = o.matrixWorld.elements; return m16Key(o, Math.floor(e[12] / BATCH_CHUNK), Math.floor(e[14] / BATCH_CHUNK)); }
+/* the real meshes added since the last drain (worldGroup only grows while the city builds): each joins its group at once
+   when the group exists (or a second member arrives); one that is alone so far is held -- left as it is if it stays alone,
+   exactly batchStatic's rule. The merged order is batchStatic's too: real members (in the order they were added) first. */
+function m16DrainReal(dead){
+  var ch = worldGroup.children, end = ch.length;
+  if (M16.rcur > end) M16.rcur = end;
+  for (var i = M16.rcur; i < end; i++){
+    var top = ch[i];
+    top.updateMatrixWorld(true);
+    top.traverse(function(o){
+      if (!m16Batchable(o)) return;
+      var key = m16KeyOf(o);
+      M16.rseq++;
+      if (M16.groups.has(key)){ m16Source(o, false); m16Dead(dead, o); return; }
+      var h = M16.hold.get(key);
+      if (h){ M16.hold.delete(key); m16Source(h, false); m16Dead(dead, h); m16Source(o, false); m16Dead(dead, o); return; }
+      M16.hold.set(key, o);
+    });
+  }
+}
+function m16Dead(dead, o){ if (o.parent){ var set = dead.get(o.parent); if (!set){ set = new Set(); dead.set(o.parent, set); } set.add(o); } M16.st.removed++; }
+function m16Bury(dead){
+  dead.forEach(function(set, p){ p.children = p.children.filter(function(c){ return !set.has(c); }); set.forEach(function(c){ c.parent = null; }); });
+  M16.rcur = worldGroup.children.length;
+}
+/* this drain's chunk specs -> one message to the worker (one blob per cell comes back, deflated) */
+function m16EncPost(P){
+  var by = new Map(), order = [];
+  for (var j = 0; j < P.length; j++){ var L = by.get(P[j].ck); if (!L){ L = []; by.set(P[j].ck, L); order.push(P[j].ck); } L.push(P[j]); }
+  var id = ++M16.encId, msg = { t: 'enc', id: id, cells: [] }, rec = { id: id, cells: [] }, bufs = new Set();
+  for (var k = 0; k < order.length; k++){
+    var L2 = by.get(order[k]), cm = { chunks: [] };
+    for (var q = 0; q < L2.length; q++){
+      var pe = L2[q], G = pe.G;
+      cm.chunks.push({ uv: G.uv, col: G.col, far: G.farOn ? { aMin: G.aMin, hMin: G.hMin, gx: G.gx, gz: G.gz, fUv: G.fUv, fCol: G.fCol } : null, items: pe.spec.items });
+      pe.spec.items.forEach(function(it){ ['P', 'N', 'U', 'C', 'I', 'e'].forEach(function(f){ if (it[f]) bufs.add(it[f].buffer); }); });
+      pe.spec.items = null;
+      if (M16.wOk) pe.spec.src = null;                   // the worker has proven itself: nothing to redo here, the sources can go
+    }
+    msg.cells.push(cm); rec.cells.push(L2);
+  }
+  var qb = 0; bufs.forEach(function(b){ qb += b.byteLength; });
+  rec.bytes = qb; M16.wq += qb; if (M16.wq > M16.st.wqMax) M16.st.wqMax = M16.wq;     // what the worker holds and has not answered yet
+  M16.encBatches.set(id, rec); M16.encPending++;
+  if (M16.wEnc === 'inproc'){                             // tests: the worker's code in this thread, a structured clone between
+    var d = structuredClone(msg);
+    m16EncBatch(d, function(u8){ return new Promise(function(res){ m16ZipHere(u8, false, function(o){ res(o ? o.buffer : null); }); }); })
+      .then(function(r){ m16EncReply(r.msg); });
+    return;
+  }
+  try { M16.w.postMessage(msg, Array.from(bufs)); }
+  catch(e){ m16WorkerDead('post enc: ' + e.message); }
+}
+/* the worker's answer: chunk metadata + far triangles onto their parts, the deflated blobs kept */
+function m16EncReply(d){
+  var rec = M16.encBatches.get(d.id);
+  if (!rec) return;
+  M16.encBatches.delete(d.id); M16.encPending--; M16.wOk = true; M16.wq -= rec.bytes || 0;
+  for (var ci = 0; ci < d.cells.length; ci++){
+    var cr = d.cells[ci], L = rec.cells[ci];
+    var blob = { raw: cr.raw ? new Uint8Array(cr.raw) : null, z: cr.z ? new Uint8Array(cr.z) : null, n: cr.chunks.length, len: cr.len };
+    M16.blobs.push(blob); M16.st.blobs++; M16.st.rawB += cr.len; if (blob.z) M16.st.zB += blob.z.length;
+    for (var k = 0; k < cr.chunks.length; k++){
+      var m = cr.chunks[k], pe = L[k], G = pe.G, B = G.box, b = m.box;
+      pe.part.far = m.far; m.far = null;
+      m.blob = blob; m.bytes = null; m.ck = pe.ck;
+      pe.part.ch = m;
+      if (b[0] < B[0]) B[0] = b[0]; if (b[1] < B[1]) B[1] = b[1]; if (b[2] < B[2]) B[2] = b[2];
+      if (b[3] > B[3]) B[3] = b[3]; if (b[4] > B[4]) B[4] = b[4]; if (b[5] > B[5]) B[5] = b[5];
+      M16P.chunks++;
+    }
+  }
+  m16ZCheck();
+}
+/* a batch the worker could not do: packed here from the sources it kept (then deflated like any other) */
+function m16EncLocal(rec){
+  for (var ci = 0; ci < rec.cells.length; ci++){
+    var L = rec.cells[ci];
+    for (var k = 0; k < L.length; k++){
+      var pe = L[k], G = pe.G, E = m16Enc(G.uv, G.col), F = G.farOn ? m16FarNew(G.fUv, G.fCol) : null;
+      pe.spec.src.forEach(function(s){
+        var n = m16Xform(s.g, s.e, s.idx, G.uv, G.col);
+        if (s.cnt != null){ m16EncPut(E, s.cnt, null, s.from); if (F) m16FarPut(G, F, s.cnt, null, s.from); }
+        else { m16EncPut(E, n, s.idx ? s.g.index.array : null); if (F) m16FarPut(G, F, n, s.idx ? s.g.index.array : null); }
+      });
+      var ch = m16EncDone(E), B = G.box, b = ch.box;
+      if (b[0] < B[0]) B[0] = b[0]; if (b[1] < B[1]) B[1] = b[1]; if (b[2] < B[2]) B[2] = b[2];
+      if (b[3] > B[3]) B[3] = b[3]; if (b[4] > B[4]) B[4] = b[4]; if (b[5] > B[5]) B[5] = b[5];
+      pe.part.ch = ch; ch.ck = pe.ck; pe.part.far = m16FarTrim(F);
+      M16.pend.push(ch);
+    }
+  }
+  m16SealAll();
+}
+/* the city build hands over what it made after every slice (buildCity, buildPieceMeshesAsync) */
+function m16Drain(){
+  if (!M16.on || M16.built) return;
+  var t0 = performance.now();
+  var dead = new Map();
+  m16DrainReal(dead);
+  m16Bury(dead);
+  var V = (typeof VMESH !== 'undefined') ? VMESH : null;
+  if (V && V.length){
+    for (var i = 0; i < V.length; i++){ m16Source(V[i], true); M16.vseq++; }
+    V.length = 0;
+  }
+  m16SealAll();
+  M16.st.drains++; M16.st.drainMs += performance.now() - t0;
+}
+
+/* ---------------------------------------------------------------- batchStatic */
+function m16BatchStatic(){
+  var t0 = performance.now();
+  m16Drain();                                            // what was made after the last slice (roads, pieces, extras)
+  // every real mesh still in the world: held ones, and any that joined a group the drains had already walked past
+  worldGroup.updateMatrixWorld(true);
+  var real = new Map(), order = [];
+  worldGroup.traverse(function(o){
+    if (!m16Batchable(o)) return;
+    var key = m16KeyOf(o), L = real.get(key);
+    if (!L){ L = []; real.set(key, L); order.push(key); }
+    L.push(o);
+  });
+  var dead = new Map();
+  for (var i = 0; i < order.length; i++){
+    var key = order[i], L = real.get(key);
+    if (!M16.groups.has(key) && L.length < 2){ M16.st.singles++; continue; }    // one real mesh alone in its group: as before, left as it is
+    for (var k = 0; k < L.length; k++){ M16.rseq++; m16Source(L[k], false); m16Dead(dead, L[k]); }
+  }
+  m16Bury(dead);
+  M16.hold.clear();
+  m16SealAll();
+  var tz = performance.now();
+  setLoad(90, 'Stacking the city — packing');
+  return m16ZDone().then(function(){
+    M16.st.zWaitMs = Math.round(performance.now() - tz);
+    var merged = m16Meshes();
+    if (typeof BOXGEO_CACHE !== 'undefined') BOXGEO_CACHE.clear();
+    M16.built = true;
+    M16.st.finalMs = Math.round(performance.now() - t0);
+    window.__batchStats = { groups: M16.glist.length, merged: merged, removed: M16.st.src, ms: M16.st.finalMs, mem16: true };
+    return { merged: merged, removed: M16.st.removed };
+  });
+}
+/* one merged mesh per group, in batchStatic's order (groups with real meshes first, then by their first virtual mesh) */
+function m16Meshes(){
+  var L = M16.glist.slice().sort(function(a, b){ return (a.firstR - b.firstR) || (a.firstV - b.firstV); });
+  var n = 0;
+  for (var i = 0; i < L.length; i++){
+    var G = L[i], all = G.rparts.concat(G.parts), nv = 0, ni = 0, cf = false;
+    for (var k = 0; k < all.length; k++){
+      var p = all[k];
+      if (p.k === 0){ nv += p.ch.nv; ni += p.ch.ni; if (p.ch.cf) cf = true; }
+      else { nv += p.snap.tv*p.n; ni += p.snap.ti*p.n; if (p.snap.colF) cf = true; }
+    }
+    if (!ni){ continue; }
+    G.all = all; G.nv = nv; G.ni = ni; G.cf = cf;
+    var B = G.box, c = new T.Vector3((B[0] + B[3])/2, (B[1] + B[4])/2, (B[2] + B[5])/2);
+    var r = Math.sqrt((B[3] - B[0])*(B[3] - B[0]) + (B[4] - B[1])*(B[4] - B[1]) + (B[5] - B[2])*(B[5] - B[2]))/2;
+    G.sphere = new T.Sphere(c, r);
+    G.bbox = new T.Box3(new T.Vector3(B[0], B[1], B[2]), new T.Vector3(B[3], B[4], B[5]));
+    var stub = G.stub = new T.BufferGeometry();                // (its bounds are what buildCullList reads; m16AfterBuild swaps it)
+    stub.boundingSphere = G.sphere.clone();
+    stub.boundingBox = G.bbox.clone();
+    var mesh = new T.Mesh(stub, G.mat);
+    mesh.castShadow = G.cast; mesh.receiveShadow = G.recv;
+    if (G.depth) mesh.customDepthMaterial = G.depth;
+    mesh.frustumCulled = true;
+    mesh.userData.noBatch = true; mesh.userData.batched = true; mesh.userData.m16 = G;
+    mesh.matrixAutoUpdate = false;
+    worldGroup.add(mesh);
+    G.mesh = mesh;
+    n++;
+  }
+  M16.st.merged = n; M16.st.groups = M16.glist.length;
+  return n;
+}
+
+/* ---------------------------------------------------------------- unpacking (GPU-ready arrays for a group) */
+/* once on the GPU, the CPU copy goes (an empty array of the same type stays: readers of .array / .byteLength see 0 bytes) */
+var M16_EMPTY = new Map();
+function m16Free(){ var C = this.array && this.array.constructor; var e = M16_EMPTY.get(C); if (!e){ e = new C(0); M16_EMPTY.set(C, e); } this.array = e; }
+var _m16M4 = null, _m16M3 = null;
+/* recipe copies i0..i1 of part R into the group's arrays at vertex vb / index ib */
+function m16RecDec(R, A, vb, ib, i0, i1){
+  var s = R.snap, M = R.m, tv = s.tv, ti = s.ti, tP = s.tP, tN = s.tN, tU = s.tU, tC = s.tC, tI = s.tI;
+  var pos = A.pos, nrm = A.nrm, uv = A.uv, col = A.col, colF = A.colF, idx = A.idx;
+  if (!_m16M4){ _m16M4 = new T.Matrix4(); _m16M3 = new T.Matrix3(); }
+  for (var i = i0; i < i1; i++){
+    var o = i*12, e0 = M[o], e1 = M[o+1], e2 = M[o+2], e4 = M[o+3], e5 = M[o+4], e6 = M[o+5], e8 = M[o+6], e9 = M[o+7], e10 = M[o+8];
+    var e12 = M[o+9], e13 = M[o+10], e14 = M[o+11];
+    var v0 = vb + (i - i0)*tv, tr = e0 === 1 && e1 === 0 && e2 === 0 && e4 === 0 && e5 === 1 && e6 === 0 && e8 === 0 && e9 === 0 && e10 === 1;
+    var n0 = 1, n1 = 0, n2 = 0, n3 = 0, n4 = 1, n5 = 0, n6 = 0, n7 = 0, n8 = 1;
+    if (!tr){
+      _m16M4.set(e0, e4, e8, e12, e1, e5, e9, e13, e2, e6, e10, e14, 0, 0, 0, 1);
+      _m16M3.getNormalMatrix(_m16M4);
+      var ne = _m16M3.elements; n0 = ne[0]; n1 = ne[1]; n2 = ne[2]; n3 = ne[3]; n4 = ne[4]; n5 = ne[5]; n6 = ne[6]; n7 = ne[7]; n8 = ne[8];
+    }
+    for (var v = 0; v < tv; v++){
+      var d = (v0 + v)*3, q = v*3, x = tP[q], y = tP[q+1], z = tP[q+2];
+      if (tr){ pos[d] = x + e12; pos[d+1] = y + e13; pos[d+2] = z + e14; }
+      else { pos[d] = e0*x + e4*y + e8*z + e12; pos[d+1] = e1*x + e5*y + e9*z + e13; pos[d+2] = e2*x + e6*y + e10*z + e14; }
+      var a = tN[q], b = tN[q+1], c = tN[q+2], tx = a, ty = b, tz = c;
+      if (!tr){ tx = n0*a + n3*b + n6*c; ty = n1*a + n4*b + n7*c; tz = n2*a + n5*b + n8*c; }
+      var l = Math.sqrt(tx*tx + ty*ty + tz*tz) || 1, d4 = (v0 + v)*4;
+      nrm[d4] = Math.round(tx/l*127); nrm[d4+1] = Math.round(ty/l*127); nrm[d4+2] = Math.round(tz/l*127);
+      if (uv){ uv[(v0 + v)*2] = tU[v*2]; uv[(v0 + v)*2+1] = tU[v*2+1]; }
+      if (col){ col[d] = Math.round(tC[q]*255); col[d+1] = Math.round(tC[q+1]*255); col[d+2] = Math.round(tC[q+2]*255); }
+      else if (colF){ colF[d] = tC[q]; colF[d+1] = tC[q+1]; colF[d+2] = tC[q+2]; }
+    }
+    var ib0 = ib + (i - i0)*ti;
+    for (var k = 0; k < ti; k++) idx[ib0 + k] = v0 + tI[k];
+  }
+}
+function m16AllocG(G){
+  return { nv: G.nv, ni: G.ni, pos: new Float32Array(G.nv*3), nrm: new Int8Array(G.nv*4), uv: G.uv ? new Float32Array(G.nv*2) : null,
+           col: (G.col && !G.cf) ? new Uint8Array(G.nv*3) : null, colF: (G.col && G.cf) ? new Float32Array(G.nv*3) : null,
+           idx: G.nv > 65535 ? new Uint32Array(G.ni) : new Uint16Array(G.ni) };
+}
+function m16GeoFor(G, A){
+  var g = m16Geometry(A, G.sphere);
+  g.boundingBox = G.bbox.clone();
+  if (!G.orphan){ for (var k in g.attributes) g.attributes[k].onUpload(m16Free); g.index.onUpload(m16Free); }
+  G.gpuB = A.pos.byteLength + A.nrm.byteLength + (A.uv ? A.uv.byteLength : 0) + (A.col ? A.col.byteLength : 0) + (A.colF ? A.colF.byteLength : 0) + A.idx.byteLength;
+  return g;
+}
+
+/* ---------------------------------------------------------------- residency */
+function m16CellOf(c){ return c && c.m16; }
+/* called by cullCells (mods/perf.js) for a cell with packed meshes: d = its distance, near = what the old rule says.
+   Returns whether to show it now (only once all of it is unpacked). */
+function m16Cell(c, d, near){
+  var R = c.m16;
+  R.d = d;
+  var pre = RENDER_DIST_SHOW + M16.pre, rel = RENDER_DIST_SHOW + M16.rel;
+  if (R.st === 2){
+    if (d > rel && !near){ m16Release(c); return 0; }
+    return near ? 1 : 0;
+  }
+  if (R.st === 4) return 2;                              // its upload frame: drawn (nothing shows), far skyline stays
+  if (R.st === 3 && d > rel){ m16Release(c); return 0; }
+  if (R.st === 0 && d < pre){ R.st = 1; M16.queue.push(c); M16.qDirty = true; }
+  return 0;
+}
+function m16Release(c){
+  var R = c.m16;
+  R.pj = null;
+  if (R.st === 4) m16WarmEnd(c);
+  for (var i = 0; i < R.L.length; i++){
+    var G = R.L[i], m = G.mesh;
+    if (m.geometry !== G.stub){ m.geometry.dispose(); m.geometry = G.stub; }
+  }
+  R.st = 0; R.gpuB = 0;
+  M16.st.releases++;
+}
+/* after cullCells: the queue nearest first; teleports (respawn, travel) get a burst of budget */
+function m16Sched(px, pz){
+  // the margins follow the graphics mode's view distance (a phone's short view keeps fewer cells around)
+  var v = (typeof GFXP !== 'undefined') ? clamp(+GFXP.view || 1, 0.5, 1.4) : 1;
+  M16.pre = M16.cfg.pre*v; M16.rel = M16.cfg.rel*v;
+  if (isFinite(M16.camX) && Math.abs(px - M16.camX) + Math.abs(pz - M16.camZ) > 150) M16.boostUntil = performance.now() + 3000;
+  M16.camX = px; M16.camZ = pz;
+  if (M16.qDirty){ M16.queue.sort(function(a, b){ return a.m16.d - b.m16.d; }); M16.qDirty = false; }
+}
+/* a cell's unpack job (its inflates already out if m16Ahead started it) */
+function m16JobStart(c){
+  var R = c.m16;
+  if (R.pj){ var pj = R.pj; R.pj = null; return pj; }
+  return m16JobNew(c);
+}
+/* the inflates of the next k queued cells go out now (the fast-travel fade: the whole destination at once); the jobs wait on
+   their cells until the pump picks them */
+function m16Ahead(k){
+  var q = M16.queue, n = 0, rel = RENDER_DIST_SHOW + M16.rel;
+  for (var i = 0; i < q.length && n < k; i++){
+    var R = q[i].m16;
+    if (R.st !== 1 || R.d > rel) continue;
+    n++;
+    if (!R.pj) R.pj = m16JobNew(q[i]);
+  }
+}
+function m16JobNew(c){
+  var R = c.m16, job = { c: c, R: R, blobs: new Map(), waiting: 0, gi: 0, pi: 0, ri: 0, A: null, vb: 0, ib: 0, t0: performance.now(), ms: 0, failed: false };
+  for (var i = 0; i < R.L.length; i++){
+    var all = R.L[i].all;
+    for (var k = 0; k < all.length; k++) if (all[k].k === 0 && !job.blobs.has(all[k].ch.blob)) job.blobs.set(all[k].ch.blob, null);
+  }
+  job.blobs.forEach(function(v, b){
+    if (b.raw){ job.blobs.set(b, b.raw); return; }
+    job.waiting++;
+    m16Zip(b.z, true, function(out){ job.waiting--; if (!out || out.length !== b.len){ job.failed = true; out = null; } job.blobs.set(b, out); });
+  });
+  return job;
+}
+/* decode under a deadline; true = the cell is done */
+function m16JobStep(job, deadline){
+  var R = job.R;
+  while (performance.now() < deadline){
+    if (!job.A){
+      if (job.gi >= R.L.length){ return true; }
+      var G0 = R.L[job.gi], ta = performance.now();
+      job.A = m16AllocG(G0); job.pi = 0; job.ri = 0; job.vb = 0; job.ib = 0;
+      var da = performance.now() - ta;
+      if (da > M16.st.maxUnit){ M16.st.maxUnit = +da.toFixed(2); M16.st.maxUnitWhat = 'alloc ' + G0.nv + 'v'; }
+      continue;
+    }
+    var G = R.L[job.gi], all = G.all, tu = performance.now();
+    if (job.pi < all.length){
+      var p = all[job.pi];
+      if (p.k === 0){
+        var ch = p.ch, raw = job.blobs.get(ch.blob);
+        m16Dec(ch, raw.subarray(ch.off, ch.off + ch.len), job.A, job.vb, job.ib);
+        job.vb += ch.nv; job.ib += ch.ni; job.pi++;
+      } else {
+        var i1 = Math.min(p.n, job.ri + Math.max(1, Math.floor(M16.cfg.recSlice*64/Math.max(64, p.snap.tv))));   // ~4k vertices a step
+        m16RecDec(p, job.A, job.vb, job.ib, job.ri, i1);
+        job.vb += (i1 - job.ri)*p.snap.tv; job.ib += (i1 - job.ri)*p.snap.ti;
+        job.ri = i1;
+        if (job.ri >= p.n){ job.pi++; job.ri = 0; }
+      }
+      var du = performance.now() - tu;
+      if (du > M16.st.maxUnit){ M16.st.maxUnit = +du.toFixed(2); M16.st.maxUnitWhat = p.k === 0 ? 'chunk ' + p.ch.nv + 'v' : 'recipes ' + p.snap.tv + 'v'; }
+      continue;
+    }
+    // the group is complete: its geometry goes on the mesh (the cell stays hidden until every group is done)
+    var tg = performance.now();
+    var geo = m16GeoFor(G, job.A);
+    if (G.mesh.geometry !== G.stub) G.mesh.geometry.dispose();
+    G.mesh.geometry = geo;
+    R.gpuB += G.gpuB;
+    job.A = null; job.gi++;
+    var dg = performance.now() - tg;
+    if (dg > M16.st.maxUnit){ M16.st.maxUnit = +dg.toFixed(2); M16.st.maxUnitWhat = 'geometry ' + G.nv + 'v'; }
+  }
+  return job.gi >= R.L.length && !job.A;
+}
+function m16JobDone(job){
+  job.R.st = 3;                                          // decoded: its upload frame comes next (m16WarmStart)
+  if (job.c && !job.R.orphan) M16.warmQ.push(job.c);
+  M16.st.loads++; M16.st.loadMs += performance.now() - job.t0; M16.st.decMs += job.ms;
+}
+/* the GPU upload of a decoded cell, in one frame and without a pixel: the group drawn with every mesh on, nothing culled and
+   a draw range of 0 (three uploads every attribute + the index, then draws nothing; same materials = same programs); its far
+   skyline mesh stays on. The CPU copies go as they upload (onUpload), the next frame puts the flags back and shows the cell
+   when it is in range. Other things in the cell stay hidden for that frame. */
+function m16WarmStart(c){
+  var R = c.m16, save = [], other = [];
+  for (var i = 0; i < R.L.length; i++){
+    var m = R.L[i].mesh;
+    save.push(m.visible, m.frustumCulled);
+    m.visible = true; m.frustumCulled = false; m.geometry.drawRange.count = 0;
+  }
+  var ch = c.g.children;
+  for (var k = 0; k < ch.length; k++){ var o = ch[k]; if (!(o.userData && o.userData.m16 && o.userData.m16.mesh === o) && o.visible){ other.push(o); o.visible = false; } }
+  R.save = save; R.other = other; R.st = 4; c.g.visible = true;
+  M16.warming.push(c);
+}
+function m16WarmEnd(c){
+  var R = c.m16, save = R.save;
+  if (R.st !== 4) return;
+  for (var i = 0; i < R.L.length; i++){
+    var m = R.L[i].mesh;
+    m.visible = save[i*2]; m.frustumCulled = save[i*2+1]; m.geometry.drawRange.count = Infinity;
+  }
+  for (var k = 0; k < R.other.length; k++) R.other[k].visible = true;
+  R.save = null; R.other = null; R.st = 2; c.g.visible = false;
+  try { _cullTick = 0; } catch(e){}                       // the next cull pass shows it if it is in range
+}
+/* the nearest queued cell still wanted (one passed by meanwhile goes back to packed) */
+function m16Pick(){
+  while (M16.queue.length){
+    var q = M16.queue.shift();
+    if (q.m16.st !== 1) continue;
+    if (q.m16.d > RENDER_DIST_SHOW + M16.rel){ q.m16.st = 0; q.m16.pj = null; continue; }
+    return q;
+  }
+  return null;
+}
+/* the per-frame pump: ms of decode work this frame (the inflates run in the worker meanwhile; the next cell's start while
+   this one decodes) */
+function m16Pump(ms){
+  var t0 = performance.now(), deadline = t0 + ms;
+  if (m16Travel()) m16Ahead(M16.cfg.ahead);
+  for (var guard = 0; guard < 64; guard++){
+    var job = M16.job;
+    if (!job){
+      if (M16.next){ job = M16.job = M16.next; M16.next = null; if (job.R.d > RENDER_DIST_SHOW + M16.rel && !job.waiting){ job.R.st = 0; M16.job = null; continue; } }
+      else { var c = m16Pick(); if (!c) break; job = M16.job = m16JobStart(c); }
+    }
+    if (!M16.next && M16.queue.length){ var nc = m16Pick(); if (nc) M16.next = m16JobStart(nc); }
+    if (job.waiting > 0) break;
+    if (job.failed){ job.R.st = 0; M16.job = null; M16.st.zFail++; continue; }
+    var ts = performance.now();
+    var done = m16JobStep(job, deadline);
+    job.ms += performance.now() - ts;
+    if (done){ m16JobDone(job); M16.job = null; }
+    if (performance.now() >= deadline) break;
+  }
+  var dt = performance.now() - t0;
+  if (dt > M16.st.maxStep) M16.st.maxStep = +dt.toFixed(2);
+}
+/* the cells around (x, z) within the show distance are all there. Fast travel into the city polls this behind its fade (its
+   timeout: M16.cfg.travelCap). Meanwhile the destination is unpacked at full speed: its cells are queued right away (the next
+   cull pass can be frames off) and ordered from there (the camera is there now), all their inflates go out at once
+   (m16Ahead), and the frames behind the fade unpack M16.cfg.travel ms and upload every decoded cell (m16Frame). */
+function m16Ready(x, z){
+  if (!M16.live) return true;
+  try {
+    var now = performance.now(), ok = true, rel = RENDER_DIST_SHOW + M16.rel;
+    M16.boostUntil = now + 1500;
+    for (var i = 0; i < CULL_CELLS.length; i++){
+      var c = CULL_CELLS[i], R = c.m16;
+      if (!R) continue;
+      var dx = c.cx - x, dz = c.cz - z, d = Math.sqrt(dx*dx + dz*dz) - c.r;
+      // the spot left behind gives its GPU buffers back now, before the destination's go up (the fade covers it)
+      if (R.st >= 2 && d > rel){ m16Release(c); c.g.visible = false; continue; }
+      if (R.st === 2) continue;
+      if (R.st === 1) R.d = d;
+      if (d >= RENDER_DIST_SHOW) continue;
+      ok = false;
+      if (R.st === 0){ R.st = 1; R.d = d; M16.queue.push(c); }
+    }
+    if (ok){ M16.travelUntil = 0; return true; }          // there: back to the riding budgets at once
+    M16.travelUntil = now + 500;
+    M16.queue.sort(function(a, b){ return a.m16.d - b.m16.d; }); M16.qDirty = false;
+    m16Ahead(M16.cfg.ahead);
+    return false;
+  } catch(e){ return true; }                             // never keeps the fade up on an error
+}
+/* behind the fast-travel fade: its poll asked within the last 0.5 s and the game is not back to riding (the fade lifts with
+   GAME = 'play', also when it gave up waiting) */
+function m16Travel(){ return performance.now() < M16.travelUntil && (typeof GAME === 'undefined' || GAME !== 'play'); }
+/* how long fast travel may keep its fade up for a city destination's cells */
+function m16TravelCap(){ return M16.live ? M16.cfg.travelCap : 4000; }
+function m16Busy(){ return M16.live ? M16.queue.length + (M16.job ? 1 : 0) + (M16.next ? 1 : 0) : 0; }
+M16.busy = m16Busy; M16.ready = function(x, z){ return m16Ready(x, z); };
+
+/* ---------------------------------------------------------------- stubs + the boot's program warm-up
+   A packed mesh holds a shared, empty geometry with the same attribute layout as its real one (position x3, int8 normal x4,
+   uv x2, colour x3): three builds the very same program for it (its vertexAlphas / uv / colour tests see the same attributes),
+   draws nothing and uploads nothing. While the loading screen runs, one empty proxy per material x shadow flags x depth
+   material x layout stands in the scene, so the prewarm compiles every main and shadow-pass program the old boot compiled by
+   drawing the whole city -- the program count stays what it was and nothing compiles later while riding. */
+var M16_STUBS = {};
+function m16LayoutStub(uv, col){
+  var k = (uv ? 'u' : '') + (col ? 'c' : '');
+  if (M16_STUBS[k]) return M16_STUBS[k];
+  var g = new T.BufferGeometry();
+  g.setAttribute('position', new T.BufferAttribute(new Float32Array(0), 3));
+  g.setAttribute('normal', new T.BufferAttribute(new Int8Array(0), 4, true));
+  if (uv) g.setAttribute('uv', new T.BufferAttribute(new Float32Array(0), 2));
+  if (col) g.setAttribute('color', new T.BufferAttribute(new Uint8Array(0), 3, true));
+  g.boundingSphere = new T.Sphere(new T.Vector3(), Infinity);
+  g.userData.m16stub = true;
+  return (M16_STUBS[k] = g);
+}
+/* the proxies' geometry: ONE zero-area triangle in exactly the real vertex formats (float positions, int8 normals x4, float uv,
+   uint8 or float colours, a 16- or 32-bit index), so the driver's per-format setup (input layouts, vertex conversion, a
+   software renderer's vertex routines) happens behind the loading screen too, not in the menu's first frames */
+var M16_PROXYGEO = {};
+function m16ProxyGeo(uv, col, cf, i32){
+  var k = (uv ? 'u' : '') + (col ? (cf ? 'f' : 'c') : '') + (i32 ? 'I' : '');
+  if (M16_PROXYGEO[k]) return M16_PROXYGEO[k];
+  var g = new T.BufferGeometry();
+  g.setAttribute('position', new T.BufferAttribute(new Float32Array([0, -1000, 0, 0, -1000, 0, 0, -1000, 0]), 3));
+  g.setAttribute('normal', new T.BufferAttribute(new Int8Array([0, 127, 0, 0, 0, 127, 0, 0, 0, 127, 0, 0]), 4, true));
+  if (uv) g.setAttribute('uv', new T.BufferAttribute(new Float32Array(6), 2));
+  if (col) g.setAttribute('color', cf ? new T.BufferAttribute(new Float32Array(9).fill(1), 3) : new T.BufferAttribute(new Uint8Array(9).fill(255), 3, true));
+  g.setIndex(new T.BufferAttribute(i32 ? new Uint32Array([0, 1, 2]) : new Uint16Array([0, 1, 2]), 1));
+  g.boundingSphere = new T.Sphere(new T.Vector3(), Infinity);
+  return (M16_PROXYGEO[k] = g);
+}
+function m16Proxies(){
+  var seen = new Set(), grp = new T.Group();
+  grp.name = 'm16warm';
+  M16.glist.forEach(function(G){
+    if (!G.mesh) return;
+    var i32 = G.nv > 65535;
+    var k = G.mat.uuid + '|' + G.cast + G.recv + '|' + (G.depth ? G.depth.uuid : '') + '|' + G.uv + G.col + G.cf + i32;
+    if (seen.has(k)) return;
+    seen.add(k);
+    var m = new T.Mesh(m16ProxyGeo(G.uv, G.col, G.cf, i32), G.mat);
+    m.castShadow = G.cast; m.receiveShadow = G.recv; if (G.depth) m.customDepthMaterial = G.depth;
+    m.frustumCulled = false; m.matrixAutoUpdate = false;
+    grp.add(m);
+  });
+  grp.matrixAutoUpdate = false;
+  scene.add(grp);
+  M16.proxy = grp; M16.st.proxies = seen.size;
+}
+
+/* ---------------------------------------------------------------- after the build: cells, the spawn's cells, textures */
+function m16AfterBuild(){
+  if (!M16.on || !M16.built) return null;
+  var t0 = performance.now();
+  var inCell = new Set();
+  for (var i = 0; i < CULL_CELLS.length; i++){
+    var c = CULL_CELLS[i], L = [];
+    c.g.traverse(function(o){ if (o.userData && o.userData.m16 && o.userData.m16.mesh === o){ L.push(o.userData.m16); inCell.add(o.userData.m16); } });
+    c.m16 = L.length ? { L: L, st: 0, d: Infinity, gpuB: 0 } : null;
+    if (c.m16) c.g.visible = false;
+  }
+  M16.cells = CULL_CELLS.filter(function(c){ return !!c.m16; }).length;
+  // every packed mesh now holds the shared empty geometry of its layout (the bounds stay on the group)
+  M16.glist.forEach(function(G){ if (!G.mesh) return; var ls = m16LayoutStub(G.uv, G.col); if (G.mesh.geometry === G.stub) G.mesh.geometry = ls; G.stub = ls; });
+  try { m16Proxies(); } catch(e){ console.warn('[mem16] proxies', e); }
+  // a merged mesh that is in no cell (no distance culling on this map): always unpacked
+  var orphans = [];
+  for (var j = 0; j < M16.glist.length; j++){ var G = M16.glist[j]; if (G.mesh && !inCell.has(G)) orphans.push(G); }
+  M16.orphans = orphans;
+  orphans.forEach(function(G){ G.orphan = true; });
+  // the far skyline has its triangles now (farBuild ran in freezeStaticWorld): the build-time bookkeeping can go
+  M16.glist.forEach(function(G){ G.enc = null; if (G.all) for (var i = 0; i < G.all.length; i++){ G.all[i].far = null; G.all[i].F = null; } });
+  M16.seen = new WeakMap(); _m16S.cap = 0; _m16S.P = _m16S.N = _m16S.U = _m16S.C = null; _m16FR = null;
+  // textures of materials only far cells use: uploaded now, like the old boot did by drawing the whole city once
+  try {
+    var seenT = new Set(), K = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'alphaMap', 'bumpMap'];
+    M16.glist.forEach(function(G){ var m = G.mat; if (!m) return; K.forEach(function(k){ var t = m[k]; if (t && t.isTexture && !t.isCubeTexture && !t.isRenderTargetTexture && !seenT.has(t)){ seenT.add(t); try { renderer.initTexture(t); } catch(e){} } }); });
+    M16.st.texInit = seenT.size;
+  } catch(e){}
+  M16.live = true;
+  // the spawn / menu view: everything the first cull pass would ask for, unpacked before the menu opens
+  try { if (typeof camCullRange === 'function') camCullRange(); } catch(e){}
+  var sp = (typeof park !== 'undefined' && park && park.spawn) ? park.spawn : { x: 0, z: 0 };
+  var want = [];
+  CULL_CELLS.forEach(function(c){
+    if (!c.m16) return;
+    var d = Math.min(Math.hypot(c.cx, c.cz), Math.hypot(c.cx - sp.x, c.cz - sp.z)) - c.r;
+    c.m16.d = d;
+    if (d < RENDER_DIST_SHOW) want.push(c);              // what the menu / drop-in shows; the ring beyond it loads behind the menu
+  });
+  want.sort(function(a, b){ return a.m16.d - b.m16.d; });
+  orphans.forEach(function(G){ want.unshift({ m16: { L: [G], st: 0, d: 0, gpuB: 0, orphan: true } }); });   // (their st stays 3: never culled)
+  M16.st.preCells = want.length;
+  return new Promise(function(resolve){
+    // every preload cell's inflates go out at once (the worker answers while this thread decodes the ones already back)
+    var jobs = want.map(function(c){ c.m16.st = 1; return m16JobStart(c); }), left = jobs.length;
+    var step = function(){
+      var ts = performance.now();
+      for (var i = 0; i < jobs.length && performance.now() - ts < 60; i++){
+        var job = jobs[i];
+        if (!job || job.waiting > 0) continue;
+        if (job.failed){ job.R.st = 0; jobs[i] = null; left--; continue; }
+        if (m16JobStep(job, ts + 60)){ m16JobDone(job); jobs[i] = null; left--; }
+      }
+      if (!left){
+        // upload them inside the loading screen: the prewarm frame and the first render draw them with a draw range of
+        // 0; the menu's first frame puts them back (m16Frame) and the cull pass shows them
+        M16.warmQ.length = 0;
+        CULL_CELLS.forEach(function(c){ if (c.m16 && c.m16.st === 3) m16WarmStart(c); });
+        M16.st.preloadMs = Math.round(performance.now() - t0);
+        setLoad(99, 'Marking the spots');
+        resolve(); return;
+      }
+      setLoad(99, 'Marking the spots — ' + (jobs.length - left) + '/' + jobs.length);
+      if (typeof boot15Yield === 'function') boot15Yield(step); else setTimeout(step, 0);
+    };
+    step();
+  });
+}
+
+/* a restored GL context has none of the buffers, and the uploaded arrays were let go: every unpacked cell goes back to packed
+   and is unpacked again from its packed copy (the far skyline covers meanwhile) */
+try {
+  renderer.domElement.addEventListener('webglcontextrestored', function(){
+    if (!M16.live) return;
+    M16.warming.length = 0; M16.warmQ.length = 0; M16.job = null; M16.next = null; M16.queue.length = 0;
+    CULL_CELLS.forEach(function(c){ if (c.m16 && c.m16.st !== 0){ if (c.m16.st === 4) m16WarmEnd(c); m16Release(c); c.g.visible = false; } });
+    M16.st.restored = (M16.st.restored || 0) + 1;
+    try { _cullTick = 0; } catch(e){}
+  });
+} catch(e){}
+
+/* ---------------------------------------------------------------- per frame + report */
+addFrameHook(function m16Frame(dt, now){
+  if (!M16.live) return;
+  if (M16.proxy){ scene.remove(M16.proxy); M16.proxy = null; for (var pk in M16_PROXYGEO){ M16_PROXYGEO[pk].dispose(); } M16_PROXYGEO = {}; }
+  if (M16.warming.length){ var W = M16.warming.splice(0); for (var i = 0; i < W.length; i++) m16WarmEnd(W[i]); }
+  var g = (typeof GAME !== 'undefined') ? GAME : 'play', tnow = performance.now(), travel = m16Travel();
+  var ms = g === 'play' ? M16.cfg.play : g === 'menu' ? M16.cfg.menu : M16.cfg.fade;
+  if (tnow < M16.boostUntil) ms = Math.max(ms, M16.cfg.boost);
+  if (travel) ms = Math.max(ms, M16.cfg.travel);         // behind the fast-travel fade: nothing on screen to keep smooth
+  if (M16.queue.length || M16.job || M16.next){
+    m16Pump(ms);
+    // and between frames while the browser is idle (hitch15's idle pump; requestIdleCallback where it exists)
+    if (!M16.idleOn && typeof hitchIdle === 'function'){ M16.idleOn = true; hitchIdle('mem16', function(left){ if (!M16.live) return false; m16Pump(Math.min(left, 4)); return !!(M16.queue.length || M16.job || M16.next); }); }
+    else if (M16.idleOn && typeof hitchIdleKick === 'function') hitchIdleKick();
+  }
+  // one upload frame per frame (the nearest decoded cell first); behind the fast-travel fade every decoded cell
+  while (M16.warmQ.length){
+    var c = M16.warmQ.shift();
+    if (c.m16.st !== 3) continue;
+    m16WarmStart(c);
+    if (!travel) break;
+  }
+});
+M16.report = function(){
+  var res = 0, gpu = 0, packed = 0, raw = 0;
+  var dec = 0;
+  CULL_CELLS.forEach(function(c){ if (c.m16 && c.m16.st === 2){ res++; gpu += c.m16.gpuB; } else if (c.m16 && (c.m16.st === 3 || c.m16.st === 4)) dec++; });
+  M16.orphans.forEach(function(G){ gpu += G.gpuB; });
+  M16.blobs.forEach(function(b){ if (b.z) packed += b.z.length; if (b.raw) raw += b.raw.length; });
+  var S = M16.st, MB = function(b){ return +(b/1048576).toFixed(1); };
+  return { on: M16.on, live: M16.live, zMode: M16.zMode, encMode: M16.wEnc || 'here', lost: S.lost || 0, cells: M16.cells, resident: res, decoded: dec, gpuMB: MB(gpu), packedMB: MB(packed), unpackedRawMB: MB(raw),
+           recipeMB: MB(S.recB), groups: S.groups, merged: S.merged, chunks: S.chunks || M16P.chunks, blobs: S.blobs, rawMB: MB(S.rawB), src: S.src, data: S.data,
+           recipes: S.recipes, snaps: S.snaps, generic: S.generic, singles: S.singles, drains: S.drains, drainMs: Math.round(S.drainMs), finalMs: S.finalMs,
+           zWaitMs: S.zWaitMs, zFail: S.zFail, preCells: S.preCells, preloadMs: S.preloadMs, loads: S.loads, releases: S.releases,
+           loadMsAvg: S.loads ? +(S.loadMs/S.loads).toFixed(1) : 0, decMsAvg: S.loads ? +(S.decMs/S.loads).toFixed(1) : 0, maxStep: S.maxStep, maxUnit: S.maxUnit, maxUnitWhat: S.maxUnitWhat,
+           queue: M16.queue.length, farTris: S.farV, texInit: S.texInit || 0, proxies: S.proxies || 0, workerBacklogMaxMB: MB(S.wqMax), wDead: S.wDead || '' };
+};
+/* =========================================================================
+   PHONE16 TEX -- 2D canvas memory (Release 15.4, stream phone)
+   "it dose not work on mobile": iPhone Safari keeps every 2D canvas's pixels in the page's memory (and has a hard total
+   canvas budget). 15.3 kept ~200 canvases = 129 MB alive for good, although nearly all of them only exist to become a
+   texture: once three has put one on the GPU it never reads the canvas again.
+
+   1. FREE AFTER UPLOAD (every device). A canvas whose textures are all on the GPU of the main renderer, unchanged for a few
+      seconds, not in the page, 2D, RGBA8 and big enough to matter gets its pixels released (width = height = 0 through the
+      element's own setter; the JS-visible width / height keep their numbers, so layout code that reads them still works).
+   2. NOTHING CAN SEE A FREED CANVAS. The moment anything needs its pixels again -- three uploading it (a re-upload after
+      needsUpdate, a clone, a second renderer such as the garage viewer), a drawImage / createPattern / createImageBitmap that
+      reads it, or code drawing into it again -- it is brought back first from its own texture on the GPU (one readPixels of
+      the uploaded level, rows flipped back, the 2D state put back). A canvas brought back twice stays alive for good (it is
+      redrawn: the minimap, HUD and runtime decals never get freed in the first place -- they are in the page or keep
+      changing). A texture that is disposed while its canvas is freed brings the canvas back before three deletes it.
+   3. PHONES: SMALLER ATLASES. On a phone every canvas of 1024 px or more goes to the GPU at half size (p16TexScale(): the
+      one shared scale factor; UVs are 0..1, nothing else changes): ~1/4 of the GPU memory for the big atlases (2048x1024
+      murals / events / forest / suburbs atlases ...), where an iPhone's GPU memory is the page's memory.
+   ?texfree=0 turns 1-2 off, ?texhalf=0 / ?texhalf=1 forces 3. P16T.report() -> counts and MB.
+   ========================================================================= */
+var P16T = window.P16T = {
+  on: !/[?&]texfree=0\b/.test(location.search) && typeof window.WeakRef === 'function' && typeof WeakMap === 'function',
+  half: false, minPx: 128*128, quietMs: 6000, every: 600,
+  ents: [], byC: new WeakMap(), at: 0, i: 0, gl: null, fbo: null, ok: false, scratch: null,
+  freed: 0, freedPx: 0, revived: 0, unfreed: 0, lost: 0, halved: 0, halvedPx: 0, kept: 0, skipped: 0, why: {},
+  report: function(){
+    var live = 0, livePx = 0, fr = 0, frPx = 0;
+    for (var i = 0; i < this.ents.length; i++){
+      var c = this.ents[i].c.deref(); if (!c) continue;
+      if (c.__p16f){ fr++; frPx += c.__p16f.w*c.__p16f.h; } else { live++; livePx += _p16W(c)*_p16H(c); }
+    }
+    return { on: this.on, half: this.half, tracked: this.ents.length, liveMB: +(livePx*4/1048576).toFixed(1), freedNow: fr, freedMB: +(frPx*4/1048576).toFixed(1),
+             freedTotal: this.freed, revived: this.revived, why: this.why, skipped: this.skipped, unfreed: this.unfreed, lost: this.lost, kept: this.kept,
+             halved: this.halved, halvedSavedMB: +(this.halvedPx*3*4*1.33/1048576).toFixed(1) };
+  }
+};
+var _P16WR = window.WeakRef || function(o){ this.o = o; this.deref = function(){ return this.o; }; };       // (Safari 14.1+ has the real one)
+var _p16CW = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'width');
+var _p16CH = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'height');
+/* the canvas's REAL backing size (a freed canvas reports its old numbers through its own accessors) */
+function _p16W(c){ return _p16CW.get.call(c); }
+function _p16H(c){ return _p16CH.get.call(c); }
+/* the shared atlas scale: 0.5 for big canvases on a phone, else 1 */
+function p16TexScale(w, h){
+  if (!P16T.half) return 1;
+  return Math.max(w | 0, h | 0) >= 1024 ? 0.5 : 1;
+}
+
+/* ---------------------------------------------------------------- registry */
+function _p16Ent(c){
+  var e = P16T.byC.get(c);
+  if (!e){ e = { c: new _P16WR(c), ts: [], changed: performance.now(), rev: 0 }; P16T.byC.set(c, e); P16T.ents.push(e); }
+  return e;
+}
+function p16TexReg(t){
+  var c = t && t.image;
+  if (!c || !(c instanceof HTMLCanvasElement)) return;
+  var e = _p16Ent(c);
+  for (var i = 0; i < e.ts.length; i++){ var x = e.ts[i].deref(); if (x === t){ e.changed = performance.now(); return; } }
+  e.ts.push(new _P16WR(t)); e.changed = performance.now();
+  // a texture disposed while its canvas is freed: bring the canvas back BEFORE three deletes the GPU copy (listener first)
+  try {
+    var fn = function(){ if (c.__p16f && c.__p16f.src && c.__p16f.src.deref() === t) p16Revive(c, 'dispose'); };
+    if (!t._listeners) t._listeners = {};
+    if (!t._listeners.dispose) t._listeners.dispose = [];
+    t._listeners.dispose.unshift(fn);
+  } catch(err){}
+}
+/* textures made before these hooks existed (the city's baked materials at load time): found once in the scene's materials */
+var P16_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap', 'bumpMap', 'lightMap', 'displacementMap', 'specularMap', 'clearcoatNormalMap'];
+function p16TexScan(root){
+  var seen = new Set(), n = 0;
+  var visit = function(m){
+    if (!m || seen.has(m)) return; seen.add(m);
+    for (var i = 0; i < P16_SLOTS.length; i++){ var t = m[P16_SLOTS[i]]; if (t && t.isTexture && t.image instanceof HTMLCanvasElement){ p16TexReg(t); n++; } }
+    if (m.uniforms) for (var k in m.uniforms){ var u = m.uniforms[k], v = u && u.value; if (v && v.isTexture && v.image instanceof HTMLCanvasElement){ p16TexReg(v); n++; } }
+  };
+  try { (root || scene).traverse(function(o){ var mm = o.material; if (!mm) return; if (Array.isArray(mm)) mm.forEach(visit); else visit(mm); }); } catch(err){}
+  return n;
+}
+
+/* ---------------------------------------------------------------- free / bring back */
+var P16_CTX_KEYS = ['fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'miterLimit', 'font', 'textAlign', 'textBaseline', 'direction',
+  'globalAlpha', 'globalCompositeOperation', 'imageSmoothingEnabled', 'imageSmoothingQuality', 'shadowBlur', 'shadowColor', 'shadowOffsetX', 'shadowOffsetY', 'lineDashOffset'];
+var P16_CTX_PIX = ['fillRect', 'strokeRect', 'clearRect', 'fillText', 'strokeText', 'drawImage', 'putImageData', 'getImageData', 'fill', 'stroke'];
+function _p16Uploaded(t, c){
+  if (!t || t.image !== c || t.version <= 0) return false;
+  if (t.format !== T.RGBAFormat || t.type !== T.UnsignedByteType || t.premultiplyAlpha || t.isVideoTexture || t.isCompressedTexture) return false;
+  var p = renderer.properties.get(t);
+  return !!(p && p.__webglInit && p.__webglTexture && p.__version === t.version);
+}
+function p16Free(c, e, src){
+  var g = null;
+  try { g = c.getContext('2d'); } catch(err){ g = null; }
+  if (!g){ c.__p16keep = true; P16T.kept++; return false; }          // a WebGL canvas (or none): never ours
+  var up = c.__p16up, w = _p16W(c), h = _p16H(c);
+  var f = c.__p16f = { w: w, h: h, up: { w: up.w, h: up.h }, flip: !!src.flipY, src: new _P16WR(src), g: g };
+  // the element keeps answering its old size; setting a size means "new content": no read back needed
+  var sizeProp = function(k){
+    return { configurable: true, enumerable: true,
+      get: function(){ return k === 'w' ? f.w : f.h; },
+      set: function(v){ p16Unfree(c, k, v); } };
+  };
+  Object.defineProperty(c, 'width', sizeProp('w'));
+  Object.defineProperty(c, 'height', sizeProp('h'));
+  var proto = CanvasRenderingContext2D.prototype;
+  P16_CTX_PIX.forEach(function(m){
+    if (typeof proto[m] !== 'function') return;
+    g[m] = function(){ p16Revive(c, 'draw'); return proto[m].apply(this, arguments); };
+  });
+  ['toDataURL', 'toBlob'].forEach(function(m){
+    var base = HTMLCanvasElement.prototype[m];
+    if (typeof base === 'function') c[m] = function(){ p16Revive(c, 'read'); return base.apply(this, arguments); };
+  });
+  var st = _p16State(g);                          // (a new size resets the 2D state: the freed context keeps the builder's)
+  _p16CW.set.call(c, 0); _p16CH.set.call(c, 0);
+  _p16RestoreState(g, st);
+  P16T.freed++; P16T.freedPx += w*h;
+  return true;
+}
+/* drop the freed state (own accessors / wrappers); the canvas is left at whatever size it really has */
+function _p16Undo(c){
+  var f = c.__p16f; if (!f) return null;
+  c.__p16f = null;
+  try { delete c.width; delete c.height; delete c.toDataURL; delete c.toBlob; } catch(err){}
+  P16_CTX_PIX.forEach(function(m){ try { if (Object.prototype.hasOwnProperty.call(f.g, m)) delete f.g[m]; } catch(err){} });
+  return f;
+}
+/* code gives the canvas a size (= new content, the 2D state resets as it always does): no read back */
+function p16Unfree(c, k, v){
+  var f = _p16Undo(c); if (!f) return;
+  _p16CW.set.call(c, k === 'w' ? v : f.w); _p16CH.set.call(c, k === 'h' ? v : f.h);
+  P16T.unfreed++;
+  var e = P16T.byC.get(c); if (e){ e.changed = performance.now(); if (++e.rev >= 2 && !c.__p16keep){ c.__p16keep = true; P16T.kept++; } }
+}
+function _p16State(g){
+  var st = {};
+  for (var i = 0; i < P16_CTX_KEYS.length; i++){ try { st[P16_CTX_KEYS[i]] = g[P16_CTX_KEYS[i]]; } catch(err){} }
+  try { st.__m = g.getTransform(); } catch(err){}
+  try { st.__d = g.getLineDash(); } catch(err){}
+  return st;
+}
+function _p16RestoreState(g, st){
+  for (var k in st){ if (k === '__m' || k === '__d') continue; try { g[k] = st[k]; } catch(err){} }
+  try { if (st.__m) g.setTransform(st.__m); } catch(err){}
+  try { if (st.__d) g.setLineDash(st.__d); } catch(err){}
+}
+/* bring the pixels back from the GPU copy (the main renderer's texture): readPixels of level 0, rows flipped back */
+function p16Revive(c, why){
+  var f = _p16Undo(c); if (!f) return;
+  var st = _p16State(f.g);                                           // the state as the code left it (it may have set some while freed)
+  _p16CW.set.call(c, f.w); _p16CH.set.call(c, f.h);                 // (this resets the 2D state: put back below)
+  var ok = false;
+  try { ok = _p16ReadBack(c, f); } catch(err){ ok = false; }
+  _p16RestoreState(f.g, st);
+  if (ok) P16T.revived++; else P16T.lost++;
+  P16T.lastWhy = why; P16T.why[why] = (P16T.why[why] | 0) + 1;
+  var e = P16T.byC.get(c); if (e){ e.changed = performance.now(); if (++e.rev >= 2 && !c.__p16keep){ c.__p16keep = true; P16T.kept++; } }
+  if (!ok && !c.__p16keep){ c.__p16keep = true; P16T.kept++; }
+}
+function _p16ReadBack(c, f){
+  var t = f.src.deref(), gl = P16T.gl;
+  if (!t || !gl || gl.isContextLost()) return false;
+  var p = renderer.properties.get(t);
+  if (!p || !p.__webglTexture) return false;
+  var uw = f.up.w, uh = f.up.h;
+  if (!P16T.fbo) P16T.fbo = gl.createFramebuffer();
+  var fb0 = gl.getParameter(gl.FRAMEBUFFER_BINDING), rb0 = P16T.gl2 ? gl.getParameter(gl.READ_FRAMEBUFFER_BINDING) : null;
+  var buf = new Uint8Array(uw*uh*4), done = false;
+  try {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, P16T.fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, p.__webglTexture, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE){ gl.readPixels(0, 0, uw, uh, gl.RGBA, gl.UNSIGNED_BYTE, buf); done = true; }
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, null, 0);
+  } finally {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb0);
+    if (P16T.gl2) gl.bindFramebuffer(gl.READ_FRAMEBUFFER, rb0);
+  }
+  if (!done) return false;
+  var row = uw*4, out = new Uint8ClampedArray(uw*uh*4);
+  if (f.flip){ for (var y = 0; y < uh; y++) out.set(buf.subarray((uh - 1 - y)*row, (uh - y)*row), y*row); }
+  else out.set(buf);
+  var img = new ImageData(out, uw, uh), g = f.g;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'copy';
+  if (uw === f.w && uh === f.h) g.putImageData(img, 0, 0);
+  else {                                                              // a phone's half-size upload: scale back up
+    var tmp = document.createElement('canvas'); _p16CW.set.call(tmp, uw); _p16CH.set.call(tmp, uh);
+    tmp.getContext('2d').putImageData(img, 0, 0);
+    g.imageSmoothingEnabled = true; g.drawImage(tmp, 0, 0, f.w, f.h);
+    _p16CW.set.call(tmp, 0); _p16CH.set.call(tmp, 0);
+  }
+  return true;
+}
+
+/* what went up (size actually uploaded, formats, unpack flags): a later identical re-upload of a freed canvas is skipped */
+function _p16UpRec(gl, w, h, a){
+  var r = { w: w, h: h, gl: gl, f: a.length === 6 ? a[2] + ':' + a[3] + ':' + a[4] : '', fy: false, pm: false };
+  try { r.fy = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL); r.pm = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL); } catch(err){}
+  return r;
+}
+function _p16SameUpload(gl, s, a){
+  try {
+    var f = s.__p16f, up = s.__p16up, t = f && f.src.deref();
+    if (!t || !up || gl !== P16T.gl || up.gl !== gl || a.length !== 6 || a[1] !== 0 || !up.f) return false;
+    if (up.f !== a[2] + ':' + a[3] + ':' + a[4]) return false;
+    var p = renderer.properties.get(t);
+    if (!p || !p.__webglTexture || gl.getParameter(gl.TEXTURE_BINDING_2D) !== p.__webglTexture) return false;
+    return gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL) === up.fy && gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL) === up.pm;
+  } catch(err){ return false; }
+}
+
+/* ---------------------------------------------------------------- hooks */
+(function p16TexHooks(){
+  // phones: big canvases go to the GPU at half size (?texhalf=1 / 0 forces it on / off)
+  try { P16T.half = /[?&]texhalf=1\b/.test(location.search) || (gfxDevice().phone && !/[?&]texhalf=0\b/.test(location.search)); } catch(err){ P16T.half = false; }
+  var halfOnly = !P16T.on;                    // ?texfree=0 keeps the phone's half-size uploads unless ?texhalf=0
+  if (halfOnly && !P16T.half) return;
+  // (1) every new / changed canvas texture is registered (needsUpdate = true is how three is told about a canvas)
+  if (!halfOnly) try {
+    var d = Object.getOwnPropertyDescriptor(T.Texture.prototype, 'needsUpdate');
+    if (d && d.set && !d.set.__p16){
+      var set = function(v){ d.set.call(this, v); if (v === true && this.image instanceof HTMLCanvasElement) p16TexReg(this); };
+      set.__p16 = true;
+      Object.defineProperty(T.Texture.prototype, 'needsUpdate', { configurable: true, enumerable: d.enumerable, get: d.get, set: set });
+    }
+  } catch(err){ console.warn('[phone16] texture hook', err); }
+  // (2) any upload of a canvas (any renderer): a freed one comes back first; on a phone big ones go up at half size
+  var wrapTex = function(P){
+    if (!P || !P.texImage2D || P.texImage2D.__p16) return;
+    var base = P.texImage2D;
+    var w = function(){
+      var n = arguments.length, s = arguments[n - 1];
+      if (s && s instanceof HTMLCanvasElement){
+        if (s.__p16f){
+          // the same texture sent up again with nothing drawn since (a new anisotropy / wrap / filter: three re-uploads for
+          // those) -- its GPU copy already IS this canvas: keep it (no read back, no upload; three's parameters are already set)
+          if (_p16SameUpload(this, s, arguments)){ P16T.skipped++; return; }
+          p16Revive(s, 'upload');
+        }
+        var sw = _p16W(s), sh = _p16H(s), k = (n === 6 && arguments[1] === 0) ? p16TexScale(sw, sh) : 1;
+        if (k < 1 && sw > 0 && sh > 0){
+          var hw = Math.max(1, Math.round(sw*k)), hh = Math.max(1, Math.round(sh*k));
+          var sc = P16T.scratch || (P16T.scratch = document.createElement('canvas'));
+          _p16CW.set.call(sc, hw); _p16CH.set.call(sc, hh);
+          var g = sc.getContext('2d'); g.globalCompositeOperation = 'copy'; g.imageSmoothingEnabled = true;
+          try { g.imageSmoothingQuality = 'high'; } catch(err){}
+          g.drawImage(s, 0, 0, hw, hh);
+          var r = base.call(this, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], sc);
+          _p16CW.set.call(sc, 1); _p16CH.set.call(sc, 1);
+          s.__p16up = _p16UpRec(this, hw, hh, arguments);
+          P16T.halved++; P16T.halvedPx += hw*hh;
+          return r;
+        }
+        s.__p16up = _p16UpRec(this, sw, sh, arguments);
+      }
+      return base.apply(this, arguments);
+    };
+    w.__p16 = true;
+    P.texImage2D = w;
+  };
+  try { wrapTex(window.WebGLRenderingContext && WebGLRenderingContext.prototype); } catch(err){}
+  try { wrapTex(window.WebGL2RenderingContext && WebGL2RenderingContext.prototype); } catch(err){}
+  // (3) reading a freed canvas as an image source brings it back first
+  if (halfOnly) return;
+  try {
+    var C2 = CanvasRenderingContext2D.prototype;
+    ['drawImage', 'createPattern'].forEach(function(m){
+      var base = C2[m]; if (typeof base !== 'function' || base.__p16) return;
+      var w = function(img){ if (img && img.__p16f) p16Revive(img, 'source'); return base.apply(this, arguments); };
+      w.__p16 = true; C2[m] = w;
+    });
+    var O2 = window.OffscreenCanvasRenderingContext2D && OffscreenCanvasRenderingContext2D.prototype;
+    if (O2 && typeof O2.drawImage === 'function' && !O2.drawImage.__p16){
+      var od = O2.drawImage;
+      O2.drawImage = function(img){ if (img && img.__p16f) p16Revive(img, 'source'); return od.apply(this, arguments); };
+      O2.drawImage.__p16 = true;
+    }
+  } catch(err){}
+  try {
+    if (typeof window.createImageBitmap === 'function' && !window.createImageBitmap.__p16){
+      var cib = window.createImageBitmap;
+      window.createImageBitmap = function(img){ if (img && img.__p16f) p16Revive(img, 'bitmap'); return cib.apply(window, arguments); };
+      window.createImageBitmap.__p16 = true;
+    }
+  } catch(err){}
+})();
+
+/* ---------------------------------------------------------------- the sweep (a few hundred entries every ~0.6 s) */
+function p16TexSweep(now){
+  var P = P16T, L = P.ents, n = Math.min(L.length, 160);
+  for (var k = 0; k < n; k++){
+    if (P.i >= L.length) P.i = 0;
+    var e = L[P.i], c = e.c.deref();
+    if (!c){ L.splice(P.i, 1); if (!L.length) break; continue; }
+    P.i++;
+    if (c.__p16f || c.__p16keep) continue;
+    if (now - e.changed < P.quietMs) continue;
+    if (c.isConnected || !c.__p16up || c.__p16up.gl !== P.gl) continue;
+    var w = _p16W(c), h = _p16H(c);
+    if (w*h < P.minPx) continue;
+    // every texture we know of that shows this canvas must be on the GPU, as it is now
+    var src = null, all = true;
+    for (var j = e.ts.length - 1; j >= 0; j--){
+      var t = e.ts[j].deref();
+      if (!t || t.image !== c){ e.ts.splice(j, 1); continue; }
+      if (_p16Uploaded(t, c)){ if (!src) src = t; } else { all = false; break; }
+    }
+    if (!all || !src) continue;
+    p16Free(c, e, src);
+  }
+}
+(function p16TexStart(){
+  if (!P16T.on) return;
+  addFrameHook(function phone16TexTick(dt, now){
+    var P = P16T;
+    if (!P.ok){
+      if (typeof BOOT15 === 'undefined' || !BOOT15.tMenu) return;       // after the boot: everything it made is on the GPU by now
+      P.ok = true;
+      try { P.gl = renderer.getContext(); P.gl2 = !!renderer.capabilities.isWebGL2; } catch(err){ P.on = false; return; }
+      if (!P.gl2){ P.on = false; return; }                                // WebGL1: three may have resized uploads; leave them alone
+      p16TexScan(scene);
+      P.at = now;
+    }
+    if (!P.on || now - P.at < P.every) return;
+    P.at = now;
+    if (P.gl.isContextLost()) return;
+    if (!P.scanned2 && typeof GAME !== 'undefined' && GAME === 'play'){ P.scanned2 = true; p16TexScan(scene); }
+    p16TexSweep(now);
+  });
+})();
+/* =========================================================================
+   PHONE16 CORE -- iPhone Safari + weak laptops: guards and fallbacks (Release 15.4, stream phone)
+   "the game is to laggy not every laptop can play this and it dose not work on mobile"
+   (his phone: iPhone, Safari, the GitHub Pages build -- it crashes / reloads, and loading gets stuck)
+
+   1. GRAPHICS LOST -> "TAP TO RELOAD" (every device). When the browser takes the GPU away (iOS under memory pressure or after a
+      long time in the background, a driver reset on a laptop), three cannot rebuild the city (its arrays leave the CPU once
+      they are on the GPU) and the page used to sit frozen / black (the old phone-only card waited 2.5 s and vanished again
+      on a restore). Now a clear card covers everything at once -- also over the loading screen -- and stays until tapped:
+      one tap reloads (progress is saved on the device). Never a reload of our own.
+   2. CRASH RECOVERY. A phone that kills the page (out of memory) gives no event: a small marker in localStorage says what the
+      last session was doing (boot / menu / play / away). Found "boot", "menu" or "play" on the next start = the page died.
+      On a phone or tablet a graphics mode the game picked by itself then steps down one preset (said once in Settings);
+      a mode the player chose stays, with one hint. Computers only record it (a closed browser looks the same).
+   3. HDR TARGETS THAT WORK EVERYWHERE. The post pipeline renders the scene into a half-float target (RGBA16F), which WebGL2
+      can only render to with EXT_color_buffer_float / _half_float -- not a given on iOS. phone16HdrType() enables them and
+      checks a real RGBA16F framebuffer once; without one the targets fall back to 8 bit (light12_post.js via the patch)
+      instead of a black screen.
+   4. SOUND ON IPHONE. Safari suspends / "interrupts" the AudioContext (a call, the app switcher, the lock screen) and only lets
+      it resume inside a tap: every tap / key resumes it when needed (the game used to stay silent until the next Drop In).
+   5. A LOADING SCREEN THAT CANNOT FINISH SAYS SO (patch: a tiny script right after the loading screen, before any game code):
+      an uncaught error at load + no progress for 30 s (or WebGL failing to start at all) -> "could not start, tap to reload"
+      with the reason; no progress at all for 2.5 minutes -> a small "taking long? tap to reload" link.
+   PHONE16.report() -> device, mode, scale, HDR type, canvas memory (P16T), crash / loss counts.
+   ========================================================================= */
+var PHONE16 = window.PHONE16 = {
+  t0: performance.now(), lost: 0, restored: 0, crash: null, audioResumes: 0, hdr: '', ctxCard: false,
+  report: function(){
+    var G = (typeof GFXP !== 'undefined') ? GFXP : {};
+    return { device: G.device, mode: G.mode, preset: G.preset, scale: G.scale, pr: (typeof renderer !== 'undefined') ? renderer.getPixelRatio() : 0,
+             shadows: G.shadows, post: G.post, view: G.view, hdr: this.hdr, lost: this.lost, crash: this.crash,
+             audio: (typeof AC !== 'undefined' && AC) ? AC.state : 'none', audioResumes: this.audioResumes,
+             tex: (typeof P16T !== 'undefined') ? P16T.report() : null, pick: (typeof GFX14 !== 'undefined') ? { by: GFX14.by, note: GFX14.note, bench: GFX14.benchMs || null, moved16: GFX14.moved16 || null } : null };
+  }
+};
+
+/* ---------------------------------------------------------------- 3. the HDR target type (called by the post pipeline) */
+var _p16hdr;
+function phone16HdrType(){
+  if (_p16hdr !== undefined) return _p16hdr;
+  var T3 = window.THREE, out = T3.UnsignedByteType;
+  try {
+    if (renderer.capabilities.isWebGL2){
+      var gl = renderer.getContext();
+      var e1 = gl.getExtension('EXT_color_buffer_float'), e2 = gl.getExtension('EXT_color_buffer_half_float');
+      if ((e1 || e2) && !/[?&]hdr=byte\b/.test(location.search)){
+        var tb0 = gl.getParameter(gl.TEXTURE_BINDING_2D), fb0 = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+        var tx = gl.createTexture(), fb = gl.createFramebuffer(), ok = false;
+        try {
+          gl.bindTexture(gl.TEXTURE_2D, tx);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, 4, 4, 0, gl.RGBA, gl.HALF_FLOAT, null);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tx, 0);
+          ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        } finally {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fb0); gl.bindTexture(gl.TEXTURE_2D, tb0);
+          gl.deleteFramebuffer(fb); gl.deleteTexture(tx);
+        }
+        for (var k = 0; k < 8 && gl.getError() !== gl.NO_ERROR; k++){ /* (a refused format leaves an error behind: not three's) */ }
+        if (ok) out = T3.HalfFloatType;
+      }
+    }
+  } catch(e){ out = T3.UnsignedByteType; }
+  if (typeof PHONE16 !== 'undefined' && PHONE16) PHONE16.hdr = out === T3.HalfFloatType ? 'half-float' : '8-bit (no float targets)';
+  return (_p16hdr = out);
+}
+
+/* ---------------------------------------------------------------- the card (lost graphics / a start that failed) */
+function p16Card(title, text, btn, onTap){
+  var o = document.getElementById('p16Ctx');
+  if (!o){
+    o = document.createElement('div'); o.id = 'p16Ctx'; o.setAttribute('role', 'alertdialog'); o.setAttribute('aria-modal', 'true');
+    o.innerHTML = '<div class="p16Card"><b class="p16T"></b><span class="p16X"></span><button type="button" class="p16B"></button></div>';
+    document.body.appendChild(o);
+  }
+  o.querySelector('.p16T').textContent = title;
+  o.querySelector('.p16X').textContent = text;
+  var b = o.querySelector('.p16B');
+  b.textContent = btn;
+  b.onclick = function(){ b.disabled = true; b.textContent = 'Reloading…'; try { onTap(); } catch(e){ location.reload(); } };
+  try { b.focus({ preventScroll: true }); } catch(e){}
+  return o;
+}
+function p16Reload(){
+  p16Alive('away');                                  // our own, asked-for reload is not a crash
+  location.reload();
+}
+
+/* ---------------------------------------------------------------- 1. graphics lost */
+(function p16CtxGuard(){
+  var cv; try { cv = renderer.domElement; } catch(e){ return; }
+  cv.addEventListener('webglcontextlost', function(e){
+    try { e.preventDefault(); } catch(_){}
+    PHONE16.lost++; PHONE16.ctxCard = true;
+    try { if (typeof GAME !== 'undefined' && GAME === 'play' && typeof togglePause === 'function') togglePause(); } catch(_){}
+    var phone = (typeof gfxDevice === 'function') && gfxDevice().touch;
+    p16Card('The graphics stopped',
+      (phone ? 'Your phone took the game\'s graphics away (low on memory, or a long time in the background).'
+             : 'Your browser reset the game\'s graphics.') + ' Your progress is saved on this device.',
+      'Tap to reload', p16Reload);
+  }, false);
+  cv.addEventListener('webglcontextrestored', function(){ PHONE16.restored++; }, false);     // the card stays: the world cannot be rebuilt in place
+})();
+
+/* ---------------------------------------------------------------- 2. crash recovery (a page the phone killed) */
+var P16_ALIVE_KEY = 'dusk_line_p16_alive';
+function p16Alive(ph){
+  try {
+    var A = PHONE16.alive || (PHONE16.alive = { ph: 'boot', n: 0 });
+    A.ph = ph; A.t = Date.now();
+    localStorage.setItem(P16_ALIVE_KEY, JSON.stringify({ ph: ph, t: A.t, n: A.n | 0 }));
+  } catch(e){}
+}
+(function p16CrashCheck(){
+  var prev = null;
+  try { prev = JSON.parse(localStorage.getItem(P16_ALIVE_KEY) || 'null'); } catch(e){ prev = null; }
+  var died = !!(prev && (prev.ph === 'boot' || prev.ph === 'menu' || prev.ph === 'play'));
+  PHONE16.alive = { ph: 'boot', n: died ? (prev.n | 0) + 1 : 0 };
+  if (died) PHONE16.crash = { ph: prev.ph, n: PHONE16.alive.n, ago: Math.round((Date.now() - (prev.t || 0))/1000) };
+  p16Alive('boot');
+  var D = (typeof gfxDevice === 'function') ? gfxDevice() : { touch: false };
+  if (!died || !D.touch || typeof GFX14 === 'undefined' || typeof gfxSetPreset !== 'function' || /[?&]crashstep=0\b/.test(location.search)) return;
+  // a mode the game picked by itself steps down one preset (never below Potato); the player's own choice stays + one hint
+  var auto = GFX14.by === 'gpu' || GFX14.by === 'migrated' || GFX14.by === 'bench' || GFX14.by === 'crash';
+  var cur = GFX14.mode === 'custom' ? GFX14.base : GFX14.mode, i = GFX_IDS.indexOf(cur);
+  if (auto && i > 0 && GFX14.mode !== 'auto'){
+    var to = GFX_IDS[i - 1];
+    gfxSetPreset(to, 'crash');
+    GFX14.by = 'crash'; GFX14.note = 'Picked ' + GFX_NAMES[to] + ' after the phone closed the game (low memory) - change it any time';
+    try { gfxSave(); } catch(e){}
+    PHONE16.crash.stepped = cur + '>' + to;
+    PHONE16.crashToast = 'Graphics: ' + GFX_NAMES[to] + ' - the phone closed the game last time (low memory)';
+  } else if (!auto){
+    PHONE16.crashToast = 'The game was closed unexpectedly last time - a lighter Graphics mode in Settings may help';
+  }
+})();
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden) p16Alive('away');
+  else p16Alive((typeof GAME !== 'undefined' && (GAME === 'play' || GAME === 'pause')) ? 'play' : 'menu');
+});
+addEventListener('pagehide', function(){ p16Alive('away'); });
+addEventListener('pageshow', function(){ if (!document.hidden && PHONE16.alive && PHONE16.alive.ph === 'away') p16Alive('menu'); });
+addFrameHook(function phone16Alive(){
+  var A = PHONE16.alive; if (!A || document.hidden) return;
+  var ph = (typeof GAME !== 'undefined' && (GAME === 'play' || GAME === 'pause')) ? 'play' : 'menu';
+  if (A.ph !== ph) p16Alive(ph);                     // only on a change: one small localStorage write
+  // two minutes in without dying: the count of crashes in a row starts again
+  if (A.n && performance.now() - PHONE16.t0 > 120000){ A.n = 0; p16Alive(A.ph); }
+  if (PHONE16.crashToast && typeof GAME !== 'undefined' && GAME === 'menu' && performance.now() - PHONE16.t0 > 1500){
+    var t = PHONE16.crashToast; PHONE16.crashToast = null;
+    setTimeout(function(){ try { toast(t); } catch(e){} }, 1800);
+  }
+});
+
+/* ---------------------------------------------------------------- 4. sound: resume in every tap / key (iOS) */
+(function p16Audio(){
+  var resume = function(){
+    try {
+      if (typeof AC === 'undefined' || !AC || AC.state === 'running' || AC.state === 'closed') return;
+      var p = AC.resume(); PHONE16.audioResumes++;
+      if (p && p.catch) p.catch(function(){});
+    } catch(e){}
+  };
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach(function(n){ addEventListener(n, resume, { capture: true, passive: true }); });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) resume(); });
+})();
+
+/* ---------------------------------------------------------------- the phone profile's world side
+   fewer streamed region chunks on a phone (region14_core.js rgRefresh x p16StreamMul(), patch) and smaller tree / grass pools:
+   the pools are sized for High (620 m of tree cards, 80 m of grass); a phone streams ~300 m with the shortest LODs (tier 0) */
+function p16StreamMul(){ try { return gfxDevice().phone ? 0.8 : 1; } catch(e){ return 1; } }
+(function p16Pools(){
+  if (typeof rgPool !== 'function' || rgPool.__p16 || !gfxDevice().phone || /[?&]pools=full\b/.test(location.search)) return;
+  const base = rgPool;
+  // eslint-disable-next-line no-func-assign
+  rgPool = function(parts, cap, cast){ return base(parts, Math.max(256, Math.round(cap*0.6)), cast); };
+  rgPool.__p16 = true;
+})();
+/* Detail Low (Potato / Low / the phone profile) draws 40 % of the city's instanced grass tufts and edge tree cards: they are
+   placed in random order, so drawing the first 40 % thins them evenly (one park lawn alone is ~70k triangles at the drop-in
+   spot). Medium and up draw all of them, as before. */
+var P16_CARDS = { list: null, k: 1 };
+function p16CardDensity(){
+  if (typeof worldGroup === 'undefined' || typeof grassCardMat === 'undefined') return;
+  if (!P16_CARDS.list){
+    P16_CARDS.list = [];
+    const texs = (typeof TEX !== 'undefined') ? [TEX.grass, TEX.tree] : [];
+    worldGroup.children.forEach(o=>{
+      if (!o.isInstancedMesh || o.userData.rgPool || o.userData.b15proxy) return;
+      const m = o.material;
+      if (m === grassCardMat || (m && m.map && texs.indexOf(m.map) >= 0)){ o.userData.p16n = o.count; P16_CARDS.list.push(o); }
+    });
+  }
+  const lvl = (typeof detailLevel === 'function') ? detailLevel() : 2, k = lvl === 0 && !/[?&]cards=all\b/.test(location.search) ? 0.4 : 1;
+  if (k === P16_CARDS.k && P16_CARDS.done) return;
+  P16_CARDS.k = k; P16_CARDS.done = true;
+  P16_CARDS.list.forEach(o=>{ const n = o.userData.p16n | 0; o.count = Math.max(1, Math.round(n*k)); });
+}
+addFrameHook(function phone16Cards(){
+  if (typeof BOOT15 === 'undefined' || !BOOT15.tMenu) return;
+  if (!P16_CARDS.list || !P16_CARDS.done){ p16CardDensity(); return; }
+});
+gfxOnChange(function p16CardsOnMode(P, ch){ if (P16_CARDS.list && ch.indexOf('detail') >= 0) p16CardDensity(); });
+
+/* the light modes (no post: Potato / Low / the phone profile) and every touch device: nothing over the 3D view blurs what is
+   behind it (a backdrop blur over a moving WebGL canvas is redone every frame) */
+gfxOnChange(function p16Lite(P){ document.documentElement.classList.toggle('p16lite', !P.post); });
+document.documentElement.classList.toggle('p16lite', !GFXP.post);
+
+/* ---------------------------------------------------------------- the card's look (also used by the load watchdog) */
+injectCSS(
+  '#p16Ctx{ position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; padding:24px;' +
+  '  background:rgba(8,9,12,.93); color:var(--dl-paper,#f3ede1); text-align:center; touch-action:manipulation; }' +
+  '#p16Ctx .p16Card{ display:flex; flex-direction:column; align-items:center; gap:14px; max-width:360px; padding:22px 22px 24px;' +
+  '  background:var(--dl-ink,#111113); border:2px solid rgba(243,237,225,.22); box-shadow:6px 6px 0 #000; }' +
+  '#p16Ctx .p16T{ font:400 26px/1 var(--dl-display,"Arial Black",sans-serif); text-transform:uppercase; letter-spacing:.01em;' +
+  '  color:var(--dl-paper,#f3ede1); text-shadow:3px 3px 0 var(--dl-orange,#ff5a1f); }' +
+  '#p16Ctx .p16X{ font:500 15px/1.45 var(--dl-cond,"Arial Narrow",sans-serif); opacity:.82; }' +
+  '#p16Ctx .p16B{ margin-top:6px; min-height:56px; padding:0 30px; border:0; border-radius:0; cursor:pointer;' +
+  '  font:800 22px/1 var(--dl-cond,"Arial Narrow",sans-serif); letter-spacing:.06em; text-transform:uppercase;' +
+  '  color:var(--dl-ink,#111113); background:var(--dl-yellow,#ffd23f); box-shadow:4px 4px 0 #000; }' +
+  '#p16Ctx .p16B:active{ transform:translate(2px,2px); box-shadow:2px 2px 0 #000; }' +
+  '#p16Ctx .p16B:focus-visible{ outline:3px solid var(--dl-paper,#f3ede1); outline-offset:3px; }' +
+  'html.p16lite #minimap, html.p16lite .toast, html.p16lite #sheet{ -webkit-backdrop-filter:none; backdrop-filter:none; }' +
+  'html.p16lite .toast{ background:rgba(10,13,18,.86); }', 'p16-css');
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
