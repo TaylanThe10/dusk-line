@@ -15478,6 +15478,96 @@ void main(){
   gl_FragColor = vec4(farSharpen((lB < lMin || lB > lMax) ? rA : rB, rgbM, rgbNW, rgbNE, rgbSW, rgbSE), 1.0);
 }`;
 
+/* ------------------------------------------------------------- lite final pass (Release 15.5, stream potato)
+   Potato / Low ("looks too ugly / blurry"): the scene is drawn at the mode's own (lower) resolution and this ONE pass brings
+   it up to the canvas: a Catmull-Rom (bicubic) sample of the HDR scene (five bilinear taps; 1:1 = one) + the diagonals one
+   scene texel away (the local range: no ringing) ->
+     edges     a blend along the edge (FXAA-style direction, in scene texels) so upscaled stair steps become clean lines
+     detail    contrast-adaptive sharpen (strongest on soft detail, backing off on hard edges), clamped to the neighbours
+     grade     the post modes' own look: exposure + white balance, AgX, the CDL look, split toning, filmic black, a light
+               vignette -- the SAME uniforms as the composite (world_daynight.js sets them per map and time of day)
+   No extra pass, one program compiled at boot (switching modes compiles nothing). Decisions use a compressed luma
+   (l / (1 + l)), so the thresholds work on HDR input. */
+const LITE2_FRAG = `
+varying vec2 vUv;
+uniform sampler2D tScene;
+uniform vec2 uTexel;
+uniform float uSharp, uEdge, uUp;
+uniform float uExposure, uSat, uContrast, uPunch, uBlack, uVignette, uAspect;
+uniform vec3 uGLo, uGHi, uWB;
+const vec3 LW = vec3(0.2126, 0.7152, 0.0722);
+vec3 agxCurve(vec3 x){
+  vec3 x2 = x*x, x4 = x2*x2;
+  return 15.5*x4*x2 - 40.14*x4*x + 31.96*x4 - 6.868*x2*x + 0.4298*x2 + 0.1191*x - 0.00232;
+}
+/* Catmull-Rom from five bilinear taps (the corner taps of the 4x4 kernel dropped, the weights renormalised): crisp edges
+   when the scene is smaller than the canvas; cen = its middle tap (a bilinear sample inside the central 2x2 texels) */
+vec3 lite2Cmr(vec2 uv, out vec3 cen){
+  vec2 sp = uv/uTexel;
+  vec2 t1 = floor(sp - 0.5) + 0.5;
+  vec2 f = sp - t1;
+  vec2 w0 = f*(-0.5 + f*(1.0 - 0.5*f));
+  vec2 w1 = 1.0 + f*f*(-2.5 + 1.5*f);
+  vec2 w2 = f*(0.5 + f*(2.0 - 1.5*f));
+  vec2 w3 = f*f*(-0.5 + 0.5*f);
+  vec2 w12 = w1 + w2;
+  vec2 t12 = (t1 + w2/w12)*uTexel, t0 = (t1 - 1.0)*uTexel, t3 = (t1 + 2.0)*uTexel;
+  float a = w12.x*w0.y, b = w0.x*w12.y, c = w12.x*w12.y, d = w3.x*w12.y, e = w12.x*w3.y;
+  cen = texture2D(tScene, t12).rgb;
+  vec3 r = texture2D(tScene, vec2(t12.x, t0.y)).rgb*a + texture2D(tScene, vec2(t0.x, t12.y)).rgb*b + cen*c
+         + texture2D(tScene, vec2(t3.x, t12.y)).rgb*d + texture2D(tScene, vec2(t12.x, t3.y)).rgb*e;
+  return r/(a + b + c + d + e);
+}
+void main(){
+  vec3 m, c;
+  if (uUp > 1.01) c = lite2Cmr(vUv, m);                 // upscaling (a uniform branch: 1:1 phones skip the four extra taps)
+  else { m = texture2D(tScene, vUv).rgb; c = m; }
+  vec3 nw = texture2D(tScene, vUv + vec2(-uTexel.x, -uTexel.y)).rgb;
+  vec3 ne = texture2D(tScene, vUv + vec2( uTexel.x, -uTexel.y)).rgb;
+  vec3 sw = texture2D(tScene, vUv + vec2(-uTexel.x,  uTexel.y)).rgb;
+  vec3 se = texture2D(tScene, vUv + vec2( uTexel.x,  uTexel.y)).rgb;
+  vec4 l4 = vec4(dot(nw, LW), dot(ne, LW), dot(sw, LW), dot(se, LW));
+  l4 = l4/(1.0 + l4);
+  float lM = dot(m, LW); lM = lM/(1.0 + lM);
+  float lMin = min(lM, min(min(l4.x, l4.y), min(l4.z, l4.w)));
+  float lMax = max(lM, max(max(l4.x, l4.y), max(l4.z, l4.w)));
+  vec3 mn = min(m, min(min(nw, ne), min(sw, se))), mx = max(m, max(max(nw, ne), max(sw, se)));
+  c = clamp(c, mn, mx);                                   // no ringing from the bicubic
+  if (uEdge > 0.0 && lMax - lMin > max(0.03, lMax*0.1)){
+    vec2 dir = vec2(-((l4.x + l4.y) - (l4.z + l4.w)), ((l4.x + l4.z) - (l4.y + l4.w)));
+    float red = max((l4.x + l4.y + l4.z + l4.w)*0.03125, 0.0078);
+    dir = clamp(dir/(min(abs(dir.x), abs(dir.y)) + red), -8.0, 8.0)*uTexel;
+    vec3 ea = 0.5*(texture2D(tScene, vUv - dir*0.16667).rgb + texture2D(tScene, vUv + dir*0.16667).rgb);
+    vec3 eb = ea*0.5 + 0.25*(texture2D(tScene, vUv - dir*0.5).rgb + texture2D(tScene, vUv + dir*0.5).rgb);
+    float le = dot(eb, LW); le = le/(1.0 + le);
+    c = mix(c, (le < lMin || le > lMax) ? ea : eb, uEdge);
+  }
+  float amp = sqrt(clamp(min(lMin, 1.0 - lMax)/max(lMax, 1e-4), 0.0, 1.0));
+  float w = -amp*0.22*uSharp;
+  c = clamp((c + (nw + ne + sw + se)*w)/(1.0 + 4.0*w), mn, mx);
+  c = max(c*(uExposure*uWB), vec3(1e-7));
+  c = mat3(0.842479062253094, 0.0423282422610123, 0.0423756549057051,
+           0.0784335999999992, 0.878468636469772, 0.0784336,
+           0.0792237451477643, 0.0791661274605434, 0.879142973793104) * c;
+  c = (log2(c) + 2.4739)*uContrast - 2.4739;
+  c = clamp((c + 12.47393)/16.49999, 0.0, 1.0);
+  c = agxCurve(c);
+  c = pow(max(c, vec3(0.0)), vec3(uPunch));
+  float l = dot(c, LW);
+  float cs = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+  c = l + (c - l)*mix(uSat, 1.0 + (uSat - 1.0)*0.35, clamp(cs*1.6, 0.0, 1.0));
+  c = mat3(1.19687900512017, -0.0528968517574562, -0.0529716355144438,
+           -0.0980208811401368, 1.15190312990417, -0.0980434501171241,
+           -0.0990297440797205, -0.0989611768448433, 1.15107367264116) * c;
+  c = clamp(c, 0.0, 1.0);
+  l = dot(c, LW);
+  c *= mix(vec3(1.0), uGLo, 1.0 - smoothstep(0.02, 0.55, l)) * mix(vec3(1.0), uGHi, smoothstep(0.40, 0.95, l));
+  c = c*(1.0 - uBlack) + uBlack*uGLo*0.9;
+  vec2 q = (vUv - 0.5)*vec2(uAspect, 1.0);
+  c *= 1.0 - min(uVignette, 0.07)*smoothstep(0.12, 1.0, dot(q, q)/(0.25*uAspect*uAspect + 0.25));
+  gl_FragColor = vec4(c, 1.0);
+}`;
+
 /* ------------------------------------------------------------- lite (gfx14: Low / Potato) */
 const LITE_FRAG = `
 varying vec2 vUv;
@@ -15501,6 +15591,11 @@ let mAO, mBlur, mBright, mComp, mFxaa, mLite;
 const LITE_OK = (function(){ try { return !!renderer.capabilities.isWebGL2; } catch(e){ return false; } })();
 let quad, quadScene, quadCam;
 let W = 1, H = 1;
+/* the lite final pass (Release 15.5): on = use it for Low / Potato (off = the Release 14 tone-map pass, kept for side-by-side
+   checks), scale = the scene's own resolution (device px per CSS px; the canvas may be larger), hooks = { before(f), after() }
+   around the scene render (f = scene height / canvas height: for point sizes worked out from the canvas) */
+const LITE2 = { on:true, scale:0, sharp:-1, edge:-1, hooks:[], w:0, h:0, up:1, s:0 };
+let mLite2 = null, rtLite = null;
 
 function mkMat(frag, uniforms, derivatives){
   const m = new T.ShaderMaterial({ vertexShader: QUAD_VERT, fragmentShader: frag,
@@ -15606,6 +15701,7 @@ function init(){
       uBloomCol:{value:new T.Vector3(1, 1, 1)}, uWB:{value:new T.Vector3(1, 1, 1)}
     });
     mFxaa   = mkMat(FXAA_FRAG, { tDiffuse:{value:null}, uTexel:{value:new T.Vector2()}, uSharp:(typeof FAR_SHARP !== 'undefined' ? FAR_SHARP : { value:0 }) });
+    lite2Init();
 
     mLite   = mkMat(LITE_FRAG, { tScene:{value:null}, uExposure:{value:1.0} });
     makeTargets();
@@ -15615,6 +15711,7 @@ function init(){
     renderer.outputEncoding = T.LinearEncoding;
     renderer.toneMapping    = T.NoToneMapping;
     ok = true;
+    lite2Compile();
   } catch(e){
     ok = false;
   }
@@ -15738,8 +15835,73 @@ function render(exposure, time){
   pass(mFxaa, null);
 }
 
+/* ---- the lite final pass (Release 15.5): built + compiled with the others at the boot, whatever the mode ---- */
+function lite2Init(){
+  const U = mComp.uniforms;
+  mLite2 = mkMat(LITE2_FRAG, {
+    tScene:{value:null}, uTexel:{value:new T.Vector2(1, 1)}, uSharp:{value:0.7}, uEdge:{value:1}, uUp:{value:1},
+    uExposure:{value:1.0}, uAspect:{value:1.6},
+    // the grade is the composite's own (same uniform objects: one write per frame from world_daynight.js serves both)
+    uSat:U.uSat, uContrast:U.uContrast, uPunch:U.uPunch, uBlack:U.uBlack, uVignette:U.uVignette, uGLo:U.uGLo, uGHi:U.uGHi, uWB:U.uWB
+  });
+  mLite2.toneMapped = false;                 // it does its own tone curve: the same program whatever the renderer's tone mapping
+}
+/* compiled at the end of init(), once the renderer writes linear output (as it does in every mode from then on), for the canvas
+   (no render target bound): exactly the variant every Low / Potato frame uses -- so the first switch to them compiles nothing */
+function lite2Compile(){
+  if (!mLite2) return;
+  const rt0 = renderer.getRenderTarget();
+  try { renderer.setRenderTarget(null); quad.material = mLite2; renderer.compile(quadScene, quadCam); } catch(e){}
+  renderer.setRenderTarget(rt0);
+}
+function lite2On(){ return !!(LITE2.on && mLite2 && ok && typeof LITE_OK !== 'undefined' && LITE_OK); }
+function lite2Render(exposure){
+  const pr = renderer.getPixelRatio();
+  const s = Math.min(pr, LITE2.scale > 0 ? LITE2.scale : pr);
+  const w = Math.max(2, Math.floor(innerWidth*s)), h = Math.max(2, Math.floor(innerHeight*s));
+  if (!rtLite || rtLite.width !== w || rtLite.height !== h){
+    if (rtLite) rtLite.dispose();
+    const hdr = (typeof phone16HdrType === 'function') ? phone16HdrType() : (renderer.capabilities.isWebGL2 ? T.HalfFloatType : T.UnsignedByteType);
+    rtLite = new T.WebGLRenderTarget(w, h, { minFilter:T.LinearFilter, magFilter:T.LinearFilter, format:T.RGBAFormat, type:hdr,
+                                             encoding:T.LinearEncoding, depthBuffer:true, stencilBuffer:false });
+    rtLite.texture.generateMipmaps = false;
+  }
+  const cvH = Math.max(1, Math.floor(innerHeight*pr)), f = h/cvH, hk = LITE2.hooks;
+  for (let i = 0; i < hk.length; i++){ try { hk[i].before(f); } catch(e){} }
+  try {
+    renderer.setRenderTarget(rtLite);
+    renderer.clear();
+    renderer.render(scene, camera);
+  } finally {
+    for (let i = hk.length - 1; i >= 0; i--){ try { hk[i].after(); } catch(e){} }
+  }
+  // this pass upscales by `own` (canvas / scene); the browser then stretches the canvas by `br` (device px / canvas px).
+  // Upscaling: the bicubic does most of the sharpening, a light edge blend, a light contrast-adaptive sharpen on top.
+  // 1:1 (phones, a Custom 1.0): the full edge blend and a sharpen that grows with the browser's stretch.
+  const own = pr/s, br = Math.max(1, (window.devicePixelRatio || 1)/Math.max(0.3, pr)), up = own*br, ups = own > 1.01;
+  const L = mLite2.uniforms;
+  L.tScene.value = rtLite.texture;
+  L.uTexel.value.set(1/w, 1/h);
+  L.uExposure.value = exposure;
+  L.uAspect.value = innerWidth/Math.max(1, innerHeight);
+  L.uUp.value = own;
+  L.uSharp.value = LITE2.sharp >= 0 ? LITE2.sharp : (ups ? 0.55 + 0.2*Math.min(1, br - 1) : Math.min(1, 0.5 + 0.25*(up - 1)));
+  L.uEdge.value = LITE2.edge >= 0 ? LITE2.edge : (ups ? 0.45 : 1);
+  LITE2.w = w; LITE2.h = h; LITE2.up = up; LITE2.s = L.uSharp.value;
+  pass(mLite2, null);
+}
+/* Low / Potato take the lite pass; every other level (and lite off) is the pipeline above. The lite target is let go
+   as soon as a post mode draws (it is made again, at its own size, the next time a lite mode does). */
+function renderAny(exposure, time){
+  if (level === 'off' && lite2On()){ lite2Render(exposure); return; }
+  if (rtLite && level !== 'off'){ rtLite.dispose(); rtLite = null; }
+  return render(exposure, time);
+}
+
 return {
-  init, render, setLevel,
+  init, render: renderAny, setLevel,
+  get lite(){ return LITE2; },
+  get liteRT(){ return rtLite; },
   resize(){ if (ok) makeTargets(); },
   get ok(){ return ok; },
   get level(){ return level; },
@@ -28848,23 +29010,16 @@ function fbBX15(P){
   crank.rotation.x = -Math.PI/2; f.add(crank);                          // level cranks, left foot forward (matches rs.pedalL / pedalR)
   f.add(bkMesh(bkMerge(bxChainG(bbY, cr, Rr, rz, cog, -0.070)), BM.chain));
   const SP = fseat(f, ST, sdir, P.pl || 0.075, { sw:P.sw || 0.05, sl:P.sl || 0.11, seatMat:BM.seat, pitch:P.pitch === undefined ? -0.14 : P.pitch, postMat:bxMat(P.postMat, AL) });
-  // ---- front end: straight tapered fork legs ahead of the steering axis, forged crown, dropouts, steerer
-  const A2 = [fz, Rf], forkMat = P.fork === 'frame' ? M : bxMat(P.fork, FX.fork), fk = P.forkR || 0.0185;
-  const legTop = bxUp(bxUp(G.C, G.n, G.off), G.d, 0.006), rxF = Math.atan2(G.d[1], -G.d[0]) - Math.PI/2;
-  { const fkL = [];
-    [-1, 1].forEach(sd=>{
-      // tapered legs (oval at the crown, round at the dropout) + investment-cast dropouts with the axle slot
-      const a0 = [sd*0.052, A2[1] + G.d[1]*0.010, A2[0] + G.d[0]*0.010], a1 = [sd*0.052, legTop[1], legTop[0]];
-      fkL.push(m12loftGeo([a0, a1], [[fk*(P.taper ? 0.62 : 0.72), fk*(P.taper ? 0.66 : 0.76)], [fk*(P.taper ? 1.00 : 0.92), fk*(P.taper ? 1.26 : 1.06)]], { n:6, r:14 }));
-      fkL.push(m12plateGeo(m12hull([[fz, Rf, 0.0165], [fz + G.d[0]*0.042, Rf + G.d[1]*0.042, fk*0.82]], 6), sd*0.052, 0.0105, [{ c:[fz, Rf], r:0.0052 }], 0.002));
-    });
-    const crC = bxUp(bxUp(G.C, G.n, G.off*0.5), G.d, 0.012);
-    { const lr = fk*(P.taper ? 1.30 : 1.22) + 0.004, zo = G.off*0.5;                                   // machined crown: wraps both legs + the steerer
-      fkL.push(bx15Put(bx15HullY([[-0.052, zo, lr], [0.052, zo, lr], [0, -zo, 0.0215]], 0.028, 0.0045, 10), 0, crC[1], crC[0], rxF)); }
-    fr.add(bkMesh(bkMerge(fkL), forkMat)); }
+  // ---- front end (Release 15.5, forks17 kit): round tapered legs, a forged crown with leg caps, flat dropouts carrying the axle ahead of
+  //      the legs (the offset split between the crown and the dropouts), weld beads; the steerer, top cap + bolt
+  const A2 = [fz, Rf], forkMat = P.fork === 'frame' ? M : bxMat(P.fork, FX.fork);
+  const FK = fk17Bmx(G, { r:P.forkR || 0.0185, taper:!!P.taper, x:0.052 });
+  fr.add(bkMesh(bkMerge(FK.fork), forkMat));
+  FK.cap.forEach(g=> G2.black.push(g)); FK.chrome.forEach(g=> G2.chrome.push(g));
   const S = bxUp(G.H1, G.d, 0.045);
   fr.add(limb(0, G.H0[1], G.H0[0], 0, S[1] + G.d[1]*0.004, S[0] + G.d[0]*0.004, 0.0145, N));                   // steerer
   G2.chrome.push(bxSegZY(bxUp(S, G.d, 0.000), bxUp(S, G.d, 0.008), 0.040));                                       // top cap
+  G2.black.push(bxCylG([0, bxUp(S, G.d, 0.0075)[1], bxUp(S, G.d, 0.0075)[0]], [0, bxUp(S, G.d, 0.0125)[1], bxUp(S, G.d, 0.0125)[0]], 0.0068, 6));   // its bolt
   // ---- stem: front-load (4-bolt face plate) or top-load (bars on top, cap with 4 vertical bolts)
   const hw = P.hw || 0.38, rise = P.rise || 0.19, back = P.back === undefined ? 0.055 : P.back, bk = P.bars || 'bmx';
   const by = S[1] + 0.005, bz = S[0] + 0.01;                                                                      // (rider landmarks keep their old reference)
@@ -28957,7 +29112,7 @@ function fbBX15(P){
     f.add(bkMesh(bkMerge(fc), N));
   }
   // front brake on the fork: U-brake on the legs, or an 80s side-pull caliper through the crown
-  if (P.fbrake === 'u'){ const B = bxUBrakeG(A2, G.d, rbr, 0.052); addBrake(B, fr, G2); }
+  if (P.fbrake === 'u'){ const B = bxUBrakeG(FK.brakeAx, G.d, rbr, 0.052); addBrake(B, fr, G2); }
   else if (P.fbrake){
     const w = [G.C[0] + G.n[0]*0.02 - fz, G.C[1] - Rf], lw = Math.hypot(w[0], w[1]); w[0] /= lw; w[1] /= lw;
     const Pw = (lat, rad)=> [lat, Rf + w[1]*rad, fz + w[0]*rad];
@@ -29584,23 +29739,30 @@ function mo15forkMoto(fr, G, o){
   const A = [G.fz, G.Rf], d = G.d, L = G.L, span = o.span || 0.094, ro = o.ro || 0.027, ri = o.ri || ro*0.76, ht = o.ht || 0.13, off = G.off;
   const LP = t=> mo15up(A, d, t), SP = t=> mo15up(G.Q, d, t);
   const tb0 = L - 0.030, tb1 = L + 0.006, tt0 = L + 0.014 + ht + 0.004, tt1 = tt0 + 0.026, tTop = tt1 + 0.020;
-  const G1 = { outer:[], inner:[], dark:[], alloy:[], foot:[], guard:[], clamp:[] };
+  const G1 = { outer:[], inner:[], dark:[], alloy:[], foot:[], guard:[], clamp:[], boot:[] };
   [-1, 1].forEach(sd=>{
     const x = sd*span;
     if (o.conv){                                                    // conventional: fat sliders at the bottom, chrome stanchions into the clamps
       G1.outer.push(mo15rodGeo(mo15P(LP(-0.03), x), mo15P(LP(L*0.52), x), ro*1.05, 20, ro*0.98));
       G1.dark.push(mo15rodGeo(mo15P(LP(L*0.515), x), mo15P(LP(L*0.54), x), ri + 0.0045, 16));
-      if (o.boots){ const pr = []; for (let i = 0; i <= 12; i++) pr.push([ri + (i%2 ? 0.006 : 0.010), i/12]); G1.dark.push(mo15latheAlong(pr, mo15P(LP(L*0.54), x), mo15P(LP(L*0.54 + 0.132), x), 12)); }
+      // fork gaiters: rubber bellows from the slider top to under the bottom clamp (glossy enough for the folds to catch the light)
+      if (o.boots){ const gb = L*0.54, gt = Math.min(tb0 - 0.012, gb + 0.15), nr = Math.max(6, Math.round((gt - gb)/0.016)), pr = [];
+        pr.push([ri + 0.0055, 0]); for (let i = 0; i <= nr*2; i++) pr.push([ri + (i%2 ? 0.0115 : 0.0060) + 0.004*(1 - i/(nr*2)), (i + 0.5)/(nr*2 + 1)]); pr.push([ri + 0.004, 1]);
+        G1.boot.push(mo15latheAlong(pr, mo15P(LP(gb), x), mo15P(LP(gt), x), 14)); }
       G1.inner.push(mo15rodGeo(mo15P(LP(L*0.50), x), mo15P(LP(tTop - 0.006), x), ri, 18));
       G1.alloy.push(mo15rodGeo(mo15P(LP(tTop - 0.008), x), mo15P(LP(tTop + 0.004), x), ri*0.92, 14));
-      G1.foot.push(mo15loftGeo([mo15P(LP(-0.035), x), mo15P(LP(0.05), x)], [[0, ro*2.3, ro*2.4, -ro*0.25], [1, ro*2.1, ro*2.1, 0]], { n:3, rad:16 }));
+      // axle foot at the bottom of the slider: a cast lug + a boss round the axle
+      G1.outer.push(mo15loftGeo([mo15P(LP(-0.012), x), mo15P(LP(0.060), x)], [[0, ro*2.05, ro*2.30], [0.55, ro*2.10, ro*2.18], [1, ro*2.0, ro*2.0]], { n:2.6, rad:16, seg:3 }));
+      G1.outer.push(mo15xcyl(A, ro*0.92, ro*2.30, x, 16));
     } else {
       G1.inner.push(mo15rodGeo(mo15P(LP(0.03), x), mo15P(LP(L*0.50), x), ri, 18));
       G1.outer.push(mo15rodGeo(mo15P(LP(L*0.445), x), mo15P(LP(L*0.475), x), ro*0.90, 20, ro));
       G1.outer.push(mo15rodGeo(mo15P(LP(L*0.475), x), mo15P(LP(tTop - 0.010), x), ro, 20));
       G1.dark.push(mo15rodGeo(mo15P(LP(L*0.43), x), mo15P(LP(L*0.447), x), ri + 0.0042, 18));
       G1.alloy.push(mo15rodGeo(mo15P(LP(tTop - 0.010), x), mo15P(LP(tTop + 0.006), x), ro*0.84, 16));
-      G1.foot.push(mo15loftGeo([mo15P(LP(-0.04), x), mo15P(LP(0.062), x)], [[0, ri*2.7, ri*3.2, -ri*0.35], [0.7, ri*2.5, ri*2.7, -ri*0.2], [1, ri*2.2, ri*2.2, 0]], { n:3.2, rad:16 }));
+      // axle foot: a forged lug round the bottom of the inner tube, a boss round the axle with a flat outer face
+      G1.foot.push(mo15loftGeo([mo15P(LP(-0.010), x), mo15P(LP(0.030), x), mo15P(LP(0.078), x)], [[0, ri*2.55, ri*2.95, -ri*0.20], [0.45, ri*2.55, ri*2.75, -ri*0.12], [1, ri*2.30, ri*2.30, 0]], { n:2.8, rad:16, seg:4 }));
+      G1.foot.push(mo15xcyl(A, ri*1.30, ri*2.62, x, 16));
       if (o.guard){
         G1.guard.push(mo15loftGeo([mo15P(LP(0.07), x), mo15P(LP(L*0.30), x), mo15P(LP(L*0.43), x)], [[0, ri*2.9, ri*1.7, ri*0.55], [0.6, ri*3.0, ri*1.9, ri*0.62], [1, ri*2.6, ri*1.5, ri*0.6]], { n:3, rad:14, seg:6 }));
       }
@@ -29608,8 +29770,11 @@ function mo15forkMoto(fr, G, o){
     // axle pinch bolts on the foot
     [-0.012, 0.012].forEach(k=>{ const p = LP(0.035 + k); G1.alloy.push(mo15xcyl([p[0] - 0.026, p[1]], 0.0045, 0.014, x + sd*0.012, 8)); });
   });
-  // axle + nuts
-  G1.alloy.push(mo15xcyl(A, 0.0115, span*2 + 0.07, 0, 12));
+  // axle: its head sunk in the left foot (a hex socket), a nut on the right, both just proud of the bosses
+  const fw = (o.conv ? ro*2.30 : ri*2.62)/2;
+  G1.alloy.push(mo15xcyl(A, 0.0105, span*2 + fw*2 + 0.006, 0, 12));
+  G1.dark.push(mo15xcyl(A, 0.0058, 0.004, span + fw + 0.0035, 6));
+  G1.alloy.push(mo15xcyl(A, 0.0135, 0.008, -(span + fw + 0.004), 6));
   // triple clamps (forged plates round the legs and the steerer) + pinch bolts + steering nut
   const rr = (o.conv ? ri : ro) + 0.011;
   G1.clamp.push(mo15clampGeo(G, [[span, off, rr], [-span, off, rr], [0, 0, 0.034], [0, off + 0.006, 0.03]], tb1 - tb0, tb0));
@@ -29624,7 +29789,7 @@ function mo15forkMoto(fr, G, o){
   const calB = mo15boxGeo([rx + 0.026, (cp[1] + A[1])/2 + 0.004, (cp[0] + A[0])/2 + 0.004], 0.012, 0.05, 0.06, -ca - Math.PI/2);
   const hose = mo15tubeGeo([[rx + 0.02, cp[1] + 0.03, cp[0] + 0.012], mo15P(mo15up(LP(L*0.28), G.n, -0.012), span + 0.032), mo15P(mo15up(LP(L*0.62), G.n, 0.02), span + 0.034), mo15P(mo15up(SP(tb0), G.n, off + 0.055), 0.03)], 0.0045, 24, 6);
   mo15add(fr, G1.outer, o.outer || FX.fork); mo15add(fr, G1.inner, o.inner || BK.chrome); mo15add(fr, G1.dark.concat([hose]), M12.rub);
-  mo15add(fr, G1.alloy, BK.alloy); mo15add(fr, G1.foot, o.foot || M12.anod); mo15add(fr, G1.clamp, o.clamp || BK.alloy);
+  mo15add(fr, G1.alloy, BK.alloy); mo15add(fr, G1.foot.concat(G1.boot), o.foot || M12.anod); mo15add(fr, G1.clamp, o.clamp || BK.alloy);
   if (G1.guard.length) mo15add(fr, G1.guard, o.guard);
   mo15add(fr, [calG, calB], o.cal || M12.anod);
   return { top:SP(tTop), tTop, tt1, tb0, LP, SP, span, ro, ri };
@@ -30012,7 +30177,7 @@ function fbMo15moto(P){
   /* ---- front end: fork, clamps, bars, mask / lamp, fender ---- */
   const conv = q('fork') === 'conv';
   const fk = mo15forkMoto(fr, G, { conv, boots:!!P.boots, span:(P.forkSpan || 0.094)*Math.min(1, scale + 0.08), ro:(P.forkR || 0.0275)*Math.min(1, scale + 0.1), ht:P.ht || 0.13,
-    outer:FX.fork, inner:mo15mat(q('inner'), BK.chrome), foot:mo15mat(q('foot'), M12.anod), clamp:mo15mat(q('clamp'), BK.alloy), guard:(q('fguard') && !conv) ? mo15mat(q('fguardMat'), M) : 0,
+    outer:FX.fork, inner:mo15mat(q('inner'), BK.chrome), foot:mo15mat(q('forkFoot'), M12.anod), clamp:mo15mat(q('clamp'), BK.alloy), guard:(q('fguard') && !conv) ? mo15mat(q('fguardMat'), M) : 0,
     cal:mo15mat(q('cal'), M12.anod), rotorR:(P.rotorF || 0.13)*Math.min(1, scale + 0.12), rotorX:0.058 });
   C.fk = fk;
   const bt0 = q('bars') || 'mx', BF = mo15barFit(mo15up(fk.SP(fk.tt1), d, 0.052), d, bt0 === 'mx' ? 0.085 : bt0 === 'low' ? 0.05 : 0.02, bt0 === 'flat' ? 0.03 : 0.06, (P.hw || 0.40)*Math.min(1, scale + 0.15), P.grip);
@@ -30680,27 +30845,24 @@ function fbMo15ebike(P){
   /* ---- saddle ---- */
   const SP = X.noSaddle ? X.seatTop : mo15saddle(f, STtop, X.sdirS || sdir, q('pl'), { kind:q('saddle'), postMat:mo15mat(q('postMat'), BK.alloy) });
   /* ---- front: fork, steerer, stem / post, bars, display ---- */
-  const fk = q('fork'), span = q('span') || 0.052, A0 = [fz, Rf], LP = t=> mo15up(A0, G.d, t);
-  const topC = mo15up(G.C, G.d, 0.012);
+  // Release 15.5 (forks17 kit): a real fork for every design -- city suspension forks (silver stanchions, wipers, arch, crown, preload
+  // knobs, axle nuts), an upside-down moto fork in triple clamps, rigid forks per design (carbon with an integrated crown, alloy unicrown,
+  // cast / chrome crown with raked steel blades), dropouts with axle nuts + eyelets, and the caliper on a post / flat mount behind the leg
+  const fk = q('fork'), span = q('span') || 0.052, A0 = [fz, Rf], disc = q('disc') || 0, FB = pd15Bk();
   if (fk === 'sus' || fk === 'fat'){
-    const st = fk === 'fat' ? 0.019 : 0.0165, low = st*1.45, sp2 = fk === 'fat' ? 0.088 : span;
-    [-1, 1].forEach(sd=>{ const x = sd*sp2;
-      X.addF(mo15loftGeo([P3(LP(-0.02), x), P3(LP(G.L*0.56), x)], [[0, low*1.8, low*2.3], [0.15, low*2, low*2.1], [1, low*2, low*2]], { n:2, rad:14, seg:4 }), FX.fork);
-      X.addF(mo15rodGeo(P3(LP(G.L*0.52), x), P3(LP(G.L + 0.014), x), st, 14), mo15mat(q('stan'), BK.alloy));
-      X.addF(mo15rodGeo(P3(LP(G.L*0.555), x), P3(LP(G.L*0.575), x), st + 0.0035, 14), M12.rub); });
-    const a0 = mo15up(LP(G.L*0.56), G.n, 0.01); X.addF(mo15loftGeo([[sp2, a0[1], a0[0]], [0, a0[1] + 0.045, a0[0] + 0.022], [-sp2, a0[1], a0[0]]], [[0, low*1.5, low*1.4], [0.5, low*1.3, low*1.1], [1, low*1.5, low*1.4]], { n:2.6, rad:10, seg:10 }), FX.fork);
-    const cr = box(0, topC[1], topC[0], sp2*2 + 0.05, 0.04, 0.07, M12.anod); cr.rotation.x = Math.atan2(G.d[1], -G.d[0]) - Math.PI/2; fr.add(cr);
+    const fat = fk === 'fat', st = fat ? 0.019 : 0.0165;
+    fk17Sus(FB, G, { kind:'sus', city:true, span:fat ? 0.088 : span, stanR:st, lowK:1.45, lowMat:FX.fork, stanMat:FK17.stanS, crownMat:M12.anod, archMat:FX.fork,
+      travel:fat ? 0.10 : 0.075, knobMat:FX.acc, tyreW:(q('tr') || 0.03)*1.10, archClear:q('fenders') ? (q('fenders') === 'fat' ? 0.030 : 0.028) + 0.012 : 0.012, rotor:disc || 0.08, rotorX:0.050, cal:disc > 0, pistons:2, steerer:false, cups:false });
   } else if (fk === 'usd'){
-    [-1, 1].forEach(sd=>{ const x = sd*span; X.addF(mo15rodGeo(P3(LP(0.02), x), P3(LP(G.L*0.5), x), 0.019, 14), BK.gold); X.addF(mo15rodGeo(P3(LP(G.L*0.46), x), P3(LP(G.L + 0.14), x), 0.026, 16), FX.fork); X.addF(mo15boxGeo(P3([A0[0] - 0.01, A0[1] - 0.006], x), 0.034, 0.06, 0.05), M12.anod); });
-    [G.L - 0.02, G.L + 0.12].forEach(t=>{ const p = mo15up(mo15up(G.Q, G.d, t), G.n, G.off*0.6); const b2 = box(0, p[1], p[0], span*2 + 0.07, 0.03, 0.09, M12.anod); b2.rotation.x = Math.atan2(G.d[1], -G.d[0]) - Math.PI/2; fr.add(b2); });
+    mo15forkMoto(fr, G, { span, ro:0.026, ri:0.0185, ht:q('ht'), outer:FX.fork, inner:BK.chrome, foot:M12.anod, clamp:M12.anod, guard:0, cal:M12.anod, rotorR:disc || 0.09, rotorX:0.050, calAng:150, bike:true });
   } else {
-    // rigid: tapered blades from the crown to the dropouts
-    [-1, 1].forEach(sd=> X.addF(mo15loftGeo([P3(LP(-0.012), sd*span), P3(LP(G.L*0.5), sd*span*1.02), P3(mo15up(G.C, G.d, 0.0), sd*span*0.92)], [[0, 0.016, 0.022], [1, 0.024, 0.036]], { n:2.4, rad:12, seg:10 }), FX.fork));
-    const c0 = mo15up(topC, G.d, -0.012); X.addF(mo15loftGeo([P3(c0, -span - 0.012), P3(mo15up(c0, G.d, 0.008), 0), P3(c0, span + 0.012)], [[0, 0.03, 0.036], [0.5, 0.044, 0.05], [1, 0.03, 0.036]], { n:2.6, rad:10, seg:8, ref:[0, 1, 0], up:[0, 0, 1] }), FX.fork);
+    const ds = q('design'), FS = { classic:['crown', 0.0100, 0.0150], sleek:['road', 0.0105, 0.0165], cargo:['unicrown', 0.0118, 0.0180], folder:['crown', 0.0085, 0.0125],
+                                   beam:['unicrown', 0.0115, 0.0175], cruiser:['crown', 0.0105, 0.0155], metro:['unicrown', 0.0125, 0.0190] }[ds] || ['unicrown', 0.0105, 0.016];
+    fk17Rigid(FB, G, { style:FS[0], mat:FX.fork, crownMat:ds === 'cruiser' ? BK.chrome : FX.fork, span0:span, span1:FS[0] === 'road' ? span*0.80 : span*0.88, r0:FS[1], r1:FS[2],
+      aero:false, rake:0.010, thru:FS[0] === 'road', cal:disc ? (FS[0] === 'road' ? 'flat' : 'post') : false, rotor:disc || 0.075, rotorX:0.050, pistons:2,
+      eyelets:!!q('fenders') || ds === 'classic', steerer:false, cups:false });
   }
-  X.addF(mo15xcyl(A0, 0.0085, (fk === 'fat' ? 0.088 : span)*2 + 0.04, 0, 10), M12.anod);
-  if (q('disc')){ const dr = q('disc'), a0 = mo15deg(118), c = [fz + Math.cos(a0)*(dr - 0.008), Rf + Math.sin(a0)*(dr - 0.008)], t = [-Math.sin(a0), Math.cos(a0)], cx = 0.05;
-    X.addF(mo15loftGeo([[cx, c[1] - t[1]*0.024, c[0] - t[0]*0.024], [cx, c[1] + t[1]*0.024, c[0] + t[0]*0.024]], [[0, 0.026, 0.026], [0.5, 0.03, 0.032], [1, 0.026, 0.026]], { n:2.6, rad:10, seg:2 }), M12.anod); }
+  pd15Flush(FB, fr);
   // steerer + stem / post + bars
   // the cockpit is solved from the grip spot the row was tuned with (q('grip') = [y, z]): steerer height + stem reach
   const gT = q('grip'), bk = q('bars'), hw = q('hw'), rise = q('rise'), back = q('back');
@@ -31209,11 +31371,17 @@ function fbMo15scoot(P){
   /* ---- front: fork + suspension, fender, stem + fold, cockpit, lights ---- */
   const A = [fz, Rf], fs = P.fsus || 'none', flen = Math.max(0.1, (H0[1] - Rf)/Math.sin(ha) + 0.01);
   const fx = fs === 'none' ? 0.048 : fs === 'hyd' ? 0.074 : 0.064, LP = t=> mo15up(A, dd, t);
-  // crown under the head
-  const Cr = LP(flen); addF('DARK', mo15boxGeo([0, Cr[1] + 0.006, Cr[0] - 0.004], fx*2 + 0.05, 0.04, 0.06, ha - Math.PI/2));
+  // crown (Release 15.5): a forged slab at the stem base round both legs + the steerer, rounded edges (it used to be a plain box);
+  // one piece with the legs on a rigid fork (fork paint), black on a suspension fork
+  const Cr = LP(flen), legR = fs === 'none' ? 0.0125 : fs === 'hyd' ? 0.016 : 0.012, cT = flen + 0.016, cH = 0.030;            // (the crown sits on the stem base, above the low steering neck)
+  { const sl = fk17Slab({ d:dd }, [[fx, off, legR + 0.0075], [-fx, off, legR + 0.0075], [0, 0, 0.026], [0, off*0.5, 0.024]], cH, mo15up(mo15up(A, dd, cT - cH/2), nn, -off), 0.007);
+    if (sl.attributes.uv) sl.deleteAttribute('uv'); addF(fs === 'none' ? 'FORK' : 'DARK', sl); }
   [-1, 1].forEach(sd=>{
     const x = sd*fx;
-    if (fs === 'none') addF('FORK', mo15loftGeo([[x, Rf - 0.01, fz + 0.004], [x, Cr[1], Cr[0]]], [[0, 0.016, 0.03], [1, 0.02, 0.04]], { n:4, rad:10, seg:2 }));
+    if (fs === 'none'){
+      addF('FORK', mo15loftGeo([mo15P(LP(-0.004), x), mo15P(LP(cT*0.5), x), mo15P(LP(cT - 0.006), x)], [[0, 0.018, 0.026], [0.5, 0.020, 0.030], [1, 0.024, 0.036]], { n:2.6, rad:12, seg:6 }));
+      addF('FORK', mo15xcyl(A, 0.0135, 0.022, x, 14));                                                   // dropout boss round the axle
+    }
     else if (fs === 'hyd'){
       addF('FORK', mo15rodGeo(mo15P(LP(-0.012), x), mo15P(LP(flen*0.55), x), 0.022, 14));                      // lower legs (paint)
       addF('ALLOY', mo15rodGeo(mo15P(LP(flen*0.50), x), mo15P(LP(flen + 0.03), x), 0.016, 12));               // stanchions
@@ -31224,9 +31392,10 @@ function fbMo15scoot(P){
       addF('SPRING', mo15helixGeo(mo15P(LP(flen*0.62), x), mo15P(LP(flen*0.98), x), 0.019, 5, 0.0034, 5));
       if (fs === 'dual'){ const xo = sd*(fx + 0.03); addF('FORK', mo15rodGeo(mo15P(LP(0.0), xo), mo15P(LP(flen*0.9), xo), 0.011, 10)); addF('SPRING', mo15helixGeo(mo15P(LP(flen*0.35), xo), mo15P(LP(flen*0.85), xo), 0.017, 5, 0.003, 5)); }
     }
-    addF('ALLOY', mo15boxGeo([x, Rf, fz], 0.014, 0.034, 0.03));
+    if (fs !== 'none') addF('FORK', mo15xcyl(A, 0.0135, 0.020, x, 14));                                 // axle lug on the lower leg
+    addF('DARK', mo15xcyl(A, 0.0105, 0.008, sd*(fx + 0.014), 6));                                     // axle nut
   });
-  addF('ALLOY', mo15xcyl(A, 0.007, fx*2 + 0.04, 0, 8));
+  addF('ALLOY', mo15xcyl(A, 0.0065, fx*2 + 0.036, 0, 8));
   // front fender
   if (P.ffend !== 'none'){
     const hi = P.ffend === 'high', rr = Rf + (hi ? 0.05 : 0.02), a0 = mo15deg(hi ? 25 : 40), a1 = mo15deg(hi ? 140 : 125), pts = [];
@@ -31250,11 +31419,15 @@ function fbMo15scoot(P){
   }
   // fold hinge + clamp lever (+ safety latch), or a solid collar
   { const HP = PA(S0[1] + (S1[1] - S0[1])*hf + 0.03), tilt = ha - Math.PI/2;
+    // folding joint (Release 15.5): a rounded hinge collar round the stem, the hinge barrel at its back, and the latch lever lying flat on
+    // its front (it used to be a separate box floating ahead of the stem)
+    const wide = st === 'twin' || st === 'braced', cw = wide ? 0.12 : 0.066, ext = (t, f)=> mo15up(mo15up(HP, dd, t), nn, f);
     if (fold !== 'none'){
-      addF('ALLOY', mo15boxGeo([0, HP[1], HP[0]], st === 'twin' || st === 'braced' ? 0.12 : 0.066, 0.075, 0.064, tilt));
-      addF('ALLOY', mo15xcyl([HP[0] - 0.034, HP[1] - 0.02], 0.009, (st === 'twin' || st === 'braced' ? 0.12 : 0.066) + 0.02, 0, 10));
-      addF('ACC', mo15boxGeo([0, HP[1] + 0.015, HP[0] + 0.040], 0.034, 0.075, 0.016, tilt - 0.18));
-    } else addF('DARK', mo15boxGeo([0, HP[1], HP[0]], st === 'twin' || st === 'braced' ? 0.11 : 0.058, 0.05, 0.058, tilt)); }
+      addF('ALLOY', mo15loftGeo([mo15P(ext(-0.040, 0)), mo15P(ext(0.036, 0))], [[0, cw, 0.060], [0.15, cw + 0.004, 0.064], [0.85, cw + 0.004, 0.064], [1, cw, 0.058]], { n:3.4, rad:16, seg:4 }));
+      addF('DARK', mo15xcyl(ext(-0.028, -0.034), 0.010, cw + 0.014, 0, 12));
+      addF('ACC', mo15loftGeo([mo15P(ext(-0.030, 0.036)), mo15P(ext(0.006, 0.040)), mo15P(ext(0.044, 0.037))], [[0, 0.028, 0.010], [0.5, 0.030, 0.011], [1, 0.022, 0.008]], { n:3, rad:12, seg:6 }));
+      addF('DARK', mo15xcyl(ext(-0.026, 0.034), 0.0055, 0.034, 0, 8));
+    } else addF('DARK', mo15loftGeo([mo15P(ext(-0.026, 0)), mo15P(ext(0.026, 0))], [[0, wide ? 0.11 : 0.058, 0.056], [1, wide ? 0.11 : 0.058, 0.056]], { n:3.4, rad:16, seg:2 })); }
   // cockpit
   const bz = S1[0], by = S1[1] + 0.02;
   addF('DARK', mo15boxGeo([0, by - 0.004, bz], 0.09, 0.044, 0.06));
@@ -31377,6 +31550,8 @@ FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
     { col:0xf2f2ef, acc:0x202326, liv:L(0x202326, 0x2a2d31) });
 
   /* ================= moped-style e-bikes: a moto-style frame family (backbone beam / round tubes / step-through / cradle), never a chopper loop ================= */
+  // (Release 15.5: the classic ones -- s2, arielx, scrambler, radrunner -- ride on telescopic forks with rubber gaiters; s2 / arielx / scrambler
+  //  with polished alloy sliders, so slider, gaiter and chrome stanchion read apart)
   const MP = (id, p, o)=>{ if (!row(id)) return; fleetRow(id, Object.assign({ b:'mo15moped', pReplace:true, p:Object.assign({ logo:brand(id) }, rs0(id), p) }, o || {})); };
   const LM = (fork, rim, seat, grip, bars, tire)=> ({ fork, rim, seat:seat || 0x1b1c1e, grip:grip || 0x1b1c1e, bars:bars || 0x18191b, tire:tire || 0x141517 });
   MP('revvfs', { R:0.31, tw:0.054, wb:1.23, ha:64, fl:0.52, sy:0.80, seatZ:-0.30, frame:'beam', tank:'box', seat:'bench', stitch:'cream', rear:'mono', spring:'red', fork:'usd', stan:'alloy', lamp:'round', fenders:'hug', tread:'street', spokes:'black', logoCol:0xe9e2c8 },
@@ -31385,17 +31560,17 @@ FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
     { col:0xb59c72, acc:0x1b1c1e, liv:LM(0x18191b, 0x18191b, 0x1b1c1e, 0x1b1c1e, 0x18191b, 0x181614) });
   MP('rx', { R:0.312, tw:0.057, wb:1.22, ha:65, fl:0.52, sy:0.80, seatZ:-0.27, frame:'beam', tank:'box', seat:'bench', stitch:'acc', rear:'mono', spring:'acc', fork:'usd', stan:'gold', lamp:'round', fenders:'hug', tread:'moto', spokes:'black' },
     { col:0x1d3a5f, acc:0xff7a1a, liv:LM(0x18191b, 0x18191b) });
-  MP('s2', { R:0.305, tw:0.054, wb:1.19, ha:66, fl:0.49, sy:0.78, seatZ:-0.26, frame:'cradle', tank:'box', seat:'bench', stitch:'cream', rib:0, rear:'hard', fork:'usd', stan:'black', lamp:'round', fenders:'fat', tread:'moto', spokes:'black' },
-    { col:0x55603f, acc:0xc9b38a, liv:LM(0x18191b, 0x18191b, 0x6b4327, 0x6b4327) });
-  MP('arielx', { R:0.315, tw:0.055, wb:1.24, ha:64, fl:0.52, sy:0.80, seatZ:-0.30, frame:'tube', tank:'cafe', batt2:true, seat:'cafe', stitch:'cream', pleat:6, lean:0.48, bars:'flat', xbar:true, rear:'mono', spring:'red', fork:'usd', stan:'alloy', lamp:'chrome', fenders:'hug', rack:true, tread:'street', spokes:'chrome' },
-    { col:0x5e1a1d, acc:0xe9e2c8, liv:LM(0x18191b, 0x18191b, 0x5c3a22, 0x5c3a22) });
+  MP('s2', { R:0.305, tw:0.054, wb:1.19, ha:66, fl:0.49, sy:0.78, seatZ:-0.26, frame:'cradle', tank:'box', seat:'bench', stitch:'cream', rib:0, rear:'hard', fork:'tele', boots:true, stan:'chrome', lamp:'round', fenders:'fat', tread:'moto', spokes:'black' },
+    { col:0x55603f, acc:0xc9b38a, liv:LM(0xbfc3c8, 0x18191b, 0x6b4327, 0x6b4327) });
+  MP('arielx', { R:0.315, tw:0.055, wb:1.24, ha:64, fl:0.52, sy:0.80, seatZ:-0.30, frame:'tube', tank:'cafe', batt2:true, seat:'cafe', stitch:'cream', pleat:6, lean:0.48, bars:'flat', xbar:true, rear:'mono', spring:'red', fork:'tele', boots:true, stan:'chrome', lamp:'chrome', fenders:'hug', rack:true, tread:'street', spokes:'chrome' },
+    { col:0x5e1a1d, acc:0xe9e2c8, liv:LM(0xbfc3c8, 0x18191b, 0x5c3a22, 0x5c3a22) });
   MP('scrambler', { R:0.305, tw:0.054, wb:1.17, ha:63, fl:0.50, sy:0.79, seatZ:-0.28, frame:'tube', tank:'tear', seat:'tuck', stitch:'white', rib:3, strap:true, rear:'hard', shocks:true, spring:'black', fork:'tele', boots:true, lamp:'chrome', fenders:'flat', skid:'black', tread:'moto', spokes:'chrome', logoCol:0xe2c35a },
-    { col:0x1f5a63, acc:0xd4af37, liv:LM(0x18191b, 0xd4af37, 0x1c1d1f, 0x3a2a1e) });
+    { col:0x1f5a63, acc:0xd4af37, liv:LM(0xbfc3c8, 0xd4af37, 0x1c1d1f, 0x3a2a1e) });
   MP('x7', { R:0.30, tw:0.052, wb:1.20, ha:65, fl:0.50, sy:0.78, seatZ:-0.24, frame:'beam', tank:'box', seat:'step', stitch:'white', rear:'twin', spring:'black', fork:'usd', stan:'alloy', lamp:'round', fenders:'fat', rack:true, pegs:true, tread:'street', spokes:'black', logoCol:0x1b1c1e, fenderMat:'body' },
     { col:0x8bb8d8, acc:0xf2f3f5, liv:LM(0x18191b, 0x18191b) });
   MP('goat', { R:0.322, tw:0.058, wb:1.26, ha:63, fl:0.55, sy:0.82, seatZ:-0.28, frame:'beam', tank:'square', seat:'bench', stitch:'acc', strap:true, rear:'twin', spring:'acc', fork:'usd', stan:'black', lamp:'square', cowl:true, fenders:'mx', rack:true, back:true, tread:'knob', skid:true, spokes:'black', logoCol:0x16170f },
     { col:0x3a3d42, acc:0xb8e02a, liv:LM(0x1a1b16, 0x1a1b16, 0x1f2018, 0x1f2018, 0x1a1b16, 0x1b1a14) });
-  MP('radrunner', { R:0.29, tw:0.045, wb:1.15, ha:66, fl:0.47, sy:0.75, seatZ:-0.26, frame:'step', seat:'two', stitch:'white', rear:'hard', fork:'tele', bars:'cruiser', lamp:'round', fenders:'fat', rack:true, grab:true, pegs:true, guard:true, tread:'street', spokes:'black' },
+  MP('radrunner', { R:0.29, tw:0.045, wb:1.15, ha:66, fl:0.47, sy:0.75, seatZ:-0.26, frame:'step', seat:'two', stitch:'white', rear:'hard', fork:'tele', boots:true, bars:'cruiser', lamp:'round', fenders:'fat', rack:true, grab:true, pegs:true, guard:true, tread:'street', spokes:'black' },
     { col:0xd9a521, acc:0x1b1c1e, liv:LM(0x18191b, 0x18191b) });
   MP('metacycle', { R:0.30, tw:0.05, wb:1.22, ha:63, fl:0.52, sy:0.79, seatZ:-0.28, frame:'tube', tank:'tear', stripe:true, seat:'tracker', stitch:'red', pleat:5, lean:0.46, bars:'flat', xbar:false, rear:'mono', spring:'red', fork:'usd', stan:'chrome', lamp:'chrome', fenders:'short', mags:true, tread:'street' },
     { col:0x34383e, acc:0xd62e2e, liv:LM(0x1a1b1d, 0xb8bcc2, 0x3a2a1e, 0x3a2a1e) });
@@ -32168,99 +32343,24 @@ function pd15Hose(B, pts, r, mat){ pd15Put(B, mat || M12.rub, pd15Sweep(pts, r |
 
 /* ---------------------------------------------------------------- forks
    G = fgeoFront(...). o: kind 'sus' | 'dual' | 'rigid' | 'rigidSteel' | 'fat', span (half stanchion spacing), stanR, lowMat (FX.fork), stanMat, crownMat, archMat,
-   rotor, cal (true), word (lowers text), wordMat, travel. Puts geometry in bucket B; returns { top:[z,y] steerer top, crownTop:[z,y] } */
+   rotor, rotorX, cal (true), word (lowers text), wordMat, travel, aero / span0 / span1 / blade0 / blade1 / rake / pistons (rigid), cages, bagMat, stack.
+   Release 15.5: built by the forks17 kit (mods/forks17_kit.js: fk17Sus / fk17Rigid). Puts geometry in bucket B; sets o._port / o._hose
+   (front brake hose start) and returns { top:[z,y] steerer top, crownS } */
 function pd15Fork(B, G, o){
-  const d = G.d, n = G.n, A = [G.fz, G.Rf], kind = o.kind || 'sus', K = o.crownMat || M12.anod;
-  const legAt = s=> [A[0] + d[0]*s, A[1] + d[1]*s];                       // the leg line runs through the axle parallel to the steering axis
-  const X3 = (p, x)=> [x, p[1], p[0]];
-  const span = o.span || 0.066, ang = Math.atan2(d[1], -d[0]) - Math.PI/2;
-  let top, crownS;
+  const kind = o.kind || 'sus';
   if (kind === 'sus' || kind === 'dual'){
-    const dual = kind === 'dual', stanR = o.stanR || 0.019, lowR = stanR*1.42, lowMat = o.lowMat || FX.fork, stanMat = o.stanMat || M12.anod;
-    const sLen = G.L + 0.004;                                                  // crown position along the leg line
-    const lowTop = Math.min(sLen - (o.expose || 0.13), Math.max(G.Rf + 0.07, sLen*0.60));
-    crownS = sLen;
-    top = dual ? fup(G.H1, d, 0.062) : fup(G.H1, d, 0.012);
-    // lowers: tapered casting legs from the dropout to the seal head, with a rounded back
-    [-1, 1].forEach(sd=>{
-      pd15Put(B, lowMat, pd15Sweep([X3(legAt(-0.020), sd*span), X3(legAt(lowTop*0.45), sd*span), X3(legAt(lowTop), sd*span)],
-        [[0, lowR*0.72, lowR*0.95, 2.6], [0.12, lowR*0.80, lowR*1.02, 2.4], [0.6, lowR*0.95, lowR*0.98, 2.2], [1, lowR*1.02, lowR*1.02, 2]], { r:14, n:8, cap:true }).geo);
-      pd15Put(B, M12.rub, pd15Sweep([X3(legAt(lowTop - 0.002), sd*span), X3(legAt(lowTop + 0.011), sd*span)], [[0, lowR*1.0, lowR*1.0], [1, stanR*1.12, stanR*1.12]], { r:18, n:2 }).geo);   // dust wiper
-      const s1 = dual ? fup(G.H1, d, 0.055) : legAt(sLen + 0.006);
-      const s1p = dual ? [s1[0] + n[0]*G.off, s1[1] + n[1]*G.off] : s1;
-      pd15Put(B, stanMat, pd15Sweep([X3(legAt(lowTop + 0.006), sd*span), X3(s1p, sd*span)], stanR, { r:20, n:2 }).geo);
-      // dropout foot + axle boss
-      pd15Put(B, lowMat, pd15Sweep([X3(pd15Up(legAt(-0.024), n, -0.004), sd*span), X3(pd15Up(legAt(0.030), n, 0.002), sd*span)], [0.010, 0.019, 3], { r:12, n:3, cap:true }).geo);
-    });
-    // arch: a brace in front of the stanchions, over the tyre
-    const archS = Math.min(lowTop - 0.040, G.Rf + 0.050 + (o.archLift || 0)), ap = pd15Up(legAt(archS), n, lowR*0.85);
-    const apex = pd15Up(pd15Up(legAt(archS + 0.016), n, lowR*1.35), d, 0.0);
-    pd15Put(B, o.archMat || lowMat, pd15Sweep([[span, ap[1], ap[0]], [span*0.55, apex[1] - 0.002, apex[0]], [0, apex[1] + 0.006, apex[0] + n[0]*0.004], [-span*0.55, apex[1] - 0.002, apex[0]], [-span, ap[1], ap[0]]],
-      [[0, 0.011, 0.017, 2.6], [0.5, 0.0085, 0.020, 2.6], [1, 0.011, 0.017, 2.6]], { r:12, n:14, ref:_pdY }).geo);
-    // crown(s): forged bridge round the steerer, collars round the stanchions
-    const crown = (p, big)=>{
-      const cc = pd15Up(p, n, G.off*0.5);
-      pd15Put(B, K, pd15Sweep([[span + stanR*0.6, cc[1], cc[0]], [0, cc[1] + 0.006, cc[0] - n[0]*0.004], [-span - stanR*0.6, cc[1], cc[0]]],
-        [[0, 0.017*big, 0.022 + G.off*0.35, 3], [0.5, 0.020*big, 0.028 + G.off*0.35, 3], [1, 0.017*big, 0.022 + G.off*0.35, 3]], { r:12, n:10, ref:_pdY, cap:true }).geo);
-      [-1, 1].forEach(sd=>{ const q = pd15Up(p, n, G.off); pd15Put(B, K, pd15Sweep([X3(pd15Up(q, d, -0.016*big), sd*span), X3(pd15Up(q, d, 0.020*big), sd*span)], stanR*1.30, { r:18, n:2, cap:true }).geo); });
-      pd15Put(B, K, pd15Sweep([X3(pd15Up(p, d, -0.016), 0), X3(pd15Up(p, d, 0.022), 0)], 0.022, { r:16, n:2, cap:true }).geo);
-    };
-    crown(G.C, 1);
-    if (dual) crown(fup(G.H1, d, 0.030), 0.9);
-    // top caps (air left, damper right with a knob)
-    [-1, 1].forEach(sd=>{
-      const tp = dual ? fup(G.H1, d, 0.058) : legAt(sLen + 0.010), tq = dual ? pd15Up(tp, n, G.off) : tp;
-      pd15Put(B, K, pd15Sweep([X3(tq, sd*span), X3(pd15Up(tq, d, 0.012), sd*span)], stanR*0.95, { r:14, n:2, cap:true }).geo);
-      if (sd < 0) pd15Put(B, o.knobMat || PD15.silver, pd15Sweep([X3(pd15Up(tq, d, 0.011), sd*span), X3(pd15Up(tq, d, 0.020), sd*span)], stanR*0.62, { r:12, n:2, cap:true }).geo);
-    });
-    // through axle + lever (drive side)
-    pd15Put(B, PD15.silver, pd15Disc(0.0105, span*2 + 0.036, 0, 14).translate(0, A[1], A[0]));
-    pd15Put(B, K, pd15Box(0.007, 0.012, 0.062, [-(span + 0.024), A[1] + 0.002, A[0] - 0.024], 0.45));
-    if (o.word){                                                               // lowers graphic
-      const S0 = pd15Sweep([X3(legAt(lowTop*0.20), span), X3(legAt(lowTop*0.92), span)], lowR*0.98, { r:12, n:2 });
-      const S1 = pd15Sweep([X3(legAt(lowTop*0.20), -span), X3(legAt(lowTop*0.92), -span)], lowR*0.98, { r:12, n:2 });
-      pd15TubeWord(B, o.wordMat || PD15.white, S0, o.word, o.wordStyle || 'heavy', 0.5, lowR*1.0, lowTop*0.6, { sides:1, at:0 });
-      pd15TubeWord(B, o.wordMat || PD15.white, S1, o.word, o.wordStyle || 'heavy', 0.5, lowR*1.0, lowTop*0.6, { sides:-1, at:0 });
-    }
-    // brake post mount on the back of the left leg + caliper
-    if (o.cal !== false){
-      const rr = o.rotor || 0.10, ca = Math.atan2(-d[1], -d[0]) + 0.62;            // behind the leg, a little above the axle
-      const bj = pd15Caliper(B, A, rr, ca, 0.050, { mat:o.calMat });
-      o._port = bj;
-      const pm0 = pd15Up(legAt(0.06), n, -lowR*0.9), pm1 = [A[0] + Math.cos(ca)*(rr - 0.03), A[1] + Math.sin(ca)*(rr - 0.03)];
-      pd15Put(B, lowMat, pd15Sweep([X3(pm0, span - 0.004), X3(pm1, 0.052)], [0.0075, 0.010, 3], { r:10, n:2, cap:true }).geo);
-      // hose up the back of the left leg to the crown
-      const h0 = [0.050 + 0.012, bj[1], bj[0]], h1 = X3(pd15Up(legAt(lowTop*0.55), n, -lowR*1.1), span + lowR*0.4), h2 = X3(pd15Up(legAt(lowTop + 0.04), n, -lowR*1.3), span + stanR*1.5);
-      o._hose = [h0, h1, h2];
-    }
-  } else {
-    // rigid fork: tapered blades (carbon road / steel DJ / fat) from the dropouts into a crown under the head tube
-    const steel = kind === 'rigidSteel', fat = kind === 'fat', sp0 = fat ? 0.086 : (o.span0 || (steel ? 0.054 : 0.054)), sp1 = fat ? 0.072 : (o.span1 || 0.040);
-    const tp = [G.C[0] + n[0]*0.010, G.C[1] + n[1]*0.010], mid = pd15Lerp(A, tp, 0.55), rake = o.rake === undefined ? 0.012 : o.rake;
-    const r0 = steel ? 0.0105 : (o.blade0 || 0.0110), r1 = steel ? 0.0155 : (o.blade1 || 0.0185), mat = o.lowMat || FX.fork;
-    [-1, 1].forEach(sd=>{
-      pd15Put(B, mat, pd15Sweep([X3(pd15Up(A, n, 0.004), sd*sp0), X3(pd15Up(mid, n, rake), sd*(sp0*0.45 + sp1*0.55)), X3(tp, sd*sp1)],
-        [[0, r0*0.85, r0*(o.aero ? 1.5 : 1.1), 2.4], [0.5, r1*0.78, r1*(o.aero ? 1.55 : 1.05), 2.4], [1, r1*0.95, r1*(o.aero ? 1.5 : 1.1), 2.6]], { r:16, n:12, cap:'a' }).geo);
-      pd15Put(B, mat, pd15Sweep([X3(pd15Up(A, d, -0.016), sd*sp0), X3(pd15Up(A, d, 0.024), sd*sp0)], [0.0085, 0.016, 3], { r:10, n:2, cap:true }).geo);    // dropout
-    });
-    const cc = pd15Up(G.C, n, 0.008);
-    pd15Put(B, mat, pd15Sweep([[sp1 + r1*0.8, cc[1] - 0.004, cc[0]], [0, cc[1] + 0.012, cc[0] + n[0]*0.006], [-sp1 - r1*0.8, cc[1] - 0.004, cc[0]]],
-      [[0, 0.020, r1*1.25, 3], [0.5, 0.030, 0.026, 2.6], [1, 0.020, r1*1.25, 3]], { r:16, n:14, ref:_pdY, cap:true }).geo);
-    pd15Put(B, PD15.silver, pd15Disc(0.0095, sp0*2 + 0.03, 0, 12).translate(0, A[1], A[0]));
-    top = fup(G.H1, d, o.stack || 0.032);
-    crownS = 0;
-    if (o.cal !== false){ const rr = o.rotor || 0.08, ca = Math.atan2(-d[1], -d[0]) + 0.50; const bj = pd15Caliper(B, A, rr, ca, 0.046, { pistons:o.pistons || 2, mat:o.calMat }); o._port = bj;
-      o._hose = [[0.058, bj[1], bj[0]], X3(pd15Up(mid, n, -0.02), sp0*0.5 + sp1*0.5 + 0.01), X3(pd15Up(tp, d, 0.01), sp1 + 0.01)]; }
-    if (fat && o.cages) [-1, 1].forEach(sd=>{ const a = pd15Lerp(A, tp, 0.25), b = pd15Lerp(A, tp, 0.70);
-      pd15Put(B, BM.bars, pd15Sweep([X3(a, sd*(sp0 + 0.03)), X3(b, sd*(sp0*0.6 + sp1*0.4 + 0.03))], [0.016, 0.004, 4], { r:10, n:2, cap:true }).geo);
-      pd15Put(B, o.bagMat || VM.blk, pd15Sweep([X3(pd15Up(a, n, 0.02), sd*(sp0 + 0.045)), X3(pd15Up(b, n, 0.02), sd*(sp0*0.6 + sp1*0.4 + 0.045))], [0.03, 0.034, 3], { r:12, n:3, cap:true }).geo); });
+    const r = fk17Sus(B, G, { kind, span:o.span, stanR:o.stanR, lowMat:o.lowMat, stanMat:o.stanMat, crownMat:o.crownMat, archMat:o.archMat,
+      travel:o.travel || fk17Travel(o.word, kind === 'dual' ? 0.20 : 0.14), word:o.word, wordMat:o.wordMat, wordStyle:o.wordStyle, knobMat:o.knobMat,
+      htR:o.htR, htR2:o.htR2, rotor:o.rotor, rotorX:o.rotorX, cal:o.cal, calMat:o.calMat, tyreW:o.tyreW, archClear:o.archClear });
+    if (r.port){ o._port = r.port; o._hose = r.hose; }
+    return { top:r.top, crownS:r.crownS };
   }
-  // steerer + headset: lower cup, top cover (the stem / spacers sit on `top`)
-  const sTop = top;
-  pd15Put(B, K, pd15Sweep([X3(G.H0, 0), X3(fup(sTop, d, 0.03), 0)], 0.0145, { r:14, n:2 }).geo);
-  if (kind !== 'dual') pd15Put(B, K, pd15Sweep([X3(fup(G.H1, d, -0.002), 0), X3(fup(G.H1, d, 0.012), 0)], [[0, (o.htR2 || 0.026)*1.02, (o.htR2 || 0.026)*1.02], [1, 0.0185, 0.0185]], { r:20, n:2, cap:true }).geo);
-  pd15Put(B, K, pd15Sweep([X3(pd15Up(G.H0, d, -0.016), 0), X3(pd15Up(G.H0, d, -0.004), 0)], (o.htR || 0.031)*1.02, { r:20, n:2, cap:true }).geo);
-  return { top:sTop, crownS };
+  const style = kind === 'rigidSteel' ? 'steel' : kind === 'fat' ? 'fat' : 'road';
+  const r = fk17Rigid(B, G, { style, mat:o.lowMat || FX.fork, crownMat:o.crownMat, aero:o.aero, span0:o.span0, span1:o.span1, r0:style === 'road' ? o.blade0 : undefined, r1:style === 'road' ? o.blade1 : undefined,
+    rake:o.rake, thru:style !== 'steel', lever:!!o.lever, cal:o.cal === false ? false : (style === 'road' ? 'flat' : 'post'), rotor:o.rotor, rotorX:o.rotorX, pistons:o.pistons, calMat:o.calMat,
+    htR:o.htR, htR2:o.htR2, stack:o.stack, cages:o.cages, bagMat:o.bagMat });
+  if (r.port){ o._port = r.port; o._hose = r.hose; }
+  return { top:r.top, crownS:0 };
 }
 
 /* ---------------------------------------------------------------- rear shocks
@@ -32724,7 +32824,7 @@ function pd15Mtb(P, hard){
 
   /* ---------------- front end: fork, stem, bars, hoses */
   const fk = P.fork || (P.dual ? 'dual' : 'sus');
-  const fo = { kind:fk, span:P.span || (fk === 'dual' ? 0.072 : 0.066), stanR:P.stan || 0.019, stanMat:P.stanMat ? pd15Ink(P.stanMat) : PD15.silver, lowMat:FX.fork, rotor:P.rotorF || 0.10,
+  const fo = { kind:fk, span:P.span || (fk === 'dual' ? 0.072 : 0.066), stanR:P.stan || 0.019, stanMat:fk17Stan(P.stanMat), lowMat:FX.fork, rotor:P.rotorF || 0.10, rotorX:P.fatRim ? 0.066 : undefined, tyreW:(P.tw || 0.031)*1.06, archClear:P.ffender ? 0.040 : 0.012,
                htR:hr0, htR2:hr1, word:P.forkWord, wordMat:P.forkInk ? pd15Ink(P.forkInk) : PD15.white, knobMat:A, expose:P.expose, cages:P.cages, bagMat:P.bag ? pd15Ink(P.bag) : undefined, stack:0.012 };
   const fres = pd15Fork(F, G, fo);
   const ck = pd15CockpitMTB(F, fres.top, d, n, { stem:P.stem || (fk === 'dual' ? 0.050 : 0.045), hw:P.hw || 0.39, rise:P.rise === undefined ? 0.025 : P.rise, back:P.back, up:P.up, cross:P.cross,
@@ -32888,7 +32988,7 @@ function pd15road(P){
     pd15Bottle(B, pd15Up(a, up, 0.0), pd15Up(b, up, 0.0), sH + 0.034, P.bottleMat ? pd15Ink(P.bottleMat) : PD15.white); }
 
   /* ---------------- front: rigid carbon fork with an integrated crown, flat-mount caliper, cockpit */
-  const fo = { kind:'rigid', aero:aero > 0.3, span0:grav ? 0.058 : 0.054, span1:0.040, blade0:0.0105, blade1:(0.0165 + aero*0.004), rake:0.014, rotor:P.rotorF || 0.080, pistons:2, htR:hH, htR2:hW, lowMat:FX.fork, stack:0.004 };
+  const fo = { kind:'rigid', aero:aero > 0.3, span0:grav ? 0.058 : 0.054, span1:0.040, blade0:0.0105, blade1:(0.0165 + aero*0.004), rake:0.014, rotor:P.rotorF || 0.080, pistons:2, htR:hH, htR2:hW, lowMat:FX.fork, stack:0.004, lever:grav };
   const fres = pd15Fork(F, G, fo);
   // the crown blends into the head tube: a frame-coloured cap over the bearing
   pd15Put(F, FX.fork, pd15Sweep([fup(G.H0, d, -0.022), fup(G.H0, d, -0.009)], [[0, hW*0.98, hH*1.0, pw], [1, hW*1.04, hH*1.06, pw]], { r:18, n:2, cap:true }).geo);
@@ -33013,10 +33113,16 @@ function pd15scoot(P){
   }
 
   /* ---------------- front: box-section fork, steerer, compression clamp, bars, grips, bar ends */
-  const fkR = P.forkW || 0.0118, fxw = 0.0215, FK = FX.fork;
-  [-1, 1].forEach(sd=> pd15Put(F, FK, pd15Sweep([X3([Ax[0] + 0.002, Ax[1] - 0.012], sd*fxw), X3([C[0] + 0.004, C[1] - 0.010], sd*fxw)], [[0, fkR*0.66, fkR*1.15, 3.4], [1, fkR*0.80, fkR*1.45, 3.4]], { r:12, n:3, cap:true }).geo));
-  pd15Put(F, FK, pd15Sweep([[fxw + fkR*0.8, C[1] - 0.010, C[0] + 0.004], [-fxw - fkR*0.8, C[1] - 0.010, C[0] + 0.004]], [0.013, 0.021, 3.4], { r:12, n:2, cap:true, ref:_pdY }).geo);
-  pd15Put(F, K, pd15Disc(0.0075, fxw*2 + 0.026, 0, 6).translate(0, Ax[1], Ax[0]));
+  // Release 15.5 (forks17): a one-piece threadless fork -- chamfered box-section legs tapering down to rounded dropouts round the axle,
+  // a forged crown under the lower headset cup that wraps both legs + the steerer (it used to be a square bar across the top), hex axle bolts
+  const fkR = P.forkW || 0.0118, fxw = 0.0215, FK = FX.fork, cT = crownL - 0.016, cH = 0.022;
+  [-1, 1].forEach(sd=>{
+    pd15Put(F, FK, pd15Sweep([X3(fup(Ax, d, 0.002), sd*fxw), X3(fup(Ax, d, cT*0.55), sd*fxw), X3(fup(Ax, d, cT - cH*0.4), sd*fxw)], [[0, fkR*0.70, fkR*1.12, 2.8], [0.55, fkR*0.76, fkR*1.30, 2.8], [1, fkR*0.84, fkR*1.42, 2.8]], { r:14, n:6, cap:'a' }).geo);
+    pd15Put(F, FK, pd15Disc(fkR*1.05, fkR*1.45, sd*fxw, 14).translate(0, Ax[1], Ax[0]));                                    // rounded dropout
+    pd15Put(F, K, pd15Disc(0.0072, 0.006, sd*(fxw + fkR*0.72 + 0.003), 6).translate(0, Ax[1], Ax[0]));                    // axle bolt heads
+  });
+  pd15Put(F, FK, fk17Slab({ d }, [[fxw, 0, fkR*1.42 + 0.002], [-fxw, 0, fkR*1.42 + 0.002], [0, 0, 0.0175]], cH, fup(Ax, d, cT - cH/2), 0.0065));
+  pd15Put(F, K, pd15Disc(0.0062, fxw*2 + fkR*1.4, 0, 8).translate(0, Ax[1], Ax[0]));
   const barTop = fup(C, d, ((P.bar || 0.98) - C[1])/d[1]), os = P.bars === 'oversize' || P.clamp === 'hic';
   const bR = os ? 0.0172 : 0.0158;
   pd15Put(F, K, pd15Sweep([X3(fup(C, d, 0.002), 0), X3(fup(H1, d, 0.020), 0)], 0.0140, { r:12, n:2 }).geo);              // steerer
@@ -33086,50 +33192,50 @@ FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
                                      guide:true, guard:0.090, forkWord:'DH 200', hw:0.40, rise:0.035, reach:0.62, sad:'race' });
   const L = (col, acc, liv)=> ({ col, acc, liv:Object.assign({ fork:dark, rim:dark, grip:dark, seat:dark, bars:dark }, liv || {}) });
   // downhill
-  R('v10', 'pd15fs', Object.assign({}, DH, { cs:0.438, fc:0.865, ha:63, fl:0.60, link:'twinU', coil:'orange', ink:'acc', logoStyle:'heavy', stanMat:'black', plate:true, plateNo:7, ffender:true, rimWord:'DH 30', rimInk:'acc' }),
+  R('v10', 'pd15fs', Object.assign({}, DH, { cs:0.438, fc:0.865, ha:63, fl:0.60, link:'twinU', coil:'orange', ink:'acc', logoStyle:'heavy', stanMat:'silver', plate:true, plateNo:7, ffender:true, rimWord:'DH 30', rimInk:'acc' }),
     L(0x16181c, 0xff6a1a, { grip:0xff6a1a }));
   R('demo', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.445, fc:0.875, ha:62.5, fl:0.60, link:'horst', rk:0.70, coil:'red', ink:'acc', logoStyle:'wide', stanMat:'silver', tubes:'alloy', gus:true, dtBow:0.012, plate:true, plateNo:3 }),
     L(0xeceef1, 0xd6212c, { grip:0xd6212c, seat:0xeceef1 }));
   R('tues', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.355, cs:0.432, fc:0.855, ha:63.5, fl:0.585, link:'low', rk:0.36, coil:'white', ink:'white', logoStyle:'cond', stanMat:'black', web:true, ttk:-0.020, forkInk:'ink' }),
     L(0x1f6fb8, 0xf4f6f8, { fork:0xf4f6f8, grip:0xf4f6f8 }));
-  R('sender', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.44, fc:0.865, ha:63, fl:0.60, link:'vert', coil:null, pig:true, ink:'acc', logoStyle:'script', stanMat:'black', tk:1.08, ttk:0.010, can:'acc', plate:true, plateNo:12, rimWord:'CARBON DH', rimInk:'acc' }),
+  R('sender', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.44, fc:0.865, ha:63, fl:0.60, link:'vert', coil:null, pig:true, ink:'acc', logoStyle:'script', stanMat:'silver', tk:1.08, ttk:0.010, can:'acc', plate:true, plateNo:12, rimWord:'CARBON DH', rimInk:'acc' }),
     L(0x2b2e34, 0xd5f03a, { grip:0xd5f03a }));
   // freeride / park
   R('spindrift', 'pd15fs', Object.assign({}, EN, { Rr:0.355, cs:0.435, fc:0.86, ha:62.5, fl:0.60, st:0.41, sa:76, link:'lever', coil:'gold', ink:'acc', logoStyle:'script', stanMat:'black', guard:0.088, guide:true, ttk:-0.010, forkWord:'COIL 180', tw:0.032 }),
     L(0x6a2fb5, 0xffd23f, { fork:0xffd23f, grip:0xffd23f }));
   R('clash', 'pd15fs', Object.assign({}, EN, { Rr:0.355, Rf:0.355, cs:0.415, fc:0.845, ha:63, fl:0.58, st:0.38, sa:76, pl:0.10, link:'single', rk:0.60, mount:'bb', coil:'acc', tubes:'alloy', tk:1.10, gus:true, guard:0.090, guide:true, cross:true, rfender:true,
-    ink:'acc', logoStyle:'heavy', stanMat:'black', tw:0.032, forkWord:'PARK 170', hw:0.40, rise:0.040 }),
+    ink:'acc', logoStyle:'heavy', stanMat:'silver', tw:0.032, forkWord:'PARK 170', hw:0.40, rise:0.040 }),
     L(0x0f7a8f, 0xffe14a, { rim:0xffe14a, grip:0xffe14a }));
   // enduro
   R('slash', 'pd15fs', Object.assign({}, EN, { cs:0.435, fc:0.84, ha:64, fl:0.575, link:'hp', ink:'acc', logoStyle:'heavy', stanMat:'silver', rimWord:'ENDURO 30' }),
     L(0x34506b, 0xe5392a, { grip:0xe5392a }));
-  R('meta', 'pd15fs', Object.assign({}, EN, { Rr:0.355, cs:0.425, fc:0.845, ha:63.5, fl:0.575, st:0.42, sa:77, link:'single', rk:0.70, mount:'bb', tubes:'alloy', tk:1.06, gus:true, ink:'acc', logoStyle:'wide', stanMat:'black', dtBow:0.010, guide:true, forkWord:'AIR 160' }),
+  R('meta', 'pd15fs', Object.assign({}, EN, { Rr:0.355, cs:0.425, fc:0.845, ha:63.5, fl:0.575, st:0.42, sa:77, link:'single', rk:0.70, mount:'bb', tubes:'alloy', tk:1.06, gus:true, ink:'acc', logoStyle:'wide', stanMat:'silver', dtBow:0.010, guide:true, forkWord:'AIR 160' }),
     L(0xe9561f, 0x121418));
-  R('megatower', 'pd15fs', Object.assign({}, EN, { cs:0.438, fc:0.845, ha:63.8, fl:0.575, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'black', bottle:'acc', ttk:0.008, rimWord:'TALLSTACK' }),
+  R('megatower', 'pd15fs', Object.assign({}, EN, { cs:0.438, fc:0.845, ha:63.8, fl:0.575, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'silver', bottle:'acc', ttk:0.008, rimWord:'TALLSTACK' }),
     L(0x2f8f8d, 0xff4d6d, { grip:0xff4d6d }));
   R('capra', 'pd15fs', Object.assign({}, EN, { cs:0.435, fc:0.85, ha:64, fl:0.575, link:'low', rk:0.46, tubes:'alloy', tk:1.08, ink:'acc', logoStyle:'cond', stanMat:'silver', web:true, ttk:-0.010, band:[0.70, 0.76] }),
     L(0xc3c8cf, 0xff3d2e, { grip:0xff3d2e }));
   // trail
-  R('stumpy', 'pd15fs', Object.assign({}, TR, { cs:0.435, fc:0.80, ha:65.5, fl:0.535, link:'horst', mount:'tt', rk:0.66, ink:'acc', logoStyle:'heavy', stanMat:'black', tan:true, tyreWord:'TRAIL 2.4' }),
+  R('stumpy', 'pd15fs', Object.assign({}, TR, { cs:0.435, fc:0.80, ha:65.5, fl:0.535, link:'horst', mount:'tt', rk:0.66, ink:'acc', logoStyle:'heavy', stanMat:'silver', tan:true, tyreWord:'TRAIL 2.4' }),
     L(0x3f5c3d, 0xf2a63a, { grip:0xb48a58, seat:0xb48a58 }));
-  R('bronson', 'pd15fs', Object.assign({}, TR, { Rr:0.355, Rf:0.355, cs:0.425, fc:0.80, ha:65.5, fl:0.53, st:0.43, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'black', bottle:'white', tk:0.98 }),
+  R('bronson', 'pd15fs', Object.assign({}, TR, { Rr:0.355, Rf:0.355, cs:0.425, fc:0.80, ha:65.5, fl:0.53, st:0.43, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'silver', bottle:'white', tk:0.98 }),
     L(0x5aa8f0, 0x14224d, { fork:0x14224d, grip:0x14224d }));
   R('yeti', 'pd15fs', Object.assign({}, TR, { cs:0.432, fc:0.81, ha:65, fl:0.54, st:0.44, link:'flex', ink:'acc', logoStyle:'script', stanMat:'black', ttk:0.006, tk:0.96, forkWord:'AIR 130', stan:0.017 }),
-    L(0x5b6470, 0xd9824a, { grip:0xd9824a }));
+    L(0x5b6470, 0xd9824a, { grip:0xd9824a, fork:0xb9bec5 }));
 
   /* ---------------- e-MTB (Torque Pine): fat battery down tubes, mid motors, displays */
   const EM = Object.assign({}, EN, { e:true, Rr:0.375, Rf:0.375, pl:0.15, sa:76, st:0.43, ttf:0.82, motor:'full', batt:'int', disp:'bar', ink:'acc', logoStyle:'stencil', spokes:32, tw:0.032, rotorF:0.10, rotorR:0.10, forkWord:'E 170' });
   R('levo', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.442, fc:0.835, ha:64.5, fl:0.575, link:'horst', disp:'tt', stanMat:'silver', shroud:true }), L(0x4b5560, 0xff6a00, { grip:0xff6a00 }));
-  R('vala', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'black', ttk:0.006 }), L(0xd9cdb4, 0x1f6f6c, { grip:0x1f6f6c }));
-  R('rail', 'pd15fs', Object.assign({}, EM, { cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'single', rk:0.66, stanMat:'black', dtw:1.06, rimWord:'E-RATED' }), L(0x80878f, 0xff4a1c, { grip:0xff4a1c }));
+  R('vala', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'silver', ttk:0.006 }), L(0xd9cdb4, 0x1f6f6c, { grip:0x1f6f6c }));
+  R('rail', 'pd15fs', Object.assign({}, EM, { cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'single', rk:0.66, stanMat:'silver', dtw:1.06, rimWord:'E-RATED' }), L(0x80878f, 0xff4a1c, { grip:0xff4a1c }));
   R('kenevo', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.865, ha:63.5, fl:0.595, link:'horst', rk:0.70, coil:'orange', disp:'tt', stanMat:'silver', rfender:true, ffender:true, rotorF:0.11, rotorR:0.11, tw:0.033, tread:'dh', dth:1.06, forkWord:'E COIL 180' }),
     L(0x8f1d2c, 0xcfd3d8, { grip:0xcfd3d8 }));
-  R('rise', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.82, ha:65.5, fl:0.55, link:'flex', motor:'slim', batt:'slim', disp:'tt', tk:0.84, dtw:0.80, dth:0.78, stan:0.018, stanMat:'black', tread:'trail', tw:0.030, forkWord:'SL 150', pig:false }),
+  R('rise', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.82, ha:65.5, fl:0.55, link:'flex', motor:'slim', batt:'slim', disp:'tt', tk:0.84, dtw:0.80, dth:0.78, stan:0.018, stanMat:'silver', tread:'trail', tw:0.030, forkWord:'SL 150', pig:false }),
     L(0xa9d6c0, 0x2a6e5c, { grip:0x2a6e5c }));
-  R('moterra', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'black', tk:1.08, dth:1.08, motor:'box', motorMat:'black', ink:'black' }), L(0xa5e32a, 0x15171a));
-  R('trancex', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.825, ha:65, fl:0.56, link:'dtshock', stanMat:'black', ttk:-0.018, tread:'trail', tw:0.031, stan:0.018, ink:'black' }), L(0xb0602e, 0x15171a));
+  R('moterra', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'silver', tk:1.08, dth:1.08, motor:'box', motorMat:'black', ink:'black' }), L(0xa5e32a, 0x15171a));
+  R('trancex', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.825, ha:65, fl:0.56, link:'dtshock', stanMat:'silver', ttk:-0.018, tread:'trail', tw:0.031, stan:0.018, ink:'black' }), L(0xb0602e, 0x15171a));
   R('allmtn', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'vert', batt:'side', stanMat:'black', tk:1.12, dtw:1.08, dth:1.08, rfender:true, linkAcc:true }),
-    L(0xf0f0f0, 0xff7a00, { grip:0xff7a00 }));
+    L(0xf0f0f0, 0xff7a00, { grip:0xff7a00, fork:0xeceef0 }));
 
   /* ---------------- hardtails */
   R('scale', 'pd15ht', { Rr:0.375, Rf:0.375, cs:0.435, fc:0.80, bbd:0.035, ha:68.5, fl:0.505, off:0.044, ht:0.10, sa:74.5, st:0.46, ttf:0.90, pl:0.20, tubes:'carbon', tk:0.82, stan:0.016, span:0.058,
@@ -33182,6 +33288,313 @@ FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
   R('maven', 'pd15scoot', Object.assign({}, SC, { dl:0.505, dw:0.125, bar:1.00, bw:0.55, wr:0.0525, ha:82, ht:0.15, spokes:8, clamp:'ihc', bars:'swept', brake:'alloy', deck:'flare', forkW:0.0125, neck:1, tape:'white', tapeArt:'split', ink:'white', logoStyle:'wide', cups:'white' }),
     { col:0x1b8f6a, acc:0xf2f3f5, liv:{ fork:0xf2f3f5, rim:0xf2f3f5, tire:0x17181b, grip:0xf2f3f5, bars:0x17181b } });
 })();
+
+/* =========================================================================
+   FORKS17 kit -- Release 15.5 "real forks": the shared fork builders every ride's front end is made from.
+     fk17Sus    suspension forks: MTB / e-MTB / dirt-jump single crown, downhill dual crown (an upper crown above the head tube, long
+                stanchions), city + fat e-bike forks. Cast lowers with a seal head + dust wiper, the arch braced in front over the tyre,
+                polished stanchions that read apart from the lowers (silver on dark lowers, gloss black on light ones), a forged crown with
+                stanchion barrels and top caps (air cap + damper knob), axle feet with a thru-axle + lever, a post mount + caliper BEHIND
+                the leg (it used to hang in front of the axle)
+     fk17Rigid  rigid forks: 'road' (tapered carbon blades with rake, integrated crown, thru-axle ends, flat-mount caliper), 'unicrown'
+                (alloy city fork: blades swept into the steerer), 'crown' (cast / chrome crown + raked steel blades: cruiser, classic),
+                'steel' (straight round legs under a crown: dirt jump), 'fat' (wide fat-bike fork), dropouts + axle nuts, eyelets
+     fk17Bmx    BMX forks: round tapered legs, a forged crown with leg caps, flat dropouts carrying the axle ahead of the legs (offset
+                split between the crown and the dropouts), weld beads
+   Rig space as every builder: +z forward, +x = rider's left, y up; [z,y] = side point. G = fgeoFront(): d up the steering axis, n forward,
+   Q the axis point beside the axle, C the crown point on the axis, H0 / H1 head tube ends, L axle-to-crown along the axis, off = offset.
+   The leg line of a fork runs through the axle parallel to the steering axis: leg(s) = axle + d*s (the axis point at the same s is
+   Q + d*s, `off` behind). Geometry goes into pd15 buckets (pd15Put) and the builders merge it per material: detail costs vertices,
+   not draw calls. Materials: the shared slot / part sets + FK17 below (MeshStandardMaterial + patchWorldShading: no new programs).
+   Only function declarations + one material table here: safe at load time (no TDZ); called when a ride is built.
+   ========================================================================= */
+const FK17 = {
+  stanS: L(0xd9dde2, 0.16, 0.62),     // polished silver stanchions (hard anodised alloy)
+  stanB: L(0x2b2e34, 0.12, 0.70)      // gloss black stanchions (a sharp highlight: reads apart from matte / painted lowers)
+};
+Object.keys(FK17).forEach(k=> patchWorldShading(FK17[k], {}));
+
+/* fork travel (m) from the decal word ('AIR 160' -> 0.16), clamped to something a fork of that kind can have */
+function fk17Travel(word, def){
+  const m = /(\d{2,3})/.exec(String(word || '')); let t = m ? (+m[1])/1000 : (def || 0.14);
+  if (!(t >= 0.05 && t <= 0.23)) t = def || 0.14;
+  return t;
+}
+/* stanchion material by name ('black' gloss, 'silver' polished; anything else = the given default) */
+function fk17Stan(k, def){ return k === 'black' ? FK17.stanB : (k === 'silver' || k === 'alloy') ? FK17.stanS : (def || FK17.stanS); }
+/* rotation about x that lines a part's +y up with the steering axis (its +z then points along n, forward) */
+function fk17Rx(G){ return Math.atan2(G.d[1], -G.d[0]) - Math.PI/2; }
+/* a forged slab (crown, clamp) whose footprint is the hull of circles [[x, f, r], ...] (f = forward of the steering axis), height h along
+   the axis, centred on the axis point c [z,y] */
+function fk17Slab(G, cs, h, c, bev){
+  const g = bx15HullY(cs, h, bev === undefined ? Math.min(0.0055, h*0.22) : bev, 6);
+  g.rotateX(fk17Rx(G)); g.translate(0, c[1], c[0]);
+  return g;
+}
+/* a hex nut / bolt head on the x axis at [x, y, z] (r across the flats-ish, th thick) */
+function fk17Hex(r, th, x, y, z){ return pd15Disc(r, th, x, 6).translate(0, y, z); }
+
+/* the arch of a suspension fork: a lofted bridge (8-point bevelled section per station) across the fork in front of the stanchions.
+   o: span, sR (stanchion r), lR (lower r), lowTop (seal heads along the leg), tw (tyre half width), hC (half height at the centre), dep (depth) */
+function fk17Arch(B, mat, G, o){
+  const d = G.d, n = G.n, A = [G.fz, G.Rf], span = o.span, lR = o.lR, tw = o.tw;
+  const f0 = o.sR + 0.0035, sEmb = o.lowTop - 0.040;
+  const ry = ax=> ax < tw ? (G.Rf - tw) + Math.sqrt(tw*tw - ax*ax) : (G.Rf - tw) - (ax - tw)*2.5;          // tyre outline seen from the front
+  const cl = o.clear || 0.012, bot = x=> Math.max(sEmb, Math.sqrt(Math.max(0, Math.pow(ry(Math.abs(x)) + cl, 2) - f0*f0)));
+  const sTop = bot(0) + 2*o.hC;
+  const xs = [];                                                                // stations from the outer end to the middle, strictly inward
+  [span + lR*0.55, span, span*0.86, tw + 0.012, tw + 0.004, tw*0.80, tw*0.55, tw*0.25, 0].forEach(x=>{ if (!xs.length || x < xs[xs.length - 1] - 0.002 || x === 0) xs.push(x); });
+  const st = xs.concat(xs.slice(0, -1).reverse().map(x=> -x));
+  const ring = 8, pos = [], idx = [];
+  st.forEach((x, i)=>{
+    const ax = Math.abs(x), end = ax > span + 0.001, s0 = bot(x), s1 = end ? o.lowTop - 0.004 : sTop - 0.010*Math.pow(Math.min(1, ax/span), 2);
+    const fb = end ? lR*0.25 : f0, ff = end ? lR*0.82 : f0 + o.dep*(1 + 0.25*Math.min(1, ax/span));
+    const b = Math.min(0.0035, (s1 - s0)*0.2, (ff - fb)*0.25);
+    [[ff, s1 - b], [ff - b, s1], [fb + b, s1], [fb, s1 - b], [fb, s0 + b], [fb + b, s0], [ff - b, s0], [ff, s0 + b]].forEach(([f, s])=>{
+      pos.push(x, A[1] + d[1]*s + n[1]*f, A[0] + d[0]*s + n[0]*f); });
+  });
+  for (let i = 0; i < st.length - 1; i++) for (let k = 0; k < ring; k++){
+    const a0 = i*ring + k, a1 = i*ring + (k + 1)%ring, b0 = a0 + ring, b1 = a1 + ring;
+    idx.push(a0, b0, a1, a1, b0, b1);
+  }
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  // the loft winds one way or the other depending on the axes: make the normals point away from the arch's centre line
+  const N = g.attributes.normal, P = g.attributes.position; let dot = 0;
+  for (let k = 0; k < ring; k++){ const i = 4*ring + k, c = 4*ring; const cy = (P.getY(c) + P.getY(c + 4))/2, cz = (P.getZ(c) + P.getZ(c + 4))/2; dot += (P.getY(i) - cy)*N.getY(i) + (P.getZ(i) - cz)*N.getZ(i); }
+  if (dot < 0){ const I = g.index.array; for (let i = 0; i < I.length; i += 3){ const t = I[i + 1]; I[i + 1] = I[i + 2]; I[i + 2] = t; } g.computeVertexNormals(); }
+  pd15Put(B, mat, g);
+}
+
+/* ---------------------------------------------------------------- suspension fork
+   o: kind 'sus' | 'dual', span (half stanchion spacing), stanR, lowK (lower radius / stanchion), lowMat (FX.fork), stanMat, crownMat, archMat,
+      travel, word / wordMat / wordStyle, knobMat, htR / htR2 (head tube radii: the headset cups), rotor, rotorX, cal (false = no caliper),
+      calMat, pistons, city (city e-bike fork: nuts instead of a thru-axle lever, preload knobs, slimmer crown), steerer (false = the builder
+      draws its own), cups (false = no headset cups), top (axis distance of the steerer top / stem base: keeps every cockpit where it was),
+      tyreW (tyre half width: the arch hops over it), archClear (the arch's clearance over the tyre: more when a mudguard runs under it).
+   Returns { top:[z,y] (stem base), crownS, port:[z,y] (caliper banjo), hose:[[x,y,z]x3] (up the back of the left leg) } */
+function fk17Sus(B, G, o){
+  o = o || {};
+  const d = G.d, n = G.n, A = [G.fz, G.Rf], dual = o.kind === 'dual', city = !!o.city, off = G.off;
+  const K = o.crownMat || M12.anod, LM = o.lowMat || FX.fork, SM = o.stanMat || FK17.stanS, AM = o.archMat || LM, HW = PD15.silver;
+  const span = o.span || 0.066, sR = o.stanR || 0.019, lR = sR*(o.lowK || 1.38);
+  const X3 = (p, x)=> [x, p[1], p[0]], leg = s=> [A[0] + d[0]*s, A[1] + d[1]*s], ax = s=> [G.Q[0] + d[0]*s, G.Q[1] + d[1]*s];
+  const sH1 = (G.H1[0] - G.Q[0])*d[0] + (G.H1[1] - G.Q[1])*d[1];             // the head tube top along the axis
+  const trav = o.travel || 0.14, cTop = G.L - 0.003, cH = city ? 0.028 : (dual ? 0.036 : 0.033), cBot = cTop - cH;
+  // the seal heads sit about level with the top of the tyre (as on a real fork: the arch then only has to hop over it)
+  const lowTop = Math.max(G.Rf*(city ? 0.93 : 0.97), Math.min(cBot - 0.07, cBot - trav - 0.012));
+  const uBot = sH1 + 0.016, uH = 0.024, uTop = uBot + uH;                     // dual: the upper crown above the head tube
+  const stTop = dual ? uTop + 0.006 : cTop + 0.002;
+  /* ---- lowers, seal heads, dust wipers, stanchions */
+  [-1, 1].forEach(sd=>{
+    const x = sd*span;
+    pd15Put(B, LM, pd15Sweep([X3(leg(-0.014), x), X3(leg(lowTop*0.45), x), X3(leg(lowTop - 0.011), x)],
+      [[0, lR*0.80, lR*0.88, 2.3], [0.14, lR*0.90, lR*0.95, 2.1], [0.6, lR*0.97, lR*0.99, 2], [1, lR, lR, 2]], { r:16, n:8, cap:'a' }).geo);
+    pd15Put(B, LM, pd15Sweep([X3(leg(lowTop - 0.013), x), X3(leg(lowTop), x)], [[0, lR, lR], [0.35, lR*1.07, lR*1.07], [1, lR*1.05, lR*1.05]], { r:18, n:3, cap:'b' }).geo);
+    pd15Put(B, M12.rub, pd15Sweep([X3(leg(lowTop - 0.0015), x), X3(leg(lowTop + 0.009), x)], [[0, lR*0.99, lR*0.99], [0.45, sR*1.26, sR*1.26], [1, sR*1.07, sR*1.07]], { r:18, n:3 }).geo);
+    pd15Put(B, SM, pd15Sweep([X3(leg(lowTop + 0.004), x), X3(leg(stTop), x)], sR, { r:20, n:2 }).geo);
+  });
+  /* ---- axle feet: bosses round the axle at the bottom of the lowers; thru-axle lever on the drive side, flush end on the brake side */
+  const fR = Math.max(0.0135, lR*0.62);
+  [-1, 1].forEach(sd=> pd15Put(B, LM, pd15Disc(fR, lR*1.55, sd*(span + lR*0.02), 16).translate(0, A[1], A[0])));
+  const xo = span + lR*0.80;
+  if (city){
+    [-1, 1].forEach(sd=>{ pd15Put(B, K, fk17Hex(0.0105, 0.008, sd*(xo + 0.004), A[1], A[0])); pd15Put(B, HW, pd15Disc(0.0052, 0.010, sd*(xo + 0.010), 8).translate(0, A[1], A[0])); });
+  } else {
+    pd15Put(B, HW, pd15Disc(0.0108, 0.004, xo + 0.002, 14).translate(0, A[1], A[0]));
+    pd15Put(B, K, pd15Disc(0.0042, 0.0045, xo + 0.0035, 6).translate(0, A[1], A[0]));                   // hex socket
+    pd15Put(B, K, pd15Disc(0.0125, 0.009, -(xo + 0.004), 16).translate(0, A[1], A[0]));                 // lever pivot
+    const l0 = pd15Up(A, n, -0.004), l1 = pd15Up(pd15Up(A, d, 0.060), n, -0.016);
+    pd15Put(B, K, pd15Sweep([[-(xo + 0.010), l0[1], l0[0]], [-(xo + 0.011), (l0[1] + l1[1])/2, (l0[0] + l1[0])/2], [-(xo + 0.009), l1[1], l1[0]]],
+      [[0, 0.0034, 0.0085, 3], [0.5, 0.0030, 0.0068, 3], [1, 0.0034, 0.0075, 3]], { r:10, n:6, cap:true }).geo);
+  }
+  /* ---- arch: a solid cast bridge in front of the stanchions: its top runs level a little above the seal heads, its underside hops over the
+     tyre (1.2 cm clear) and its ends sink into the lowers */
+  fk17Arch(B, AM, G, { span, sR, lR, lowTop, tw:Math.min(span - lR*0.75, o.tyreW || span*0.48), hC:city ? 0.0105 : 0.0125, dep:city ? 0.011 : 0.0135, clear:o.archClear });
+  /* ---- crowns: a forged slab round the stanchions + steerer, stanchion barrels, the steerer boss, pinch bolts (dual) */
+  const crown = (s0, h, bolts)=>{
+    pd15Put(B, K, fk17Slab(G, [[span, off, sR + 0.0068], [-span, off, sR + 0.0068], [0, 0, 0.0222], [0, off*0.55, 0.019]], h, ax(s0 + h/2)));
+    [-1, 1].forEach(sd=> pd15Put(B, K, pd15Sweep([X3(leg(s0 - 0.006), sd*span), X3(leg(s0 + h + 0.0015), sd*span)], sR + 0.0058, { r:20, n:2, cap:true }).geo));
+    pd15Put(B, K, pd15Sweep([X3(ax(s0 - 0.004), 0), X3(ax(s0 + h + 0.002), 0)], 0.0238, { r:18, n:2, cap:true }).geo);
+    if (bolts) [-1, 1].forEach(sd=> [0.28, 0.72].forEach(k=>{ const p = pd15Up(leg(s0 + h*k), n, sR + 0.006); pd15Put(B, HW, pd15Disc(0.0042, 0.016, sd*span, 6).translate(0, p[1], p[0])); }));
+  };
+  crown(cBot, cH, dual);
+  if (dual) crown(uBot, uH, true);
+  /* top caps: air cap (left) + damper cap with its knob (right) */
+  [-1, 1].forEach(sd=>{
+    const x = sd*span, c0 = stTop;
+    pd15Put(B, K, pd15Sweep([X3(leg(c0 - 0.001), x), X3(leg(c0 + 0.008), x)], [[0, sR*0.99, sR*0.99], [1, sR*0.90, sR*0.90]], { r:16, n:2, cap:true }).geo);
+    if (sd < 0) pd15Put(B, o.knobMat || FX.acc, pd15Sweep([X3(leg(c0 + 0.008), x), X3(leg(c0 + 0.016), x)], sR*(city ? 0.55 : 0.62), { r:14, n:2, cap:true }).geo);
+    else pd15Put(B, city ? (o.knobMat || FX.acc) : K, pd15Sweep([X3(leg(c0 + 0.008), x), X3(leg(c0 + (city ? 0.016 : 0.012)), x)], city ? sR*0.55 : 0.0055, { r:10, n:2, cap:true }).geo);
+  });
+  /* ---- steerer + headset: crown race, lower cup, top cover (single) / upper cup (dual) */
+  const top = o.top !== undefined ? ax(o.top) : fup(G.H1, d, dual ? 0.062 : 0.012);
+  if (o.steerer !== false) pd15Put(B, K, pd15Sweep([X3(ax(cTop), 0), X3(fup(top, d, 0.03), 0)], 0.0145, { r:14, n:2 }).geo);
+  const htR = o.htR || 0.031, htR2 = o.htR2 || 0.026;
+  pd15Put(B, K, pd15Sweep([X3(ax(cTop + 0.0005), 0), X3(ax(cTop + 0.0035), 0)], [0.0232, 0.0232], { r:18, n:2, cap:true }).geo);
+  if (o.cups !== false){
+    pd15Put(B, K, pd15Sweep([X3(pd15Up(G.H0, d, -0.016), 0), X3(pd15Up(G.H0, d, -0.004), 0)], htR*1.02, { r:20, n:2, cap:true }).geo);
+    pd15Put(B, K, pd15Sweep([X3(fup(G.H1, d, -0.002), 0), X3(fup(G.H1, d, dual ? 0.010 : 0.012), 0)], dual ? [htR2*1.03, htR2*1.03] : [[0, htR2*1.02, htR2*1.02], [1, 0.0185, 0.0185]], { r:20, n:2, cap:true }).geo);
+  }
+  /* ---- lowers graphic */
+  if (o.word){
+    [-1, 1].forEach(sd=>{
+      const S0 = pd15Sweep([X3(leg(lowTop*0.14), sd*span), X3(leg(lowTop*0.90), sd*span)], lR*0.992, { r:12, n:2 });
+      pd15TubeWord(B, o.wordMat || PD15.white, S0, o.word, o.wordStyle || 'heavy', 0.50, lR*0.92, lowTop*0.66, { sides:sd, at:0 });
+    });
+  }
+  /* ---- post mount on the back of the left leg + the caliper on the rotor behind it; the hose climbs the back of the leg */
+  let port = null, hose = null;
+  if (o.cal !== false){
+    const rr = o.rotor || 0.10, rx = o.rotorX || 0.050, legA = Math.atan2(d[1], d[0]);
+    const ca = legA + (o.calOff || 0.86);                                      // behind the leg, a little above the axle
+    port = pd15Caliper(B, A, rr, ca, rx, { mat:o.calMat, pistons:o.pistons || 4, tabMat:LM });
+    const cc = [A[0] + Math.cos(ca)*(rr - 0.010), A[1] + Math.sin(ca)*(rr - 0.010)], tg = [-Math.sin(ca), Math.cos(ca)];
+    [-1, 1].forEach(k=>{
+      const e = [cc[0] + tg[0]*k*0.022 - Math.cos(ca)*0.010, cc[1] + tg[1]*k*0.022 - Math.sin(ca)*0.010];
+      const s = Math.max(0.02, (e[0] - A[0])*d[0] + (e[1] - A[1])*d[1]), b = pd15Up(leg(s), n, -lR*0.55);
+      pd15Put(B, LM, pd15Sweep([[span - 0.006, b[1], b[0]], [rx + 0.016, e[1], e[0]]], [0.0075, 0.0085, 2.6], { r:10, n:2, cap:true }).geo);
+    });
+    hose = [[rx + 0.012, port[1], port[0]], X3(pd15Up(leg(lowTop*0.55), n, -lR*1.12), span + lR*0.35), X3(pd15Up(leg(lowTop + 0.05), n, -lR*1.25), span + sR*1.4)];
+  }
+  return { top, crownS:cTop, port, hose, lowTop };
+}
+
+/* ---------------------------------------------------------------- rigid fork
+   o: style 'road' | 'unicrown' | 'crown' | 'steel' | 'fat', mat (blades + crown paint, FX.fork), crownMat, span0 / span1 (half spacing at the
+      dropouts / at the crown), r0 / r1 (blade radius at the dropout / at the crown), aero (deep road blades), rake (forward bow), thru (thru-axle
+      ends) / lever (thru-axle lever), cal ('flat' | 'post' | false), rotor, rotorX, pistons, calMat, eyelets (fender eyelets), steerer (false =
+      the builder draws its own), cups, htR / htR2, stack (steerer top above H1), cages (fat: cargo cages), bagMat.
+   Returns { top, port, hose } */
+function fk17Rigid(B, G, o){
+  o = o || {};
+  const d = G.d, n = G.n, A = [G.fz, G.Rf], st = o.style || 'unicrown', FM = o.mat || FX.fork, K = o.crownMat || FM, HW = PD15.silver, off = G.off;
+  const X3 = (p, x)=> [x, p[1], p[0]], leg = s=> [A[0] + d[0]*s, A[1] + d[1]*s], ax = s=> [G.Q[0] + d[0]*s, G.Q[1] + d[1]*s];
+  const fat = st === 'fat', road = st === 'road';
+  const sp0 = o.span0 || (fat ? 0.086 : 0.054), sp1 = o.span1 || (fat ? 0.074 : (road ? 0.040 : sp0*0.86));
+  const r0 = o.r0 || (road ? 0.0105 : 0.0095), r1 = o.r1 || (road ? 0.0175 : 0.0150);
+  const L0 = G.L, cTop = L0 - 0.002;
+  let crownC = null;                                                             // [z,y] where the blades meet the crown (for the hose)
+  /* ---- blades */
+  [-1, 1].forEach(sd=>{
+    let pts, sec;
+    if (road){
+      const tp = pd15Up(ax(cTop - 0.012), n, off*0.30), mid = pd15Up(pd15Lerp(A, tp, 0.52), n, o.rake === undefined ? 0.013 : o.rake);
+      const ae = o.aero ? 1.55 : 1.12;
+      pts = [X3(pd15Up(A, d, 0.010), sd*sp0), X3(mid, sd*(sp0*0.42 + sp1*0.58)), X3(tp, sd*sp1)];
+      sec = [[0, r0*0.86, r0*ae*0.95, 2.4], [0.45, r1*0.76, r1*ae, 2.4], [1, r1*0.96, r1*ae*0.98, 2.6]];
+      crownC = tp;
+    } else if (st === 'unicrown'){
+      // straight tapered blades on the leg line, swept in + back into the steerer at the top (a welded unicrown)
+      const s1 = L0 - 0.085, top = pd15Up(ax(cTop - 0.010), n, off*0.42);
+      pts = [X3(leg(0.006), sd*sp0), X3(leg(L0*0.45), sd*(sp0*0.6 + sp1*0.4)), X3(leg(s1), sd*sp1), X3(pd15Up(leg(L0 - 0.040), n, -off*0.18), sd*(sp1*0.72)), X3(top, sd*0.016)];
+      sec = [[0, r0*0.90, r0*1.08, 2.2], [0.55, r1*0.86, r1*1.02, 2.2], [0.82, r1*0.95, r1*1.12, 2.3], [1, r1*0.80, r1*1.05, 2.2]];
+      crownC = top;
+    } else {
+      // 'crown' / 'steel' / 'fat': legs into a separate crown; 'crown' rakes the blade forward near the dropout (classic steel)
+      const fo = st === 'crown' ? off*0.38 : off*0.85, s1 = L0 - 0.020;
+      const t = s=> pd15Up(leg(s), n, -(off - fo)*(st === 'crown' ? Math.pow(Math.min(1, s/(L0*0.62)), 1.6) : 1));
+      pts = st === 'crown' ? [X3(leg(0.006), sd*sp0), X3(t(L0*0.22), sd*sp0), X3(t(L0*0.50), sd*(sp0*0.6 + sp1*0.4)), X3(t(s1), sd*sp1)]
+                           : [X3(t(0.012), sd*sp0), X3(t(L0*0.5), sd*(sp0*0.5 + sp1*0.5)), X3(t(s1), sd*sp1)];
+      sec = [[0, r0, r0*1.06, 2], [0.6, r1*0.88, r1*0.94, 2], [1, r1, r1, 2]];
+      crownC = t(s1);
+    }
+    pd15Put(B, FM, pd15Sweep(pts, sec, { r:16, n:pts.length > 3 ? 16 : 12, cap:'a' }).geo);
+    // dropout: a plate down the blade end round the axle (+ a fender eyelet ahead of the axle)
+    const dp = pd15Hull([[A[0], A[1], road ? 0.0125 : 0.0115], [pd15Up(A, d, 0.030)[0], pd15Up(A, d, 0.030)[1], r0*0.95]].concat(o.eyelets ? [[pd15Up(A, n, 0.016)[0], pd15Up(A, n, 0.016)[1] - 0.006, 0.0065]] : []), 6);
+    pd15Put(B, FM, pd15Plate(dp, sd*sp0, road ? 0.0085 : 0.0075, o.eyelets ? [{ c:[pd15Up(A, n, 0.016)[0], pd15Up(A, n, 0.016)[1] - 0.006], r:0.0026 }] : null, 0.002));
+  });
+  /* ---- axle: thru-axle ends (road / gravel / fat) or nuts on a solid axle (city) */
+  if (o.thru){
+    [-1, 1].forEach(sd=> pd15Put(B, FM, pd15Disc(0.0118, 0.012, sd*(sp0 + 0.002), 16).translate(0, A[1], A[0])));
+    pd15Put(B, HW, pd15Disc(0.0098, 0.004, sp0 + 0.010, 14).translate(0, A[1], A[0]));
+    pd15Put(B, M12.anod, pd15Disc(0.0038, 0.0045, sp0 + 0.0115, 6).translate(0, A[1], A[0]));
+    if (o.lever){
+      pd15Put(B, M12.anod, pd15Disc(0.0115, 0.008, -(sp0 + 0.011), 16).translate(0, A[1], A[0]));
+      const l0 = pd15Up(A, n, -0.004), l1 = pd15Up(pd15Up(A, d, 0.054), n, -0.014);
+      pd15Put(B, M12.anod, pd15Sweep([[-(sp0 + 0.016), l0[1], l0[0]], [-(sp0 + 0.017), (l0[1] + l1[1])/2, (l0[0] + l1[0])/2], [-(sp0 + 0.015), l1[1], l1[0]]], [[0, 0.0032, 0.0078, 3], [1, 0.0032, 0.0068, 3]], { r:10, n:6, cap:true }).geo);
+    } else pd15Put(B, HW, pd15Disc(0.0095, 0.006, -(sp0 + 0.010), 14).translate(0, A[1], A[0]));
+  } else {
+    pd15Put(B, HW, pd15Disc(0.0055, sp0*2 + 0.034, 0, 8).translate(0, A[1], A[0]));
+    [-1, 1].forEach(sd=> pd15Put(B, M12.anod, fk17Hex(0.0105, 0.0075, sd*(sp0 + 0.009), A[1], A[0])));
+  }
+  /* ---- crown */
+  if (road){
+    // a wide carbon crown that flares out of the blades and blends into the head tube
+    const cc = ax(cTop - 0.010), CP = (x, f, dy)=>{ const p = pd15Up(pd15Up(cc, n, f), d, dy); return [x, p[1], p[0]]; };
+    pd15Put(B, K, pd15Sweep([CP(sp1 + r1*0.9, off*0.30, -0.006), CP(sp1*0.45, off*0.22, 0.004), CP(0, 0.010, 0.009), CP(-sp1*0.45, off*0.22, 0.004), CP(-sp1 - r1*0.9, off*0.30, -0.006)],
+      [[0, 0.016, r1*1.25, 3], [0.5, 0.024, 0.027, 2.6], [1, 0.016, r1*1.25, 3]], { r:16, n:16, ref:_pdY, cap:true }).geo);
+  } else if (st === 'unicrown'){
+    // the weld bead where the blades meet the steerer + the crown race seat
+    pd15Put(B, K, pd15Sweep([X3(ax(cTop - 0.030), 0), X3(ax(cTop), 0)], [[0, 0.0195, 0.0225, 2.4], [1, 0.0215, 0.0235, 2.2]], { r:18, n:3, cap:true }).geo);
+  } else {
+    const fo = st === 'crown' ? off*0.38 : off*0.85, ch = st === 'crown' ? 0.026 : 0.030, rr = r1 + (st === 'crown' ? 0.0055 : 0.0050);
+    pd15Put(B, K, fk17Slab(G, [[sp1, fo, rr], [-sp1, fo, rr], [0, 0, 0.0205], [0, fo*0.5, 0.019]], ch, ax(cTop - ch/2)));
+    if (st === 'crown') [-1, 1].forEach(sd=>{ const p = pd15Up(ax(cTop - ch*0.5), n, fo + rr*0.55); pd15Put(B, K, pd15Sweep([[sd*sp1*0.55, p[1], p[0]], [sd*sp1*1.05, p[1] - 0.004, p[0]]], [0.0062, 0.010, 2.4], { r:10, n:2, cap:true, ref:_pdY }).geo); });
+  }
+  /* ---- steerer + headset */
+  const top = fup(G.H1, d, o.stack === undefined ? 0.032 : o.stack);
+  if (o.steerer !== false) pd15Put(B, M12.anod, pd15Sweep([X3(ax(cTop), 0), X3(fup(top, d, 0.03), 0)], 0.0145, { r:14, n:2 }).geo);
+  if (o.cups !== false){
+    const htR = o.htR || 0.031, htR2 = o.htR2 || 0.026;
+    pd15Put(B, M12.anod, pd15Sweep([X3(pd15Up(G.H0, d, -0.016), 0), X3(pd15Up(G.H0, d, -0.004), 0)], htR*1.02, { r:20, n:2, cap:true }).geo);
+    pd15Put(B, M12.anod, pd15Sweep([X3(fup(G.H1, d, -0.002), 0), X3(fup(G.H1, d, 0.012), 0)], [[0, htR2*1.02, htR2*1.02], [1, 0.0185, 0.0185]], { r:20, n:2, cap:true }).geo);
+  }
+  /* ---- brake: flat mount (road / gravel) or post mount (city) behind the left blade */
+  let port = null, hose = null;
+  if (o.cal){
+    const rr = o.rotor || 0.08, rx = o.rotorX || 0.048, legA = Math.atan2(d[1], d[0]), flat = o.cal === 'flat';
+    const ca = legA + (flat ? 0.70 : 0.80);
+    port = pd15Caliper(B, A, rr, ca, rx, { pistons:o.pistons || 2, mat:o.calMat, tabMat:FM });
+    const cc = [A[0] + Math.cos(ca)*(rr - 0.010), A[1] + Math.sin(ca)*(rr - 0.010)], tg = [-Math.sin(ca), Math.cos(ca)];
+    if (flat){
+      // a flat pad on the back of the blade under the caliper, two bolts up through it from below
+      const s0 = 0.030, s1 = 0.074, b0 = pd15Up(leg(s0), n, -r0*0.6), b1 = pd15Up(leg(s1), n, -r1*0.55);
+      pd15Put(B, FM, pd15Sweep([[sp0 - 0.004, b0[1], b0[0]], [sp0 - 0.004, b1[1], b1[0]]], [0.0085, 0.0075, 3.2], { r:10, n:2, cap:true }).geo);
+      [-1, 1].forEach(k=>{ const e = [cc[0] + tg[0]*k*0.016 - Math.cos(ca)*0.012, cc[1] + tg[1]*k*0.016 - Math.sin(ca)*0.012];
+        pd15Put(B, FM, pd15Sweep([[sp0 - 0.006, ...rv(pd15Up(leg(Math.max(0.02, (e[0] - A[0])*d[0] + (e[1] - A[1])*d[1])), n, -r0*0.5))], [rx + 0.014, e[1], e[0]]], [0.0065, 0.0070, 2.6], { r:10, n:2, cap:true }).geo);
+        pd15Put(B, HW, pd15Disc(0.0036, 0.005, rx + 0.020, 6).translate(0, e[1] - 0.002, e[0])); });
+    } else {
+      [-1, 1].forEach(k=>{ const e = [cc[0] + tg[0]*k*0.020 - Math.cos(ca)*0.010, cc[1] + tg[1]*k*0.020 - Math.sin(ca)*0.010];
+        const s = Math.max(0.02, (e[0] - A[0])*d[0] + (e[1] - A[1])*d[1]);
+        pd15Put(B, FM, pd15Sweep([[sp0 - 0.005, ...rv(pd15Up(leg(s), n, -r0*0.6))], [rx + 0.015, e[1], e[0]]], [0.0065, 0.0075, 2.6], { r:10, n:2, cap:true }).geo); });
+    }
+    hose = [[rx + 0.012, port[1], port[0]], X3(pd15Up(pd15Lerp(A, crownC || G.C, 0.5), n, -0.020), sp0*0.5 + sp1*0.5 + 0.012), X3(pd15Up(crownC || G.C, d, 0.010), sp1 + 0.012)];
+  }
+  /* ---- fat: cargo cages + dry bags on the blades */
+  if (fat && o.cages) [-1, 1].forEach(sd=>{ const a = pd15Lerp(A, crownC, 0.25), b = pd15Lerp(A, crownC, 0.70);
+    pd15Put(B, BM.bars, pd15Sweep([X3(a, sd*(sp0 + 0.03)), X3(b, sd*(sp0*0.6 + sp1*0.4 + 0.03))], [0.016, 0.004, 4], { r:10, n:2, cap:true }).geo);
+    pd15Put(B, o.bagMat || VM.blk, pd15Sweep([X3(pd15Up(a, n, 0.02), sd*(sp0 + 0.045)), X3(pd15Up(b, n, 0.02), sd*(sp0*0.6 + sp1*0.4 + 0.045))], [0.03, 0.034, 3], { r:12, n:3, cap:true }).geo); });
+  return { top, port, hose, crownC };
+  function rv(p){ return [p[1], p[0]]; }
+}
+
+/* ---------------------------------------------------------------- BMX fork
+   Round tapered chromoly legs (o.taper: a stronger taper), a forged crown round both leg tops + the steerer (leg caps on top), flat
+   dropouts: the legs run fd BEHIND the axle line and the dropout plates carry the axle forward (the offset is split between the crown
+   and the dropouts, like a real BMX fork), weld beads at the dropouts + the crown. o: r (leg radius at the crown, P.forkR), taper, x (leg x).
+   Returns geometry lists { fork (fork paint), cap (bar / stem black), chrome } + brakeAx (the leg line beside the axle, for a U-brake) */
+function fk17Bmx(G, o){
+  o = o || {};
+  const d = G.d, n = G.n, A = [G.fz, G.Rf], off = G.off, x0 = o.x || 0.052, r = o.r || 0.0185;
+  const out = { fork:[], cap:[], chrome:[] };
+  const fc = off*0.62, fd = off - fc;                                          // crown offset + dropout offset
+  const LL = s=> [A[0] - n[0]*fd + d[0]*s, A[1] - n[1]*fd + d[1]*s], ax = s=> [G.Q[0] + d[0]*s, G.Q[1] + d[1]*s], P3 = (p, x)=> [x, p[1], p[0]];
+  const cTop = G.L + 0.001, cH = Math.max(0.020, Math.min(0.031, G.L + 0.001 - G.Rf - 0.014)), cBot = cTop - cH;
+  const rT = r*(o.taper ? 0.86 : 0.82), rB = r*(o.taper ? 0.56 : 0.62), s0 = 0.034;
+  const d3 = [0, d[1], d[0]];
+  [-1, 1].forEach(sd=>{
+    const x = sd*x0;
+    out.fork.push(pd15Sweep([P3(LL(s0), x), P3(LL(cTop - 0.004), x)], [[0, rB, rB], [0.30, rB*1.10, rB*1.10], [1, rT, rT]], { r:16, n:6, cap:'a' }).geo);
+    out.fork.push(m12plateGeo(m12hull([[LL(s0 + 0.012)[0], LL(s0 + 0.012)[1], rB*0.92], [A[0], A[1], 0.0136]], 6), x, 0.0095, [{ c:A, r:0.0052 }], 0.0022));
+    out.fork.push(bx15Weld(P3(LL(s0 + 0.001), x), d3, rB, 0.0016));
+    out.fork.push(bx15Weld(P3(LL(cBot - 0.0005), x), d3, rT, 0.0018));
+    out.cap.push(bxCylG(P3(LL(cTop - 0.002), x), P3(LL(cTop + 0.0035), x), rT*0.90, 16));
+  });
+  out.fork.push(fk17Slab(G, [[x0, fc, rT + 0.0050], [-x0, fc, rT + 0.0050], [0, 0, 0.0195], [0, fc*0.45, 0.0175]], cH, ax(cBot + cH/2), 0.0055));
+  out.fork.push(bxCylG(P3(ax(cTop - 0.004), 0), P3(ax(cTop + 0.003), 0), 0.0212, 18));    // crown race seat under the head tube
+  out.brakeAx = [A[0] - n[0]*fd, A[1] - n[1]*fd];
+  return out;
+}
 
 /* =========================================================================
    FLEET CORE -- turns the FLEET table into the game's vehicles.
@@ -43816,6 +44229,8 @@ toMenu = function(){ _feelToMenu.apply(this, arguments); feelHush(); };
    A mode = the GFX id the rest of the game checks ('off' | 'medium' | 'high' = the old Fast / High / Ultra,
    applied through gfxApplyTier) + a profile layer, live in GFXP (perf.js; 1 = the old High for multipliers):
        scale        render resolution (device pixels per CSS pixel): Potato 0.6 ... Extreme min(dpr, 2)
+       out          (Release 15.5) the canvas of the no-post modes: Potato / Low draw the scene at scale, their final pass
+                    upscales it to out (1.0 on computers; phones keep their fixed scale); fog = the fog distance x (>= view)
        shadows      'off'|'low'|'medium'|'high'|'ultra'|'extreme' -> shadowMap (px), shadowEvery (frames), shadowHalf (m)
        view         fog distances, full-detail range, far skyline   (Potato 0.55 ... Extreme 1.35)
        detail       DETAIL level 0..2 (props / clutter / range, detailLevel())
@@ -43845,8 +44260,8 @@ const GFX_IDS = ['potato', 'low', 'medium', 'high', 'ultra', 'extreme'];
 const GFX_NAMES = { potato:'Potato', low:'Low', medium:'Medium', high:'High', ultra:'Ultra', extreme:'Extreme', auto:'Auto', custom:'Custom' };
 const GFX_LEGACY = { off:'low', medium:'high', high:'ultra', fast:'low' };        // setGfx('off' | 'medium' | 'high') from older code / tests (why 'api')
 const GFX_DESC = {
-  potato:  'The lightest: low resolution, no shadows, short view, quiet streets',
-  low:     'Light: no shadows or post effects, short view - weak laptops and phones',
+  potato:  'The lightest: a sharpened lower resolution, soft contact shadows, quieter streets',
+  low:     'Light: no sun shadows or post effects - weak laptops and phones',
   medium:  'Filmic look and soft shadows, slightly softer picture',
   high:    'The full look: sharp shadows, filmic grade, long view',
   ultra:   'Adds ambient occlusion, crisper shadows, further view, busier streets',
@@ -43910,11 +44325,19 @@ function gfxPhoneScale(){
   const s = Math.max(0.8, Math.min(Math.sqrt(550000/a), dpr, 1.5));
   return (gfxPhoneScale.v = Math.round(s*20)/20);
 }
+/* Release 15.5 (potato, "looks too ugly / blurry"): Potato / Low draw the 3D at their own resolution (scale) and their one final
+   pass brings it up to a sharp canvas (out: device px per CSS px) with edge smoothing, a contrast-adaptive sharpen and the post
+   modes' grade (mods/light12_post.js); fog = the fog distance (x the map's), apart from view (full-detail range, streaming) so
+   the far skyline shows without drawing more of the near city. GFX17.on = false puts the Release 15.4 Potato / Low back
+   (side-by-side checks: gfx17Set(false), or ?p17=0). */
+const GFX17 = { on: !/[?&]p17=0\b/.test(location.search) };
 function gfxPresetRaw(id){
   const D = gfxDevice(), dpr = window.devicePixelRatio || 1, ph = D.phone, tch = D.touch;
   const r2 = v => Math.round(v*100)/100;
+  const v17 = GFX17.on;
   // Release 15.4 (phone): the PHONE PROFILE -- Potato / Low / Medium on a phone: no shadow pass, no post (Medium keeps a light
-  // version of both), a short view, quiet streets, a fixed resolution (gfxPhoneScale); Low is what a phone starts in
+  // version of both), a short view, quiet streets, a fixed resolution (gfxPhoneScale); Low is what a phone starts in.
+  // Release 15.5: the same fixed resolutions (the canvas is not made any bigger on a phone); the final pass sharpens and grades.
   if (ph && (id === 'potato' || id === 'low' || id === 'medium')){
     const ps = gfxPhoneScale();
     if (id === 'potato') return { scale:Math.round(Math.max(0.7, ps*0.85)*20)/20, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
@@ -43923,8 +44346,13 @@ function gfxPresetRaw(id){
   }
   switch (id){
     // Release 15.4 (phone): Potato / Low on computers are the weak-laptop modes -- no shadow pass, no post, a short view
-    case 'potato':  return { scale:0.6, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
-    case 'low':     return { scale:ph ? 0.8 : 0.75, shadows:'off', view:0.55, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
+    // Release 15.5 (potato): the scene drawn at 0.6 / 0.75 as before and brought up to a 1.0 canvas (tablets 0.9) by the final
+    // pass (edge smoothing + sharpen + grade: ~3 % of the frame), the fog pushed out (the far skyline is cheap; the full-detail
+    // ring stays: view), 4x texture filtering, a few more people / cars, four lit street lamps at night
+    case 'potato':  return v17 ? { scale:tch ? 0.6 : 0.7, out:tch ? 0.9 : 1, shadows:'off', view:0.45, fog:0.6, detail:0, crowd:0.5, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 }
+                               : { scale:0.6, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
+    case 'low':     return v17 ? { scale:ph ? 0.8 : 0.75, out:tch ? 0.9 : 1, shadows:'off', view:0.55, fog:0.7, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 }
+                               : { scale:ph ? 0.8 : 0.75, shadows:'off', view:0.55, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
     case 'medium':  return { scale:ph ? r2(Math.min(dpr, 1)) : (tch ? 0.9 : 1), shadows:'medium', view:0.85, detail:1, crowd:0.8, traffic:0.8, lamps:6, post:true, ao:0, bloom:true, fxaa:true, sharpen:true, aniso:8 };     // R15.2: computers draw Medium at 1.0 (0.9 was soft)
     case 'ultra':   return { scale:r2(Math.min(dpr, 1.5)), shadows:'ultra', view:1.15, detail:2, crowd:1.35, traffic:1.3, lamps:9, post:true, ao:2, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };
     case 'extreme': return { scale:r2(Math.min(dpr, 2)), shadows:'extreme', view:1.35, detail:2, crowd:1.6, traffic:1.6, lamps:9, post:true, ao:2, bloom:true, fxaa:true, sharpen:true, aniso:16 };
@@ -44056,6 +44484,9 @@ function gfxApply(v, opt){
   let maxTex = 4096; try { maxTex = renderer.capabilities.maxTextureSize || 4096; } catch(e){}
   const tier = v.post ? (v.ao >= 2 ? 'high' : 'medium') : 'off';
   set('scale', clamp(+v.scale || 1, 0.3, gfxMaxScale()));
+  // Release 15.5: the canvas of a no-post mode (its final pass upscales the scene to it); a post mode draws the canvas at scale
+  set('out', v.post ? P.scale : clamp(Math.max(+v.out || 0, P.scale), 0.3, gfxMaxScale()));
+  set('fog', clamp(Math.max(+v.fog || 0, +v.view || 1), 0.3, 2));          // never closer than the full-detail range
   set('shadows', v.shadows); set('shadowMap', Math.min(S.map, maxTex)); set('shadowEvery', S.every); set('shadowHalf', S.half);
   set('shadowSoft', !D.touch);          // the device's filter, never the mode's (another filter = every lit shader compiled again)
   ['view', 'detail', 'crowd', 'traffic', 'lamps', 'post', 'ao', 'bloom', 'fxaa', 'sharpen'].forEach(k=> set(k, v[k]));
@@ -44074,7 +44505,8 @@ function gfxApply(v, opt){
     if (typeof POST !== 'undefined' && POST.ok && typeof gfxApplyTier === 'function') gfxApplyTier(tier);
     else GFX = tier;                                     // before the boot: POST.setLevel(GFX) runs in the boot step
   }
-  if (has('scale') || opt.initial) perfApplyPR(P.scale);
+  try { const L = POST.lite; L.on = GFX17.on; L.scale = P.scale; } catch(e){}       // Release 15.5: the scene's own resolution
+  if (has('scale') || has('out') || opt.initial) perfApplyPR(P.out);
   // shadows: the sun always casts (shader programs stay the same); 'off' = no shadow pass, a blank map, receivers off
   try {
     const sh = sun.shadow;
@@ -44089,9 +44521,10 @@ function gfxApply(v, opt){
     }
     gfxShadowPass(S.on);
   } catch(e){ console.warn('[gfx14] shadows', e); }
-  // view distance: fog / camera far now (eased in Auto), full-detail range at the next cull sweep
-  if (typeof FARV !== 'undefined' && (has('view') || opt.initial)){
-    if (GFX14.mode !== 'auto' || !live || opt.initial) FARV.viewMul = P.view;
+  // view distance: fog / camera far now (eased in Auto), full-detail range at the next cull sweep (Release 15.5: the fog
+  // follows P.fog, which is the view unless the mode says otherwise)
+  if (typeof FARV !== 'undefined' && (has('view') || has('fog') || opt.initial)){
+    if (GFX14.mode !== 'auto' || !live || opt.initial) FARV.viewMul = P.fog;
     try { farFogApply(); } catch(e){}
     try { _cullTick = 0; } catch(e){}
   }
@@ -44138,6 +44571,12 @@ function gfxSetPreset(id, why){
   gfxApply(gfxTarget());
   gfxSave();
   return id;
+}
+/* Release 15.5: side-by-side checks -- false puts the Release 15.4 Potato / Low back (presets + final pass + no contact shadows) */
+function gfx17Set(on){
+  GFX17.on = !!on;
+  gfxApply(gfxTarget());
+  return GFX17.on;
 }
 /* one Advanced item: the mode becomes Custom (the frame cap is a preference and does not) */
 function gfxSetKnob(k, v){
@@ -44374,7 +44813,7 @@ function gfxRungOnly(r, key){
 /* Auto eases the view distance instead of popping the fog */
 addFrameHook(function gfxViewEase(dt){
   if (typeof FARV === 'undefined') return;
-  const want = GFXP.view, cur = FARV.viewMul;
+  const want = GFXP.fog || GFXP.view, cur = FARV.viewMul;
   if (Math.abs(want - cur) < 0.002){ if (cur !== want){ FARV.viewMul = want; try { farFogApply(); } catch(e){} } return; }
   FARV.viewMul = cur + (want - cur)*Math.min(1, dt*1.6);
   try { farFogApply(); } catch(e){}
@@ -66770,6 +67209,184 @@ injectCSS(
   '#p16Ctx .p16B:focus-visible{ outline:3px solid var(--dl-paper,#f3ede1); outline-offset:3px; }' +
   'html.p16lite #minimap, html.p16lite .toast, html.p16lite #sheet{ -webkit-backdrop-filter:none; backdrop-filter:none; }' +
   'html.p16lite .toast{ background:rgba(10,13,18,.86); }', 'p16-css');
+/* =========================================================================
+   POTATO17 -- Potato / Low look clean, sharp and grounded (Release 15.5, stream potato)
+   "make potate mode better" -> "Looks too ugly / blurry" (its speed is fine)
+
+   The no-post modes (Potato, Low, the phone profile's Potato / Low) have no sun-shadow pass, so the bike, the rider, people and
+   cars floated on the street. Here:
+   1. CONTACT SHADOWS: one soft, dark ellipse on the ground under the bike + rider (stretched to the ride's wheelbase, aligned
+      to the surface it rolls on: ramps, banks, quarter pipes; in the air it shrinks and fades with the height, ~5 m), under the
+      parked bike and the rider when you walk, under the pedestrians, cars and cyclists around you (within ~65 m). All of them
+      are ONE instanced draw call (no shadow pass, no extra programs on a mode switch: the material is in the scene from the
+      start, so the boot's prewarm compiles it). Only while the mode has no sun shadows (Medium and up draw real ones).
+   2. POINT SIZES IN THE LITE PASS: a few point sprites (lamp halos, rain / snow, stars) size themselves from the canvas
+      height; the lite pass draws the scene smaller than the canvas, so around the scene render their scale is multiplied
+      by scene height / canvas height (POST.lite.hooks; put back right after; no allocations). The region's far lights set
+      their own scale inside the render (1.5..5 px dots): left as they are.
+   Side-by-side checks: gfx17Set(false) (mods/gfx14_core.js) puts the Release 15.4 Potato / Low back, contact shadows off.
+   Debug / tests: window.__p17 = { P17, count() }.
+   ========================================================================= */
+const P17 = { max:56, n:0, mesh:null, mat:null, on:false, dbg:{ bike:0, people:0, cars:0 } };
+const _p17M = new T.Matrix4(), _p17P = new T.Vector3(), _p17S = new T.Vector3(), _p17N = new T.Vector3(), _p17Q = new T.Quaternion(),
+      _p17Y = new T.Quaternion(), _p17UP = new T.Vector3(0, 1, 0), _p17C = new T.Vector3();
+
+/* ---------------------------------------------------------------- 1. contact shadows */
+function p17Build(){
+  if (P17.mesh) return P17.mesh;
+  const g = new T.PlaneGeometry(1, 1);
+  g.rotateX(-Math.PI/2);                                   // flat on the ground, x = across, z = along
+  const mat = new T.ShaderMaterial({
+    uniforms:{ uFade:{ value:new T.Vector2(45, 70) } },
+    vertexShader: [
+      'uniform vec2 uFade;',
+      'varying vec2 vQ;',
+      'varying float vA;',
+      'void main(){',
+      '  vQ = position.xz*2.0;',
+      '  vec4 wp = modelMatrix*instanceMatrix*vec4(position, 1.0);',
+      '  vA = instanceColor.r*(1.0 - smoothstep(uFade.x, uFade.y, distance(wp.xyz, cameraPosition)));',
+      '  gl_Position = projectionMatrix*viewMatrix*wp;',
+      '}'].join('\n'),
+    fragmentShader: [
+      'varying vec2 vQ;',
+      'varying float vA;',
+      'void main(){',
+      '  float r = clamp(1.0 - dot(vQ, vQ), 0.0, 1.0);',
+      '  float a = vA*smoothstep(0.0, 0.8, r);',      // a dense core, a soft rim
+      '  if (a < 0.004) discard;',
+      '  gl_FragColor = vec4(0.0, 0.0, 0.0, a);',
+      '}'].join('\n'),
+    transparent:true, depthWrite:false, depthTest:true, fog:false,
+    polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-6
+  });
+  const m = new T.InstancedMesh(g, mat, P17.max);
+  m.instanceMatrix.setUsage(T.DynamicDrawUsage);
+  m.instanceColor = new T.InstancedBufferAttribute(new Float32Array(P17.max*3).fill(1), 3);
+  m.instanceColor.setUsage(T.DynamicDrawUsage);
+  m.count = 1;                                             // drawn by the boot's prewarm (one instance), then per frame
+  m.frustumCulled = false; m.renderOrder = -1;             // first of the transparent pass: right on top of the ground
+  m.castShadow = false; m.receiveShadow = false;
+  m.name = 'potato17-contact';
+  m.userData.noBatch = true; m.userData.noCull = true;
+  _p17M.makeTranslation(0, -9999, 0); m.setMatrixAt(0, _p17M);
+  scene.add(m);
+  P17.mesh = m; P17.mat = mat;
+  return m;
+}
+/* one shadow: centre (x, y, z), ground normal n (null = up), yaw, size across / along, darkness */
+function p17Add(x, y, z, n, yaw, w, l, a){
+  if (P17.n >= P17.max || !(a > 0.01)) return;
+  _p17N.copy(n || _p17UP);
+  if (_p17N.y < 0.2) _p17N.set(0, 1, 0);                   // a wall / ceiling under a rider is not a floor
+  _p17Q.setFromUnitVectors(_p17UP, _p17N);
+  _p17Y.setFromAxisAngle(_p17UP, yaw);
+  _p17Q.multiply(_p17Y);
+  _p17P.set(x + _p17N.x*0.03, y + _p17N.y*0.03, z + _p17N.z*0.03);
+  _p17S.set(w, 1, l);
+  _p17M.compose(_p17P, _p17Q, _p17S);
+  P17.mesh.setMatrixAt(P17.n, _p17M);
+  P17.mesh.instanceColor.setX(P17.n, a);
+  P17.n++;
+}
+function p17Active(){
+  return typeof GFX17 !== 'undefined' && GFX17.on && typeof GFXP !== 'undefined' && GFXP.shadows === 'off' && typeof GAME !== 'undefined' && GAME !== 'loading';
+}
+function p17Tick(){
+  const M = P17.mesh;
+  if (!M) return;
+  const on = p17Active();
+  P17.on = on;
+  if (!on){ if (M.visible) M.visible = false; return; }
+  P17.n = 0;
+  const cx = camera.position.x, cz = camera.position.z, R2 = 66*66;
+  const night = (typeof LF_NIGHT === 'number') ? LF_NIGHT : 0;
+  const base = 0.56 - 0.12*night;                           // a little lighter at night (no sun to block)
+  // the ride (+ rider): bike.pos is the wheels' ground point; on foot it is the walker, the bike is parked in PARK
+  const foot = (typeof onFoot === 'function') && onFoot();
+  const len = Math.max(0.9, ((typeof CUR_FZ === 'number' ? CUR_FZ : 0.42) - (typeof CUR_RZ === 'number' ? CUR_RZ : -0.52)) +
+                            (typeof CUR_WHEEL_RR === 'number' ? CUR_WHEEL_RR : 0.32) + (typeof CUR_WHEEL_RF === 'number' ? CUR_WHEEL_RF : 0.32));
+  const mid = ((typeof CUR_FZ === 'number' ? CUR_FZ : 0.42) + (typeof CUR_RZ === 'number' ? CUR_RZ : -0.52))*0.5;
+  if (typeof bike !== 'undefined' && (typeof rig === 'undefined' || rig.visible !== false || foot)){
+    if (foot){
+      if (typeof PARK !== 'undefined'){
+        const fx = Math.sin(PARK.yaw), fz = Math.cos(PARK.yaw), lay = PARK.kind === 'lay' ? 1.25 : 1;
+        p17Add(PARK.pos.x + fx*mid, PARK.pos.y, PARK.pos.z + fz*mid, PARK.n, PARK.yaw, 0.55*lay, len*1.02, base*0.9);
+      }
+      p17Add(bike.pos.x, bike.pos.y, bike.pos.z, null, 0, 0.62, 0.62, base*0.85);
+    } else {
+      let gy = bike.pos.y, nrm = bike.normal, h = 0;
+      if (!bike.grounded){
+        let s = null; try { s = sampleWorld(bike.pos.x, bike.pos.z); } catch(e){}
+        if (s){ gy = Math.min(s.h, bike.pos.y); nrm = s.n; h = Math.max(0, bike.pos.y - gy); }
+      }
+      const k = 1 - Math.min(1, h/5.5);
+      const fx = Math.sin(bike.yaw), fz = Math.cos(bike.yaw);
+      if (k > 0.02) p17Add(bike.pos.x + fx*mid, gy, bike.pos.z + fz*mid, nrm, bike.yaw, 0.85*(1 + h*0.12), len*1.1*(1 + h*0.08), base*k*k);
+      P17.dbg.bike = P17.n;
+    }
+  }
+  // pedestrians (riders of the city's cyclists are drawn with their bike below)
+  if (typeof PEOPLE !== 'undefined'){
+    for (let i = 0; i < PEOPLE.length && P17.n < P17.max; i++){
+      const p = PEOPLE[i];
+      if (!p || p.removed || p.dead || p.puppet || p.sit) continue;
+      const dx = p.pos.x - cx, dz = p.pos.z - cz;
+      if (dx*dx + dz*dz > R2) continue;
+      const s = (p.s || 1)*(p.down ? 1.5 : 1);
+      p17Add(p.pos.x, p.pos.y, p.pos.z, null, p.yaw || 0, 0.58*s, 0.58*s*(p.down ? 2.2 : 1), base*0.8);
+    }
+  }
+  P17.dbg.people = P17.n - P17.dbg.bike;
+  // cars, taxis, cops, cyclists (city + highway traffic)
+  if (typeof TRAFFIC !== 'undefined'){
+    const n0 = P17.n;
+    for (let i = 0; i < TRAFFIC.length && P17.n < P17.max; i++){
+      const c = TRAFFIC[i];
+      if (!c || !c.pos) continue;
+      const dx = c.pos.x - cx, dz = c.pos.z - cz;
+      if (dx*dx + dz*dz > R2) continue;
+      if (c.type === 'cycle' || c.rider) p17Add(c.pos.x, c.pos.y || 0, c.pos.z, null, c.yaw || 0, 0.6, 1.85, base*0.8);
+      else p17Add(c.pos.x, c.pos.y || 0, c.pos.z, null, c.yaw || 0, (c.w || 1.95)*1.05, (c.len || 4.5)*1.04, base*0.95);
+    }
+    P17.dbg.cars = P17.n - n0;
+  }
+  M.count = P17.n;
+  M.visible = P17.n > 0;
+  if (P17.n){ M.instanceMatrix.needsUpdate = true; M.instanceColor.needsUpdate = true; }
+}
+
+/* ---------------------------------------------------------------- 2. point sizes around the lite pass's scene render */
+const P17_PTS = { list:[], saved:[], n:0, size0:0, stars:null };
+function p17PtsAdd(u, f){
+  const L = P17_PTS;
+  if (!u || typeof u.value !== 'number') return;
+  for (let i = 0; i < L.n; i++) if (L.list[i] === u) return;          // one uniform object shared by two materials: once
+  L.list[L.n] = u; L.saved[L.n] = u.value; L.n++;
+  u.value *= f;
+}
+function p17PointsBefore(f){
+  const L = P17_PTS;
+  L.n = 0; L.stars = null;
+  if (!(f > 0) || Math.abs(f - 1) < 0.01) return;
+  try { if (typeof LAMP_HALO !== 'undefined' && LAMP_HALO.mat) p17PtsAdd(LAMP_HALO.mat.uniforms.uScale, f); } catch(e){}
+  try { if (typeof SL !== 'undefined' && SL.haloMat) p17PtsAdd(SL.haloMat.uniforms.uScale, f); } catch(e){}
+  try { if (typeof RDR !== 'undefined' && RDR.haloMat) p17PtsAdd(RDR.haloMat.uniforms.uScale, f); } catch(e){}
+  try { if (typeof WEATHER !== 'undefined' && WEATHER.uni) p17PtsAdd(WEATHER.uni.uScale, f); } catch(e){}
+  try { if (typeof STARS !== 'undefined' && STARS.mat){ L.stars = STARS.mat; L.size0 = STARS.mat.size; STARS.mat.size *= f; } } catch(e){}
+}
+function p17PointsAfter(){
+  const L = P17_PTS;
+  for (let i = 0; i < L.n; i++){ L.list[i].value = L.saved[i]; L.list[i] = null; }
+  L.n = 0;
+  if (L.stars){ L.stars.size = L.size0; L.stars = null; }
+}
+
+/* ---------------------------------------------------------------- wiring */
+try { p17Build(); } catch(e){ console.warn('[potato17] contact shadows', e); }
+try { if (typeof POST !== 'undefined' && POST.lite) POST.lite.hooks.push({ before:p17PointsBefore, after:p17PointsAfter }); } catch(e){ console.warn('[potato17] lite hooks', e); }
+addFrameHook(function p17Frame(){ try { p17Tick(); } catch(e){ if (!P17.err){ P17.err = e; console.warn('[potato17] tick', e); } } });
+window.__p17 = { P17, count: ()=> P17.n };
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
