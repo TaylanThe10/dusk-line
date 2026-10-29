@@ -3203,7 +3203,7 @@ html.touchUI .st13Prompt b{ width:32px; height:32px; }
           <span class="rideBig" id="rideBig" aria-hidden="true">BMX</span>
           <canvas id="rideCanvas"></canvas>
           <div class="rideWho"><i>Rider</i><b id="rideRider">—</b><em class="rideLoad" id="rideLoad" style="display:none">loading</em></div>
-          <div class="rideTx"><b id="rideName">Curbline Wavelength</b><span id="rideKind">BMX</span></div>
+          <div class="rideTx"><b id="rideName">Sunday Soundwave</b><span id="rideKind">BMX</span></div>
         </div>
         <div class="rideBtns">
           <button class="btn primary sm" id="ridersBtn" type="button">Swap rider</button>
@@ -28561,7 +28561,7 @@ const FLEET_NAMES15 = {
   curt:       ['Circuit', 'Stealth', 'Looks like a plain single-speed: the battery hides in the down tube, a belt drive and a tiny hub motor. Only the LED dots give it away.'],
   vanmoof:    ['Circuit', 'Metro S', 'Sleek city bike: a slab top tube with built-in lights, a matrix display, a chain case and a front hub motor.'],
   /* ---- e-scooters ---- */
-  mi4pro:     ['Kurb', 'One Pro', 'The commuter everybody has seen: slim stem, 10 inch air tyres, quiet motor and a thumb throttle. Easy to ride.'],
+  mi4pro:     ['Kurb', 'One Pro', 'The commuter everybody has seen: a folding stem with the lamp under the bar, 10 inch air tyres, a front hub motor and a thumb throttle. Easy to ride.'],
   ninebotmax: ['Kurb', 'Longhaul', 'Big, wide deck and a fat stem with a proper dash. Calm, planted and happy to go the distance.'],
   gt2:        ['Kurb', 'Overdrive', 'Hyper scooter: dual motors, hydraulic suspension, 11 inch off-road rubber and orange deck lights.'],
   phantom:    ['Glidr', 'Nightjet', 'Dual-motor rocket with cooling fins on the deck, sprung forks and a blue light bar.'],
@@ -28582,9 +28582,11 @@ const FLEET_NAMES15 = {
   FLEET.forEach(v=>{
     const n = FLEET_NAMES15[v.id];
     if (!n) return;
-    v.brand = n[0]; v.model = n[1]; v.name = n[0] + ' ' + n[1];
+    // Release 15.6: the frames / decks / tanks carry the game's own livery ("DUSK LINE" + the catalogue number) -- the data
+    // modules read brand / model from here for the wordmarks; names18.js then puts the real machine's name on the row
+    v.brand = 'Dusk Line'; v.model = v.no || ''; v.name = n[0] + ' ' + n[1];
     if (n[2]) v.desc = n[2];
-    if (v.p && typeof v.p.logo === 'string' && v.p.logo) v.p.logo = n[0].toUpperCase();
+    if (v.p && typeof v.p.logo === 'string' && v.p.logo) v.p.logo = 'DUSK LINE';
   });
 })();
 
@@ -31236,16 +31238,22 @@ function MO15_EKIT(X){
 }
 
 /* =========================================================================
-   MOTOR15 e-scooters (b:'mo15scoot') -- one kit for every stand-up electric scooter: a sculpted battery deck with a rubber
-   mat, the neck + steering head, a stem with a folding hinge and clamp lever, a cockpit (T-bar or moto bar, grips, levers,
-   thumb throttle / twist grip, bell, display), lights, fenders, suspension per class (none, sprung fork, dual spring fork,
-   hydraulic fork, swingarm with one or two coil shocks), kickstand, and wheels per class (8.5-11 inch air tyres on alloy
-   spoke rims with hub motors, small solid tyres, off-road knobblies).
-   P: Rr Rf (wheel radii) tr tf (tyre section) wb dy (deck top) dw dt (deck width / thickness) deck flat|taper ha (head angle)
-      bar (bar height) bw (bar width) bars tbar|moto stem single|thick|twin|curve|braced fold base|mid|none
-      fsus none|spring|dual|hyd rsus none|arm shock2 ffend arc|high|none rfend arc|long|cover light stem|bar|wide|twin|fork|none
-      disp slim|big|round|none motor rear|front|dual chainBox neon fins belly seat stand twist brace tread (off-road knob rows)
-   Paint slots: BM.frame (deck + stem), FX.acc (skirts, lever, accents), FX.fork, BM.rim, BM.tire, FX.grip, BM.bars, FX.glow, BM.seat.
+   MOTOR15 e-scooters (b:'mo15scoot') -- rebuilt in Release 15.6 (scoot18) as the real machines of their kind.
+   The layout follows a real stand-up e-scooter: the battery deck (body-colour alloy shell, black under-tray, ribbed rubber mat,
+   side trim or LED strips, reflectors, charge port) stops short of the front tyre and sweeps up in a curved NECK that carries the
+   head tube ABOVE the tyre; the fork (rigid, sprung, dual-spring or hydraulic) hangs from its crown round the tyre with the fender
+   in between; the THICK stem (round, oval, curved, twin or braced twin) rises from the folding hinge (latch lever + hinge barrel),
+   a heavy-duty fold clamp or a solid headset collar to the stem head that carries the bar, long grips, brake levers, thumb throttle
+   (or twist grip), bell, the dash display and a real headlight. Wheels: fat pneumatic (or solid) tyres on cast alloy rims, a hub
+   motor drum filling the motor wheels, cast Y spokes on the others, disc rotors (calipers on the fork / rear plates) or a drum.
+   Rear: dropout plates or a swing arm with two coil-over shocks under a raised kick plate, the rear fender with the tail light,
+   a kickstand folded along the deck; the seated row a real seat post and saddle.
+   P: Rr Rf wb dy (deck top) dw dt (deck width / thickness) deck flat|taper ha off bar bw bars tbar|moto stem single|thick|curve|twin|braced
+      stemD fold base|mid|none fsus none|spring|dual|hyd rsus none|arm ffend arc|high|none rfend arc|long|cover|none light stem|bar|wide|twin|fork|none
+      disp slim|big|round|none motor rear|front|dual tw twf (tyre widths) tread (off-road knobs) solid (solid tyres) spokes neon fins seat stand
+      twist brace chainBox kid fend plas|frame|acc trim acc|glow|none foot (raised kick plate) rental drum levers (1|2) stemMat headMat stance lean leg
+   Paint slots: BM.frame (deck, neck, stem), FX.acc (trim, latch, accents), FX.fork, BM.rim, BM.tire, FX.grip, BM.bars, FX.glow, BM.seat,
+   FX.plas (mudguards), BK.lamp + BK.tail (lights).
    ========================================================================= */
 /* how a stand-up rider holds it: feet in line on the deck, knees soft, hips solved from the grip height (copy of the shared stance rule) */
 function mo15standRS(o){
@@ -31258,231 +31266,347 @@ function mo15standRS(o){
   return { hipsY:hy, hipsZ:hz, gripL:[o.gx, o.gy, o.gz], gripR:[-o.gx, o.gy, o.gz], pedalL:[sx, ay, zf], pedalR:[-sx, ay, zr], lean,
     footPitch:0.05, kneeOut:0.22, elbowOut:0.20, sole:[0, -0.075, 0], foot:'flat' };
 }
-/* scooter wheel: air (or solid) tyre on an alloy rim with n spokes, a hub motor drum or a plain hub + disc */
+/* scooter tread tables (added to the shared table once): a fine road pattern and chunky off-road knobs at a scooter-sized pitch */
+MO15_TREAD.sc18road = MO15_TREAD.sc18road || { kh:0.0022, pitch:0.026, rows:MO15_TREAD.scoot.rows };
+MO15_TREAD.sc18off = MO15_TREAD.sc18off || { kh:0.0058, pitch:0.025, rows:MO15_TREAD.offroad.rows };
+/* the sizes of an e-scooter wheel: tyre width tw + section height th on a cast rim (bead radius rb, rim width rw, inner radius ri), the hub /
+   motor drum half width, and where a disc rotor goes (x, radius) */
+function mo15scootDims(R, o){
+  const tw = o.tw || R*0.5, th = o.th || R*0.36, tr = o.solid ? null : MO15_TREAD[o.tread || 'sc18road'], kh = tr ? tr.kh : 0;
+  const rb = R - kh*1.1 - th, rw = tw*0.70, dp = Math.min(0.014, rb*0.17), ri = rb - dp;
+  const hubW = o.motor ? rw/2 + 0.012 : 0.028;
+  const discX = Math.max(0.041, o.motor ? hubW + 0.011 : rw/2 + 0.008), discR = Math.max(0.042, Math.min(ri - 0.008, R*0.56));
+  return { tw, th, rb, rw, dp, ri, hubW, discX, discR };
+}
+/* e-scooter wheel (axis x): a fat pneumatic (or solid) tyre on a cast alloy rim; a hub motor drum (bolted cover, short arms to the rim) or a
+   hub with cast Y spokes; a disc rotor on a carrier or a drum. o: tw th tread solid motor spokes disc drum segs */
 function mo15wheelScoot(R, o){
   o = o || {};
-  const g = new T.Group(), t = o.t || R*0.30, w = o.w || t*0.95, h = t*1.75;
-  const ty = mo15tyre(R, w, h, 'scoot', o.tread || 'scoot', o.segs || 36);
+  const D = mo15scootDims(R, o), g = new T.Group(), segs = o.segs || (R > 0.135 ? 36 : 32);
+  const ty = mo15tyre(R, D.tw/2, D.th, o.solid ? 'street' : 'scoot', o.solid ? null : (o.tread || 'sc18road'), segs);
   mo15add(g, ty.geo, BM.tire);
-  const rb = ty.rb, rw = w*1.25;
-  mo15add(g, mo15rimGeo(rb + 0.002, rw, 0.012, { flange:0.004, segs:32 }), BM.rim);
-  const ri = rb - 0.012, hub = o.motor ? Math.min(o.motor, ri*0.80) : 0.026, hw = o.motor ? Math.min(0.055, rw*0.5 + 0.01) : 0.03;
-  if (o.motor) mo15add(g, mo15hubMotorGeo(hub, hw, { segs:24, ribs:o.ribs || 0 }), BM.motor);
-  else mo15add(g, mo15latheGeo([[0, -hw - 0.012], [0.01, -hw - 0.012], [0.012, -hw], [hub, -hw*0.8], [hub, hw*0.8], [0.012, hw], [0.01, hw + 0.012], [0, hw + 0.012]], 16), M12.anod);
-  const n = o.spokes === undefined ? 5 : o.spokes, sp = [];
-  if (n){
-    for (let i = 0; i < n; i++){
-      const a = i/n*Math.PI*2 + 0.3, b = a + (o.ytwist || 0.18);
-      // Y / twisted alloy spokes from the hub to the rim bed (two thin arms per spoke)
-      [-1, 1].forEach(e=> sp.push(mo15rodGeo([0, Math.cos(a + e*0.06)*(hub*0.92), Math.sin(a + e*0.06)*(hub*0.92)], [0, Math.cos(b + e*0.10)*(ri + 0.002), Math.sin(b + e*0.10)*(ri + 0.002)], 0.0065, 6, 0.0045)));
-    }
+  mo15add(g, mo15rimGeo(D.rb + 0.0015, D.rw, D.dp, { flange:0.004, segs:24 }), BM.rim);
+  const sp = [], n = o.spokes || (o.motor ? 6 : 5);
+  if (o.motor){
+    // hub motor: a fat drum filling most of the rim, a bolted side cover each side, short wide arms out to the rim bed
+    const r = D.ri*0.80, hw = D.hubW, bl = [];
+    mo15add(g, mo15hubMotorGeo(r, hw, { segs:22, ribs:0 }), BM.motor);
+    for (let i = 0; i < 6; i++){ const a = i/6*Math.PI*2 + 0.2; [-1, 1].forEach(s=> bl.push(mo15xcyl([Math.cos(a)*r*0.64, Math.sin(a)*r*0.64], 0.0042, 0.006, s*(hw + 0.001), 6))); }
+    mo15add(g, bl, BM.rim);
+    for (let i = 0; i < n; i++){ const a = i/n*Math.PI*2 + 0.3;
+      sp.push(mo15loftGeo([[0, Math.sin(a)*(r - 0.006), Math.cos(a)*(r - 0.006)], [0, Math.sin(a)*(D.ri + 0.003), Math.cos(a)*(D.ri + 0.003)]], [[0, 0.018, 0.026], [1, 0.012, 0.020]], { rad:8, seg:1, n:2.6 })); }
   } else {
-    const dk = new T.CylinderGeometry(ri, ri, 0.014, 28); dk.rotateZ(Math.PI/2); if (dk.attributes.uv) dk.deleteAttribute('uv'); sp.push(dk);
-    sp.push(mo15latheGeo([[ri*0.40, -0.012], [ri*0.62, -0.012], [ri*0.62, 0.012], [ri*0.40, 0.012]], 24));
+    // plain hub + cast Y spokes (one stem from the hub that splits into two arms to the rim)
+    const hr = Math.min(0.026, D.ri*0.33), hw = D.hubW;
+    mo15add(g, mo15latheGeo([[0, -hw - 0.006], [0.010, -hw - 0.006], [0.012, -hw], [hr, -hw*0.80], [hr, hw*0.80], [0.012, hw], [0.010, hw + 0.006], [0, hw + 0.006]], 16), M12.anod);
+    const rm = hr + (D.ri - hr)*0.42;
+    for (let i = 0; i < n; i++){
+      const a = i/n*Math.PI*2 + 0.3, m = [0, Math.sin(a)*rm, Math.cos(a)*rm];
+      sp.push(mo15loftGeo([[0, Math.sin(a)*(hr - 0.003), Math.cos(a)*(hr - 0.003)], m], [[0, 0.014, 0.017], [1, 0.011, 0.014]], { rad:8, seg:1 }));
+      [-1, 1].forEach(e=>{ const b = a + e*0.26*(5/n); sp.push(mo15loftGeo([m, [0, Math.sin(b)*(D.ri + 0.003), Math.cos(b)*(D.ri + 0.003)]], [[0, 0.011, 0.013], [1, 0.010, 0.011]], { rad:8, seg:1 })); });
+    }
   }
   mo15add(g, sp, BM.rim);
-  if (o.disc){ const rg = mo15rotorGeo(o.disc, o.disc*0.70, 0.003, { waves:0, holes:10 }); rg.translate(o.discX || 0.052, 0, 0); mo15add(g, rg, M12.steel); }
-  if (o.drum) mo15add(g, mo15latheGeo([[0, 0.03], [o.drum, 0.03], [o.drum, 0.05], [0, 0.05]], 20), M12.anod);
+  if (o.disc){
+    const Ro = D.discR, Ri = Ro*0.68, rg = mo15rotorGeo(Ro, Ri, 0.0028, { waves:o.wave ? 9 : 0, holes:12 });
+    rg.translate(D.discX, 0, 0); mo15add(g, rg, M12.steel);
+    const cg = mo15carrierGeo(Ri, o.motor ? 0.030 : 0.020, 0.005, 5); cg.translate(D.discX - 0.003, 0, 0); mo15add(g, cg, o.motor ? BM.motor : M12.anod);
+  }
+  if (o.drum) mo15add(g, mo15latheGeo([[0.012, D.hubW - 0.004], [D.ri*0.56, D.hubW - 0.004], [D.ri*0.58, D.hubW + 0.006], [D.ri*0.50, D.hubW + 0.016], [0.014, D.hubW + 0.018]], 20), M12.anod);
   return fmerge(g);
 }
+/* a brake caliper on a disc (rotor at x, radius Ro, centre A [z,y]) at angle ang (rad, 0 = forward, PI/2 = up), mounted toward the leg at x lx */
+function mo15scootCaliper(A, Ro, x, ang, lx){
+  const c = [A[0] + Math.cos(ang)*(Ro - 0.007), A[1] + Math.sin(ang)*(Ro - 0.007)], t = [-Math.sin(ang), Math.cos(ang)], s = x > 0 ? 1 : -1;
+  const body = mo15loftGeo([[x + s*0.003, c[1] - t[1]*0.024, c[0] - t[0]*0.024], [x + s*0.003, c[1] + t[1]*0.024, c[0] + t[0]*0.024]], [[0, 0.026, 0.024], [0.5, 0.030, 0.028], [1, 0.026, 0.024]], { n:3.2, rad:10, seg:3 });
+  const tab = mo15loftGeo([[x + s*0.010, c[1], c[0]], [lx, c[1] + Math.sin(ang)*0.004, c[0] + Math.cos(ang)*0.004]], [0.020, 0.014], { n:3, rad:8, seg:1 });
+  return [body, tab];
+}
+
 function fbMo15scoot(P){
-  const Rr = P.Rr || 0.13, Rf = P.Rf || Rr, tr = P.tr || Rr*0.30, tf = P.tf || P.tr || Rf*0.30;
-  const wb = P.wb || 1.0, rz = -wb*0.5, fz = wb*0.5, dy = P.dy || 0.15, dw = P.dw || 0.19, dt = P.dt || 0.06;
-  const M = BM.frame, AC = FX.acc, f = new T.Group(), fr = new T.Group();
+  const Rr = P.Rr || 0.13, Rf = P.Rf || Rr, wb = P.wb || 1.0, rz = -wb*0.5, fz = wb*0.5;
+  const dy = P.dy || 0.15, dw = P.dw || 0.19, dt = P.dt || 0.06, kid = !!P.kid, perf = P.rsus === 'arm';
   const ha = mo15deg(P.ha || 79), cot = Math.cos(ha)/Math.sin(ha), off = P.off === undefined ? 0.03 : P.off;
   const dd = [-Math.cos(ha), Math.sin(ha)], nn = [Math.sin(ha), Math.cos(ha)];
-  const zAt = y=> fz - off - (y - Rf)*cot, PA = y=> [zAt(y), y];
-  const barY = P.bar || 1.1, bw = (P.bw || 0.56)/2, s = Math.min(1.12, Math.max(0.75, wb/1.05));
-  const B = { DECK:[], ACC:[], DARK:[], ALLOY:[], MAT:[], GLOW:[], TAIL:[], LAMP:[], FORK:[], SPRING:[], SEAT:[] };
-  const BF = { STEM:[], DARK:[], ALLOY:[], ACC:[], FORK:[], SPRING:[], LAMP:[], GLOW:[], BARS:[], DECK:[] };
-  const add = (k, g)=>{ if (g) B[k].push(g); }, addF = (k, g)=>{ if (g) BF[k].push(g); };
+  const zAt = y=> fz - off - (y - Rf)*cot, PA = y=> [zAt(y), y], X3 = (p, x)=> [x || 0, p[1], p[0]];
+  const barY = P.bar || 1.1, bw = (P.bw || 0.56)/2, A = [fz, Rf], RA = [rz, Rr];
+  const tyW = R=> Math.min(0.10, R*(P.tread ? 0.58 : P.solid ? 0.42 : 0.50)*(kid ? 0.86 : 1));
+  const motor = P.motor === undefined ? 'rear' : P.motor, mF = motor === 'front' || motor === 'dual', mR = motor === 'rear' || motor === 'dual';
+  const discF = !kid && !P.drum && (!mF || perf || !!P.disc), discR = !kid && (!mR || perf || !!P.disc);
+  const WO = (R, tw, mot, disc)=> ({ tw, th:R*(P.tread ? 0.40 : P.solid ? 0.30 : 0.36), tread:P.tread ? 'sc18off' : 'sc18road', solid:!!P.solid, motor:mot,
+    spokes:P.spokes || (mot ? 6 : 5), disc, wave:perf, drum:!!P.drum && !disc && !mot });
+  const woR = WO(Rr, P.tw || tyW(Rr), mR, discR), woF = WO(Rf, P.twf || P.tw || tyW(Rf), mF, discF);
+  const DR = mo15scootDims(Rr, woR), DF = mo15scootDims(Rf, woF);
+  const M = BM.frame, f = new T.Group(), fr = new T.Group();
+  const B = {}, BF = {}, put = (O, k, g)=>{ if (!g) return; if (Array.isArray(g)) g.forEach(q=> put(O, k, q)); else (O[k] || (O[k] = [])).push(g); };
+  const add = (k, g)=> put(B, k, g), addF = (k, g)=> put(BF, k, g);
+  const FEND = P.fend === 'frame' ? 'DECK' : P.fend === 'acc' ? 'ACC' : 'PLAS';
 
-  /* ---- deck: a sculpted battery deck, the mat on top, skirts / LED strips, belly ---- */
-  const z1 = zAt(dy + 0.02) - 0.05, z0 = rz + (P.dRear === undefined ? Rr*0.95 + 0.03 : P.dRear);
-  const taper = P.deck === 'taper';
-  const dk = t=>{ const w2 = taper ? dw*(t > 0.55 ? 1 - (t - 0.55)*0.55 : 1) : dw; return w2; };
-  const keys = []; const NS = 7;
-  for (let i = 0; i <= NS; i++){ const t = i/NS, z = z0 + (z1 - z0)*t; keys.push({ p:[z, dy - dt], up:dt, dn:0.001, w:dk(t)/2, wt:dk(t)/2 - 0.006, n:5, nb:3.2 }); }
-  keys[0].up = dt*0.80; keys[0].w *= 0.94; keys[0].wt *= 0.92;
-  add('DECK', mo15sweepGeo(keys, { sub:2, seg:20 }));
-  // the neck: deck nose sweeping up into the steering head
-  const H0 = PA(dy - 0.035), H1 = PA(dy + 0.075);
-  add('DECK', mo15loftGeo([[0, dy - dt*0.6, z1 - 0.08], [0, dy - dt*0.2 + 0.01, z1 - 0.01], [0, (H0[1] + H1[1])/2, H0[0] - 0.02]], [[0, dw*0.82, dt*0.9], [0.5, dw*0.62, dt*1.2], [1, 0.07, 0.085]], { n:3.6, rad:16, seg:10 }));
-  add('DECK', mo15rodGeo([0, H0[1], H0[0]], [0, H1[1], H1[0]], 0.034, 16));
-  add('DARK', mo15rodGeo([0, H1[1] - 0.004, H1[0] + 0.0008], [0, H1[1] + 0.012, H1[0] - 0.003], 0.037, 16));
-  // rubber mat with a ribbed grip pattern
-  const mz0 = z0 + 0.03, mz1 = z1 - 0.03;
-  add('MAT', mo15sweepGeo([{ p:[mz0, dy - 0.001], up:0.0035, dn:0.0005, w:dk(0.02)/2 - 0.018, wt:dk(0.02)/2 - 0.020, n:6, nb:6 }, { p:[(mz0 + mz1)/2, dy - 0.001], up:0.0035, dn:0.0005, w:dk(0.5)/2 - 0.018, wt:dk(0.5)/2 - 0.020, n:6, nb:6 }, { p:[mz1, dy - 0.001], up:0.0035, dn:0.0005, w:dk(0.98)/2 - 0.018, wt:dk(0.98)/2 - 0.020, n:6, nb:6 }], { sub:2, seg:10 }));
-  const nr = Math.round((mz1 - mz0)/0.03);
-  for (let i = 1; i < nr; i++){ const z = mz0 + (mz1 - mz0)*i/nr, t = (z - z0)/(z1 - z0); add('MAT', mo15boxGeo([0, dy + 0.0032, z], dk(t) - 0.05, 0.0028, 0.006)); }
-  // side skirts (accent) + optional LED strips + cooling fins
+  /* ---- head tube ABOVE the front tyre: the fork crown + fender fit between the tyre and its bottom ---- */
+  const htR = P.htR || (perf ? 0.034 : kid ? 0.026 : 0.030), htL = P.htL || (perf ? 0.12 : 0.10);
+  const Hy0 = 2*Rf + (P.ffend === 'high' ? 0.070 : 0.058), HB = PA(Hy0), HT = mo15up(HB, dd, htL), hz = (HB[0] + HT[0])/2;
+
+  /* ---- deck: body-colour shell, black under-tray, rubber mat with ribs, trims, reflectors, charge port ---- */
+  const matT = 0.0045, split = dy - dt*0.56;
+  const nkT = Math.max(0.050, Math.min(0.074, dt*0.86)), nkW = Math.max(0.070, Math.min(0.100, dw*0.42));
+  const rN = Rf + 0.026 + nkT*0.5, yS = dy - dt*0.5;
+  const z1 = fz - Math.sqrt(Math.max(0.0004, rN*rN - (yS - Rf)*(yS - Rf)));
+  const z0 = rz + (P.dRear === undefined ? Rr*0.95 + 0.03 : P.dRear), dl = z1 - z0;
+  const taper = P.deck === 'taper', dk = t=> taper ? dw*(t > 0.55 ? 1 - (t - 0.55)*0.42 : 1) : dw;
+  { const shell = [], tray = [], NS = 8;
+    for (let i = 0; i <= NS; i++){
+      const t = i/NS, z = z0 + dl*t, w = dk(t)/2, e = i === 0 ? 0.93 : 1;
+      shell.push({ p:[z, split], up:(dy - matT - split), dn:0.0015, w:w*e, wt:(w - 0.006)*e, n:5.5, nb:3 });
+      tray.push({ p:[z, split + 0.001], up:0.002, dn:(split - (dy - dt))*(i === 0 ? 0.75 : 1), w:(w - 0.007)*e, wt:(w - 0.007)*e, n:3, nb:2.4 });
+    }
+    add('DECK', mo15sweepGeo(shell, { sub:2, seg:18 }));
+    add('BELLY', mo15sweepGeo(tray, { sub:2, seg:16 }));
+  }
+  // the rubber mat (inset from the edges) + raised ribs across it
+  { const mz0 = z0 + 0.022, mz1 = z1 - 0.004, K = [0, 0.5, 1].map(u=>{ const z = mz0 + (mz1 - mz0)*u, t = (z - z0)/dl; return { p:[z, dy - matT], up:matT, dn:0.0005, w:dk(t)/2 - 0.013, wt:dk(t)/2 - 0.016, n:6, nb:6 }; });
+    add('MAT', mo15sweepGeo(K, { sub:2, seg:12 }));
+    const nr = Math.round((mz1 - mz0 - 0.03)/0.028);
+    for (let i = 0; i <= nr; i++){ const z = mz0 + 0.015 + (mz1 - mz0 - 0.03)*i/nr, t = (z - z0)/dl; add('MAT', mo15boxGeo([0, dy + 0.0012, z], dk(t) - 0.046, 0.0026, 0.007)); } }
+  // side trim: an accent line along the shell, or LED strips at the shell / tray join; reflectors; charge port; logo
+  const trim = P.trim || (P.neon ? 'glow' : 'acc');
   [-1, 1].forEach(sd=>{
-    const pts = []; for (let i = 0; i <= 6; i++){ const t = 0.06 + 0.88*i/6, z = z0 + (z1 - z0)*t; pts.push([sd*(dk(t)/2 + 0.001), dy - dt*0.52, z]); }
-    add(P.neon ? 'GLOW' : 'ACC', mo15tubeGeo(pts, P.neon ? 0.0045 : 0.0055, 18, 6));
-    if (P.fins) for (let i = 0; i < 6; i++){ const t = 0.18 + i*0.12, z = z0 + (z1 - z0)*t; add('DARK', mo15boxGeo([sd*(dk(t)/2 + 0.003), dy - dt*0.30, z], 0.006, dt*0.36, 0.012)); }
+    const L = (yy, k)=>{ const pts = []; for (let i = 0; i <= 6; i++){ const t = 0.05 + 0.90*i/6, z = z0 + dl*t; pts.push([sd*(dk(t)/2 + k), yy, z]); } return pts; };
+    if (trim === 'glow') add('GLOW', mo15tubeGeo(L(split + 0.001, -0.004), 0.0052, 16, 6));
+    else if (trim === 'acc') add('ACC', mo15tubeGeo(L(split + (dy - split)*0.42, -0.0035), 0.0042, 16, 6));
+    add('AMBER', mo15boxGeo([sd*(dk(0.94)/2 - 0.001), split + (dy - split)*0.45, z0 + dl*0.94], 0.006, (dy - split)*0.42, 0.034));
+    add('TAIL', mo15boxGeo([sd*(dk(0.04)/2 - 0.0005), split + (dy - split)*0.45, z0 + dl*0.05], 0.006, (dy - split)*0.42, 0.030));
+    if (P.fins) for (let i = 0; i < 7; i++){ const t = 0.16 + i*0.11; add('BELLY', mo15boxGeo([sd*(dk(t)/2 - 0.012), dy - dt - 0.004, z0 + dl*t], 0.006, 0.012, 0.05)); }
   });
-  if (P.belly !== false) add('DARK', mo15sweepGeo([{ p:[z0 + 0.06, dy - dt - 0.002], up:0.004, dn:0.016, w:dw*0.36, wt:dw*0.38, n:4, nb:3 }, { p:[(z0 + z1)/2, dy - dt - 0.002], up:0.004, dn:0.024, w:dw*0.40, wt:dw*0.42, n:4, nb:3 }, { p:[z1 - 0.08, dy - dt - 0.002], up:0.004, dn:0.016, w:dw*0.36, wt:dw*0.38, n:4, nb:3 }], { sub:2, seg:12 }));
-  // charge port cap + brand on the skirts
-  add('DARK', mo15xcyl([z0 + 0.10, dy - dt*0.5], 0.008, 0.008, -(dk(0.1)/2 + 0.002), 10));
+  add('RUB', mo15xcyl([z0 + dl*0.82, split + (dy - split)*0.45], 0.0105, 0.012, dk(0.82)/2 - 0.002, 12));
   const decals = [];
-  if (P.logo){ const dm = mo15decalMat(P.logo, mo15css(P.logoCol === undefined ? 0xf2f2ee : P.logoCol)); decals.push(()=> mo15decal(f, dm, dk(0.5)/2 + 0.0015, [(z0 + z1)/2 + 0.04, dy - dt*0.24], Math.min(0.20, (z1 - z0)*0.34), { h:Math.min(0.20, (z1 - z0)*0.34)*0.1875 })); }
+  if (P.logo){ const dm = mo15decalMat(P.logo, mo15css(P.logoCol === undefined ? 0xf2f2ee : P.logoCol)), lw = Math.min(0.20, dl*0.30);
+    decals.push(()=> mo15decal(f, dm, dk(0.5)/2 + 0.0012, [z0 + dl*0.52, split + (dy - split)*(trim === 'acc' ? 0.74 : 0.55)], lw, { h:Math.min(lw*0.19, (dy - split)*0.42) })); }
 
-  /* ---- rear: fender, light, swingarm + shock(s) or a rigid rear fork, kickstand, chain-drive motor box ---- */
-  const RA = [rz, Rr];
-  if (P.rsus === 'arm'){
-    const pv = [z0 + 0.045, dy - dt - 0.012];
-    [-1, 1].forEach(sd=> add('DECK', mo15loftGeo([[sd*(dw*0.30), pv[1], pv[0]], [sd*0.058, Rr + 0.006, rz + 0.02]], [[0, 0.024, 0.042], [1, 0.022, 0.03]], { n:4, rad:10, seg:3 })));
-    add('ALLOY', mo15xcyl(pv, 0.012, dw*0.7, 0, 10));
-    const top = [0, dy + 0.06, z0 + 0.10], bot = [0, Rr + 0.045, rz + 0.07];
-    add('DECK', mo15loftGeo([[0, dy - 0.01, z0 + 0.12], [0, top[1] + 0.02, top[2]]], [[0, 0.05, 0.03], [1, 0.04, 0.03]], { n:4, rad:10, seg:2 }));
-    const at = t=> mo15L3(top, bot, t);
-    add('DARK', mo15rodGeo(at(0.0), at(0.56), 0.0135, 12)); add('ALLOY', mo15rodGeo(at(0.5), at(1.0), 0.0065, 8));
-    add('ALLOY', mo15rodGeo(at(0.09), at(0.12), 0.026, 12)); add('ALLOY', mo15rodGeo(at(0.86), at(0.89), 0.024, 12));
-    add('SPRING', mo15helixGeo(at(0.12), at(0.86), 0.021, 7, 0.0038, 5));
-    if (P.shock2) [-1, 1].forEach(sd=>{ const a = [sd*0.07, dy - 0.01, z0 + 0.06], b = [sd*0.062, Rr + 0.05, rz + 0.07]; add('DARK', mo15rodGeo(a, mo15L3(a, b, 0.55), 0.011, 10)); add('SPRING', mo15helixGeo(mo15L3(a, b, 0.12), mo15L3(a, b, 0.86), 0.017, 6, 0.0032, 5)); add('ALLOY', mo15rodGeo(mo15L3(a, b, 0.5), b, 0.005, 6)); });
+  /* ---- neck: the deck nose sweeps up round the back of the front tyre into the head tube ---- */
+  { let aS = Math.atan2(yS - Rf, z1 - fz); if (aS < 0) aS += Math.PI*2; const aE = Math.atan2(HB[1] - Rf, HB[0] - fz), rE = Math.hypot(HB[0] - fz, HB[1] - Rf);
+    const pts = [[0, yS, z1 - 0.075], [0, yS, z1 - 0.02]];
+    for (let k = 0; k <= 4; k++){ const t = k/4, a = aS + (aE - aS)*t, r = rN + (rE - rN)*t*t; pts.push([0, Rf + Math.sin(a)*r, fz + Math.cos(a)*r]); }
+    pts.push(X3(mo15up(HB, dd, 0.03)));
+    add('DECK', mo15loftGeo(pts, [[0, dk(1)*0.94, dt*0.96], [0.16, dk(1)*0.86, dt*0.96], [0.36, nkW, nkT], [0.78, htR*2.3, htR*2.2], [1, htR*2.06, htR*2.06]], { n:3.2, rad:18, seg:20 }));
+    // the head tube (body colour) with dark bearing cups at both ends
+    add('DECK', mo15latheAlong([[0, -0.01], [htR*0.96, -0.01], [htR, 0.06], [htR, 0.94], [htR*0.96, 1.0], [0, 1.0]], X3(HB), X3(HT), 22));
+    add('DARK', mo15latheAlong([[htR*0.8, 0], [htR + 0.004, 0], [htR + 0.004, 1], [htR*0.8, 1]], X3(mo15up(HT, dd, -0.010)), X3(mo15up(HT, dd, 0.010)), 22));
+    add('DARK', mo15latheAlong([[htR*0.8, 0], [htR + 0.004, 0], [htR + 0.004, 1], [htR*0.8, 1]], X3(mo15up(HB, dd, -0.012)), X3(mo15up(HB, dd, 0.006)), 22)); }
+
+  /* ---- rear: dropout plates or a swing arm + two coil-over shocks under a raised kick plate; fender + tail light; brake; kickstand ---- */
+  const xr = Math.max(DR.tw/2 + 0.010, discR ? DR.discX + 0.024 : 0) + 0.007;
+  if (perf){
+    const pv = [z0 + 0.035, dy - dt - 0.012];
+    [-1, 1].forEach(sd=> add('DARK', mo15plateGeo(mo15hull2(pv, 0.024, RA, 0.025, 10), 0.016, { x:sd*xr, bev:0.004, bs:1 })));
+    add('ALLOY', mo15xcyl(pv, 0.011, xr*2 + 0.03, 0, 10));
+    add('DARK', mo15boxGeo([0, pv[1] + 0.004, pv[0] - 0.035], xr*2 - 0.01, 0.026, 0.03));
+    // the raised kick plate over the deck tail (the back foot rests on it) + its side brackets
+    const kp0 = [z0 + 0.10, dy + 0.002], kp1 = [z0 - 0.015, dy + 0.055];
+    add('DECK', mo15loftGeo([X3(kp0), X3(mo15L2(kp0, kp1, 0.5)), X3(kp1)], [[0, dk(0.05)*0.92, 0.024], [1, dk(0)*0.86, 0.030]], { n:4, rad:14, seg:4 }));
+    add('MAT', mo15loftGeo([[0, mo15L2(kp0, kp1, 0.15)[1] + 0.012, mo15L2(kp0, kp1, 0.15)[0]], [0, mo15L2(kp0, kp1, 0.92)[1] + 0.015, mo15L2(kp0, kp1, 0.92)[0]]], [dk(0)*0.70, 0.006], { n:6, rad:12, seg:1 }));
+    // two coil-over shocks, one each side, from the kick-plate brackets down to the arm
+    [-1, 1].forEach(sd=>{
+      const x = sd*(xr + 0.026), a = [x, kp1[1] - 0.004, kp1[0] + 0.012], b = [x, Rr + 0.030, rz + 0.085];
+      add('DARK', mo15plateGeo(mo15hull2([kp1[0] + 0.012, kp1[1] - 0.004], 0.016, [z0 + 0.04, dy - dt*0.5], 0.02, 8), 0.010, { x:sd*(xr + 0.012), bev:0.003, bs:1 }));
+      add('DARK', mo15plateGeo(mo15hull2([b[2], b[1]], 0.015, [rz + 0.11, Rr + 0.004], 0.014, 8), 0.010, { x:sd*(xr + 0.012), bev:0.003, bs:1 }));
+      add('DARK', mo15rodGeo(a, mo15L3(a, b, 0.55), 0.0125, 12)); add('ALLOY', mo15rodGeo(mo15L3(a, b, 0.5), b, 0.0062, 8));
+      add('ALLOY', mo15rodGeo(mo15L3(a, b, 0.10), mo15L3(a, b, 0.14), 0.021, 12)); add('ALLOY', mo15rodGeo(mo15L3(a, b, 0.86), mo15L3(a, b, 0.90), 0.019, 12));
+      add('SPRING', mo15helixGeo(mo15L3(a, b, 0.14), mo15L3(a, b, 0.86), 0.0175, 5, 0.0036, 4));
+    });
   } else {
-    [-1, 1].forEach(sd=> add('DECK', mo15loftGeo([[sd*(dw*0.30), dy - dt*0.5, z0 + 0.03], [sd*0.054, Rr + 0.004, rz + 0.012]], [[0, 0.014, 0.034], [1, 0.012, 0.024]], { n:4, rad:10, seg:3 })));
+    // dropout plates from the deck tail down to the axle (one cast piece with the deck)
+    [-1, 1].forEach(sd=> add('DECK', mo15plateGeo(mo15hull2([z0 + 0.03, split + 0.002], (dy - split)*0.85, RA, 0.022, 10), 0.012, { x:sd*xr, bev:0.0035, bs:1 })));
   }
-  [-1, 1].forEach(sd=> add('ALLOY', mo15boxGeo([sd*0.06, Rr, rz], 0.012, 0.036, 0.04)));
-  add('ALLOY', mo15xcyl(RA, 0.007, 0.14, 0, 8));
+  add('ALLOY', mo15xcyl(RA, 0.0075, xr*2 + 0.026, 0, 10));
+  [-1, 1].forEach(sd=> add('DARK', mo15xcyl(RA, 0.0115, 0.008, sd*(xr + (perf ? 0.012 : 0.010)), 6)));
+  if (mR) add('RUB', mo15tubeGeo([[-(xr + 0.008), Rr + 0.006, rz + 0.012], [-(xr + 0.012), Rr + 0.05, rz + 0.07], [-(xr - 0.01), split - 0.004, z0 + 0.03]], 0.0045, 14, 6));   // motor cable
+  if (discR) add('DARK', mo15scootCaliper(RA, DR.discR, DR.discX, mo15deg(34), xr - 0.004));
+  // rear fender: from the deck tail up over the wheel, the tail light + reflector on its end
   if (P.rfend !== 'none'){
-    const cover = P.rfend === 'cover', long = P.rfend === 'long', rr = Rr + 0.022, a0 = mo15deg(cover ? 30 : 60), a1 = mo15deg(long ? 175 : cover ? 160 : 150), pts = [];
-    for (let i = 0; i <= 7; i++){ const a = a0 + (a1 - a0)*i/7; pts.push({ p:[rz + Math.cos(a)*rr, Rr + Math.sin(a)*rr], up:0.005, dn:0.002, w:cover ? tr*1.6 : tr*1.25, wt:cover ? tr*1.6 : tr*1.25, arch:0.012, n:3, nb:3 }); }
-    add('DECK', mo15sweepGeo(pts, { sub:2, seg:12, c:RA }));
-    const e = pts[pts.length - 1].p, ea = a1;
-    add('TAIL', mo15boxGeo([0, e[1] + 0.006, e[0] + 0.004], 0.06, 0.016, 0.014, -(ea - Math.PI)));
-    if (!cover && !P.rsus) add('DARK', mo15boxGeo([0, Rr + rr + 0.006, rz + 0.01], 0.05, 0.006, 0.07));   // stamp brake pad on the fender
+    const rf = P.rfend || 'arc', cover = rf === 'cover', rr = Rr + 0.018, a1 = mo15deg(rf === 'long' ? 182 : cover ? 170 : 160), w = DR.tw*(cover ? 0.78 : 0.66);
+    const a0 = Math.max(mo15deg(48), Math.acos(mo15clamp((z0 + 0.006 - rz)/rr, -1, 1)));
+    const keys = [{ p:[z0 + 0.004, perf ? dy + 0.03 : dy - 0.004], up:0.005, dn:0.002, w:w*0.94, wt:w*0.94, arch:0.010, n:3, nb:3 }];
+    for (let i = 0; i <= 6; i++){ const a = Math.max(a0, mo15deg(66)) + (a1 - Math.max(a0, mo15deg(66)))*i/6; keys.push({ p:[rz + Math.cos(a)*rr, Rr + Math.sin(a)*rr], up:0.0055, dn:0.002, w, wt:w, arch:cover ? 0.022 : 0.014, n:3, nb:3 }); }
+    add(FEND, mo15sweepGeo(keys, { sub:3, seg:14, c:RA }));
+    const e = keys[keys.length - 1].p, ang = a1;
+    const lc = [rz + Math.cos(ang)*(rr + 0.008), Rr + Math.sin(ang)*(rr + 0.008)], tg = [Math.sin(ang), -Math.cos(ang)];
+    add('DARK', mo15loftGeo([X3(mo15up(lc, tg, -0.012)), X3(mo15up(lc, tg, 0.004))], [0.072, 0.026], { n:4, rad:12, seg:1 }));
+    add('TAIL', mo15loftGeo([X3(mo15up(lc, tg, 0.002)), X3(mo15up(lc, tg, 0.008))], [0.064, 0.018], { n:4, rad:12, seg:1 }));
+    if (!cover && !mR && !perf && !discR) add('DARK', mo15sweepGeo([0.55, 0.72, 0.88].map(u=>{ const a = mo15deg(70) + (a1 - mo15deg(70))*u*0.5; return { p:[rz + Math.cos(a)*(rr + 0.004), Rr + Math.sin(a)*(rr + 0.004)], up:0.004, dn:0.001, w:w*0.55, wt:w*0.5, n:4, nb:3 }; }), { sub:2, seg:10, c:RA }));   // stamp brake pad
   }
-  if (P.stand) add('ALLOY', mo15tubeGeo([[dw*0.36, dy - dt*0.8, (z0 + z1)/2 - 0.02], [dw*0.48, Math.max(0.05, dy - dt - 0.04), (z0 + z1)/2 - 0.12], [dw*0.52, Math.max(0.035, dy - dt - 0.06), (z0 + z1)/2 - 0.20]], 0.0065, 8, 6));
+  // kickstand: folded back along the left edge under the deck
+  const kz = z0 + dl*0.46, kx = dk(0.46)/2 - 0.024;
+  if (P.stand !== false){
+    add('DARK', mo15boxGeo([kx, dy - dt - 0.004, kz], 0.022, 0.016, 0.040));
+    add('DARK', mo15loftGeo([[kx + 0.008, dy - dt - 0.010, kz + 0.006], [kx + 0.016, dy - dt - 0.026, kz - 0.175]], [[0, 0.010, 0.018], [1, 0.009, 0.014]], { n:3, rad:8, seg:1 }));
+    add('RUB', mo15boxGeo([kx + 0.016, dy - dt - 0.028, kz - 0.178], 0.016, 0.012, 0.024));
+  }
+  // chain drive (kids' scooters): the motor under a low cover at the back right of the deck, a chain guard down to the wheel
   if (P.chainBox){
-    // chain drive on the right: the motor under a low cover at the back of the deck, a slim chain guard down to the wheel
     const mc = [z0 + 0.065, dy - 0.012];
     add('DECK', mo15sweepGeo([{ p:[z0 - 0.012, dy - 0.004], up:0.026, dn:0.004, w:dw*0.40, wt:dw*0.32, n:3, nb:4 }, { p:[z0 + 0.07, dy - 0.004], up:0.036, dn:0.004, w:dw*0.42, wt:dw*0.34, n:3, nb:4 }, { p:[z0 + 0.15, dy - 0.004], up:0.012, dn:0.004, w:dw*0.40, wt:dw*0.36, n:3, nb:4 }], { sub:3, seg:14 }));
     add('DARK', mo15xcyl(mc, 0.038, 0.075, -0.075, 16));
-    add('DECK', mo15plateGeo(mo15hull2(mc, 0.036, [rz, Rr], 0.048, 10), 0.022, { x:-0.10, bev:0.007, bs:1 }));
+    add('DECK', mo15plateGeo(mo15hull2(mc, 0.036, RA, 0.048, 10), 0.022, { x:-(xr + 0.016), bev:0.007, bs:1 }));
   }
+  // seat: a socket bolted to the deck, quick-release clamp, alloy post, padded saddle on a black base
+  const sz2 = z0 + dl*0.40;
   if (P.seat){
-    const sz2 = (z0 + z1)/2 - 0.10;
-    add('ALLOY', mo15rodGeo([0, dy, sz2 + 0.03], [0, dy + 0.46, sz2 - 0.04], 0.018, 12));
-    add('DARK', mo15rodGeo([0, dy, sz2 + 0.03], [0, dy + 0.12, sz2 + 0.01], 0.024, 12));
-    add('SEAT', mo15sweepGeo([{ p:[sz2 + 0.09, dy + 0.46], up:0.035, dn:0.012, w:0.05, wt:0.04, n:2.6, nb:6 }, { p:[sz2 - 0.02, dy + 0.462], up:0.055, dn:0.012, w:0.10, wt:0.085, n:2.6, nb:6 }, { p:[sz2 - 0.12, dy + 0.466], up:0.05, dn:0.012, w:0.11, wt:0.095, n:2.6, nb:6 }], { sub:3, seg:16 }));
+    const sb = [0, dy, sz2 + 0.03], st = [0, dy + 0.44, sz2 - 0.035];
+    add('DARK', mo15boxGeo([0, dy + 0.004, sz2 + 0.03], 0.07, 0.008, 0.08));
+    add('DARK', mo15rodGeo(sb, mo15L3(sb, st, 0.30), 0.024, 14)); add('ACC', mo15rodGeo(mo15L3(sb, st, 0.28), mo15L3(sb, st, 0.34), 0.027, 14));
+    add('ALLOY', mo15rodGeo(mo15L3(sb, st, 0.30), st, 0.0165, 12));
+    add('DARK', mo15sweepGeo([{ p:[sz2 + 0.07, dy + 0.448], up:0.012, dn:0.010, w:0.04, wt:0.035, n:3, nb:3 }, { p:[sz2 - 0.12, dy + 0.452], up:0.012, dn:0.010, w:0.085, wt:0.08, n:3, nb:3 }], { sub:3, seg:12 }));
+    add('SEAT', mo15sweepGeo([{ p:[sz2 + 0.09, dy + 0.458], up:0.034, dn:0.008, w:0.05, wt:0.04, n:2.6, nb:6 }, { p:[sz2 - 0.02, dy + 0.460], up:0.056, dn:0.008, w:0.10, wt:0.085, n:2.6, nb:6 }, { p:[sz2 - 0.13, dy + 0.464], up:0.05, dn:0.008, w:0.11, wt:0.095, n:2.6, nb:6 }], { sub:3, seg:16 }));
   }
 
-  /* ---- front: fork + suspension, fender, stem + fold, cockpit, lights ---- */
-  const A = [fz, Rf], fs = P.fsus || 'none', flen = Math.max(0.1, (H0[1] - Rf)/Math.sin(ha) + 0.01);
-  const fx = fs === 'none' ? 0.048 : fs === 'hyd' ? 0.074 : 0.064, LP = t=> mo15up(A, dd, t);
-  // crown (Release 15.5): a forged slab at the stem base round both legs + the steerer, rounded edges (it used to be a plain box);
-  // one piece with the legs on a rigid fork (fork paint), black on a suspension fork
-  const Cr = LP(flen), legR = fs === 'none' ? 0.0125 : fs === 'hyd' ? 0.016 : 0.012, cT = flen + 0.016, cH = 0.030;            // (the crown sits on the stem base, above the low steering neck)
-  { const sl = fk17Slab({ d:dd }, [[fx, off, legR + 0.0075], [-fx, off, legR + 0.0075], [0, 0, 0.026], [0, off*0.5, 0.024]], cH, mo15up(mo15up(A, dd, cT - cH/2), nn, -off), 0.007);
+  /* ---- front: fork (rigid / sprung / dual spring / hydraulic) hanging from the crown under the head tube, fender, brake ---- */
+  const fs = P.fsus || 'none', legR = fs === 'hyd' ? 0.020 : fs === 'none' ? 0.013 : 0.016;
+  const fx = Math.max(DF.tw/2 + 0.010, discF ? DF.discX + 0.024 : 0) + legR, offP = off*Math.sin(ha);
+  const cH = 0.032, Cc = mo15up(HB, dd, -(0.008 + cH/2)), tC = (Cc[1] - Rf)/dd[1], LP = t=> mo15up(A, dd, t);
+  { const sl = fk17Slab({ d:dd }, [[fx, offP, legR + 0.0075], [-fx, offP, legR + 0.0075], [0, 0, htR*0.95]], cH, Cc, 0.008);
     if (sl.attributes.uv) sl.deleteAttribute('uv'); addF(fs === 'none' ? 'FORK' : 'DARK', sl); }
   [-1, 1].forEach(sd=>{
     const x = sd*fx;
     if (fs === 'none'){
-      addF('FORK', mo15loftGeo([mo15P(LP(-0.004), x), mo15P(LP(cT*0.5), x), mo15P(LP(cT - 0.006), x)], [[0, 0.018, 0.026], [0.5, 0.020, 0.030], [1, 0.024, 0.036]], { n:2.6, rad:12, seg:6 }));
-      addF('FORK', mo15xcyl(A, 0.0135, 0.022, x, 14));                                                   // dropout boss round the axle
-    }
-    else if (fs === 'hyd'){
-      addF('FORK', mo15rodGeo(mo15P(LP(-0.012), x), mo15P(LP(flen*0.55), x), 0.022, 14));                      // lower legs (paint)
-      addF('ALLOY', mo15rodGeo(mo15P(LP(flen*0.50), x), mo15P(LP(flen + 0.03), x), 0.016, 12));               // stanchions
-      addF('DARK', mo15rodGeo(mo15P(LP(flen*0.54), x), mo15P(LP(flen*0.57), x), 0.019, 12));
+      addF('FORK', mo15loftGeo([X3(LP(-0.004), x), X3(LP(tC*0.5), x), X3(LP(tC - 0.004), x)], [[0, 0.020, 0.026], [0.5, 0.022, 0.030], [1, 0.024, 0.036]], { n:2.8, rad:12, seg:6 }));
+      addF('FORK', mo15xcyl(A, 0.0145, 0.022, x, 14));
+    } else if (fs === 'hyd'){
+      addF('FORK', mo15rodGeo(X3(LP(-0.014), x), X3(LP(tC*0.55), x), 0.021, 16, 0.0225));                          // lowers (fork paint)
+      addF('FORK', mo15loftGeo([X3(LP(-0.016), x), X3(LP(0.035), x)], [[0, 0.040, 0.048], [1, 0.042, 0.046]], { n:2.6, rad:14, seg:2 }));   // axle foot
+      addF('STAN', mo15rodGeo(X3(LP(tC*0.45), x), X3(LP(tC + 0.02), x), 0.0155, 16));                               // stanchions
+      addF('DARK', mo15rodGeo(X3(LP(tC*0.55), x), X3(LP(tC*0.58), x), 0.0235, 16));                                // seal heads
     } else {
-      addF('FORK', mo15rodGeo(mo15P(LP(-0.012), x), mo15P(LP(flen*0.62), x), 0.017, 12));
-      addF('ALLOY', mo15rodGeo(mo15P(LP(flen*0.55), x), mo15P(LP(flen + 0.02), x), 0.012, 10));
-      addF('SPRING', mo15helixGeo(mo15P(LP(flen*0.62), x), mo15P(LP(flen*0.98), x), 0.019, 5, 0.0034, 5));
-      if (fs === 'dual'){ const xo = sd*(fx + 0.03); addF('FORK', mo15rodGeo(mo15P(LP(0.0), xo), mo15P(LP(flen*0.9), xo), 0.011, 10)); addF('SPRING', mo15helixGeo(mo15P(LP(flen*0.35), xo), mo15P(LP(flen*0.85), xo), 0.017, 5, 0.003, 5)); }
+      addF('FORK', mo15rodGeo(X3(LP(-0.012), x), X3(LP(tC*0.56), x), 0.0175, 14));
+      addF('FORK', mo15xcyl(A, 0.0175, 0.026, x, 14));
+      addF('ALLOY', mo15rodGeo(X3(LP(tC*0.50), x), X3(LP(tC + 0.01), x), 0.0115, 12));
+      addF('SPRING', mo15helixGeo(X3(LP(tC*0.58), x), X3(LP(tC*0.97), x), 0.019, 4.5, 0.0038, 4));
+      if (fs === 'dual'){ const xo = sd*(fx + 0.032); addF('FORK', mo15rodGeo(X3(LP(0.0), xo), X3(LP(tC*0.9), xo), 0.011, 10)); addF('SPRING', mo15helixGeo(X3(LP(tC*0.30), xo), X3(LP(tC*0.84), xo), 0.017, 4.5, 0.0032, 4));
+        addF('DARK', mo15rodGeo(X3(LP(0.0), x), X3(LP(0.0), xo), 0.009, 8)); addF('DARK', mo15rodGeo(X3(LP(tC*0.9), x), X3(LP(tC*0.9), xo), 0.009, 8)); }
     }
-    if (fs !== 'none') addF('FORK', mo15xcyl(A, 0.0135, 0.020, x, 14));                                 // axle lug on the lower leg
-    addF('DARK', mo15xcyl(A, 0.0105, 0.008, sd*(fx + 0.014), 6));                                     // axle nut
+    addF('DARK', mo15xcyl(A, 0.0115, 0.008, sd*(fx + legR*0.7 + 0.004), 6));
   });
-  addF('ALLOY', mo15xcyl(A, 0.0065, fx*2 + 0.036, 0, 8));
-  // front fender
+  addF('ALLOY', mo15xcyl(A, 0.0072, fx*2 + 0.03, 0, 8));
+  if (discF) addF('DARK', mo15scootCaliper(A, DF.discR, DF.discX, mo15deg(126), fx - legR*0.6));
+  // front fender: a shell over the tyre hung from the crown, stays to the legs
   if (P.ffend !== 'none'){
-    const hi = P.ffend === 'high', rr = Rf + (hi ? 0.05 : 0.02), a0 = mo15deg(hi ? 25 : 40), a1 = mo15deg(hi ? 140 : 125), pts = [];
-    for (let i = 0; i <= 6; i++){ const a = a0 + (a1 - a0)*i/6; pts.push({ p:[fz + Math.cos(a)*rr, Rf + Math.sin(a)*rr], up:0.005, dn:0.002, w:tf*1.35, wt:tf*1.35, arch:0.01, n:3, nb:3 }); }
-    fr.add(mo15m(mo15sweepGeo(pts, { sub:2, seg:12, c:A }), M));
-    [-1, 1].forEach(sd=> addF('DARK', mo15rodGeo([sd*tf*1.3, pts[1].p[1], pts[1].p[0]], [sd*fx, Rf + 0.03, fz + 0.01], 0.0045, 6)));
+    const hi = P.ffend === 'high', rr = Rf + 0.016, a0 = mo15deg(hi ? 12 : 34), a1 = mo15deg(hi ? 150 : 132), w = DF.tw*(hi ? 0.72 : 0.64), keys = [];
+    for (let i = 0; i <= 6; i++){ const a = a0 + (a1 - a0)*i/6; keys.push({ p:[fz + Math.cos(a)*rr, Rf + Math.sin(a)*rr], up:0.005, dn:0.002, w, wt:w, arch:0.013, n:3, nb:3 }); }
+    addF(FEND, mo15sweepGeo(keys, { sub:3, seg:14, c:A }));
+    const top = [fz + Math.cos(mo15deg(96))*(rr + 0.004), Rf + Math.sin(mo15deg(96))*(rr + 0.004)];
+    addF('DARK', mo15loftGeo([X3(top), X3(mo15up(Cc, dd, -cH*0.4))], [0.034, 0.010], { n:3, rad:8, seg:1 }));
   }
-  // stem: from the fold hinge above the head to the bar clamp
-  const st = P.stem || 'single', fold = P.fold || 'base', hf = fold === 'mid' ? 0.40 : 0.06;
-  const S0 = PA(H1[1] + 0.012), S1 = PA(barY - 0.02);
-  if (st === 'twin' || st === 'braced'){
-    [-1, 1].forEach(sd=> addF('STEM', mo15rodGeo([sd*0.034, S0[1], S0[0]], [sd*0.040, S1[1], S1[0]], 0.019, 12)));
-    [0.30, 0.62].forEach(t=>{ const p = mo15L2(S0, S1, t); addF('DARK', mo15rodGeo([-0.05, p[1], p[0]], [0.05, p[1], p[0]], 0.012, 8)); });
-    if (st === 'braced') [-1, 1].forEach(sd=> addF('STEM', mo15rodGeo([sd*0.05, S0[1] + 0.02, S0[0] + 0.01], [sd*0.10, mo15L2(S0, S1, 0.45)[1], mo15L2(S0, S1, 0.45)[0] + 0.02], 0.011, 8)));
+
+  /* ---- stem: fold hinge / heavy clamp / solid collar, a THICK tube (round, oval, curved, twin or braced twin), the stem head ---- */
+  const st = P.stem || 'single', fold = P.fold || (kid ? 'none' : 'base'), twin = st === 'twin' || st === 'braced';
+  const stemD = P.stemD || (kid ? 0.036 : perf ? 0.054 : 0.050), sw = st === 'thick' ? 0.060 : st === 'curve' ? 0.052 : stemD, sdp = st === 'thick' ? 0.074 : st === 'curve' ? 0.062 : stemD;
+  const S0 = mo15up(HT, dd, 0.004), S1 = PA(barY - 0.02), sL = (S1[1] - S0[1])/dd[1], SAx = t=> mo15up(S0, dd, t);
+  const blkW = twin ? 0.118 : Math.max(sw, 0.046) + 0.022, blkD = Math.max(sdp, 0.046) + 0.026;
+  const SM = P.stemMat ? mo15mat(P.stemMat, M) : M;
+  if (fold === 'base' || fold === 'mid'){
+    const big = fold === 'mid', bh = big ? 0.115 : 0.085, ex = (t, fwd)=> mo15up(SAx(t), nn, fwd);
+    // hinge block round the stem foot, the hinge barrel at its back, the latch lever lying on its front (+ a safety hook / knob)
+    addF('HEAD', mo15loftGeo([X3(ex(-0.006, 0)), X3(ex(bh*0.5, 0)), X3(ex(bh, 0))], [[0, blkW, blkD], [0.2, blkW + 0.004, blkD + 0.004], [0.8, blkW + 0.002, blkD + 0.002], [1, blkW - 0.008, blkD - 0.008]], { n:3.4, rad:18, seg:4 }));
+    addF('DARK', mo15xcyl(ex(bh*0.30, -blkD*0.5 - 0.006), big ? 0.014 : 0.011, blkW + 0.016, 0, 12));
+    addF('ACC', mo15loftGeo([X3(ex(bh*0.12, blkD*0.5 + 0.004)), X3(ex(bh*0.55, blkD*0.5 + 0.010)), X3(ex(bh*1.02, blkD*0.5 + 0.007))], [[0, big ? 0.040 : 0.032, 0.011], [0.5, big ? 0.044 : 0.034, 0.012], [1, big ? 0.034 : 0.026, 0.009]], { n:3, rad:12, seg:6 }));
+    addF('DARK', mo15xcyl(ex(bh*0.12, blkD*0.5 + 0.004), 0.006, (big ? 0.040 : 0.032) + 0.008, 0, 8));
+    if (big){ const k = ex(bh*0.62, 0); addF('ACC', mo15rodGeo([blkW*0.5 - 0.004, k[1], k[0]], [blkW*0.5 + 0.022, k[1], k[0]], 0.011, 12)); addF('DARK', mo15rodGeo([blkW*0.5 + 0.020, k[1], k[0]], [blkW*0.5 + 0.030, k[1], k[0]], 0.014, 12)); }
+    else addF('ALLOY', mo15latheAlong([[sw*0.5 + 0.002, 0], [sw*0.5 + 0.008, 0.2], [sw*0.5 + 0.009, 0.8], [sw*0.5 + 0.004, 1]], X3(SAx(bh + 0.012)), X3(SAx(bh + 0.034)), 18));
+  } else {
+    addF('HEAD', mo15loftGeo([X3(SAx(-0.006)), X3(SAx(0.050))], [[0, blkW - 0.006, blkD - 0.008], [0.3, blkW, blkD], [1, blkW - 0.012, blkD - 0.012]], { n:3.2, rad:18, seg:3 }));
+    if (kid) addF('ACC', mo15latheAlong([[sw*0.5 + 0.001, 0], [sw*0.5 + 0.007, 0.15], [sw*0.5 + 0.007, 0.85], [sw*0.5 + 0.001, 1]], X3(SAx(sL*0.48)), X3(SAx(sL*0.48 + 0.04)), 16));   // height clamp
+  }
+  // the stem tube(s)
+  const s0 = fold === 'none' ? 0.04 : (fold === 'mid' ? 0.10 : 0.07);
+  if (twin){
+    [-1, 1].forEach(sd=> addF('STEM', mo15loftGeo([X3(SAx(s0 - 0.02), sd*0.038), X3(S1, sd*0.042)], [0.038, 0.042], { n:2.2, rad:14, seg:2 })));
+    [0.36, 0.70].forEach(u=>{ const p = SAx(s0 + (sL - s0)*u); addF('HEAD', mo15loftGeo([X3(mo15up(p, dd, -0.016)), X3(mo15up(p, dd, 0.016))], [0.112, 0.030], { n:4, rad:12, seg:1 })); });
   } else if (st === 'curve'){
     const m1 = PA(S0[1] + (S1[1] - S0[1])*0.45), m2 = PA(S0[1] + (S1[1] - S0[1])*0.80);
-    addF('STEM', mo15loftGeo([[0, S0[1], S0[0]], [0, m1[1], m1[0] + 0.04], [0, m2[1], m2[0] + 0.016], [0, S1[1], S1[0]]], [[0, 0.046, 0.05], [1, 0.036, 0.04]], { n:2.6, rad:14, seg:18 }));
+    addF('STEM', mo15loftGeo([X3(SAx(s0 - 0.02)), [0, m1[1], m1[0] + 0.045], [0, m2[1], m2[0] + 0.018], X3(S1)], [[0, sw, sdp], [1, sw*0.92, sdp*0.86]], { n:2.6, rad:16, seg:18 }));
   } else {
-    const th = st === 'thick';
-    addF('STEM', mo15loftGeo([[0, S0[1], S0[0]], [0, S1[1], S1[0]]], th ? [[0, 0.05, 0.068], [1, 0.044, 0.056]] : [[0, 0.036, 0.036], [1, 0.032, 0.032]], { n:th ? 2.6 : 2, rad:16, seg:2 }));
+    addF('STEM', mo15loftGeo([X3(SAx(s0 - 0.02)), X3(S1)], st === 'thick' ? [[0, sw, sdp], [1, sw*0.92, sdp*0.84]] : [[0, sw, sdp], [1, sw*0.94, sdp*0.94]], { n:st === 'thick' ? 2.6 : 2, rad:18, seg:3 }));
   }
-  // fold hinge + clamp lever (+ safety latch), or a solid collar
-  { const HP = PA(S0[1] + (S1[1] - S0[1])*hf + 0.03), tilt = ha - Math.PI/2;
-    // folding joint (Release 15.5): a rounded hinge collar round the stem, the hinge barrel at its back, and the latch lever lying flat on
-    // its front (it used to be a separate box floating ahead of the stem)
-    const wide = st === 'twin' || st === 'braced', cw = wide ? 0.12 : 0.066, ext = (t, f)=> mo15up(mo15up(HP, dd, t), nn, f);
-    if (fold !== 'none'){
-      addF('ALLOY', mo15loftGeo([mo15P(ext(-0.040, 0)), mo15P(ext(0.036, 0))], [[0, cw, 0.060], [0.15, cw + 0.004, 0.064], [0.85, cw + 0.004, 0.064], [1, cw, 0.058]], { n:3.4, rad:16, seg:4 }));
-      addF('DARK', mo15xcyl(ext(-0.028, -0.034), 0.010, cw + 0.014, 0, 12));
-      addF('ACC', mo15loftGeo([mo15P(ext(-0.030, 0.036)), mo15P(ext(0.006, 0.040)), mo15P(ext(0.044, 0.037))], [[0, 0.028, 0.010], [0.5, 0.030, 0.011], [1, 0.022, 0.008]], { n:3, rad:12, seg:6 }));
-      addF('DARK', mo15xcyl(ext(-0.026, 0.034), 0.0055, 0.034, 0, 8));
-    } else addF('DARK', mo15loftGeo([mo15P(ext(-0.026, 0)), mo15P(ext(0.026, 0))], [[0, wide ? 0.11 : 0.058, 0.056], [1, wide ? 0.11 : 0.058, 0.056]], { n:3.4, rad:16, seg:2 })); }
-  // cockpit
+  if (st === 'braced') [-1, 1].forEach(sd=>{ const a = SAx(s0 + 0.03), b = SAx(sL*0.62); addF('DARK', mo15rodGeo([sd*0.062, a[1], a[0] + 0.004], [sd*0.040, b[1], b[0]], 0.009, 8)); });
+  // stem head: the clamp block the bar runs through
   const bz = S1[0], by = S1[1] + 0.02;
-  addF('DARK', mo15boxGeo([0, by - 0.004, bz], 0.09, 0.044, 0.06));
+  const shW = twin ? 0.13 : Math.max(sw + 0.024, 0.07), shD = Math.max(sdp, 0.046) + 0.018;
+  addF('HEAD', mo15loftGeo([X3(mo15up(S1, dd, -0.055)), X3(mo15up(S1, dd, 0.012)), X3(mo15up(S1, dd, 0.026))], [[0, shW - 0.012, shD - 0.010], [0.25, shW, shD], [1, shW - 0.006, shD - 0.004]], { n:3.4, rad:18, seg:4 }));
+  if (P.rental){ // rental: a fat cowl round the stem head + a plate with the QR code on the stem front
+    addF('DECK', mo15loftGeo([X3(mo15up(S1, dd, -0.12)), X3(mo15up(S1, dd, -0.02))], [[0, shW*0.8, shD*0.8], [0.5, shW + 0.018, shD + 0.02], [1, shW + 0.012, shD + 0.012]], { n:3, rad:18, seg:4 }));
+    const qp = mo15up(SAx(sL*0.55), nn, sdp*0.5 + 0.004);
+    addF('DARK', mo15loftGeo([X3(mo15up(qp, nn, -0.006)), X3(qp)], [0.085, 0.12], { n:5, rad:12, seg:1, ref:[1, 0, 0] }));
+    addF('WHITE', mo15loftGeo([X3(qp), X3(mo15up(qp, nn, 0.002))], [0.052, 0.052], { n:8, rad:8, seg:1 }));
+  }
+
+  /* ---- cockpit: bar, long grips with flanges + bar-end caps, brake levers, thumb throttle (or twist grip), bell ---- */
   let gx = bw - 0.07, gy = by, gz = bz;
+  const barR = kid ? 0.0115 : 0.0135;
   if (P.bars === 'moto'){
     const path = [[-bw, by + 0.08, bz - 0.04], [-bw*0.6, by + 0.05, bz - 0.022], [-0.08, by + 0.006, bz], [0, by, bz], [0.08, by + 0.006, bz], [bw*0.6, by + 0.05, bz - 0.022], [bw, by + 0.08, bz - 0.04]];
-    addF('BARS', mo15loftGeo(path, 0.025, { ref:[0, 1, 0], up:[0, 0, 1], rad:10, seg:28 }));
+    addF('BARS', mo15loftGeo(path, barR*2, { ref:[0, 1, 0], up:[0, 0, 1], rad:12, seg:28 }));
     addF('BARS', mo15rodGeo([-bw*0.5, by + 0.05, bz - 0.006], [bw*0.5, by + 0.05, bz - 0.006], 0.0095, 8));
     gx = bw - 0.06; gy = by + 0.08; gz = bz - 0.04;
-  } else addF('BARS', mo15rodGeo([-bw, by, bz], [bw, by, bz], 0.0125, 12));
+  } else addF('BARS', mo15rodGeo([-bw, by, bz], [bw, by, bz], barR, 14));
+  const lev2 = P.levers === 2 || (P.levers === undefined && (perf || P.fsus === 'hyd'));
   [-1, 1].forEach(sd=>{
-    const a = [sd*(gx - 0.058), gy, gz], b = [sd*(gx + 0.06), gy, gz];
-    BF.GRIP = (BF.GRIP || []).concat([mo15rodGeo(a, b, sd < 0 && P.twist ? 0.0215 : 0.0175, 12)]);
-    addF('DARK', mo15rodGeo(mo15L3(a, b, -0.10), mo15L3(a, b, 0.0), 0.0205, 10));
-    addF('ALLOY', mo15tubeGeo([[sd*(gx - 0.075), gy + 0.006, gz + 0.02], [sd*(gx - 0.02), gy + 0.0, gz + 0.055], [sd*(gx + 0.05), gy - 0.012, gz + 0.05]], 0.0048, 8, 5));
-    addF('DARK', mo15boxGeo([sd*(gx - 0.083), gy + 0.008, gz + 0.012], 0.026, 0.024, 0.03));
+    const a = [sd*(gx - 0.058), gy, gz], b = [sd*(gx + 0.06), gy, gz], tw = sd < 0 && P.twist;
+    addF('GRIP', mo15rodGeo(a, b, tw ? 0.0215 : 0.0178, 14));
+    for (let i = 1; i < 3; i++){ const p = mo15L3(a, b, i/3); addF('GRIP', mo15rodGeo(mo15L3(p, b, -0.008), mo15L3(p, b, 0.008), tw ? 0.0222 : 0.0186, 14)); }
+    addF('DARK', mo15rodGeo(mo15L3(a, b, -0.06), mo15L3(a, b, 0.02), tw ? 0.0245 : 0.0225, 14));                    // flange
+    addF('DARK', mo15rodGeo(b, mo15L3(a, b, 1.07), 0.0150, 12));                                                       // bar-end cap
+    addF('DARK', mo15rodGeo(mo15L3(a, b, -0.20), mo15L3(a, b, -0.07), 0.0195, 12));                                  // lever perch / switch
+    if (sd > 0 || lev2){
+      addF('ALLOY', mo15loftGeo([[sd*(gx - 0.088), gy + 0.008, gz + 0.020], [sd*(gx - 0.035), gy + 0.003, gz + 0.054], [sd*(gx + 0.048), gy - 0.008, gz + 0.050]], [[0, 0.016, 0.010], [0.4, 0.013, 0.008], [1, 0.011, 0.007]], { ref:[0, 1, 0], up:[0, 0, 1], n:2.6, rad:8, seg:8 }));
+      addF('DARK', mo15boxGeo([sd*(gx - 0.094), gy + 0.014, gz + 0.010], 0.028, 0.026, 0.034));
+    }
   });
-  if (!P.twist) addF('DARK', mo15boxGeo([-(gx - 0.105), gy + 0.018, gz + 0.012], 0.024, 0.012, 0.036, 0.4));       // thumb throttle
-  addF('ALLOY', mo15rodGeo([gx - 0.12, gy + 0.012, gz + 0.004], [gx - 0.12, gy + 0.030, gz + 0.004], 0.014, 12));    // bell
-  if (P.brace) [-1, 1].forEach(sd=> addF('STEM', mo15rodGeo([sd*bw*0.55, by + (P.bars === 'moto' ? 0.05 : 0.0), bz], [sd*0.03, by - 0.10, bz + 0.018], 0.0085, 8)));
-  // display
-  const dsp = P.disp || 'slim';
+  if (!P.twist) addF('DARK', mo15boxGeo([-(gx - 0.098), gy + 0.020, gz + 0.016], 0.026, 0.010, 0.040, 0.45));        // thumb throttle paddle (right)
+  if (!kid){ const bx = gx - 0.13; addF('ALLOY', mo15latheGeo([[0, -0.012], [0.016, -0.012], [0.018, -0.004], [0.014, 0.008], [0, 0.012]], 14).rotateZ(Math.PI/2).translate(bx, gy + 0.024, gz + 0.004));
+    addF('DARK', mo15rodGeo([bx, gy, gz], [bx, gy + 0.014, gz + 0.002], 0.008, 8)); }
+  if (P.brace) [-1, 1].forEach(sd=> addF('BARS', mo15rodGeo([sd*bw*0.52, by + (P.bars === 'moto' ? 0.048 : 0.0), bz], [sd*0.032, by - 0.11, bz + 0.016], 0.0085, 8)));
+  // display: integrated slim dash, a big TFT in a pod, or a round pod
+  const dsp = P.disp || (kid ? 'none' : 'slim');
   if (dsp !== 'none'){
-    const g2 = new T.Group(); g2.position.set(0, by + 0.028, bz + 0.004); g2.rotation.x = -0.45;
-    const big = dsp === 'big', rnd = dsp === 'round';
-    if (rnd){ g2.add(mo15m(mo15latheGeo([[0, -0.012], [0.036, -0.012], [0.04, -0.004], [0.04, 0.008], [0.036, 0.012], [0, 0.012]], 20).rotateZ(Math.PI/2), M12.anod)); g2.add(mo15m(new T.CircleGeometry(0.032, 20).rotateX(-Math.PI/2).translate(0, 0.0125, 0), BK.screen)); }
-    else { g2.add(box(0, 0, 0, big ? 0.13 : 0.10, big ? 0.03 : 0.018, big ? 0.075 : 0.05, M12.anod)); g2.add(box(0, (big ? 0.015 : 0.009) + 0.001, 0, big ? 0.11 : 0.07, 0.002, big ? 0.055 : 0.03, BK.screen)); }
-    fr.add(g2);
+    const g2 = new T.Group(); fr.add(g2);
+    if (dsp === 'round'){ g2.position.set(0, by + 0.034, bz + 0.002); g2.rotation.x = -0.55;
+      g2.add(mo15m(mo15latheGeo([[0, -0.014], [0.040, -0.014], [0.044, -0.004], [0.044, 0.008], [0.040, 0.013], [0, 0.013]], 22).rotateZ(Math.PI/2), M12.anod));
+      g2.add(mo15m(new T.CircleGeometry(0.035, 22).rotateX(-Math.PI/2).translate(0, 0.0135, 0), BK.screen)); }
+    else if (dsp === 'big'){ g2.position.set(0, by + 0.036, bz + 0.006); g2.rotation.x = -0.62;
+      g2.add(mo15m(mo15loftGeo([[0, -0.012, 0], [0, 0.012, 0]], [0.135, 0.084], { n:5, rad:16, seg:1, ref:[1, 0, 0], up:[0, 0, 1] }), M12.anod));
+      g2.add(box(0, 0.0125, 0.002, 0.112, 0.002, 0.062, BK.screen)); }
+    else { g2.position.set(0, by + 0.022, bz - 0.004); g2.rotation.x = -0.42;
+      g2.add(mo15m(mo15loftGeo([[0, -0.010, 0], [0, 0.010, 0]], [Math.max(0.11, shW + 0.02), 0.062], { n:4, rad:16, seg:1, ref:[1, 0, 0], up:[0, 0, 1] }), M12.anod));
+      g2.add(box(0, 0.0105, 0.004, 0.062, 0.002, 0.030, BK.screen)); }
   }
-  // lights
-  const lt = P.light || 'stem', tilt = ha - Math.PI/2;
-  if (lt === 'stem'){ const L0 = PA(S0[1] + (S1[1] - S0[1])*0.70); mo15lampRect(fr, [0, L0[1], L0[0] + 0.03], 0.06, 0.03, { depth:0.025, mat:M12.anod, n:4, pitch:-tilt }); }
-  else if (lt === 'wide'){ mo15lampRect(fr, [0, by - 0.06, bz + 0.035], 0.14, 0.024, { depth:0.025, mat:M12.anod, n:6 }); }
-  else if (lt === 'fork'){ const L0 = PA(H1[1] + 0.05); mo15lampRect(fr, [0, L0[1], L0[0] + 0.045], 0.07, 0.035, { depth:0.03, mat:M12.anod, n:4, pitch:-tilt }); }
-  else if (lt === 'twin'){ const L0 = PA(S0[1] + (S1[1] - S0[1])*0.72); [-1, 1].forEach(sd=> mo15lampRound(fr, [sd*0.062, L0[1], L0[0] + 0.04], 0.03, { mat:M12.anod, bezel:M12.anod, depth:0.035, drl:true })); addF('DARK', mo15rodGeo([-0.062, L0[1], L0[0] + 0.01], [0.062, L0[1], L0[0] + 0.01], 0.008, 8)); }
-  else if (lt === 'bar'){ mo15lampRound(fr, [0, by + 0.05, bz + 0.05], 0.034, { mat:M12.anod, bezel:M12.anod, depth:0.03 }); }
+  // headlight
+  const lt = P.light || (kid ? 'none' : 'stem'), tilt = ha - Math.PI/2;
+  if (lt === 'stem'){ const L0 = mo15up(mo15up(S1, dd, -0.085), nn, shD*0.5 + 0.004); mo15lampRect(fr, [0, L0[1], L0[0] + 0.006], 0.068, 0.040, { depth:0.030, mat:M12.anod, n:3.4, pitch:-tilt }); }
+  else if (lt === 'wide'){ const L0 = mo15up(mo15up(S1, dd, -0.022), nn, shD*0.5 + 0.004); mo15lampRect(fr, [0, L0[1], L0[0] + 0.01], Math.max(0.12, shW + 0.03), 0.030, { depth:0.028, mat:M12.anod, n:5, pitch:-tilt }); }
+  else if (lt === 'fork'){ const L0 = mo15up(Cc, nn, offP + legR + 0.016); mo15lampRound(fr, [0, L0[1] + 0.006, L0[0] + 0.012], 0.032, { mat:M12.anod, bezel:BK.alloy, depth:0.034 }); }
+  else if (lt === 'twin'){ const L0 = mo15up(mo15up(S1, dd, -0.13), nn, shD*0.5 + 0.02);
+    [-1, 1].forEach(sd=> mo15lampRound(fr, [sd*0.058, L0[1], L0[0] + 0.014], 0.031, { mat:M12.anod, bezel:BK.alloy, depth:0.036 }));
+    addF('DARK', mo15rodGeo([-0.058, L0[1], L0[0] - 0.012], [0.058, L0[1], L0[0] - 0.012], 0.009, 8)); }
+  else if (lt === 'bar'){ mo15lampRound(fr, [0, by + 0.052, bz + 0.046], 0.036, { mat:M12.anod, bezel:BK.alloy, depth:0.034 }); addF('DARK', mo15rodGeo([0, by + 0.012, bz + 0.012], [0, by + 0.04, bz + 0.03], 0.008, 8)); }
 
   /* ---- wheels ---- */
-  const motor = P.motor === undefined ? 'rear' : P.motor, tread = P.tread ? 'offroad' : 'scoot';
-  const wo = (R, t, mot, disc)=> ({ t, w:t*0.95, tread, motor:mot ? R*0.56 : 0, spokes:P.spokes === undefined ? 5 : P.spokes, disc:disc ? Math.min(0.08, R*0.62) : 0, discX:0.058, ribs:mot ? 10 : 0 });
-  const rw = mo15wheelScoot(Rr, wo(Rr, tr, motor === 'rear' || motor === 'dual', !(motor === 'rear' || motor === 'dual') || P.disc));
-  const fw = mo15wheelScoot(Rf, wo(Rf, tf, motor === 'front' || motor === 'dual', !(motor === 'front' || motor === 'dual') || P.disc || fs !== 'none'));
+  const rw = mo15wheelScoot(Rr, woR), fw = mo15wheelScoot(Rf, woF);
 
-  /* ---- merge ---- */
-  const MATS = { DECK:M, ACC:AC, DARK:M12.anod, ALLOY:BK.alloy, MAT:M12.rub, GLOW:FX.glow, TAIL:BK.tail, LAMP:BK.lamp, FORK:FX.fork, SPRING:mo15coil(P.spring), SEAT:BM.seat };
-  Object.keys(B).forEach(k=>{ if (B[k].length) mo15add(f, B[k], MATS[k]); });
-  const MF = { STEM:mo15mat(P.stemMat, M), DARK:M12.anod, ALLOY:BK.alloy, ACC:AC, FORK:FX.fork, SPRING:mo15coil(P.spring), LAMP:BK.lamp, GLOW:FX.glow, BARS:BM.bars, DECK:M, GRIP:FX.grip };
-  Object.keys(BF).forEach(k=>{ if (BF[k] && BF[k].length) mo15add(fr, BF[k], MF[k]); });
+  /* ---- merge per material ---- */
+  const FE = P.fend === 'frame' ? M : P.fend === 'acc' ? FX.acc : FX.plas;
+  const MATS = { DECK:M, BELLY:P.belly === 'frame' ? M : M12.anod, ACC:FX.acc, DARK:M12.anod, ALLOY:BK.alloy, MAT:M12.rub, RUB:M12.rub, GLOW:FX.glow, TAIL:BK.tail, AMBER:BK.orange,
+                 FORK:FX.fork, SPRING:mo15coil(P.spring), SEAT:BM.seat, PLAS:FE };
+  Object.keys(B).forEach(k=>{ if (B[k].length) mo15add(f, B[k], MATS[k] || M12.anod); });
+  const MF = { STEM:SM, HEAD:P.headMat ? mo15mat(P.headMat, M12.anod) : M12.anod, DARK:M12.anod, ALLOY:BK.alloy, ACC:FX.acc, FORK:FX.fork, STAN:BK.alloy, SPRING:mo15coil(P.spring),
+               BARS:BM.bars, DECK:M, GRIP:FX.grip, RUB:M12.rub, PLAS:FE, AMBER:BK.orange, WHITE:BK.white };
+  Object.keys(BF).forEach(k=>{ if (BF[k].length) mo15add(fr, BF[k], MF[k] || M12.anod); });
   decals.forEach(fn=> fn());
   fmerge(f); fmerge(fr);
-  /* ---- rider: feet side-on on the deck, hands on the grips ---- */
-  const ay = dy + 0.074, zf = z1 - 0.14, zr = Math.max(z0 + 0.15, zf - (P.stance || 0.31));
+
+  /* ---- rider: feet side-on on the deck, hands on the grips (a seated row: on the saddle, feet forward on the deck) ---- */
+  const ay = dy + 0.074, zf = z1 - 0.15, zr = Math.max(z0 + 0.15, zf - (P.stance || 0.31));
   const rs = mo15standRS({ ay, zf, zr, gx, gy, gz, sx:0.05, lean:P.lean === undefined ? 0.12 : P.lean, leg:P.leg });
-  if (P.seat){ const sz2 = (z0 + z1)/2 - 0.10; rs.hipsY = dy + 0.46 + 0.10 + 0.06; rs.hipsZ = sz2 - 0.04; rs.lean = 0.10; rs.pedalL = [0.07, ay, z1 - 0.10]; rs.pedalR = [-0.07, ay, z1 - 0.10]; rs.kneeOut = 0.45; }
-  return { Rr, Rf, rz, fz, hz:zAt(dy + 0.04), frame:f, front:fr, rear:rw, frontW:fw, seated:false, integrated:true, kickable:false, rs };
+  if (P.seat){ rs.hipsY = dy + 0.46 + 0.10 + 0.06; rs.hipsZ = sz2 - 0.06; rs.lean = 0.10; rs.pedalL = [0.07, ay, z1 - 0.08]; rs.pedalR = [-0.07, ay, z1 - 0.08]; rs.kneeOut = 0.45; }
+  return { Rr, Rf, rz, fz, hz, frame:f, front:fr, rear:rw, frontW:fw, seated:false, integrated:true, kickable:false, rs, bbY:dy - dt*0.5, bbZ:kz + 0.10 };
 }
 FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
 
@@ -31578,37 +31702,39 @@ FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
   /* ================= e-scooters: one kit (deck, stem + fold, cockpit, suspension per class, wheels per class), own styling per row ================= */
   const SC = (id, p, o)=>{ if (!row(id)) return; fleetRow(id, Object.assign({ b:'mo15scoot', pReplace:true, p:Object.assign({ logo:brand(id) }, p) }, o || {})); };
   const LS = (fork, rim, grip, bars, glow, tire, seat)=> ({ fork, rim, grip:grip || 0x16181b, bars:bars || 0x16181b, glow:glow || 0xeaf4ff, tire:tire || 0x131518, seat:seat || 0x15171a });
-  SC('mi4pro', { Rr:0.127, Rf:0.127, tr:0.040, wb:0.98, dy:0.14, dw:0.19, dt:0.065, ha:78, bar:1.10, bw:0.52, bars:'tbar', stem:'single', fold:'base', fsus:'none', ffend:'arc', rfend:'long', light:'stem', disp:'slim', motor:'rear' },
+  // Release 15.6 (scoot18): the rows drive the rebuilt kit -- neck + head tube above the front tyre, thick stems, real cockpits, fat tyres on cast
+  // rims with hub motors / discs / a drum, fenders + lights; motor 'front' | 'rear' | 'dual' | 'none' (chain drive) decides hub motors and brakes
+  SC('mi4pro', { Rr:0.127, Rf:0.127, wb:0.98, dy:0.14, dw:0.19, dt:0.065, ha:78, bar:1.10, bw:0.52, bars:'tbar', stem:'single', fold:'base', fsus:'none', ffend:'arc', rfend:'long', light:'stem', disp:'slim', motor:'front' },
     { col:0x23324a, acc:0x6ec6ff, liv:LS(0x23324a, 0x8d949c, 0x16181b, 0x16181b, 0xffffff) });
-  SC('ninebotmax', { Rr:0.133, Rf:0.133, tr:0.042, wb:1.03, dy:0.145, dw:0.21, dt:0.075, ha:79, bar:1.14, bw:0.58, bars:'tbar', stem:'thick', fold:'base', fsus:'none', ffend:'arc', rfend:'cover', light:'wide', disp:'big', motor:'rear' },
+  SC('ninebotmax', { Rr:0.133, Rf:0.133, wb:1.03, dy:0.145, dw:0.21, dt:0.075, ha:79, bar:1.14, bw:0.58, bars:'tbar', stem:'thick', fold:'base', fsus:'none', ffend:'arc', rfend:'cover', light:'wide', disp:'big', motor:'rear', drum:true },
     { col:0x2e3136, acc:0x1fb5a8, liv:LS(0x2e3136, 0x1fb5a8, 0x16181b, 0x1b1e22, 0x1fb5a8) });
-  SC('gt2', { Rr:0.15, Rf:0.15, tr:0.050, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:78, bar:1.20, bw:0.64, bars:'moto', stem:'thick', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:16, spring:'acc' },
+  SC('gt2', { Rr:0.15, Rf:0.15, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:78, bar:1.20, bw:0.64, bars:'moto', stem:'thick', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, tread:true, spring:'acc' },
     { col:0x2b2f35, acc:0xe4ff3a, liv:LS(0xe4ff3a, 0x2b2f35, 0x16181b, 0x1a1c20, 0xe4ff3a, 0x101214) });
-  SC('phantom', { Rr:0.133, Rf:0.133, tr:0.044, wb:1.06, dy:0.155, dw:0.205, dt:0.08, ha:79, bar:1.16, bw:0.60, bars:'tbar', stem:'thick', fold:'mid', fsus:'spring', rsus:'arm', ffend:'arc', rfend:'long', light:'wide', disp:'big', motor:'dual', fins:true, stand:true, spring:'acc' },
+  SC('phantom', { Rr:0.133, Rf:0.133, wb:1.06, dy:0.155, dw:0.205, dt:0.08, ha:79, bar:1.16, bw:0.62, bars:'tbar', stem:'thick', fold:'mid', fsus:'spring', rsus:'arm', ffend:'arc', rfend:'long', light:'wide', disp:'big', motor:'dual', fins:true, spring:'acc', headMat:'frame' },
     { col:0x24282e, acc:0x3d7cff, liv:LS(0x3d7cff, 0x3d7cff, 0x1a1d22, 0x1a1d22, 0x3d7cff, 0x101214) });
-  SC('thunder3', { Rr:0.165, Rf:0.165, tr:0.058, wb:1.30, dy:0.21, dw:0.26, dt:0.10, ha:80, bar:1.24, bw:0.72, bars:'tbar', stem:'twin', fold:'none', fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, brace:true, stand:true, tread:20, spring:'acc' },
+  SC('thunder3', { Rr:0.165, Rf:0.165, wb:1.30, dy:0.21, dw:0.26, dt:0.10, ha:80, bar:1.24, bw:0.72, bars:'tbar', stem:'twin', fold:'none', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, brace:true, tread:true, spring:'acc' },
     { col:0x3b2063, acc:0xffb020, liv:LS(0xffb020, 0xffb020, 0xffb020, 0x121316, 0xffb020, 0x0e0f11) });
-  SC('wolf11', { Rr:0.148, Rf:0.148, tr:0.052, wb:1.20, dy:0.185, dw:0.24, dt:0.09, ha:79, bar:1.2, bw:0.66, bars:'moto', stem:'braced', fold:'none', fsus:'dual', rsus:'arm', ffend:'high', rfend:'cover', light:'fork', disp:'round', motor:'dual', twist:true, brace:true, stand:true, tread:18, spring:'acc' },
+  SC('wolf11', { Rr:0.148, Rf:0.148, wb:1.20, dy:0.185, dw:0.24, dt:0.09, ha:79, bar:1.2, bw:0.66, bars:'moto', stem:'braced', fold:'none', fsus:'dual', rsus:'arm', ffend:'high', rfend:'cover', light:'fork', disp:'round', motor:'dual', twist:true, brace:true, tread:true, spring:'acc' },
     { col:0x2b3139, acc:0xff8a1f, liv:LS(0xff8a1f, 0xff8a1f, 0xff8a1f, 0x1c2026, 0xff8a1f, 0x0f1113) });
-  SC('razore300', { Rr:0.10, Rf:0.115, tr:0.032, tf:0.036, wb:0.86, dy:0.115, dw:0.17, dt:0.04, ha:77, bar:0.98, bw:0.46, bars:'tbar', stem:'single', fold:'none', fsus:'none', ffend:'arc', rfend:'arc', light:'none', disp:'none', motor:'rear', chainBox:true, stand:true, twist:true, spokes:0, belly:false },
+  SC('razore300', { Rr:0.10, Rf:0.115, wb:0.86, dy:0.115, dw:0.17, dt:0.04, ha:77, bar:0.98, bw:0.46, bars:'tbar', stem:'single', kid:true, fsus:'none', ffend:'arc', rfend:'arc', light:'none', disp:'none', motor:'none', chainBox:true, twist:true, fend:'frame' },
     { col:0x13a3a0, acc:0xf2f3f5, liv:LS(0x13a3a0, 0xc8ccd2, 0x16181b, 0xc8ccd2) });
-  SC('razore300s', { Rr:0.10, Rf:0.115, tr:0.032, tf:0.036, wb:0.88, dy:0.115, dw:0.17, dt:0.04, ha:77, bar:0.98, bw:0.46, bars:'tbar', stem:'single', fold:'none', fsus:'none', ffend:'arc', rfend:'arc', light:'none', disp:'none', motor:'rear', chainBox:true, twist:true, spokes:0, stand:true, seat:true, belly:false },
+  SC('razore300s', { Rr:0.10, Rf:0.115, wb:0.88, dy:0.115, dw:0.17, dt:0.04, ha:77, bar:0.98, bw:0.46, bars:'tbar', stem:'single', kid:true, fsus:'none', ffend:'arc', rfend:'arc', light:'none', disp:'none', motor:'none', chainBox:true, twist:true, seat:true, fend:'frame' },
     { col:0xff7a1a, acc:0x1b1d21, liv:LS(0xff7a1a, 0xc8ccd2, 0x16181b, 0xc8ccd2) });
-  SC('unagi', { Rr:0.10, Rf:0.10, tr:0.030, wb:0.90, dy:0.11, dw:0.15, dt:0.04, deck:'taper', ha:80, bar:1.02, bw:0.46, bars:'tbar', stem:'single', fold:'base', fsus:'none', ffend:'arc', rfend:'arc', light:'fork', disp:'none', motor:'dual', belly:false },
+  SC('unagi', { Rr:0.10, Rf:0.10, wb:0.90, dy:0.11, dw:0.15, dt:0.045, deck:'taper', ha:80, bar:1.02, bw:0.46, bars:'tbar', stem:'single', stemD:0.044, fold:'base', fsus:'none', ffend:'arc', rfend:'arc', light:'bar', disp:'none', motor:'dual', solid:true, trim:'none', headMat:'frame' },
     { col:0xd9d4cb, acc:0x2a2d33, liv:LS(0xd9d4cb, 0x2a2d33, 0x2a2d33, 0x2a2d33, 0xffffff) });
-  SC('kqi3', { Rr:0.127, Rf:0.127, tr:0.042, wb:1.0, dy:0.145, dw:0.20, dt:0.07, deck:'taper', ha:78, bar:1.1, bw:0.56, bars:'tbar', stem:'curve', fold:'base', fsus:'spring', ffend:'arc', rfend:'long', light:'fork', disp:'round', motor:'rear', spring:'acc' },
+  SC('kqi3', { Rr:0.127, Rf:0.127, wb:1.0, dy:0.145, dw:0.20, dt:0.07, deck:'taper', ha:78, bar:1.1, bw:0.56, bars:'tbar', stem:'curve', fold:'base', fsus:'spring', ffend:'arc', rfend:'long', light:'fork', disp:'round', motor:'rear', spring:'acc' },
     { col:0x4a5059, acc:0xff6f61, liv:LS(0xff6f61, 0xff6f61, 0x16181b, 0x1b1e22, 0xff6f61) });
-  SC('limegen4', { Rr:0.13, Rf:0.13, tr:0.05, wb:1.04, dy:0.15, dw:0.20, dt:0.075, ha:79, bar:1.15, bw:0.60, bars:'tbar', stem:'thick', fold:'none', fsus:'spring', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'rear', brace:true },
+  SC('limegen4', { Rr:0.13, Rf:0.13, wb:1.04, dy:0.15, dw:0.20, dt:0.075, ha:79, bar:1.15, bw:0.60, bars:'tbar', stem:'thick', fold:'none', fsus:'spring', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'rear', brace:true, rental:true, fend:'frame' },
     { col:0x2b6cb0, acc:0xf2f3f5, liv:LS(0xf2f3f5, 0xf2f3f5, 0x16181b, 0xf2f3f5, 0xffffff) });
-  SC('hiboy', { Rr:0.105, Rf:0.105, tr:0.034, wb:0.93, dy:0.125, dw:0.18, dt:0.05, ha:78, bar:1.04, bw:0.47, bars:'tbar', stem:'single', fold:'base', fsus:'none', ffend:'arc', rfend:'arc', light:'stem', disp:'slim', motor:'rear' },
+  SC('hiboy', { Rr:0.105, Rf:0.105, wb:0.93, dy:0.125, dw:0.18, dt:0.05, ha:78, bar:1.04, bw:0.47, bars:'tbar', stem:'single', fold:'base', fsus:'none', ffend:'arc', rfend:'arc', light:'stem', disp:'slim', motor:'rear', solid:true },
     { col:0xeef2f6, acc:0x2fc7a0, liv:LS(0xeef2f6, 0x2fc7a0, 0x2fc7a0, 0x1b1e22, 0x2fc7a0) });
-  SC('zero10x', { Rr:0.13, Rf:0.13, tr:0.050, wb:1.12, dy:0.165, dw:0.21, dt:0.08, deck:'taper', ha:79, bar:1.18, bw:0.62, bars:'moto', stem:'curve', fold:'mid', fsus:'spring', rsus:'arm', ffend:'high', rfend:'long', light:'fork', disp:'round', motor:'dual', stand:true, tread:14, spring:'acc' },
+  SC('zero10x', { Rr:0.13, Rf:0.13, wb:1.12, dy:0.165, dw:0.21, dt:0.08, deck:'taper', ha:79, bar:1.18, bw:0.62, bars:'moto', stem:'curve', fold:'mid', fsus:'spring', rsus:'arm', ffend:'high', rfend:'long', light:'fork', disp:'round', motor:'dual', tread:true, spring:'acc' },
     { col:0xd8c9a6, acc:0xe8521e, liv:LS(0xe8521e, 0xe8521e, 0xe8521e, 0x1d1f22, 0xff8a3a) });
-  SC('vsett10', { Rr:0.14, Rf:0.14, tr:0.052, wb:1.24, dy:0.185, dw:0.25, dt:0.09, ha:79, bar:1.24, bw:0.70, bars:'moto', stem:'thick', fold:'none', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'dual', brace:true, neon:true, stand:true, tread:18, spring:'acc' },
+  SC('vsett10', { Rr:0.14, Rf:0.14, wb:1.24, dy:0.185, dw:0.25, dt:0.09, ha:79, bar:1.24, bw:0.70, bars:'moto', stem:'thick', fold:'none', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'dual', brace:true, neon:true, tread:true, spring:'acc' },
     { col:0x1d3b6b, acc:0x2de2e6, liv:LS(0x2de2e6, 0x2de2e6, 0x2de2e6, 0x14181e, 0x2de2e6, 0x0f1113) });
-  SC('inokim', { Rr:0.15, Rf:0.15, tr:0.050, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:80, bar:1.20, bw:0.64, bars:'tbar', stem:'twin', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'arc', rfend:'cover', light:'twin', disp:'round', motor:'dual', stand:true, tread:16, spring:'acc' },
+  SC('inokim', { Rr:0.15, Rf:0.15, wb:1.15, dy:0.17, dw:0.23, dt:0.085, deck:'taper', ha:80, bar:1.20, bw:0.64, bars:'tbar', stem:'twin', fold:'mid', fsus:'hyd', rsus:'arm', ffend:'arc', rfend:'cover', light:'twin', disp:'round', motor:'dual', tread:true, spring:'acc' },
     { col:0x121316, acc:0xffd400, liv:LS(0xffd400, 0xffd400, 0xffd400, 0x16181c, 0xffd400, 0x0e0f11) });
-  SC('skyrider', { Rr:0.14, Rf:0.14, tr:0.052, wb:1.18, dy:0.20, dw:0.24, dt:0.09, ha:79, bar:1.22, bw:0.68, bars:'moto', stem:'braced', fold:'none', fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:18, spring:'acc' },
+  SC('skyrider', { Rr:0.14, Rf:0.14, wb:1.18, dy:0.20, dw:0.24, dt:0.09, ha:79, bar:1.22, bw:0.68, bars:'moto', stem:'braced', fold:'none', fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, tread:true, spring:'acc' },
     { col:0x18b7a8, acc:0xff7b2a, liv:LS(0xff7b2a, 0xff7b2a, 0xff7b2a, 0x14181c, 0xff7b2a, 0x101214) });
   /* ================= urban e-bikes: one bicycle parts set, every row its own frame design ================= */
   const EB = (id, p, o)=>{ if (!row(id)) return; fleetRow(id, Object.assign({ b:'mo15ebike', pReplace:true, p:Object.assign({ logo:brand(id) }, p) }, o || {})); };
@@ -31651,7 +31777,7 @@ FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
   D('kqi3', 'Sporty commuter: a sweeping curved stem, a sprung front fork, coral accents and a punchy rear motor.');
   D('thunder3', 'The monster: twin stems, huge tyres, hydraulic suspension and a deck as wide as a skateboard, in deep purple and amber. Hold on.');
   D('gt2', 'Hyper scooter: dual motors, hydraulic suspension, 11 inch off-road rubber and acid-yellow deck lights.');
-  D('mi4pro', 'The commuter everybody has seen: a slim stem, 10 inch air tyres, a quiet motor and a thumb throttle. Easy to ride.');
+  D('mi4pro', 'The commuter everybody has seen: a folding stem with the lamp under the bar, 10 inch air tyres, a front hub motor and a thumb throttle. Easy to ride.');
 })();
 
 /* =========================================================================
@@ -33013,39 +33139,46 @@ function pd15road(P){
 }
 FLEET_EXTRA_BUILD.pd15road = pd15road;
 /* =========================================================================
-   PEDAL15 pro push scooters (b:'pd15scoot'): one kit with per-row decks, necks, bars and wheel cores, on the pedal15 kit.
-   P: dl dw (deck length / width) deck 'flat'|'flare'|'taper'|'box' (plan shape), bar bw (bar height / width), wr (wheel radius), ha ht (head angle / tube),
-      neck 0-3 (cut-outs in the neck gusset), spokes (core spokes, 0 = hollow core with round cut-outs), clamp 'scs'|'ihc'|'hic'|'4bolt',
-      bars 'tbar'|'y'|'oversize'|'double'|'swept', brake 'flex'|'alloy'|'none', forkW, logo (deck + tape graphic), tape ('acc'|'white'), tapeArt ('stripe'|'logo'|'split'),
-      ink (deck wordmark material), cups (headset cup material), plug (bar-end material), lean leg (rider)
+   PEDAL15 pro push scooters (b:'pd15scoot') -- rebuilt in Release 15.6 (scoot18) as real pro stunt scooters: a boxed alloy deck
+   (grip tape + graphic, side wordmark, underside rails) with CNC deck ends (dropouts round the rear axle, the flex fender brake, pegs on the
+   street rows), a welded neck (down tube + a gusset web with machined cut-outs) into an oversized integrated head tube with machined
+   headset cups, a threadless / IHC stunt fork (box-section legs, forged crown, axle bolt), a compression clamp (SCS one-piece 4-bolt,
+   IHC double 2-bolt, HIC with a shim, 4-bolt double clamp) with its top cap, tall wide one-piece or Y bars (oversized down tube, T
+   gussets, straight grip zones), thick flanged grips with bar-end plugs, and 110-120 mm wheels: thick urethane on machined metal cores
+   (spoked or hollow with cut-outs), bearings and axle bolts.
+   P: dl dw (deck length / width) deck 'flat'|'flare'|'taper'|'box' (plan shape), deckH (deck depth), bar bw (bar height / width), wr (wheel radius), ha ht
+      (head angle / tube), neck 0-3 (cut-outs in the gusset), spokes (core spokes, 0 = hollow core), clamp 'scs'|'ihc'|'hic'|'4bolt',
+      bars 'tbar'|'y'|'oversize'|'swept', brake 'flex'|'alloy'|'none', pegs (street: pegs on both axles), forkW, logo, tape ('acc'|'white'),
+      tapeArt ('stripe'|'logo'|'split'), ink, cups, plug, clampMat, lean leg (rider)
    Rig: the deck + head tube + rear wheel are the "frame" (tailwhip), the fork + bars + front wheel are the "front" (barspin).
    ========================================================================= */
-/* pro scooter wheel: a rounded PU tyre on a machined metal core (n spokes, or a hollow core with a ring of cut-outs), sealed bearings + axle bolts */
+/* pro scooter wheel: a thick rounded PU tyre on a machined metal core (n spokes, or a hollow core with a ring of cut-outs), sealed bearings,
+   a spacer and the axle bolt. o: w (PU half width), pu (core radius / R), holes */
 function pd15ScootWheel(R, n, o){
   o = o || {};
-  const g = new T.Group(), B = pd15Bk(), w = 0.0122, core = R*(o.pu || 0.66);
-  // urethane: rounded profile, a little crown
+  const g = new T.Group(), B = pd15Bk(), w = o.w || Math.max(0.0125, R*0.235), core = R*(o.pu || 0.62);
+  // urethane: rounded profile, a little crown, wrapping a lip over the core
   const pr = []; for (let i = 0; i <= 12; i++){ const a = -Math.PI/2*0.98 + Math.PI*0.98*i/12, c = Math.cos(a), s = Math.sin(a);
-    pr.push([core + (R - core)*Math.pow(Math.max(0, c), 0.55), w*Math.sign(s)*Math.pow(Math.abs(s), 0.8)]); }
-  pd15Put(B, BM.tire, pd15Lathe(pr, 40));
-  // core: outer ring with a lip, then spokes or a hollow-core disc
-  pd15Put(B, BM.rim, pd15Lathe([[core + 0.0015, w*0.95], [core - 0.0075, w*0.92], [core - 0.0085, w*0.55], [core - 0.0085, -w*0.55], [core - 0.0075, -w*0.92], [core + 0.0015, -w*0.95]], 36));
-  const hubR = 0.0165;
+    pr.push([core + (R - core)*Math.pow(Math.max(0, c), 0.50), w*Math.sign(s)*Math.pow(Math.abs(s), 0.75)]); }
+  pd15Put(B, BM.tire, pd15Lathe(pr, 36));
+  // core: outer ring with a lip, then spokes or a hollow-core disc with cut-outs
+  pd15Put(B, BM.rim, pd15Lathe([[core + 0.0015, w*0.96], [core - 0.0080, w*0.93], [core - 0.0092, w*0.58], [core - 0.0092, -w*0.58], [core - 0.0080, -w*0.93], [core + 0.0015, -w*0.96]], 32));
+  const hubR = 0.0175, rin = core - 0.0088;
   if (n){
     for (let i = 0; i < n; i++){
-      const a0 = i/n*Math.PI*2 + 0.26, S = pd15Sweep([[0, Math.cos(a0)*hubR, Math.sin(a0)*hubR], [0, Math.cos(a0)*(core - 0.007), Math.sin(a0)*(core - 0.007)]],
-        [[0, Math.min(0.0085, w*0.62), Math.min(0.009, core*2.0/n + 0.002), 3.4], [1, w*0.40, Math.min(0.006, core*1.5/n + 0.001), 3.4]], { r:8, n:2, ref:_pdX, keepR:true });
+      const a0 = i/n*Math.PI*2 + 0.26, S = pd15Sweep([[0, Math.cos(a0)*hubR, Math.sin(a0)*hubR], [0, Math.cos(a0)*rin, Math.sin(a0)*rin]],
+        [[0, Math.min(0.0092, w*0.66), Math.min(0.0105, core*2.2/n + 0.0025), 3.4], [1, w*0.44, Math.min(0.0068, core*1.6/n + 0.0012), 3.4]], { r:8, n:2, ref:_pdX, keepR:true });
       pd15Put(B, BM.rim, S.geo);
     }
   } else {
-    const sh = new T.Shape(); sh.absarc(0, 0, core - 0.007, 0, Math.PI*2, false);
-    const k = o.holes || 8; for (let i = 0; i < k; i++){ const a = i/k*Math.PI*2, rr = (core - 0.007 + hubR)/2, p = new T.Path(); p.absarc(Math.cos(a)*rr, Math.sin(a)*rr, (core - 0.007 - hubR)*0.30, 0, Math.PI*2, true); sh.holes.push(p); }
+    const sh = new T.Shape(); sh.absarc(0, 0, rin + 0.0006, 0, Math.PI*2, false);
+    const k = o.holes || 6; for (let i = 0; i < k; i++){ const a = i/k*Math.PI*2, rr = (rin + hubR)/2 + 0.001, p = new T.Path(); p.absarc(Math.cos(a)*rr, Math.sin(a)*rr, (rin - hubR)*0.34, 0, Math.PI*2, true); sh.holes.push(p); }
     const h = new T.Path(); h.absarc(0, 0, 0.006, 0, Math.PI*2, true); sh.holes.push(h);
-    const eg = new T.ExtrudeGeometry(sh, { depth:0.010, bevelEnabled:false, curveSegments:5 }); eg.rotateY(Math.PI/2); eg.translate(-0.005, 0, 0); pd15Put(B, BM.rim, eg);
+    const eg = new T.ExtrudeGeometry(sh, { depth:0.011, bevelEnabled:false, curveSegments:5 }); eg.rotateY(Math.PI/2); eg.translate(-0.0055, 0, 0); pd15Put(B, BM.rim, eg);
   }
   pd15Put(B, BM.rim, pd15Disc(hubR + 0.002, w*1.5, 0, 18));                                   // hub barrel
-  pd15Put(B, PD15.silver, pd15Disc(0.0118, w*1.9, 0, 14, 0.0062));                              // bearings
-  pd15Put(B, M12.anod, pd15Disc(0.0072, 0.062, 0, 6));                                          // axle bolt + nut (hex)
+  pd15Put(B, PD15.silver, pd15Disc(0.0122, w*1.9, 0, 14, 0.0062));                              // bearings + spacer
+  pd15Put(B, M12.anod, pd15Disc(0.0072, 0.064, 0, 6));                                          // axle bolt + nut (hex)
   pd15Flush(B, g);
   return g;
 }
@@ -33058,15 +33191,15 @@ function pd15scoot(P){
   const ha = fdeg(P.ha || 82), d = [-Math.cos(ha), Math.sin(ha)], nn = [Math.sin(ha), Math.cos(ha)];
   const Ax = [fz, R], crownL = 0.112, C = fup(Ax, d, crownL), H1 = fup(C, d, P.ht || 0.15), hz = (C[0] + H1[0])/2;
   const X3 = (p, x)=> [x || 0, p[1], p[0]];
+  const pegs = !!P.pegs, pw = Math.max(0.0130, R*0.245);                       // PU half width
 
-  /* ---------------- deck: a boxy extrusion with rounded edges, grip tape + graphic on top, wordmark on the sides */
-  const dzD = rz + R + 0.010, dz1 = C[0] - 0.040, dL = dz1 - dzD, hd = 0.0175, dyc = dyT - hd;
+  /* ---------------- deck: a boxed extrusion with rounded edges, grip tape + graphic on top, wordmark on the sides, rails underneath */
+  const dzD = rz + R + 0.010, dz1 = C[0] - 0.040, dL = dz1 - dzD, hd = (P.deckH || 0.044)/2, dyc = dyT - hd;
   const shape = P.deck || 'flat';
   const wf = t=> shape === 'taper' ? (t < 0.55 ? 1 : 1 - (t - 0.55)*0.30) : shape === 'flare' ? (t < 0.18 ? 1.12 - t*0.66 : 1) : shape === 'box' ? 1 : (t < 0.04 ? 0.96 + t : 1);
   const deck = pd15Sweep([[0, dyc, dzD], [0, dyc, dz1]], t=> [dw/2*wf(t), hd, 5.5], { r:24, n:14, cap:true, ref:_pdX });
   pd15Put(B, M, deck.geo);
-  // underside: two rails either side of a centre channel (the extrusion's webs)
-  [-1, 1].forEach(s=> pd15Put(B, M, pd15Sweep([[s*dw*0.24, dyc - hd + 0.002, dzD + 0.02], [s*dw*0.24, dyc - hd + 0.002, dz1 - 0.03]], [0.006, 0.0045, 3], { r:10, n:2, cap:true }).geo));
+  [-1, 1].forEach(s=> pd15Put(B, M, pd15Sweep([[s*dw*0.26, dyc - hd + 0.002, dzD + 0.02], [s*dw*0.26, dyc - hd + 0.002, dz1 - 0.03]], [0.0065, 0.0055, 3], { r:10, n:2, cap:true }).geo));
   // grip tape (inset from the edges) + its printed graphic
   const tapeY = dyT + 0.0007, tz0 = dzD + 0.012, tz1 = dz1 - 0.020;
   pd15Put(B, M12.rub, pd15Sweep([[0, tapeY - 0.0006, tz0], [0, tapeY - 0.0006, tz1]], t=> [dw/2*wf(t*(tz1 - tz0)/dL + (tz0 - dzD)/dL) - 0.0045, 0.0009, 6], { r:12, n:12, cap:true, ref:_pdX }).geo);
@@ -33079,85 +33212,100 @@ function pd15scoot(P){
     };
     if (art === 'stripe' || art === 'split'){ [-1, 1].forEach(s=> pd15Put(B, tapeMat, pd15Box(0.006, 0.0006, (tz1 - tz0)*0.86, [s*(dw/2 - 0.012), tapeY + 0.0004, (tz0 + tz1)/2]))); }
     if (art === 'split') pd15Put(B, tapeMat, pd15Box(dw*0.62, 0.0006, 0.010, [0, tapeY + 0.0004, tz0 + (tz1 - tz0)*0.70]));
-    if (P.logo) flat(0.12, 0.66, dw*0.36, P.logo);
+    if (P.logo) flat(0.14, 0.62, dw*0.32, P.logo);
   }
-  if (P.logo) pd15TubeWord(B, P.ink ? pd15Ink(P.ink) : A, deck, P.logo, P.logoStyle || 'heavy', 0.48, hd*1.25, dL*0.55, { at:0.0 });
+  if (P.logo) pd15TubeWord(B, P.ink ? pd15Ink(P.ink) : A, deck, P.logo, P.logoStyle || 'heavy', 0.48, hd*1.15, dL*0.52, { at:0.0 });
 
-  /* ---------------- neck + head tube: the deck nose sweeps up into an oversized integrated head tube, a gusset with cut-outs underneath */
-  const nose = [dz1 - 0.030, dyT - 0.006], HTb = fup(C, d, 0.004), dtTop = fup(C, d, 0.050);
-  pd15Put(B, M, pd15Sweep([nose, [ (nose[0] + dtTop[0])/2 - 0.002, (nose[1] + dtTop[1])/2 + 0.012 ], [dtTop[0] - 0.014, dtTop[1]]], [[0, 0.024, 0.0175, 4], [0.6, 0.020, 0.0180, 4], [1, 0.018, 0.0185, 3.6]], { r:16, n:10, cap:'b' }).geo);
-  const gp = [[dz1 - 0.12, dyc - hd*0.4], [dz1 + 0.004, dyc - hd*0.6], [C[0] - 0.004, C[1] - 0.014], [dtTop[0] - 0.022, dtTop[1] + 0.006], [nose[0] - 0.035, dyT + 0.010]];
+  /* ---------------- neck + head tube: the deck nose sweeps up into an oversized integrated head tube, a gusset web with machined cut-outs underneath */
+  const nose = [dz1 - 0.032, dyT - 0.008], dtTop = fup(C, d, 0.056);
+  pd15Put(B, M, pd15Sweep([nose, [(nose[0] + dtTop[0])/2 - 0.004, (nose[1] + dtTop[1])/2 + 0.014], [dtTop[0] - 0.016, dtTop[1]]], [[0, 0.030, 0.021, 4], [0.6, 0.025, 0.022, 4], [1, 0.022, 0.023, 3.6]], { r:16, n:10, cap:'b' }).geo);
+  const gp = [[dz1 - 0.125, dyc - hd*0.4], [dz1 + 0.004, dyc - hd*0.6], [C[0] - 0.004, C[1] - 0.016], [dtTop[0] - 0.024, dtTop[1] + 0.004], [nose[0] - 0.040, dyT + 0.010]];
   const nh = P.neck === undefined ? 1 : P.neck, holes = [];
-  for (let i = 0; i < nh; i++){ const t = (i + 1)/(nh + 1); holes.push({ c:[dz1 - 0.066 + t*0.072, dyc + 0.010 + t*0.034], r:0.0088 - nh*0.0009 }); }
-  pd15Put(B, M, pd15Plate(gp, 0, 0.022, holes, 0.003, 8));
-  const htR = P.htR || 0.0262;
-  const HT = pd15Sweep([fup(C, d, -0.002), fup(H1, d, 0.001)], [[0, htR*1.04, htR*1.04], [0.15, htR, htR], [0.85, htR, htR], [1, htR*1.04, htR*1.04]], { r:22, n:4, cap:true });
+  for (let i = 0; i < nh; i++){ const t = (i + 0.7)/(nh + 0.4); holes.push({ c:[dz1 - 0.070 + t*0.064, dyc + 0.012 + t*0.036], r:0.0118 - nh*0.0014 }); }
+  pd15Put(B, M, pd15Plate(gp, 0, 0.030, holes, 0.003, 8));
+  const htR = P.htR || 0.0285;
+  const HT = pd15Sweep([fup(C, d, -0.002), fup(H1, d, 0.001)], [[0, htR*1.03, htR*1.03], [0.12, htR, htR], [0.88, htR, htR], [1, htR*1.03, htR*1.03]], { r:22, n:4, cap:true });
   pd15Put(B, M, HT.geo);
   const cupM = P.cups ? pd15Ink(P.cups) : K;
-  pd15Put(B, cupM, pd15Sweep([fup(C, d, -0.012), fup(C, d, 0.001)], htR*1.09, { r:20, n:2, cap:true }).geo);
-  pd15Put(B, cupM, pd15Sweep([fup(H1, d, -0.001), fup(H1, d, 0.011)], htR*1.09, { r:20, n:2, cap:true }).geo);
+  pd15Put(B, cupM, pd15Sweep([fup(C, d, -0.014), fup(C, d, 0.002)], [[0, htR*1.12, htR*1.12], [1, htR*1.08, htR*1.08]], { r:22, n:2, cap:true }).geo);
+  pd15Put(B, cupM, pd15Sweep([fup(H1, d, -0.002), fup(H1, d, 0.012)], [[0, htR*1.08, htR*1.08], [1, htR*1.12, htR*1.12]], { r:22, n:2, cap:true }).geo);
   // a small brand mark on the head tube front
-  if (P.logo){ const R0 = pd15TextRuns(P.logo.charAt(0), 'heavy'), c = pd15Lerp(C, H1, 0.55), r = htR + 0.0005, Hh = 0.020, Ww = Hh*R0.w/R0.h;
+  if (P.logo){ const R0 = pd15TextRuns(P.logo.charAt(0), 'heavy'), c = pd15Lerp(C, H1, 0.55), r = htR + 0.0005, Hh = 0.022, Ww = Hh*R0.w/R0.h;
     pd15Put(B, P.ink ? pd15Ink(P.ink) : A, pd15InkGeo(R0, (u, v)=>{ const a = (0.5 - u)*Ww/r, p = pd15Up(pd15Up(c, d, (v - 0.5)*Hh), nn, Math.cos(a)*r); return [Math.sin(a)*r, p[1], p[0], Math.sin(a), nn[1]*Math.cos(a), nn[0]*Math.cos(a)]; }, 0.0004)); }
 
-  /* ---------------- deck end: dropouts down to the axle, axle bolts, brake */
-  const dp = pd15Hull([[rz, R, 0.017], [dzD + 0.014, dyc + 0.002, 0.018], [dzD - 0.010, dyT - 0.006, 0.010]], 6), hw = 0.0215;
-  [-1, 1].forEach(s=> pd15Put(B, M, pd15Plate(dp, s*hw, 0.009, [{ c:[(rz + dzD)/2 + 0.006, (R + dyc)/2 + 0.006], r:0.0055 }], 0.0025)));
-  pd15Put(B, K, pd15Disc(0.0082, hw*2 + 0.024, 0, 6).translate(0, R, rz));
+  /* ---------------- deck end: CNC dropouts round the rear axle, axle bolts, the brake, pegs */
+  const dp = pd15Hull([[rz, R, 0.018], [dzD + 0.016, dyc + 0.002, 0.019], [dzD - 0.010, dyT - 0.006, 0.010]], 6), hw = pw + 0.009;
+  [-1, 1].forEach(s=> pd15Put(B, M, pd15Plate(dp, s*hw, 0.010, [{ c:[(rz + dzD)/2 + 0.008, (R + dyc)/2 + 0.006], r:0.0058 }], 0.0025)));
+  pd15Put(B, K, pd15Disc(0.0084, hw*2 + 0.026, 0, 6).translate(0, R, rz));
   if (P.brake !== 'none'){
-    const alloy = P.brake === 'alloy', a0 = Math.PI*(alloy ? 0.30 : 0.22), a1 = Math.PI*(alloy ? 0.80 : 0.88), rr = R + 0.008, pts = [[0, dyT - 0.003, dzD + 0.022]];
+    const alloy = P.brake === 'alloy', a0 = Math.PI*(alloy ? 0.30 : 0.22), a1 = Math.PI*(alloy ? 0.80 : 0.88), rr = R + 0.008, pts = [[0, dyT - 0.003, dzD + 0.024]];
     for (let i = 0; i <= 8; i++){ const a = a0 + (a1 - a0)*i/8; pts.push([0, R + Math.sin(a)*rr, rz + Math.cos(a)*rr]); }
-    pd15Put(B, alloy ? A : M12.steel, pd15Sweep(pts, alloy ? [0.017, 0.0055, 3.2] : [0.0145, 0.0018, 6], { r:12, n:20, cap:true, ref:_pdX }).geo);
+    pd15Put(B, alloy ? A : M12.steel, pd15Sweep(pts, alloy ? [pw + 0.004, 0.0055, 3.2] : [pw + 0.002, 0.0019, 6], { r:12, n:20, cap:true, ref:_pdX }).geo);
     if (alloy) pd15Put(B, A, pd15Plate(pd15Hull([[dzD + 0.010, dyT - 0.012, 0.010], [rz + 0.032, R + 0.050, 0.008]], 4), 0, 0.030, null, 0.003));
-    else pd15Put(B, K, pd15Box(0.030, 0.004, 0.020, [0, dyT - 0.001, dzD + 0.022]));
+    else { pd15Put(B, K, pd15Box(pw*2 + 0.006, 0.004, 0.022, [0, dyT - 0.001, dzD + 0.024])); pd15Put(B, PD15.silver, pd15Disc(0.0042, 0.006, 0, 6).rotateZ(Math.PI/2).translate(0, dyT + 0.002, dzD + 0.024)); }
   }
+  // street pegs: knurled alloy tubes on the axle ends, outboard of the dropouts
+  const pegGeo = (x0, ax)=>{ const L = [], s = Math.sign(x0), r = 0.0185, l = 0.070;
+    L.push(pd15Disc(r, l, x0 + s*l/2, 18).translate(0, ax[1], ax[0]));
+    [0.20, 0.50, 0.80].forEach(u=> L.push(pd15Disc(r + 0.0012, 0.004, x0 + s*l*u, 18).translate(0, ax[1], ax[0])));
+    L.push(pd15Disc(r*0.55, 0.004, x0 + s*(l + 0.001), 12).translate(0, ax[1], ax[0]));
+    return L; };
+  if (pegs) [-1, 1].forEach(s=> pegGeo(s*(hw + 0.006), [rz, R]).forEach(q=> pd15Put(B, K, q)));
 
-  /* ---------------- front: box-section fork, steerer, compression clamp, bars, grips, bar ends */
-  // Release 15.5 (forks17): a one-piece threadless fork -- chamfered box-section legs tapering down to rounded dropouts round the axle,
-  // a forged crown under the lower headset cup that wraps both legs + the steerer (it used to be a square bar across the top), hex axle bolts
-  const fkR = P.forkW || 0.0118, fxw = 0.0215, FK = FX.fork, cT = crownL - 0.016, cH = 0.022;
+  /* ---------------- front: box-section fork, steerer, compression clamp + top cap, bars, grips, bar ends */
+  const fkR = P.forkW || 0.0128, fxw = pw + 0.0095, FK = FX.fork, cT = crownL - 0.016, cH = 0.024;
   [-1, 1].forEach(sd=>{
-    pd15Put(F, FK, pd15Sweep([X3(fup(Ax, d, 0.002), sd*fxw), X3(fup(Ax, d, cT*0.55), sd*fxw), X3(fup(Ax, d, cT - cH*0.4), sd*fxw)], [[0, fkR*0.70, fkR*1.12, 2.8], [0.55, fkR*0.76, fkR*1.30, 2.8], [1, fkR*0.84, fkR*1.42, 2.8]], { r:14, n:6, cap:'a' }).geo);
-    pd15Put(F, FK, pd15Disc(fkR*1.05, fkR*1.45, sd*fxw, 14).translate(0, Ax[1], Ax[0]));                                    // rounded dropout
-    pd15Put(F, K, pd15Disc(0.0072, 0.006, sd*(fxw + fkR*0.72 + 0.003), 6).translate(0, Ax[1], Ax[0]));                    // axle bolt heads
+    pd15Put(F, FK, pd15Sweep([X3(fup(Ax, d, 0.002), sd*fxw), X3(fup(Ax, d, cT*0.55), sd*fxw), X3(fup(Ax, d, cT - cH*0.4), sd*fxw)], [[0, fkR*0.72, fkR*1.12, 2.8], [0.55, fkR*0.78, fkR*1.32, 2.8], [1, fkR*0.86, fkR*1.46, 2.8]], { r:14, n:6, cap:'a' }).geo);
+    pd15Put(F, FK, pd15Disc(fkR*1.08, fkR*1.5, sd*fxw, 14).translate(0, Ax[1], Ax[0]));                                     // rounded dropout
+    pd15Put(F, K, pd15Disc(0.0074, 0.006, sd*(fxw + fkR*0.75 + 0.003), 6).translate(0, Ax[1], Ax[0]));                    // axle bolt heads
   });
-  pd15Put(F, FK, fk17Slab({ d }, [[fxw, 0, fkR*1.42 + 0.002], [-fxw, 0, fkR*1.42 + 0.002], [0, 0, 0.0175]], cH, fup(Ax, d, cT - cH/2), 0.0065));
-  pd15Put(F, K, pd15Disc(0.0062, fxw*2 + fkR*1.4, 0, 8).translate(0, Ax[1], Ax[0]));
-  const barTop = fup(C, d, ((P.bar || 0.98) - C[1])/d[1]), os = P.bars === 'oversize' || P.clamp === 'hic';
-  const bR = os ? 0.0172 : 0.0158;
-  pd15Put(F, K, pd15Sweep([X3(fup(C, d, 0.002), 0), X3(fup(H1, d, 0.020), 0)], 0.0140, { r:12, n:2 }).geo);              // steerer
-  pd15Put(F, N, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(barTop, d, -0.004), 0)], bR, { r:16, n:2 }).geo);           // bar stem tube
-  const cl = P.clamp || 'scs', CM = P.clampMat ? pd15Ink(P.clampMat) : A;
-  if (cl === 'scs'){                                                           // big one-piece clamp block, bolts at the back
-    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.090), 0)], [[0, 0.0305, 0.0305, 2.4], [0.5, 0.0295, 0.0295, 2.4], [1, 0.0305, 0.0305, 2.4]], { r:20, n:4, cap:true }).geo);
-    [0.030, 0.051, 0.072].forEach(s=>{ const p = fup(H1, d, s); pd15Put(F, PD15.silver, pd15Disc(0.0045, 0.010, 0, 6).rotateY(Math.PI/2).translate(0, p[1], p[0] - 0.032)); });
-    pd15Put(F, K, pd15Sweep([X3(fup(H1, d, 0.090), 0), X3(fup(H1, d, 0.097), 0)], 0.026, { r:16, n:2, cap:true }).geo);
-  } else if (cl === '4bolt'){                                                  // double clamp, two bolt rows
-    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.074), 0)], 0.0262, { r:18, n:2, cap:true }).geo);
-    [0.028, 0.058].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> pd15Put(F, PD15.silver, pd15Disc(0.0042, 0.010, 0, 6).rotateY(Math.PI/2).translate(sd*0.012, p[1], p[0] - 0.027))); });
-  } else {                                                                     // IHC / HIC: a slim clamp ring + top cap (or a shim for oversized bars)
-    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.050), 0)], cl === 'hic' ? 0.0225 : 0.0215, { r:18, n:2, cap:true }).geo);
-    pd15Put(F, K, pd15Sweep([X3(fup(H1, d, 0.050), 0), X3(fup(H1, d, 0.056), 0)], 0.0185, { r:16, n:2, cap:true }).geo);
-    const p = fup(H1, d, 0.030); pd15Put(F, PD15.silver, pd15Disc(0.0042, 0.010, 0, 6).rotateY(Math.PI/2).translate(0, p[1], p[0] - 0.023));
+  pd15Put(F, FK, fk17Slab({ d }, [[fxw, 0, fkR*1.46 + 0.002], [-fxw, 0, fkR*1.46 + 0.002], [0, 0, 0.0185]], cH, fup(Ax, d, cT - cH/2), 0.0065));
+  pd15Put(F, K, pd15Disc(0.0064, fxw*2 + fkR*1.5, 0, 8).translate(0, Ax[1], Ax[0]));
+  if (pegs) [-1, 1].forEach(s=> pegGeo(s*(fxw + fkR*0.75 + 0.006), Ax).forEach(q=> pd15Put(F, K, q)));
+  const barTop = fup(C, d, ((P.bar || 0.98) - C[1])/d[1]), os = P.bars === 'oversize' || P.clamp === 'scs' || P.clamp === 'hic';
+  const bR = os ? 0.0175 : 0.0160, xR = os ? 0.0150 : 0.0138;                   // down tube (34.9 / 31.8 mm) + crossbar
+  pd15Put(F, K, pd15Sweep([X3(fup(C, d, 0.002), 0), X3(fup(H1, d, 0.020), 0)], 0.0142, { r:12, n:2 }).geo);              // steerer
+  pd15Put(F, N, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(barTop, d, -0.004), 0)], bR, { r:16, n:2 }).geo);           // bar down tube
+  const cl = P.clamp || 'scs', CM = P.clampMat ? pd15Ink(P.clampMat) : A, bolt = (p, x, back)=> pd15Put(F, PD15.silver, pd15Disc(0.0046, 0.010, 0, 6).rotateY(Math.PI/2).translate(x, p[1], p[0] - back));
+  let capT;
+  if (cl === 'scs'){                                                           // big one-piece clamp block round the bars: a slot + 4 bolts at the back
+    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.096), 0)], [[0, 0.0322, 0.0322, 2.4], [0.5, 0.0310, 0.0310, 2.4], [1, 0.0322, 0.0322, 2.4]], { r:22, n:4, cap:true }).geo);
+    [0.034, 0.074].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> bolt(p, sd*0.0115, 0.0335)); });
+    pd15Put(F, K, pd15Box(0.006, 0.070, 0.006, [0, fup(H1, d, 0.054)[1], fup(H1, d, 0.054)[0] - 0.0325], Math.atan2(d[0], d[1])));
+    capT = 0.096;
+  } else if (cl === '4bolt'){                                                  // double clamp, two bolt rows each side
+    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.078), 0)], [[0, 0.0275, 0.0275, 2.4], [1, 0.0268, 0.0268, 2.4]], { r:20, n:2, cap:true }).geo);
+    [0.028, 0.062].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> bolt(p, sd*0.0125, 0.0285)); });
+    capT = 0.078;
+  } else {                                                                     // IHC / HIC: a slimmer double-bolt clamp ring (+ a shim for oversized bars)
+    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.058), 0)], cl === 'hic' ? 0.0238 : 0.0226, { r:20, n:2, cap:true }).geo);
+    [0.024, 0.044].forEach(s=> bolt(fup(H1, d, s), 0, 0.024));
+    if (cl === 'hic') pd15Put(F, K, pd15Sweep([X3(fup(H1, d, 0.058), 0), X3(fup(H1, d, 0.070), 0)], bR + 0.0022, { r:16, n:2, cap:true }).geo);
+    capT = cl === 'hic' ? 0.070 : 0.058;
   }
-  // bars: crossbar + T gussets / Y legs / double bar / swept
-  const bw = (P.bw || 0.58)/2, bz = barTop[0] - 0.008, by = barTop[1], swept = P.bars === 'swept', back = swept ? 0.072 : 0.018, up = swept ? 0.012 : 0.006;
-  pd15Put(F, N, pd15Sweep([[-(bw + 0.004), by + up, bz - back], [-bw*0.85, by + up*0.6, bz - back*0.7], [-bw*0.40, by, bz - back*0.10], [0, by, bz], [bw*0.40, by, bz - back*0.10], [bw*0.85, by + up*0.6, bz - back*0.7], [bw + 0.004, by + up, bz - back]],
-    os ? 0.0168 : 0.0152, { r:14, n:24, ref:_pdY }).geo);
-  if (P.bars === 'y') [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.20, bz + 0.016], [sd*0.035, by - 0.075, bz + 0.004], [sd*bw*0.40, by, bz - back*0.12]], 0.0122, { r:12, n:12 }).geo));
-  if (P.bars === 'double'){ [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[sd*0.13, by, bz - 0.004], [sd*0.13, by - 0.12, bz + 0.012]], 0.0112, { r:12, n:2 }).geo)); pd15Put(F, N, pd15Sweep([[-0.135, by - 0.12, bz + 0.012], [0.135, by - 0.12, bz + 0.012]], 0.0122, { r:12, n:2, ref:_pdY }).geo); }
-  if (P.bars === 'tbar' || os) [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.085, bz + 0.010], [sd*0.075, by - 0.004, bz - 0.002]], [0.008, 0.0095], { r:10, n:2 }).geo));
-  const gx = bw - 0.075, gy = by + up, gz = bz - back;
+  // compression top cap + bolt (IHC / threadless): a domed cap on top of the clamp round the bar
+  pd15Put(F, K, pd15Sweep([X3(fup(H1, d, capT), 0), X3(fup(H1, d, capT + 0.006), 0)], [[0, bR + 0.0045, bR + 0.0045], [1, bR + 0.002, bR + 0.002]], { r:18, n:2, cap:true }).geo);
+  // bars: a straight crossbar through straight grip zones (the grips sit on it exactly), T gussets / Y legs / a swept bend
+  const bw = (P.bw || 0.58)/2, bz = barTop[0] - 0.008, by = barTop[1], swept = P.bars === 'swept', back = swept ? 0.045 : 0.0, up = swept ? 0.010 : 0.0;
+  const gy = by + up, gz = bz - back, gIn = bw - 0.165;
+  if (swept){                                                                  // a gentle backsweep in the middle, straight grip zones
+    pd15Put(F, N, pd15Sweep([[-gIn - 0.004, gy, gz], [-gIn*0.48, by + up*0.45, bz - back*0.30], [0, by, bz], [gIn*0.48, by + up*0.45, bz - back*0.30], [gIn + 0.004, gy, gz]], xR, { r:14, n:20, ref:_pdY }).geo);
+    [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[sd*gIn, gy, gz], [sd*(bw + 0.004), gy, gz]], xR, { r:14, n:2, ref:_pdY }).geo));
+  } else pd15Put(F, N, pd15Sweep([[-(bw + 0.004), by, bz], [bw + 0.004, by, bz]], xR, { r:14, n:2, ref:_pdY }).geo);
+  if (P.bars === 'y') [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.20, bz + 0.016], [sd*0.035, by - 0.075, bz + 0.004], [sd*bw*0.40, by + up*0.6, bz]], 0.0128, { r:12, n:12 }).geo));
+  else [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.092, bz + 0.010], [sd*0.082, by - 0.002, bz - 0.001]], [0.0085, 0.0100], { r:10, n:2 }).geo));          // T gussets
+  pd15Put(F, N, pd15Sweep([[0, by - 0.006, bz], [0, by + 0.010, bz]], bR*1.04, { r:16, n:1, cap:true }).geo);                                                         // T junction weld
+  const gx = bw - 0.075;
   [-1, 1].forEach(sd=>{
-    const a = [sd*(bw - 0.150), gy - (swept ? 0.002 : 0), gz + (swept ? 0.012 : 0)], b = [sd*(bw + 0.004), gy, gz];
-    pd15Put(F, FX.grip, pd15Sweep([a, b], t=>{ const r = 0.0178 + 0.0010*Math.cos(t*Math.PI*2*9); return [r, r]; }, { r:12, n:18, ref:_pdY, cap:'b' }).geo);   // long pro grips
-    pd15Put(F, FX.grip, pd15Sweep([[a[0] - sd*0.004, a[1], a[2]], [a[0] + sd*0.004, a[1], a[2]]], 0.0235, { r:16, n:2, cap:true, ref:_pdY }).geo);              // flange
-    pd15Put(F, P.plug ? pd15Ink(P.plug) : A, pd15Sweep([[sd*(bw + 0.004), gy, gz], [sd*(bw + 0.013), gy, gz]], 0.0168, { r:14, n:2, cap:true, ref:_pdY }).geo); // bar-end plugs
+    const a = [sd*(bw - 0.155), gy, gz], b = [sd*(bw + 0.004), gy, gz];
+    pd15Put(F, FX.grip, pd15Sweep([a, b], t=>{ const r = 0.0186 + 0.0010*Math.cos(t*Math.PI*2*9); return [r, r]; }, { r:14, n:18, ref:_pdY, cap:'b' }).geo);   // long pro grips
+    pd15Put(F, FX.grip, pd15Sweep([[a[0] - sd*0.004, a[1], a[2]], [a[0] + sd*0.005, a[1], a[2]]], 0.0250, { r:16, n:2, cap:true, ref:_pdY }).geo);              // flange
+    pd15Put(F, P.plug ? pd15Ink(P.plug) : A, pd15Sweep([[sd*(bw + 0.004), gy, gz], [sd*(bw + 0.014), gy, gz]], 0.0176, { r:14, n:2, cap:true, ref:_pdY }).geo); // bar-end plugs
   });
 
   /* ---------------- wheels */
   const ns = P.spokes === undefined ? 6 : P.spokes;
-  const rw = pd15ScootWheel(R, ns), fw = pd15ScootWheel(R, ns);
+  const rw = pd15ScootWheel(R, ns, { w:pw }), fw = pd15ScootWheel(R, ns, { w:pw });
   pd15Flush(B, f); pd15Flush(F, fr);
   fmerge(f); fmerge(fr);
   const ay = dyT + 0.075, zf = dz1 - 0.21, zr = Math.max(dzD + 0.17, zf - 0.30);
@@ -33277,13 +33425,13 @@ FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
   const SC = { logo:true, ht:0.15, ha:82 };
   R('erawan', 'pd15scoot', Object.assign({}, SC, { dl:0.54, dw:0.122, bar:1.00, bw:0.58, wr:0.055, ha:82, ht:0.15, spokes:6, clamp:'scs', bars:'tbar', brake:'flex', deck:'flat', neck:2, tape:'acc', tapeArt:'logo', ink:'acc', cups:'acc' }),
     { col:0x7b3fe4, acc:0xffffff, liv:{ fork:0x1a1c20, rim:0x7b3fe4, tire:0xf2f3f5, grip:0xffffff, bars:0x1a1c20 } });
-  R('prospect', 'pd15scoot', Object.assign({}, SC, { dl:0.50, dw:0.128, bar:1.02, bw:0.60, wr:0.0575, ha:81, ht:0.17, spokes:0, clamp:'hic', bars:'oversize', brake:'flex', deck:'flare', neck:1, tape:'acc', tapeArt:'split', ink:'acc', logoStyle:'stencil', cups:'black' }),
+  R('prospect', 'pd15scoot', Object.assign({}, SC, { dl:0.50, dw:0.128, bar:1.02, bw:0.60, wr:0.0575, ha:81, ht:0.17, spokes:0, clamp:'hic', bars:'oversize', brake:'flex', deck:'flare', neck:1, pegs:true, tape:'acc', tapeArt:'split', ink:'acc', logoStyle:'stencil', cups:'black' }),
     { col:0x25262a, acc:0xf2c200, liv:{ fork:0xf2c200, rim:0x1a1b1e, tire:0xf2c200, grip:0x1a1b1e, bars:0xf2c200 } });
   R('invictus', 'pd15scoot', Object.assign({}, SC, { dl:0.55, dw:0.120, bar:1.03, bw:0.60, wr:0.060, ha:83, ht:0.19, spokes:5, clamp:'ihc', bars:'tbar', brake:'alloy', deck:'taper', forkW:0.0135, neck:3, tape:'white', tapeArt:'stripe', ink:'acc', logoStyle:'cond', cups:'acc', clampMat:'black' }),
     { col:0xcdd2d8, acc:0xe8412c, liv:{ fork:0xe8412c, rim:0xcdd2d8, tire:0x17181b, grip:0xe8412c, bars:0xcdd2d8 } });
   R('prodigyx', 'pd15scoot', Object.assign({}, SC, { dl:0.485, dw:0.118, bar:0.97, bw:0.52, wr:0.050, ha:81, ht:0.13, spokes:3, clamp:'scs', bars:'y', brake:'none', deck:'box', neck:2, tape:'white', tapeArt:'logo', ink:'white', logoStyle:'cond', cups:'white', clampMat:'white' }),
     { col:0x0f5ac8, acc:0xffffff, liv:{ fork:0xffffff, rim:0xffffff, tire:0x101114, grip:0xffffff, bars:0x0f5ac8 } });
-  R('vx9', 'pd15scoot', Object.assign({}, SC, { dl:0.57, dw:0.130, bar:1.00, bw:0.62, wr:0.055, ha:80, ht:0.16, spokes:0, clamp:'4bolt', bars:'double', brake:'flex', deck:'flat', neck:0, tape:'acc', tapeArt:'stripe', ink:'black', logoStyle:'heavy', cups:'black', clampMat:'black', plug:'black' }),
+  R('vx9', 'pd15scoot', Object.assign({}, SC, { dl:0.57, dw:0.130, bar:1.00, bw:0.62, wr:0.055, ha:80, ht:0.16, spokes:0, clamp:'4bolt', bars:'oversize', brake:'flex', deck:'flat', deckH:0.044, neck:0, pegs:true, tape:'acc', tapeArt:'stripe', ink:'black', logoStyle:'heavy', cups:'black', clampMat:'black', plug:'black' }),
     { col:0xc41f2a, acc:0x15161a, liv:{ fork:0x15161a, rim:0x15161a, tire:0x15161a, grip:0x15161a, bars:0xc41f2a } });
   R('maven', 'pd15scoot', Object.assign({}, SC, { dl:0.505, dw:0.125, bar:1.00, bw:0.55, wr:0.0525, ha:82, ht:0.15, spokes:8, clamp:'ihc', bars:'swept', brake:'alloy', deck:'flare', forkW:0.0125, neck:1, tape:'white', tapeArt:'split', ink:'white', logoStyle:'wide', cups:'white' }),
     { col:0x1b8f6a, acc:0xf2f3f5, liv:{ fork:0xf2f3f5, rim:0xf2f3f5, tire:0x17181b, grip:0xf2f3f5, bars:0x17181b } });
@@ -33595,6 +33743,139 @@ function fk17Bmx(G, o){
   out.brakeAx = [A[0] - n[0]*fd, A[1] - n[1]*fd];
   return out;
 }
+
+/* =========================================================================
+   NAMES18 -- Release 15.6: every ride shows the name of the real machine it is modelled on (the user: "make the bikes have
+   names of real bikes"). Menus, garage, shop, stores, HUD and the ride card read v.name / v.brand / v.model; this module runs
+   right before the fleet core, AFTER every fleet data module, so the frame / deck / tank wordmarks (computed by the data
+   modules from fleet_names15.js's livery: "DUSK LINE" + the ride's catalogue number) stay the game's own -- no company's
+   logo or wordmark is painted on a model. Ids, numbers, prices, physics, descriptions and saves are unchanged.
+   ========================================================================= */
+const FLEET_NAMES18 = {
+  v10: ['Santa Cruz', 'V10'],
+  slash: ['Trek', 'Slash'],
+  demo: ['Specialized', 'Demo'],
+  tues: ['YT', 'Tues'],
+  sender: ['Canyon', 'Sender CFR'],
+  meta: ['Commencal', 'Meta SX'],
+  spindrift: ['Propain', 'Spindrift'],
+  stumpy: ['Specialized', 'Stumpjumper'],
+  megatower: ['Santa Cruz', 'Megatower'],
+  capra: ['YT', 'Capra'],
+  scale: ['Scott', 'Scale RC'],
+  ticket: ['Trek', 'Ticket S'],
+  mukluk: ['Salsa', 'Mukluk'],
+  clash: ['Commencal', 'Clash'],
+  bronson: ['Santa Cruz', 'Bronson'],
+  yeti: ['Yeti', 'SB140'],
+  p3: ['Specialized', 'P.3'],
+  soundwave: ['Sunday', 'Soundwave'],
+  gateway: ['Cult BMX', 'Gateway'],
+  envy: ['WeThePeople', 'Envy'],
+  williams: ['Kink', 'Williams'],
+  malum: ['Subrosa', 'Malum'],
+  legion: ['Mongoose', 'Legion L100'],
+  bigripper: ['SE Bikes', 'Big Ripper'],
+  flightpro: ['Redline', 'Flight Pro XL'],
+  performer: ['GT', 'Performer'],
+  conquest24: ['Redline', 'Conquest 24"'],
+  flatland: ['Terrible One', 'Flatland'],
+  streetsweeper: ['Sunday', 'Street Sweeper'],
+  californian: ['Mongoose', 'Californian'],
+  speedseries: ['GT', 'Speed Series Pro XL'],
+  haromaster: ['Haro', 'Lineage Master'],
+  fittrl: ['Fit', 'TRL'],
+  typeo: ['Fiend', 'Type O'],
+  lacey: ['Federal', 'Lacey'],
+  horizon18: ['Colony', 'Horizon 18"'],
+  atf: ['S&M', 'ATF'],
+  quadangle: ['SE Bikes', 'Quadangle Looptail 26"'],
+  killabee: ['Total BMX', 'Killabee'],
+  tarmac: ['Specialized', 'S-Works Tarmac SL8'],
+  aeroad: ['Canyon', 'Aeroad CFR'],
+  madone: ['Trek', 'Madone SLR'],
+  dogma: ['Pinarello', 'Dogma F'],
+  v4rs: ['Colnago', 'V4Rs'],
+  s5: ['Cervelo', 'S5'],
+  oltre: ['Bianchi', 'Oltre RC'],
+  creo: ['Specialized', 'Turbo Creo SL'],
+  erawan: ['Ethic', 'Erawan'],
+  prospect: ['Lucky', 'Prospect'],
+  invictus: ['Root Industries', 'Invictus'],
+  prodigyx: ['Envy', 'Prodigy X'],
+  vx9: ['Madd Gear', 'MGP VX9 Team'],
+  maven: ['AO', 'Maven'],
+  lightbee: ['Sur-Ron', 'Light Bee X'],
+  ultrabee: ['Sur-Ron', 'Ultra Bee'],
+  stormbee: ['Sur-Ron', 'Storm Bee'],
+  sting: ['Talaria', 'Sting R MX4'],
+  xxx: ['Talaria', 'XXX'],
+  komodo: ['Talaria', 'Komodo'],
+  ss3: ['E Ride Pro', 'SS 3.0'],
+  sr: ['E Ride Pro', 'SR'],
+  xaber: ['Segway', 'Xaber 300'],
+  x260: ['Segway', 'X260'],
+  varg: ['Stark', 'Varg'],
+  xqi3: ['NIU', 'XQi3'],
+  villain: ['Heybike', 'Villain'],
+  r1s: ['Rerode', 'R1+S'],
+  etm: ['Electro & Co', 'ETM RTR'],
+  freego: ['Freego', 'X2 Pro'],
+  kalk: ['Cake', 'Kalk OR'],
+  revvfs: ['Ride1Up', 'Revv 1 FS'],
+  revvdrt: ['Ride1Up', 'Revv 1 DRT'],
+  rx: ['SUPER73', 'RX'],
+  s2: ['SUPER73', 'S2'],
+  arielx: ['Ariel Rider', 'X-Class'],
+  scrambler: ['Juiced', 'Scrambler'],
+  x7: ['Macfox', 'X7'],
+  goat: ['Motor Goat', 'V3'],
+  radrunner: ['Rad Power', 'RadRunner 3 Plus'],
+  metacycle: ['Sondors', 'Metacycle'],
+  urtopia: ['Urtopia', 'Carbon 1 Pro'],
+  levo: ['Specialized', 'Turbo Levo'],
+  vala: ['Santa Cruz', 'Vala'],
+  rail: ['Trek', 'Rail'],
+  aventure: ['Aventon', 'Aventure.2'],
+  xyber: ['Segway', 'Xyber'],
+  kenevo: ['Specialized', 'Turbo Kenevo'],
+  rise: ['Orbea', 'Rise'],
+  moterra: ['Cannondale', 'Moterra Neo'],
+  trancex: ['Giant', 'Trance X E+'],
+  allmtn: ['Haibike', 'AllMtn'],
+  ehtmtb: ['Cube', 'Reaction Hybrid'],
+  gsd: ['Tern', 'GSD'],
+  radwagon: ['Rad Power', 'RadWagon'],
+  brompton: ['Brompton', 'Electric'],
+  gocycle: ['Gocycle', 'G4'],
+  ultimate: ['Gazelle', 'Ultimate C380'],
+  townie: ['Electra', 'Townie Go!'],
+  curt: ['Ampler', 'Curt'],
+  vanmoof: ['VanMoof', 'S3'],
+  mi4pro: ['Xiaomi', 'Electric Scooter 4 Pro'],
+  ninebotmax: ['Segway', 'Ninebot Max G2'],
+  gt2: ['Segway', 'GT2'],
+  phantom: ['Apollo', 'Phantom'],
+  thunder3: ['Dualtron', 'Thunder 3'],
+  wolf11: ['Kaabo', 'Wolf Warrior 11'],
+  razore300: ['Razor', 'E300'],
+  razore300s: ['Razor', 'E300S Seated'],
+  unagi: ['Unagi', 'Model One'],
+  kqi3: ['NIU', 'KQi3 Max'],
+  limegen4: ['Lime', 'Gen4 Rental'],
+  hiboy: ['Hiboy', 'S2 Lite'],
+  zero10x: ['Zero', '10X'],
+  vsett10: ['VSETT', '10+'],
+  inokim: ['Inokim', 'OXO'],
+  skyrider: ['Dusk', 'Skyrider']
+};
+(function(){
+  FLEET.forEach(v=>{
+    const n = FLEET_NAMES18[v.id];
+    if (!n) return;
+    v.brand = n[0]; v.model = n[1]; v.name = n[1] ? n[0] + ' ' + n[1] : n[0];
+  });
+})();
 
 /* =========================================================================
    FLEET CORE -- turns the FLEET table into the game's vehicles.
@@ -38574,7 +38855,10 @@ const PR = (function(){
         if (!tW || (c !== CL.TORSO && c !== CL.SHOULDER)) x += sg*sh*w*sst(0.0, armX*0.95, ax);   // (with a torsoW profile the chest + clavicles are scaled to it instead)
         // no bust: push the front of the chest back, keep a flat pectoral plane
         if (z > 0.0){
-          const bx = (ax - 0.052)/0.055, by = (y - (shY - 0.10))/0.062;
+          // (Release 15.6: the bust's shape is a build option -- boys get a flat plateau across the whole chest instead of two
+          //  Gaussians at the cups, which left a ridge down the sternum and still read as a bust)
+          const bf = b.bustFlat || 0, bx = Math.max(0, Math.abs(ax - (b.bustX === undefined ? 0.052 : b.bustX)) - bf)/(b.bustSX || 0.055),
+                by = (y - (shY - (b.bustY === undefined ? 0.10 : b.bustY)))/(b.bustSY || 0.062);
           z -= bust*Math.exp(-bx*bx - by*by);
           z -= chest*sst(0.0, 0.09, z)*sst(P.Spine.y, P.Spine1.y + 0.04, y)*(1 - sst(shY - 0.02, shY + 0.03, y));
         }
@@ -38601,8 +38885,56 @@ const PR = (function(){
       }
       pos.setXYZ(i, x, y, z);
     }
+    if (b.drape) drapeFront(pos, vc, b.drape);
     pos.needsUpdate = true;
     g.computeBoundingSphere();
+  }
+
+  /* Release 15.6: a tee / hoodie / jersey hangs straight from the chest to the belly. Michelle's ribcage under the bust sits ~2.5 cm
+     behind the chest line, so a flattened chest still left a crease under it and the side view read as a bust. Per 2 cm column the
+     front profile between y0 and y1 is lifted (k = 0..1) to its upper hull; only the front skin moves (TORSO / HIPS / SHOULDER). */
+  function drapeFront(pos, vc, d){
+    const y0 = d[0], y1 = d[1], k = d[2] === undefined ? 1 : d[2], XB = 0.02, YB = 0.01, X0 = -0.16;
+    const nx = Math.round(-2*X0/XB) + 1, ny = Math.round((y1 - y0)/YB) + 1, n = pos.count;
+    const isT = c => c === CL.TORSO || c === CL.HIPS || c === CL.SHOULDER;
+    const front = new Float32Array(nx*ny).fill(-1);
+    for (let i=0;i<n;i++){
+      if (!isT(vc[i])) continue;
+      const z = pos.getZ(i); if (z <= 0) continue;
+      const xi = Math.round((pos.getX(i) - X0)/XB), yi = Math.round((pos.getY(i) - y0)/YB);
+      if (xi < 0 || xi >= nx || yi < 0 || yi >= ny) continue;
+      const j = xi*ny + yi; if (z > front[j]) front[j] = z;
+    }
+    // the mesh is sparse (vertices every 2-3 cm), so most cells are empty: every cell gets the column's front profile and hull
+    // interpolated along y, which keeps the lift field smooth between vertices
+    const lift = new Float32Array(nx*ny), fz = new Float32Array(nx*ny).fill(-1);
+    const lerpAt = (L, yi)=>{ if (yi <= L[0][0]) return L[0][1]; for (let m=1;m<L.length;m++) if (yi <= L[m][0]){ const a = L[m-1], q = L[m]; return a[1] + (q[1] - a[1])*(yi - a[0])/(q[0] - a[0]); } return L[L.length - 1][1]; };
+    for (let xi=0;xi<nx;xi++){
+      const pts = [];
+      for (let yi=0;yi<ny;yi++){ const z = front[xi*ny + yi]; if (z >= 0) pts.push([yi, z]); }
+      if (!pts.length) continue;
+      for (let yi=0;yi<ny;yi++) fz[xi*ny + yi] = lerpAt(pts, yi);
+      if (pts.length < 3) continue;
+      const H = [];
+      for (const p of pts){
+        while (H.length >= 2){ const a = H[H.length - 2], q = H[H.length - 1]; if ((q[0] - a[0])*(p[1] - a[1]) - (q[1] - a[1])*(p[0] - a[0]) >= 0) H.pop(); else break; }
+        H.push(p);
+      }
+      for (let yi=pts[0][0];yi<=pts[pts.length - 1][0];yi++) lift[xi*ny + yi] = Math.max(0, lerpAt(H, yi) - fz[xi*ny + yi])*k;
+    }
+    const cell = (A, xf, yf)=>{   // bilinear over the grid
+      const x0 = clamp(Math.floor(xf), 0, nx - 1), x1 = Math.min(nx - 1, x0 + 1), tx = clamp(xf - x0, 0, 1);
+      const y0i = clamp(Math.floor(yf), 0, ny - 1), y1i = Math.min(ny - 1, y0i + 1), ty = clamp(yf - y0i, 0, 1);
+      return (A[x0*ny + y0i]*(1 - ty) + A[x0*ny + y1i]*ty)*(1 - tx) + (A[x1*ny + y0i]*(1 - ty) + A[x1*ny + y1i]*ty)*tx;
+    };
+    for (let i=0;i<n;i++){
+      if (!isT(vc[i])) continue;
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      if (z <= 0 || y < y0 || y > y1) continue;
+      const xf = (x - X0)/XB, yf = (y - y0)/YB, L = cell(lift, xf, yf); if (L <= 1e-5) continue;
+      const F = cell(fz, xf, yf);
+      pos.setZ(i, z + L*sst(F - 0.03, F - 0.006, z));
+    }
   }
 
   /* reshape() moves positions only, so the stored normals still describe Michelle's bust and hips (a flattened chest kept its curved
@@ -39093,7 +39425,10 @@ const PR = (function(){
 
   /* ----------------------------------------------------------- male build */
   /* boys: broad shoulders + V-taper, flat chest, slim hips / glutes, heavy arms, big hands + feet (merged UNDER the character's own `build`) */
-  const MALE = { shoulders:0.062, torsoW:[[1.00, 0.130], [1.04, 0.127], [1.08, 0.125], [1.12, 0.130], [1.16, 0.139], [1.20, 0.148], [1.26, 0.154], [1.30, 0.145], [1.34, 0.080]], waistD:0.024, trap:0.014, bust:0.04, chest:0.015, hips:0.12, glute:0.05, bulk:0.018, hand:1.16, foot:1.07 };
+  const MALE = { shoulders:0.062, torsoW:[[1.00, 0.130], [1.04, 0.127], [1.08, 0.125], [1.12, 0.130], [1.16, 0.139], [1.20, 0.148], [1.26, 0.154], [1.30, 0.145], [1.34, 0.080]], waistD:0.004, trap:0.014,
+    // Release 15.6: a flat chest plateau across the whole front (pecs), no cup bumps, no sternum ridge, no belly bulge
+    bust:0.04, bustX:0, bustFlat:0.075, bustSX:0.035, bustY:0.13, bustSY:0.07, drape:[1.06, 1.215, 1],
+    chest:0.015, hips:0.12, glute:0.05, bulk:0.018, hand:1.16, foot:1.07 };
   const _w1 = new T.Matrix4();
   /* slide both arm joints outward by `sh` (reshape() already slid the arm mesh the same amount) and re-derive the skin for the new
      joints, so the IK pivots, the mesh and the kit all agree and the arms swing from where the shoulders really are */
@@ -40142,6 +40477,8 @@ const PHYS_WB = {
    ========================================================================= */
 const PHYS_COMBO_GRACE = 1.0;                  // seconds a chain survives after the last trick ends
 const PHYS_COMBO_MAX = 12;                     // multiplier cap
+const PHYS_ROT_MIN = 0.85;                     // air spins / flips never turn slower than this x a BMX's (15.6: a moped or a cargo
+                                               // e-bike at 0.62-0.70 could not get a 360 round even off a 3 m kicker)
 const PHYS = {
   mode: '',            // '' | 'wheelie' | 'stoppie'  (what the bike is doing right now)
   seg: 'wheelie',      // the kind of the segment that is being scored (survives the end of the pitch)
@@ -40637,6 +40974,7 @@ updateRide = function(dt, In){
   const spd = bike.vel.length();
   const fwd = bike.vel.dot(_f);
   const nosing = PHYS.mode === 'stoppie' && bike.manual > 0.05;
+  const wbBrake = PHYS.wbs.ph > 0 && !!In.manual && !!In.down;     // S in a wheelie: the rear brake on the pitch, not a full stop
 
   // pedal / throttle / kick / brake -- the e-bike's motor takes over when there is charge left
   const eOn = DRIVE.electric && DRIVE.battery > 0.005;
@@ -40650,7 +40988,9 @@ updateRide = function(dt, In){
     // a stoppie rolls on: the front brake is only feathered unless S is held as well
     if (fwd > 0.4) bike.vel.addScaledVector(_f, -VEH.brake*(In.down && In.stoppie ? 0.8 : 0.18)*dt);
   } else if (In.down && !burning){
-    if (fwd > 0.4) bike.vel.addScaledVector(_f, -VEH.brake*dt);
+    // up on the back wheel (SHIFT held) S works the PITCH: it brings the front down but only scrubs a third of the speed, so held on
+    // it carries the bike over into a stoppie at riding speed -- the Manual Switch -- instead of stopping it dead first (15.6)
+    if (fwd > 0.4) bike.vel.addScaledVector(_f, -VEH.brake*(wbBrake ? 0.35 : 1)*dt);
     else           bike.vel.addScaledVector(_f, -5.5*dt);
   }
   if (DRIVE.electric){
@@ -40673,7 +41013,7 @@ updateRide = function(dt, In){
   bike.vel.addScaledVector(_r, -lat*Math.min(1, gk*dt));
 
   // rolling resistance + top speed
-  const drag = nosing ? 0.25 : (In.down ? 0.9 : VEH.drag);
+  const drag = nosing ? 0.25 : ((In.down && !wbBrake) ? 0.9 : VEH.drag);
   bike.vel.multiplyScalar(Math.exp(-drag*dt));
   const sp2 = bike.vel.length();
   const vmaxNormal = ((DRIVE.electric && DRIVE.battery > 0.005) ? (VEH.eTop || EBIKE.top) : VEH.top) * (PHYS.eboost > 0 ? 1.1 : 1);
@@ -40873,8 +41213,8 @@ updateAir = function(dt, In){
   DRIVE.throttle = damp(DRIVE.throttle, In.up ? 1 : 0, 10, dt);
   bike.vel.y -= GRAV*dt;
 
-  // spin & flip (heavy bikes turn over more slowly)
-  const rot = VEH.rot || 1;
+  // spin & flip (heavy bikes turn over more slowly -- down to PHYS_ROT_MIN)
+  const rot = Math.max(PHYS_ROT_MIN, VEH.rot || 1);
   // A flip thrown straight out of a wheelie / stoppie keeps the angular momentum of the manual: it snaps round fast and settles
   // (flat-ground hops are lower now -- a Wheelie Loop has to be able to come round inside a ~0.6 s hop on any bike)
   const loopBoost = bike.hopFromManual ? 1 + 0.8*Math.exp(-bike.airTime/0.5) : 1;
@@ -60552,6 +60892,10 @@ if (typeof window !== 'undefined') window.__suburbs = { SB, SBP, sbBuildChunk, s
          hold   hold the key to strike the pose, let go to come back in (land before it is back = you eat it)
          ground done while ROLLING (g: conditions + an ability), scores when held long enough, more the longer;
                 `air` = it also works as a hold pose in the air
+                g: v0 / v1 speed window to start (vk: the speed it keeps going down to), up / noup W held / let go, back rolling
+                backwards, batt, noman both wheels down, once one fresh press, vmax the ability's speed cap, ph the ability
+                (tricks13_core.js tk13GPhys: brake sprint tuck skid boost climb launch hop cruise flat skid180, and since 15.6
+                lunge grip pivot flick)
    anim (a): rotations scale with p (spins: 0..2pi per turn; sh:'arc' = out and back) or with the pose weight (holds):
      fr frame spin (whipG y)   ba bars spin, hands off   bc bars turned, hands ON (x-up)   by bike yaw (ypv:'hz' = about the
      head tube)   br bike roll (rl:1 = about a low pivot)   bp bike pitch (+ nose down)   bl bike lift
@@ -60636,7 +60980,7 @@ const TRICKSETS = {
       a:{ bc:TK13_PI, tw:0.35, f:[null, ['R', -0.52, 0.56, 0.05]], le:0.15 } },
     { slot:'tab', id:'mtb_360tuck', name:'360 Tuck', short:'360', kind:'spin', pts:680, rate:6.6,
       multi:['360 Tuck', '720 Tuck', '1080 Tuck'],
-      desc:'A flat 360 with the bike pulled tight into your chest.',
+      desc:'A flat 360 with the bike pulled tight into your chest. Off a ramp: a hop is too short on the heavier bikes.',
       a:{ yw:TK13_TAU, le:0.60, ro:[0, -0.10, 0.04], bl:0.10, lk:0.60, nd:0.15 } },
     { slot:'not', id:'mtb_cliffhanger', name:'Cliffhanger', short:'CLIFF', kind:'hold', pts:1100, rate:5.0, hold:0.35, locked:true, price:1100,
       desc:'Let go, hook your toes under the bars and stretch up into the sky.',
@@ -60646,7 +60990,7 @@ const TRICKSETS = {
       a:{ by:-0.65, br:-1.35, bc:0.55, rw:-0.25, tw:0.35, le:0.30, lk:0.35 } },
     { slot:'oneh', id:'mtb_truck', name:'Truckdriver', short:'TRUCK', kind:'spin', pts:1300, rate:6.0, locked:true, price:1400,
       multi:['Truckdriver', 'Double Truck', 'Triple Truck'],
-      desc:'A 360 with a barspin thrown in on the way round.',
+      desc:'A 360 with a barspin thrown in on the way round. Off a ramp.',
       a:{ yw:TK13_TAU, ba:1, le:0.35, ro:[0, -0.04, 0], lk:0.60 } },
     { slot:'seat', id:'mtb_indian', name:'Indian Air', short:'INDIAN', kind:'hold', pts:640, rate:6.0, hold:0.28,
       desc:'Scissor your legs: one forward along the top tube, one kicked back.',
@@ -60662,8 +61006,8 @@ const TRICKSETS = {
       desc:'The front stays put and the heavy back end swings out round it.',
       a:{ by:0.80, ypv:'hz', br:0.50, rw:0.15, le:0.20, lk:-0.20 } },
     { slot:'bar', id:'emtb_climb', name:'Power Climb', short:'CLIMB', kind:'ground', pts:140, pps:120, cap:6, hold:1.0, rate:5.0,
-      g:{ v1:9, up:1, batt:0.10, ph:'climb' },
-      desc:'Hold with W: the motor overboosts and you charge forward out of the saddle (uses battery).',
+      g:{ up:1, batt:0.10, ph:'climb', vmax:9 },       // (15.6: was v1:9, which ENDED it the moment the overboost passed 32 km/h -- it never scored)
+      desc:'Hold with W: the motor overboosts up to 32 km/h and you charge forward out of the saddle, up any hill (uses battery).',
       a:{ ro:[0, 0.16, 0.10], le:0.55, nd:-0.15, osc:[['br', 0.10, 1.6]] } },
     { slot:'sup', id:'emtb_nofootcan', name:'No-Foot Can', short:'NF CAN', kind:'hold', pts:680, rate:6.0, hold:0.28,
       desc:'Left foot across the top tube, right foot out the other side: nothing on the pedals.',
@@ -60680,16 +61024,31 @@ const TRICKSETS = {
       a:{ ro:[0, -0.10, 0], le:0.40 } },
     { slot:'tab', id:'emtb_360', name:'E-360', short:'360', kind:'spin', pts:850, rate:5.8, locked:true, price:650,
       multi:['E-360', 'E-720'],
-      desc:'Haul 25 kilos of e-bike round a full flat turn.',
+      desc:'Haul 25 kilos of e-bike round a full flat turn. Off a ramp: a bunny hop is too short.',
       a:{ yw:TK13_TAU, le:0.45, ro:[0, -0.06, 0], lk:0.60 } },
     { slot:'not', id:'emtb_flattable', name:'Flat Table', short:'TABLE', kind:'hold', pts:540, rate:5.5, hold:0.30,
       desc:'A tabletop the other way, the motor side up.',
-      a:{ br:-1.15, bp:0.08, rr:0.16, nd:0.25 } }
+      a:{ br:-1.15, bp:0.08, rr:0.16, nd:0.25 } },
+    /* Release 15.6: the four keys that did nothing on an e-MTB (Y ; , .) */
+    { slot:'decade', id:'emtb_flick', name:'Scandi Flick', short:'FLICK', kind:'ground', pts:380, hold:0, rate:8.0,
+      g:{ v0:5, once:1, noman:1, ph:'flick' },
+      desc:'At speed, tap it with A or D held: flick the heavy back end out and snap the bike onto a new line, about 30 degrees round, without losing speed.',
+      a:{ ro:[0, 0.12, 0.02], le:0.40, tw:0.30, lk:0.35, rr:-0.08 } },
+    { slot:'oneh', id:'emtb_attack', name:'Attack Position', short:'ATTACK', kind:'ground', pts:200, pps:130, cap:10, hold:1.0, rate:5.0,
+      g:{ v0:3, ph:'grip' },
+      desc:'Stand up low over the bike, elbows out, weight on the pedals: the knobbies bite. Hold it through a corner: you turn tighter and hold your line.',
+      a:{ ro:[0, 0.14, 0.08], le:0.75, nd:-0.25, osc:[['le', 0.05, 1.3]] } },
+    { slot:'seat', id:'emtb_cannonball', name:'Cannonball', short:'CANNON', kind:'hold', pts:760, rate:6.0, hold:0.30, locked:true, price:700,
+      desc:'In the air: sit down on the top tube, knees pulled up to your chest, hands still on the bars.',
+      a:{ f:tk13Sym('R', 0.14, 0.86, 0.12), ro:[0, -0.08, 0.10], le:0.25, nd:0.10, bl:0.06 } },
+    { slot:'lookb', id:'emtb_lookdown', name:'Lookdown', short:'LOOK', kind:'hold', pts:560, rate:6.5, hold:0.26,
+      desc:'In the air: crank the bars round, push the bike out to the side and lean right over it, looking down at the ground.',
+      a:{ bc:-1.10, br:0.45, by:-0.25, rr:-0.20, le:0.55, nd:0.45, lk:0.30 } }
   ],
 
   /* ------------------------------------------------------------ Road: carbon race bikes (mostly on the ground) */
   road: [
-    { slot:'whip', id:'road_bh180', name:'Bunny-Hop 180', short:'180', kind:'spin', pts:450, rate:7.5,
+    { slot:'whip', id:'road_bh180', name:'Bunny-Hop 180', short:'180', kind:'spin', pts:450, rate:12.0,     // (15.6: 7.5 never came round inside a road bike's hop)
       multi:['Bunny-Hop 180', 'Bunny-Hop 360', 'Bunny-Hop 540'],
       desc:'Hop (SPACE), then turn the bike half round in the air: you land rolling backwards.',
       a:{ yw:TK13_PI, le:0.20, ro:[0, 0.03, 0], lk:0.80, tw:0.30 } },
@@ -60720,7 +61079,23 @@ const TRICKSETS = {
     { slot:'not', id:'road_salute', name:'Victory Salute', short:'SALUTE', kind:'ground', pts:450, pps:120, cap:5, hold:0.8, rate:4.0, locked:true, price:350,
       g:{ v0:3 }, air:{ hold:0.25, pts:600 },
       desc:'Sit up and throw both arms up in a V like you just won the stage. In the air too.',
-      a:{ h:tk13Sym('H', 0.40, 0.98, 0.05), le:-0.65, nd:-0.25 } }
+      a:{ h:tk13Sym('H', 0.40, 0.98, 0.05), le:-0.65, nd:-0.25 } },
+    /* Release 15.6: the four keys that did nothing on a road bike (Y ; , .) */
+    { slot:'decade', id:'road_throw', name:'Bike Throw', short:'THROW', kind:'ground', pts:320, hold:0, rate:7.0,
+      g:{ v0:5, once:1, ph:'lunge' },
+      desc:'At speed, tap it: throw the bike forward under you like at the finish line, arms straight, hips back. A burst of speed.',
+      a:{ ro:[0, 0.08, -0.26], le:0.35, nd:-0.20, bl:0.02 } },
+    { slot:'oneh', id:'road_bottle', name:'Bottle Grab', short:'BOTTLE', kind:'ground', pts:220, pps:120, cap:8, hold:1.0, rate:4.5,
+      g:{ v0:3 }, air:{ hold:0.25, pts:420 },
+      desc:'Grab the bottle off the frame and take a swig, one hand on the bars. Rolling or in the air.',
+      a:{ h:[['H', 0.04, 0.42, 0.24, 1], null], le:-0.25, nd:-0.30, tw:0.10, sb:0.04 } },
+    { slot:'seat', id:'road_pivot', name:'Nose Pivot', short:'PIVOT', kind:'ground', pts:560, hold:0, rate:6.0, locked:true, price:600,
+      g:{ v0:0.8, v1:4.5, once:1, noman:1, ph:'pivot' },
+      desc:'Rolling slowly, tap it: grab the front brake, stand the bike on its front wheel and swing the back a half turn round it. You stop facing the other way. A / D picks the side.',
+      a:{ ro:[0, 0.20, 0.16], le:0.70, nd:0.30, lk:0.55, tw:0.25 } },
+    { slot:'lookb', id:'road_crossup', name:'Cross-Up', short:'CROSS', kind:'hold', pts:520, rate:6.5, hold:0.26,
+      desc:'In the air, feet still clipped in: turn the bars one way and lay the bike over the other.',
+      a:{ bc:0.95, br:-0.55, by:-0.20, tw:0.30, rr:0.10, le:0.25, lk:0.20 } }
   ],
 
   /* ------------------------------------------------------------ Push scooters: pro stunt scooters */
@@ -60773,7 +61148,7 @@ const TRICKSETS = {
 
   /* ------------------------------------------------------------ E-scooters: stand-up, throttle (a small set) */
   escooter: [
-    { slot:'whip', id:'es_hop180', name:'Hop 180', short:'180', kind:'spin', pts:380, rate:6.5,
+    { slot:'whip', id:'es_hop180', name:'Hop 180', short:'180', kind:'spin', pts:380, rate:11.0,          // (15.6: 6.5 never came round inside a hop)
       multi:['Hop 180', 'Hop 360', 'Hop 540'],
       desc:'Hop (SPACE) and swing the scooter half round: land rolling backwards.',
       a:{ yw:TK13_PI, le:0.25, lk:0.80, ro:[0, -0.03, 0] } },
@@ -60798,8 +61173,27 @@ const TRICKSETS = {
       a:{ f:tk13Sym('R', 0.12, 0.78, 0.08), ro:[0, 0.20, 0], le:0.35 } },
     { slot:'tab', id:'es_360', name:'Big 360', short:'360', kind:'spin', pts:700, rate:6.0, locked:true, price:450,
       multi:['Big 360', 'Big 720'],
-      desc:'A full flat 360 on a heavy e-scooter.',
-      a:{ yw:TK13_TAU, le:0.40, lk:0.70 } }
+      desc:'A full flat 360 on a heavy e-scooter. Off a ramp: a hop is too short.',
+      a:{ yw:TK13_TAU, le:0.40, lk:0.70 } },
+    /* Release 15.6: the five keys that did nothing on an e-scooter (N Y ; , .) */
+    { slot:'not', id:'es_stomp', name:'Fender Stomp', short:'STOMP', kind:'ground', pts:140, pps:170, cap:4, hold:0.5, rate:7.0,
+      g:{ v0:3.5, vk:1.0, ph:'skid' },
+      desc:'At speed, stamp on the rear mudguard brake: the back tyre locks, screeches and steps out. Hold it to skid on.',
+      a:{ f:[null, ['T', -0.05, 0.10, 0.02]], by:-0.18, ro:[0, -0.06, -0.08], le:0.30, tw:-0.15 } },
+    { slot:'decade', id:'es_slide180', name:'Slide 180', short:'180', kind:'ground', pts:440, hold:0, rate:6.0,
+      g:{ v0:4, once:1, noman:1, ph:'skid180' },
+      desc:'At speed, tap it: lock the back wheel and kick the tail round. You slide to a stop facing back. A / D picks the side.',
+      a:{ ro:[0, 0.10, 0.04], le:0.30, tw:0.20, lk:0.35, nd:0.12 } },
+    { slot:'oneh', id:'es_selfie', name:'Selfie', short:'SELFIE', kind:'ground', pts:200, pps:110, cap:8, hold:1.0, rate:4.5,
+      g:{ v0:2.5 }, air:{ hold:0.25, pts:380 },
+      desc:'One hand on the bar, the other holds your phone up at arm’s length for a selfie. Smile. Rolling or in the air.',
+      a:{ h:[['H', 0.16, 0.40, 0.50, 1], null], lk:0.30, nd:-0.10, tw:0.15, sb:-0.06 } },
+    { slot:'seat', id:'es_airwalk', name:'Airwalk', short:'AIRWALK', kind:'hold', pts:620, rate:6.0, hold:0.30, locked:true, price:500,
+      desc:'In the air, step off the deck and walk on nothing: one leg forward, one back, hands on the bar. Back on before you land.',
+      a:{ f:[['R', 0.10, 0.62, 0.42], ['R', -0.10, 0.70, -0.48]], ro:[0, 0.14, 0], le:0.10, osc:[['tw', 0.10, 2.2]] } },
+    { slot:'lookb', id:'es_deckgrab', name:'Deck Grab', short:'GRAB', kind:'hold', pts:480, rate:6.5, hold:0.26,
+      desc:'In the air, crouch right down and grab the side of the deck, pulling the scooter up to your feet.',
+      a:{ h:[null, ['P', -0.12, 0.02, 0.10, 1]], ro:[0, -0.30, -0.02], le:0.95, bl:0.10, nd:0.15 } }
   ],
 
   /* ------------------------------------------------------------ E-motos: electric dirt / motocross / pit bikes (FMX) */
@@ -60833,7 +61227,14 @@ const TRICKSETS = {
       a:{ f:[null, ['R', 0.50, 0.75, -0.05]], tw:-0.15, le:0.15, ro:[0, 0.08, -0.06] } },
     { slot:'oneh', id:'ed_superman', name:'Superman', short:'SUPER', kind:'hold', pts:760, rate:5.5, hold:0.30,
       desc:'Hands on the bars, body stretched flat out behind the bike.',
-      a:{ f:tk13Sym('R', 0.18, 1.30, -1.20), ro:[0, 0.22, -0.48], le:0.85, bp:-0.10 } }
+      a:{ f:tk13Sym('R', 0.18, 1.30, -1.20), ro:[0, 0.22, -0.48], le:0.85, bp:-0.10 } },
+    /* Release 15.6: the two keys that did nothing on an e-moto (, .) */
+    { slot:'seat', id:'ed_hartattack', name:'Hart Attack', short:'HART', kind:'hold', pts:1250, rate:4.8, hold:0.38, locked:true, price:1200,
+      desc:'One hand on the bars, the other on the seat, and kick both legs straight up into the sky above the bike.',
+      a:{ h:[['S', 0.0, 0.05, -0.10, 1], null], f:tk13Sym('R', 0.10, 1.75, -0.55), ro:[0, 0.30, -0.25], le:0.95, nd:-0.25 } },
+    { slot:'lookb', id:'ed_rocksolid', name:'Rock Solid', short:'ROCK', kind:'hold', pts:1100, rate:4.8, hold:0.36,
+      desc:'Let go of everything: arms out wide, body stretched flat above the bike. Grab back on before you land.',
+      a:{ h:tk13Sym('H', 0.70, 0.30, 0.25), f:tk13Sym('R', 0.22, 1.10, -0.95), ro:[0, 0.32, -0.30], le:0.85, nd:-0.20 } }
   ],
 
   /* ------------------------------------------------------------ Mopeds: motorbike-style e-bikes (mostly cruising stunts) */
@@ -60866,7 +61267,23 @@ const TRICKSETS = {
       a:{ ro:[0, 0.58, -0.02], f:tk13Sym('S', 0.10, 0.02, 0.05), h:tk13Sym('H', 0.85, 0.75, 0.0), le:-0.45, rw:0.50, tw:-0.40 } },
     { slot:'not', id:'mo_skykick', name:'Sky Kick', short:'SKY', kind:'hold', pts:560, rate:6.0, hold:0.28,
       desc:'In the air, kick both legs up in front of you in a big V.',
-      a:{ f:tk13Sym('R', 0.30, 1.05, 0.55), ro:[0, 0.10, -0.15], le:-0.35 } }
+      a:{ f:tk13Sym('R', 0.30, 1.05, 0.55), ro:[0, 0.10, -0.15], le:-0.35 } },
+    /* Release 15.6: the four keys that did nothing on a moped (Y ; , .) */
+    { slot:'decade', id:'mo_supercruise', name:'Superman Cruise', short:'SUPER', kind:'ground', pts:300, pps:160, cap:10, hold:1.2, rate:3.5,
+      g:{ v0:4 },
+      desc:'Lie flat on your belly along the seat, legs stretched out straight behind, hands on the bars, and cruise.',
+      a:{ ro:[0, -0.06, -0.20], le:1.20, f:tk13Sym('R', 0.10, 0.80, -1.00), nd:-0.30 } },
+    { slot:'oneh', id:'mo_racertuck', name:'Racer Tuck', short:'TUCK', kind:'ground', pts:200, pps:140, cap:10, hold:1.0, rate:4.5,
+      g:{ v0:5, ph:'tuck' },
+      desc:'Chin down behind the headlight, elbows in, knees tight: far less drag, so you pull up to top speed sooner and hold it. W still works.',
+      a:{ ro:[0, -0.10, 0.20], le:1.00, nd:-0.40 } },
+    { slot:'seat', id:'mo_highchair', name:'Highchair', short:'HICHAIR', kind:'ground', pts:420, pps:200, cap:10, hold:1.4, rate:3.2, locked:true, price:550,
+      g:{ v0:3.5 },
+      desc:'Climb forward and sit up on the bars, legs hanging down in front of the headlight, steering with your hands between your knees.',
+      a:{ ro:[0, 0.18, 0.46], le:-0.30, f:tk13Sym('B', 0.16, -0.32, 0.30), h:tk13Sym('B', 0.12, 0.02, -0.05, 1) } },
+    { slot:'lookb', id:'mo_barhop', name:'Bar Hop', short:'BARHOP', kind:'hold', pts:600, rate:6.0, hold:0.28,
+      desc:'In the air, swing both legs forward between your arms and over the bars, then back onto the footboards.',
+      a:{ f:tk13Sym('B', 0.06, 0.10, 0.40), ro:[0, 0.26, 0.12], le:-0.15, nd:0.10 } }
   ],
 
   /* ------------------------------------------------------------ E-bikes: city, cargo, folding, cruiser, fat-tyre */
@@ -60894,7 +61311,7 @@ const TRICKSETS = {
     { slot:'can', id:'eb_laydown', name:'Lay-Down', short:'LAY', kind:'hold', pts:520, rate:5.5, hold:0.30, locked:true, price:400,
       desc:'In the air, lay the heavy bike over on its side under you.',
       a:{ br:0.85, bp:0.10, rr:-0.10, nd:0.2, ro:[0, 0.04, 0] } },
-    { slot:'tab', id:'eb_360', name:'Heavy 360', short:'360', kind:'spin', pts:900, rate:5.5, locked:true, price:700,
+    { slot:'tab', id:'eb_360', name:'Heavy 360', short:'360', kind:'spin', pts:900, rate:6.0, locked:true, price:700,     // (15.6: 5.5 never came round on a cargo bike)
       multi:['Heavy 360', 'Heavy 720'],
       desc:'A full flat spin on a 25 kg e-bike. It needs a big jump.',
       a:{ yw:TK13_TAU, le:0.35, lk:0.60 } },
@@ -61013,6 +61430,10 @@ function trickSync(force){
 }
 
 /* ---------------------------------------------------------------- the air / grind loop (replaces the base one) */
+/* whole-bike turns (360s, flips) go at the ride's air-rotation speed -- but never slower than PHYS_ROT_MIN of a BMX's
+   (Release 15.6: a cargo e-bike at 0.62 could not get a Heavy 360 round even off a 3 m kicker) */
+const TK13_ROT_MIN = (typeof PHYS_ROT_MIN === 'number') ? PHYS_ROT_MIN : 0.85;
+function tk13Rot(){ const r = (VEH && VEH.rot) || 1; return r < TK13_ROT_MIN ? TK13_ROT_MIN : r; }
 function tk13Phys(t, d){
   const a = t.a;
   if (a.yw) bike.yaw += a.yw*d/TK13_TAU;          // 360s / 180s really turn the bike (land them straight)
@@ -61033,7 +61454,7 @@ updateTricks = function(dt, In){
       if (ok){ s.live = true; s.fin = false; }
       else if (s.live && !s.fin) s.fin = true;               // let go: finish this rotation
       if (s.live){
-        const d = t.rate*dt*((t.a.yw || t.a.fl) ? (VEH.rot || 1) : 1);   // whole-bike turns: heavy rides come round slower
+        const d = t.rate*dt*((t.a.yw || t.a.fl) ? tk13Rot() : 1);        // whole-bike turns: heavy rides come round slower
         s.p += d; tk13Phys(t, d);
         if (s.p >= TK13_TAU){
           s.p -= TK13_TAU; s.turns++;
@@ -61083,7 +61504,7 @@ resetTricks = function(){
     const s = TS[TK13_SLOTS[i]];
     s.p = 0; s.held = 0; s.turns = 0; s.done = false; s.live = false; s.fin = false; s.ga = false; s.gt = 0; s.gd = false;
   }
-  TK13.gLive = false; TK13.skid = null;
+  TK13.gLive = false; TK13.skid = null; TK13.mv = null;
 };
 
 /* ---------------------------------------------------------------- ground tricks (while rolling) */
@@ -61121,8 +61542,8 @@ function tk13GPhys(t, s, dt, In, spd, fwd){
   } else if (ph === 'boost'){
     if (In.up && DRIVE.battery > 0.02 && spd < top) tk13Push(2.6*dt);
     tk13Drain(0.05*dt);
-  } else if (ph === 'climb'){
-    if (In.up && DRIVE.battery > 0.02){ tk13Push(3.0*dt); tk13Drain(0.06*dt); }
+  } else if (ph === 'climb'){                                  // (vmax: the overboost stops pushing there; the trick goes on)
+    if (In.up && DRIVE.battery > 0.02 && spd < (t.g.vmax || 99)){ tk13Push(3.0*dt); tk13Drain(0.06*dt); }
   } else if (ph === 'launch'){
     if (In.up && s.gt < 1.4 && (DRIVE.battery > 0.02 || DRIVE.dirt)){ tk13Push(5.0*dt); tk13Drain(0.04*dt); }
     if (!s.gd && spd > 6.0){ s.gd = true; addTrick(t.name, t.pts); }
@@ -61146,6 +61567,18 @@ function tk13GPhys(t, s, dt, In, spd, fwd){
   } else if (ph === 'skid180' && !s.gd){                       // skid 180: starts here, runs on its own (tk13Skid)
     s.gd = true;
     tk13SkidStart(t, In, spd);
+  } else if (ph === 'lunge' && !s.gd){                         // bike throw: the bike shoots forward under you (never past top speed)
+    s.gd = true;
+    const add = Math.min(1.6, Math.max(0, top*1.04 - spd));
+    if (add > 0) tk13Push(add);
+    addTrick(t.name, Math.round(t.pts*(1 + 0.04*Math.max(0, spd - (t.g.v0 || 0)))));
+  } else if (ph === 'grip'){                                   // attack position: the knobbies bite -- tighter turns, no sliding out
+    const rx = _tkF.z, rz = -_tkF.x, lat = bike.vel.x*rx + bike.vel.z*rz, k = Math.min(1, 6*dt);
+    bike.vel.x -= rx*lat*k; bike.vel.z -= rz*lat*k;
+    if (In.steer) bike.yaw -= In.steer*0.45*dt*Math.min(1, spd/6);
+  } else if ((ph === 'pivot' || ph === 'flick') && !s.gd){     // nose pivot / scandi flick: start here, run on their own (tk13Move)
+    s.gd = true;
+    tk13MoveStart(t, In, spd);
   }
 }
 /* the Skid 180 (e-bike, Release 15.3): once started it runs to the end by itself -- the back wheel locks, the tail swings a
@@ -61186,6 +61619,63 @@ function tk13Skid(dt){
   if (K.k >= 1){
     tk13SkidEnd(K);
     addTrick(K.t.name, Math.round(K.t.pts*(1 + 0.06*Math.max(0, K.v0 - (K.t.g.v0 || 0)))));
+  }
+}
+/* Release 15.6: two more moves that run by themselves once started (like the Skid 180) and score when they get all the way round:
+     pivot  Nose Pivot (road): the front brake stands the bike on its front wheel and the back swings a half turn round it -- the front
+            tyre stays put, you stop dead and end up facing back
+     flick  Scandi Flick (e-MTB): the heavy back end is flicked out and the bike snaps about 30 degrees onto a new line, keeping its speed
+   A / D picks the side (else it alternates). A hop, a wheelie or a crash out of one scores nothing. */
+function tk13MoveStart(t, In, spd){
+  if (TK13.mv || TK13.skid) return;
+  const st = (In && In.steer) || 0;
+  const dir = st > 0.2 ? -1 : (st < -0.2 ? 1 : (TK13.mvDir = -(TK13.mvDir || -1)));     // D swings it right (yaw -), A left
+  const R = (typeof PHYS !== 'undefined' && PHYS.rig) ? PHYS.rig : null;
+  const M = { t, slot:t.slot, ph:t.g.ph, k:0, e:0, yaw0:bike.yaw, dir, v:spd, dur:0.34, ang:0.52, fz:0.5, pitch:0 };
+  if (M.ph === 'pivot'){
+    M.dur = 0.85/Math.max(0.7, Math.min(1.2, tk13Rot()));
+    M.ang = Math.PI;
+    M.fz = (R && R.fz > 0.2 && R.fz < 1.2) ? R.fz : 0.5;                                    // front axle ahead of the bike's origin
+    M.pitch = Math.min(0.55, ((typeof VEH !== 'undefined' && VEH && VEH.stoppie) || 0.3)*1.5);    // the tail well up: it reads as a pivot
+  }
+  TK13.mv = M;
+}
+function tk13MoveEnd(M){
+  TK13.mv = null;
+  const s = TS[M.slot];
+  if (s){ s.ga = false; s.gt = 0; }
+}
+function tk13Move(dt){
+  const M = TK13.mv;
+  if (!M) return;
+  if (bike.state !== 'ride' || bike.manualT > 0){ tk13MoveEnd(M); return; }
+  M.k = Math.min(1, M.k + dt/M.dur);
+  const e = M.ph === 'pivot' ? 0.5 - 0.5*Math.cos(M.k*Math.PI) : 1 - (1 - M.k)*(1 - M.k);
+  const yaw = M.yaw0 + M.dir*M.ang*e;
+  if (M.ph === 'pivot'){
+    // about the front tyre's contact patch: it stays where it is while the back swings round it
+    const f = M.fz, px = bike.pos.x + Math.sin(bike.yaw)*f, pz = bike.pos.z + Math.cos(bike.yaw)*f;
+    bike.yaw = yaw;
+    bike.pos.x = px - Math.sin(yaw)*f; bike.pos.z = pz - Math.cos(yaw)*f;
+    M.v = Math.max(0, M.v - 10*dt);                                                          // the front brake stops it dead
+    bike.vel.x = Math.sin(M.yaw0)*M.v; bike.vel.z = Math.cos(M.yaw0)*M.v;
+    bike.manual = Math.max(bike.manual, M.pitch*Math.sin(M.k*Math.PI));                      // tail up (manual > 0) and back down
+    if (typeof camYaw !== 'undefined') camYaw += M.dir*M.ang*0.8*(e - M.e);                  // (as the Skid 180: come out looking ahead)
+  } else {
+    // the velocity turns with the bike: a new line at the same speed, less a touch of scrub
+    const d = yaw - bike.yaw, c = Math.cos(d), sn = Math.sin(d), vx = bike.vel.x, vz = bike.vel.z, sc = Math.exp(-0.12*dt);
+    bike.yaw = yaw;
+    bike.vel.x = (vx*c + vz*sn)*sc; bike.vel.z = (vz*c - vx*sn)*sc;
+    bike.roll = -M.dir*0.30*Math.sin(M.k*Math.PI);
+    if (typeof physSmoke === 'function') physSmoke(dt, 0.5, Math.hypot(bike.vel.x, bike.vel.z));
+  }
+  M.e = e;
+  const s = TS[M.slot];
+  if (s) s.p = Math.max(s.p, 1 - M.k*M.k*M.k);
+  TK13.gLive = true;                                                                         // the line stays alive through it
+  if (M.k >= 1){
+    tk13MoveEnd(M);
+    addTrick(M.t.name, M.t.pts);
   }
 }
 function tk13GroundEnd(s, t){
@@ -61243,6 +61733,7 @@ function tk13GroundBankAll(){
     ride(dt, In);
     if (bike.state === 'ride') tk13Ground(dt, In);
     if (TK13.skid) tk13Skid(dt);
+    if (TK13.mv) tk13Move(dt);
   };
   const air = goAir;
   goAir = function(){
@@ -61251,6 +61742,21 @@ function tk13GroundBankAll(){
   };
   const alive = comboAlive;
   comboAlive = function(){ return alive() || (TK13.gLive && bike.state === 'ride'); };
+  // Release 15.6: the Wheelie Loop (phys_core.js updateAir) only paid for a flip that came ALL the way round in the air, but the flip
+  // itself is given to you when it lands nearly round (landFromAir rounds flipSpin) -- so off a flat pop the loop never paid on a
+  // DH MTB, a road bike or a moped. A loop out of a wheelie / stoppie that lands as a whole flip now pays it too (once).
+  if (typeof scoreAir === 'function'){
+    const sa = scoreAir;
+    scoreAir = function(){
+      try {
+        if (bike.state === 'air' && bike.hopFromManual && !bike.loopPaid && Math.abs(bike.flipSpin || 0) >= TK13_TAU - 0.01){
+          bike.loopPaid = true;
+          addTrick((typeof PHYS !== 'undefined' && PHYS.seg === 'stoppie') ? 'Stoppie Flip' : 'Wheelie Loop', 700);
+        }
+      } catch(e){}
+      return sa.apply(this, arguments);
+    };
+  }
   const av = applyVehicle;
   applyVehicle = function(){
     const r = av.apply(this, arguments);
