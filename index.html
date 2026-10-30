@@ -8441,6 +8441,7 @@ function patchWorldShading(m, o){
     sh.uniforms.uWJoint  = { value: opts.joint };
     sh.uniforms.uWSkid   = { value: opts.skid };
     sh.uniforms.uWDetile = { value: opts.detile };
+    sh.uniforms.uWLite   = WORLD.uLite || (WORLD.uLite = { value: 1 });
     Object.assign(sh.uniforms, W2.U);
     sh.uniforms.uWWet = { value: opts.wet };
     sh.uniforms.uWWin = { value: opts.win };
@@ -8460,16 +8461,16 @@ function patchWorldShading(m, o){
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>',
         '#include <common>\nvarying vec3 vWPos; varying vec3 vWNrm;\n' +
-        'uniform float uWTime, uWCover, uWCScale, uWCStr, uWGrime, uWSlab, uWScuff, uWStain, uWRust, uWVary, uWCrack, uWJoint, uWSkid, uWDetile;\n' +
+        'uniform float uWTime, uWCover, uWCScale, uWCStr, uWGrime, uWSlab, uWScuff, uWStain, uWRust, uWVary, uWCrack, uWJoint, uWSkid, uWDetile, uWLite;\n' +
         'float wWear = 0.0; float wMix = 0.0; float wWetA = 0.0;\nuniform vec2 uWinGrid, uWinMeters; uniform float uWinOn, uWet, uWWet, uWWin, uWGlass;\n' + W2_FOG_DECL + W_NOISE)
       .replace('#include <map_fragment>',
         `#ifdef USE_UV
           vec2 wUv = vUv;
-          if (uWSlab > 0.0){            // shift the tiles per 4 m slab so the flat never shows a repeat
+          if (uWSlab*uWLite > 0.0){            // shift the tiles per 4 m slab so the flat never shows a repeat
             vec2 sl = floor(vWPos.xz / 4.0);
             wUv += vec2(wHash(sl), wHash(sl + 7.0));
           }
-          if (uWDetile > 0.0) wMix = smoothstep(0.35, 0.65, wNoise(vWPos.xz*0.13 + vWPos.y*0.2 + 5.5)) * uWDetile;
+          if (uWDetile*uWLite > 0.0) wMix = smoothstep(0.35, 0.65, wNoise(vWPos.xz*0.13 + vWPos.y*0.2 + 5.5)) * uWDetile;
         #endif
         ` + T.ShaderChunk.map_fragment.replace(/vUv/g, 'wUv').replace('texture2D( map, wUv )', 'mix( texture2D( map, wUv ), texture2D( map, wUv*0.71 + 0.37 ), wMix )') + `
         {
@@ -8490,12 +8491,12 @@ function patchWorldShading(m, o){
             diffuseColor.rgb *= 1.0 - 0.28*wWetA;
           }
           // pour-to-pour and trowel variation so nothing is one flat tone
-          if (uWVary > 0.0){
+          if (uWVary*uWLite > 0.0){
             float v = wNoise(vWPos.xz*0.09)*0.5 + wNoise(vWPos.xz*0.33 + 4.0)*0.3 + wNoise(vWPos.xz*1.1 + vWPos.y*0.7)*0.2;
             diffuseColor.rgb *= 1.0 + (v - 0.5) * 0.24 * uWVary;
           }
           // the flat: 4 m saw-cut grid, each slab its own tint, a groove with a caught-light edge
-          if (uWSlab > 0.0){
+          if (uWSlab*uWLite > 0.0){
             vec2 sc = vWPos.xz / 4.0;
             float tint = wHash(floor(sc));
             diffuseColor.rgb *= 1.0 + (tint - 0.5) * 0.10 * uWSlab;
@@ -8508,7 +8509,7 @@ function patchWorldShading(m, o){
             diffuseColor.rgb *= 1.0 + lip * 0.07 * uWSlab;
           }
           // joints on ramps: across concrete transitions every 3.66 m, and the deck grid
-          if (uWJoint > 0.0){
+          if (uWJoint*uWLite > 0.0){
             float dj2 = abs(fract(across/3.66 + 0.5) - 0.5) * 3.66;
             float g2 = wLine(dj2, 0.011, px) * smoothstep(0.03, 0.12, slopeF);
             vec2 f = fract(vWPos.xz / 4.0);
@@ -8517,21 +8518,21 @@ function patchWorldShading(m, o){
             diffuseColor.rgb *= 1.0 - max(g2, g3) * 0.48 * uWJoint;
           }
           // hairline cracks: sparse, jagged, thin
-          if (uWCrack > 0.0){
+          if (uWCrack*uWLite > 0.0){
             float cn = wNoise(vWPos.xz*0.22 + 3.0)*0.8 + wNoise(vWPos.xz*1.7 + 1.0)*0.2;
             float ck = wLine(cn - 0.5, 0.0025, px*0.7);
             float cm = smoothstep(0.67, 0.75, wNoise(vWPos.xz*0.06 + 17.0));
             diffuseColor.rgb *= 1.0 - ck * cm * 0.32 * uWCrack;
           }
           // long curved tyre marks left on the flat by riders carving
-          if (uWSkid > 0.0){
+          if (uWSkid*uWLite > 0.0){
             float sn = wNoise(vWPos.xz*0.28 + 31.0);
             float sk = wLine(sn - 0.5, 0.005, px);
             float sm = smoothstep(0.62, 0.74, wNoise(vWPos.xz*0.045 + 7.7));
             diffuseColor.rgb *= 1.0 - sk * sm * 0.17 * uWSkid;
           }
           // stains: water marks and old rubber, and dusty lighter patches
-          if (uWStain > 0.0){
+          if (uWStain*uWLite > 0.0){
             float st = wFbm(vWPos.xz*0.30 + 9.1);
             float sk = smoothstep(0.62, 0.78, st);
             diffuseColor.rgb *= 1.0 - sk * 0.20 * uWStain;
@@ -8541,13 +8542,13 @@ function patchWorldShading(m, o){
             diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb*vec3(1.07,1.06,1.03), dust * 0.6 * uWStain);
           }
           // grime collects where walls meet the ground
-          if (uWGrime > 0.0){
+          if (uWGrime*uWLite > 0.0){
             float low = 1.0 - smoothstep(0.02, 0.50, vWPos.y);
             float g = slopeF * low * (0.55 + 0.45*wNoise(vWPos.xz*3.0 + vWPos.y*5.0));
             diffuseColor.rgb *= 1.0 - g * 0.26 * uWGrime;
           }
           // tyre marks run up and down transitions where they get ridden; that band is polished
-          if (uWScuff > 0.0){
+          if (uWScuff*uWLite > 0.0){
             float band = smoothstep(0.05, 0.30, slopeF) * smoothstep(0.03, 0.22, ny);
             float use  = wFbm(vWPos.xz*0.10 + 5.0);
             float lane = smoothstep(0.35, 0.75, wNoise(vec2(across*0.35 + 9.0, along*0.05)));   // riders favour a few lines
@@ -8560,7 +8561,7 @@ function patchWorldShading(m, o){
             diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb*vec3(0.60,0.59,0.60), dark);
           }
           // rust blooms on steel
-          if (uWRust > 0.0){
+          if (uWRust*uWLite > 0.0){
             float ru = smoothstep(0.60, 0.80, wNoise(vWPos.xz*4.0 + vWPos.y*3.0)) * uWRust;
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.31,0.16,0.09), ru);
             wWear = -ru;   // rust makes it rougher, the opposite of polish
@@ -8576,7 +8577,7 @@ function patchWorldShading(m, o){
         if (wWetA > 0.0) roughnessFactor = mix(roughnessFactor, 0.26, wWetA*0.85);
 `)
       .replace('#include <tonemapping_fragment>',
-        `{
+        `if (uWCStr*uWLite > 0.001){
           // cloud shadow, projected from the same drifting deck as the sky
           vec2 cp = vWPos.xz * uWCScale + vec2(uWTime*0.0065, uWTime*0.0026);
           float cf = wFbm(cp);
@@ -44596,10 +44597,11 @@ toMenu = function(){ _feelToMenu.apply(this, arguments); feelHush(); };
    OTHERS SHOULD READ  region fog / haze / stream radius -> GFXP.view;  traffic.js -> GFXP.traffic (until it does,
            trafficTarget / cyclistTarget are wrapped below -- drop the wrap when traffic.js reads GFXP itself).
    ========================================================================= */
-const GFX_IDS = ['potato', 'low', 'medium', 'high', 'ultra', 'extreme'];
-const GFX_NAMES = { potato:'Potato', low:'Low', medium:'Medium', high:'High', ultra:'Ultra', extreme:'Extreme', auto:'Auto', custom:'Custom' };
+const GFX_IDS = ['toaster', 'potato', 'low', 'medium', 'high', 'ultra', 'extreme'];      // Release 15.7: Toaster below Potato
+const GFX_NAMES = { toaster:'Toaster', potato:'Potato', low:'Low', medium:'Medium', high:'High', ultra:'Ultra', extreme:'Extreme', auto:'Auto', custom:'Custom' };
 const GFX_LEGACY = { off:'low', medium:'high', high:'ultra', fast:'low' };        // setGfx('off' | 'medium' | 'high') from older code / tests (why 'api')
 const GFX_DESC = {
+  toaster: 'For really weak laptops: simple lighting, lower resolution, short view, quiet streets',
   potato:  'The lightest: a sharpened lower resolution, soft contact shadows, quieter streets',
   low:     'Light: no sun shadows or post effects - weak laptops and phones',
   medium:  'Filmic look and soft shadows, slightly softer picture',
@@ -44622,17 +44624,18 @@ const GFX_KNOBS = [
   { k:'scale',   label:'Resolution',        hint:'Render scale: pixels drawn per screen pixel (lower = faster, softer)' },
   { k:'shadows', label:'Shadows',           opts:[['off','Off'], ['low','Low'], ['medium','Medium'], ['high','High'], ['ultra','Ultra'], ['extreme','Extreme']],
     hint:'Sun shadow quality: map size, softness and how often it is redrawn' },
-  { k:'view',    label:'View distance',     opts:[[0.45,'Shortest'], [0.55,'Short'], [0.7,'Low'], [0.85,'Medium'], [1,'Normal'], [1.15,'Far'], [1.35,'Max']],
+  { k:'view',    label:'View distance',     opts:[[0.3,'Tiny'], [0.45,'Shortest'], [0.55,'Short'], [0.7,'Low'], [0.85,'Medium'], [1,'Normal'], [1.15,'Far'], [1.35,'Max']],
     hint:'How far the fog sits and how far the city is drawn in full detail' },
   { k:'detail',  label:'Detail',            opts:[[0,'Low'], [1,'Medium'], [2,'High']], hint:'Props, clutter and small details' },
-  { k:'crowd',   label:'Pedestrians',       opts:[[0.35,'Few'], [0.6,'Some'], [0.8,'Medium'], [1,'Normal'], [1.35,'Busy'], [1.6,'Packed']] },
-  { k:'traffic', label:'Traffic',           opts:[[0.45,'Light'], [0.6,'Some'], [0.8,'Medium'], [1,'Normal'], [1.3,'Busy'], [1.6,'Heavy']] },
+  { k:'crowd',   label:'Pedestrians',       opts:[[0.2,'Very few'], [0.35,'Few'], [0.6,'Some'], [0.8,'Medium'], [1,'Normal'], [1.35,'Busy'], [1.6,'Packed']] },
+  { k:'traffic', label:'Traffic',           opts:[[0.3,'Very light'], [0.45,'Light'], [0.6,'Some'], [0.8,'Medium'], [1,'Normal'], [1.3,'Busy'], [1.6,'Heavy']] },
   { k:'lamps',   label:'Street lights',     opts:[[2,'2'], [4,'4'], [6,'6'], [9,'9']], hint:'How many street lamps really light the road at night' },
   { k:'post',    label:'Post effects',      opts:[[false,'Off'], [true,'On']], hint:'Filmic tone curve and colour grade (needed for the four below)' },
   { k:'ao',      label:'Ambient occlusion', opts:[[0,'Off'], [1,'Soft'], [2,'Full']], post:true, hint:'Contact shading in corners and under things' },
   { k:'bloom',   label:'Bloom',             opts:[[false,'Off'], [true,'On']], post:true, hint:'Glow around bright lights and the sun' },
   { k:'fxaa',    label:'Anti-aliasing',     opts:[[false,'Off'], [true,'FXAA']], post:true, hint:'Smooths jagged edges' },
   { k:'sharpen', label:'Sharpen',           opts:[[false,'Off'], [true,'On']], post:true, hint:'Crisper far-away detail (rides on anti-aliasing)' },
+  { k:'shade',   label:'Lighting',          opts:[['simple','Simple'], ['full','Full']], hint:'Simple = flat, cheap lighting for very weak graphics chips (Toaster)' },
   { k:'aniso',   label:'Texture filtering', opts:[[1,'Off'], [4,'4×'], [8,'8×'], [16,'16×']], hint:'Keeps roads and walls sharp at a glancing angle' },
   { k:'fpsCap',  label:'Frame cap',         opts:[[0,'None'], [60,'60'], [30,'30']], pref:true, hint:'None = as many frames as the screen shows (144 Hz runs at 144)' }
 ];
@@ -44652,7 +44655,7 @@ function gfxMaxScale(){ return Math.max(1, Math.min(window.devicePixelRatio || 1
 function gfxScaleOpts(){
   const mx = gfxMaxScale(), set = new Set([0.5, 0.6, 0.75, 0.9, 1]);
   [1.25, 1.5, 2].forEach(v=>{ if (v <= mx + 1e-6) set.add(v); });
-  ['potato', 'low', 'medium', 'high', 'ultra', 'extreme'].forEach(id=> set.add(gfxPresetRaw(id).scale));
+  ['toaster', 'potato', 'low', 'medium', 'high', 'ultra', 'extreme'].forEach(id=> set.add(gfxPresetRaw(id).scale));
   return [...set].filter(v=> v <= mx + 1e-6).sort((a, b)=> a - b).map(v=> [v, (Math.round(v*100)/100) + '×']);
 }
 /* Release 15.4 (phone): a phone draws a FIXED number of pixels, picked once from its screen (~0.55 Mpx whatever the screen:
@@ -44678,13 +44681,19 @@ function gfxPresetRaw(id){
   // Release 15.4 (phone): the PHONE PROFILE -- Potato / Low / Medium on a phone: no shadow pass, no post (Medium keeps a light
   // version of both), a short view, quiet streets, a fixed resolution (gfxPhoneScale); Low is what a phone starts in.
   // Release 15.5: the same fixed resolutions (the canvas is not made any bigger on a phone); the final pass sharpens and grades.
-  if (ph && (id === 'potato' || id === 'low' || id === 'medium')){
+  if (ph && (id === 'toaster' || id === 'potato' || id === 'low' || id === 'medium')){
     const ps = gfxPhoneScale();
+    // Release 15.7 (toaster): the lightest of all -- simple lighting, fewer pixels, the shortest view, almost empty streets
+    if (id === 'toaster') return { scale:Math.round(Math.max(0.6, ps*0.7)*20)/20, shadows:'off', view:0.3, detail:0, crowd:0.2, traffic:0.3, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1, shade:'simple' };
     if (id === 'potato') return { scale:Math.round(Math.max(0.7, ps*0.85)*20)/20, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
     if (id === 'low')    return { scale:ps, shadows:'off', view:0.55, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
     return { scale:ps, shadows:'low', view:0.7, detail:1, crowd:0.6, traffic:0.6, lamps:4, post:true, ao:0, bloom:true, fxaa:true, sharpen:false, aniso:4 };
   }
   switch (id){
+    // Release 15.7 ("make it so you can play even with an insanely weak laptop"): Toaster -- cheap per-vertex lighting instead of the
+    // full PBR shading (mods/toaster19.js swaps the materials at draw time: no other mode changes), half the pixels of the canvas,
+    // the shortest view, the quietest streets, no texture filtering
+    case 'toaster': return { scale:tch ? 0.5 : 0.5, out:tch ? 0.75 : 0.8, shadows:'off', view:0.3, fog:0.4, detail:0, crowd:0.2, traffic:0.3, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1, shade:'simple' };
     // Release 15.4 (phone): Potato / Low on computers are the weak-laptop modes -- no shadow pass, no post, a short view
     // Release 15.5 (potato): the scene drawn at 0.6 / 0.75 as before and brought up to a 1.0 canvas (tablets 0.9) by the final
     // pass (edge smoothing + sharpen + grade: ~3 % of the frame), the fog pushed out (the far skyline is cheap; the full-detail
@@ -44699,7 +44708,7 @@ function gfxPresetRaw(id){
     default:        return { scale:r2(Math.min(dpr, ph ? 1.25 : 1.5)), shadows:'high', view:1, detail:2, crowd:1, traffic:1, lamps:9, post:true, ao:0, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };      // R13.2: no AO on High
   }
 }
-function gfxPreset(id){ return gfxPresetRaw(GFX_IDS.indexOf(id) >= 0 ? id : 'high'); }
+function gfxPreset(id){ const p = gfxPresetRaw(GFX_IDS.indexOf(id) >= 0 ? id : 'high'); if (p.shade === undefined) p.shade = 'full'; return p; }
 /* is v a value this item can take? (custom values from storage are checked against this) */
 function gfxValid(k, v){
   if (k === 'scale') return typeof v === 'number' && v >= 0.3 && v <= gfxMaxScale() + 1e-6;
@@ -44830,6 +44839,7 @@ function gfxApply(v, opt){
   set('shadows', v.shadows); set('shadowMap', Math.min(S.map, maxTex)); set('shadowEvery', S.every); set('shadowHalf', S.half);
   set('shadowSoft', !D.touch);          // the device's filter, never the mode's (another filter = every lit shader compiled again)
   ['view', 'detail', 'crowd', 'traffic', 'lamps', 'post', 'ao', 'bloom', 'fxaa', 'sharpen'].forEach(k=> set(k, v[k]));
+  set('shade', v.shade === 'simple' ? 'simple' : 'full');            // Release 15.7: Toaster's simple lighting (mods/toaster19.js)
   set('aniso', D.touch ? Math.min(8, v.aniso) : v.aniso);
   set('fpsCap', GFX14.fpsCap | 0);
   set('tier', tier);
@@ -44955,7 +44965,7 @@ function gfxCycle(dir){
 function gfxSave(){
   if (typeof SETTINGS === 'undefined') return;
   SETTINGS.gfx = { mode:GFX14.mode, base:GFX14.base, custom:GFX14.custom || {}, note:GFX14.note || '', by:GFX14.by || '',
-                   fpsCap:GFX14.fpsCap | 0, rung:GFX14.auto.rung | 0, pick15:!!GFX14.pick15, pick16:!!GFX14.pick16 };
+                   fpsCap:GFX14.fpsCap | 0, rung:GFX14.auto.rung | 0, pick15:!!GFX14.pick15, pick16:!!GFX14.pick16, pick19:!!GFX14.pick19 };
   try { saveSettings(); } catch(e){}
 }
 
@@ -44968,7 +44978,10 @@ function gfxGpuPick(gpu, D){
   let p = 'medium';
   if (!g) p = 'medium';
   else if (/swiftshader|llvmpipe|softpipe|lavapipe/.test(g)) p = 'high';        // headless test browsers: keep the long-standing default look
-  else if (/microsoft basic render|software renderer|software adapter/.test(g)) p = 'potato';
+  else if (/microsoft basic render|software renderer|software adapter/.test(g)) p = 'toaster';
+  // Release 15.7 (toaster): the really weak chips -- Intel HD without a number / HD 2000-5300 / HD 400-515 (Atom, Celeron, Pentium,
+  // old Core), UHD 600 / 605 (Gemini Lake Celerons), and the ARM Chromebook GPUs
+  else if (gfxToasterGpu(g)) p = 'toaster';
   else if (apu) p = (apu[2] !== '6' && +apu[3] >= 8) ? 'high' : ((+apu[3] < (apu[2] === '6' ? 5 : 3)) ? 'low' : 'medium');
   else if (/radeon(\(tm\))?\s*80[4-6]0s\b/.test(g)) p = 'high';                   // the 32-40 CU "Strix Halo" APUs
   // Release 15.4 (phone): Intel UHD / HD -> Potato; Iris (Xe / Plus / Pro) and the older Radeon APUs (Vega, plain "Radeon Graphics",
@@ -44981,8 +44994,18 @@ function gfxGpuPick(gpu, D){
   else if (/iris|radeon|vega|\bmx\s*\d|gtx|geforce|quadro|nvidia|apple gpu|apple|adreno.*\b7\d\d\b|mali-g7\d\d|mali-g6[1-9]\d/.test(g)) p = 'medium';
   else if (/intel|mali|adreno|powervr|videocore|tegra/.test(g)) p = 'low';
   // phones start in Low = the phone profile (Potato for a software renderer); tablets in Low or Medium
-  if (D.touch) p = D.phone ? (p === 'potato' ? 'potato' : 'low') : ((p === 'potato' || p === 'low') ? 'low' : 'medium');
+  if (D.touch) p = D.phone ? ((p === 'toaster' || p === 'potato') ? p : 'low') : (p === 'toaster' ? 'potato' : ((p === 'potato' || p === 'low') ? 'low' : 'medium'));
   return p;
+}
+function gfxToasterGpu(g){
+  if (/iris/.test(g)) return false;
+  const m = /\b(u?hd) graphics(?:\s+(\d{3,4}))?\b/.exec(g);
+  if (m){
+    const n = m[2] ? +m[2] : 0;
+    if (m[1] === 'uhd') return n === 600 || n === 605;
+    return !n || n < 520 || (n >= 2000 && n <= 5300);
+  }
+  return /mali-(t\d|g(31|51|52|57)\b)|powervr|adreno\D*(3|4|5)\d\d\b|videocore/.test(g);
 }
 function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ return false; } }
 
@@ -45003,6 +45026,7 @@ function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ 
     GFX14.auto.rung = Math.max(0, g.rung | 0);
     GFX14.pick15 = g.pick15 === true;
     GFX14.pick16 = g.pick16 === true;
+    GFX14.pick19 = g.pick19 === true;
   } else {
     const existing = SETTINGS.had || _gfxHas('dusk_line_save_v1') || _gfxHas('dusk_line_xset_v1');
     GFX14.fpsCap = touchCap;
@@ -45022,7 +45046,7 @@ function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ 
       GFX14.mode = GFX14.base = pick; GFX14.custom = {};
       const real = gpu && !/swiftshader|llvmpipe|softpipe|lavapipe/i.test(gpu);
       GFX14.note = 'Picked ' + GFX_NAMES[pick] + (D.phone ? ' for this phone' : (real ? ' for your GPU' : ' for this device')) + ' - change it any time';
-      GFX14.by = 'gpu'; GFX14.pick15 = true; GFX14.pick16 = true;
+      GFX14.by = 'gpu'; GFX14.pick15 = true; GFX14.pick16 = true; GFX14.pick19 = true;
       // ...checked once by a short look at the menu's own frame rate (never on software GL: the tests' browsers)
       if (!(typeof DETAIL !== 'undefined' && DETAIL.soft) && !/[?&]gfxbench=0/.test(location.search)) GFX14.bench = { wait:1500, t:0, acc:[] };
     }
@@ -45059,6 +45083,22 @@ function _gfxHas(k){ try { return localStorage.getItem(k) !== null; } catch(e){ 
       }
       if ((GFX14.by === 'gpu' || GFX14.by === 'migrated') && !GFX14.bench && !(typeof DETAIL !== 'undefined' && DETAIL.soft && !/[?&]gfxbench=1/.test(location.search)) &&
           !/[?&]gfxbench=0/.test(location.search)) GFX14.bench = { wait:1500, t:0, acc:[] };
+    }
+  }
+  // Release 15.7 (toaster): ONCE more for a mode the game set by itself (never the player's own, never Auto, never up): the really weak
+  // chips move to Toaster; a computer still in Potato by the game's pick gets the short menu look again (it can step to Toaster)
+  if (!GFX14.pick19){
+    GFX14.pick19 = true;
+    if ((GFX14.by === 'migrated' || GFX14.by === 'gpu' || GFX14.by === 'bench') && GFX14.mode !== 'auto'){
+      const pick = gfxGpuPick(gpu, D), cur = GFX14.mode === 'custom' ? GFX14.base : GFX14.mode;
+      if (pick === 'toaster' && GFX_IDS.indexOf(cur) > 0){
+        const keep = {}, bv = gfxPreset(pick), c0 = GFX14.custom || {};
+        for (const k in c0) if (c0[k] !== bv[k]) keep[k] = c0[k];
+        GFX14.base = pick; GFX14.custom = keep; GFX14.mode = Object.keys(keep).length ? 'custom' : pick; GFX14.by = 'gpu';
+        GFX14.moved16 = { from:cur, to:pick, told:false };
+        GFX14.note = 'Picked ' + GFX_NAMES[pick] + ' for your GPU (was ' + GFX_NAMES[cur] + ') - change it any time';
+      } else if (cur === 'potato' && !GFX14.bench && !(typeof DETAIL !== 'undefined' && DETAIL.soft && !/[?&]gfxbench=1/.test(location.search)) &&
+                 !/[?&]gfxbench=0/.test(location.search)) GFX14.bench = { wait:1500, t:0, acc:[] };
     }
   }
   gfxSetPreset.ready = true;
@@ -45187,7 +45227,7 @@ function gfxBenchTick(ms){
   let s = 0; for (let i = 0; i < keep; i++) s += a[i];
   const avg = s/keep;
   GFX14.benchMs = +avg.toFixed(1);
-  if ((GFX14.by !== 'gpu' && GFX14.by !== 'migrated') || GFX_IDS.indexOf(GFX14.mode) < 0) return;    // the player already chose
+  if ((GFX14.by !== 'gpu' && GFX14.by !== 'migrated' && GFX14.by !== 'bench') || GFX_IDS.indexOf(GFX14.mode) < 0) return;    // the player already chose
   const steps = avg > 45 ? 2 : (avg > 26 ? 1 : 0);
   if (!steps) return;
   const i = GFX_IDS.indexOf(GFX14.mode), to = GFX_IDS[Math.max(0, i - steps)];
@@ -52677,7 +52717,7 @@ void main(){
 const RG_FAR_FRAG = `
 uniform vec3 uSunDir, uSunCol, uRimDir, uRimCol, uSkyCol, uGndCol, uAmb;
 uniform vec3 uFogColor, uFogGlow, uFogSun, uSunW; uniform vec4 uRgHaze;
-uniform float uFogNear, uFogFar, uFogH, uFogHAmt, uSlab, uWTime, uWCover, uWCScale, uWCStr, uWater, uWin;
+uniform float uFogNear, uFogFar, uFogH, uFogHAmt, uSlab, uWTime, uWCover, uWCScale, uWCStr, uWater, uWin, uWLite;
 uniform sampler2D uMask;
 varying vec3 vWP; varying vec3 vN; varying vec3 vCol;
 ` + W_NOISE + `
@@ -52702,7 +52742,7 @@ void main(){
     col += vec3(1.0, 0.76, 0.46) * mix(win*lit, 0.16, smoothstep(500.0, 1800.0, dd)) * uWin;
   }
   vec2 cp = vWP.xz * uWCScale + vec2(uWTime*0.0065, uWTime*0.0026);
-  col *= 1.0 - uWCStr * smoothstep(uWCover - 0.10, uWCover + 0.16, wFbm(cp));
+  if (uWCStr*uWLite > 0.001) col *= 1.0 - uWCStr * smoothstep(uWCover - 0.10, uWCover + 0.16, wFbm(cp));     // (Toaster: off, 15.7)
   vec3 vd = vWP - cameraPosition; float d = length(vd); vec3 vdn = vd / max(d, 1e-3);
   float ffRaw = smoothstep(uFogNear, uFogFar, d);
   float fmu = max(dot(vdn, uSunW), 0.0);
@@ -52741,7 +52781,7 @@ function rgFarInit(){
     uSkyCol:{ value:new T.Color() }, uGndCol:{ value:new T.Color() }, uAmb:{ value:new T.Color() },
     uFogColor:{ value:new T.Color() }, uFogNear:{ value:240 }, uFogFar:{ value:1000 },
     uFogGlow:W2.U.uFogGlow, uFogSun:W2.U.uFogSun, uSunW:W2.U.uSunW, uFogH:W2.U.uFogH, uFogHAmt:W2.U.uFogHAmt, uRgHaze:W2.U.uRgHaze,
-    uWTime:WORLD.uTime, uWCover:WORLD.uCover, uWCScale:WORLD.uCloudScale, uWCStr:WORLD.uCloudStrength,
+    uWTime:WORLD.uTime, uWCover:WORLD.uCover, uWCScale:WORLD.uCloudScale, uWCStr:WORLD.uCloudStrength, uWLite:WORLD.uLite || (WORLD.uLite = { value:1 }),
     uMask:{ value:RG_MASK.tex }, uSlab:{ value:RG.slab }
   };
   // every far material exists from the start (2 shader programs: land / water / buildings, the night lights) and
@@ -67893,6 +67933,107 @@ try { p17Build(); } catch(e){ console.warn('[potato17] contact shadows', e); }
 try { if (typeof POST !== 'undefined' && POST.lite) POST.lite.hooks.push({ before:p17PointsBefore, after:p17PointsAfter }); } catch(e){ console.warn('[potato17] lite hooks', e); }
 addFrameHook(function p17Frame(){ try { p17Tick(); } catch(e){ if (!P17.err){ P17.err = e; console.warn('[potato17] tick', e); } } });
 window.__p17 = { P17, count: ()=> P17.n };
+/* =========================================================================
+   TOASTER19 -- Release 15.7: "make it so you can play even with an insanely weak laptop"
+   The Toaster graphics mode (gfx14_core.js: the lightest preset, shade:'simple') draws the lit meshes with three's cheap
+   per-vertex Lambert lighting instead of the PBR MeshStandardMaterial: a fraction of the per-pixel work on a weak graphics chip
+   and fewer uniforms to send per draw on a weak CPU.
+   The swap happens at DRAW time (renderer.renderBufferDirect and renderer.compile are wrapped), so everything -- city cells
+   streamed in later, traffic, people, riders, rides -- is covered without walking the scene; the scene keeps its own materials
+   (every other mode is untouched and switching back compiles nothing new); Toaster compiles only its own small program set.
+   A material keeps its own look where Lambert cannot follow it: custom shaders (onBeforeCompile, extra defines, a custom
+   program key, ShaderMaterial) are drawn as they are. Colours are SHARED with the original (animated colours show); opacity,
+   emissive strength and texture swaps are followed every draw, anything else when the original is flagged needsUpdate.
+   API   T19 (state, for tests: on, made, kept) · t19Mat(material) -> what Toaster draws for it
+   ========================================================================= */
+const T19 = { on:false, map:new WeakMap(), made:0, kept:0 };
+const T19_KEYS = ['map', 'alphaMap', 'aoMap', 'aoMapIntensity', 'lightMap', 'lightMapIntensity', 'emissiveMap', 'transparent', 'alphaTest',
+  'side', 'shadowSide', 'vertexColors', 'fog', 'depthWrite', 'depthTest', 'depthFunc', 'blending', 'blendSrc', 'blendDst', 'blendEquation',
+  'premultipliedAlpha', 'polygonOffset', 'polygonOffsetFactor', 'polygonOffsetUnits', 'colorWrite', 'toneMapped', 'wireframe', 'dithering',
+  'skinning', 'morphTargets', 'morphNormals', 'clipShadows', 'clippingPlanes', 'clipIntersection'];
+function t19Swappable(m){
+  if (!m || !(m.isMeshStandardMaterial || m.isMeshPhongMaterial) || m.isShaderMaterial) return false;
+  // custom shaders stay -- except the world's own surface shading (patchWorldShading, unwrapped): it only touches chunks Lambert has
+  // too (common, worldpos, map, tone mapping; its roughness / normal-map parts find nothing to replace), so it goes along
+  if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && !t19WorldOnly(m.onBeforeCompile)) return false;
+  if (m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey) return false;
+  if (m.defines) for (const k in m.defines) if (k !== 'STANDARD' && k !== 'PHYSICAL') return false;
+  if (m.userData && m.userData.t19keep) return false;
+  return true;
+}
+const T19_SRC = new WeakMap();
+function t19WorldOnly(fn){
+  let ok = T19_SRC.get(fn);
+  if (ok === undefined){
+    const t = String(fn);
+    ok = t.indexOf('sh.uniforms.uWTime') >= 0 && t.indexOf('uWDetile') >= 0 && t.indexOf('.call(') < 0 && t.indexOf('base(') < 0 && t.indexOf('prev') < 0;
+    T19_SRC.set(fn, ok);
+  }
+  return ok;
+}
+function t19Copy(L, m){
+  for (const k of T19_KEYS) if (m[k] !== undefined && k in L) L[k] = m[k];
+  L._t19v = m.version;
+  L.needsUpdate = true;
+}
+function t19Mat(m){
+  let L = T19.map.get(m);
+  if (L === undefined){
+    L = null;
+    if (t19Swappable(m)){
+      L = new THREE.MeshLambertMaterial();
+      L.name = (m.name || '') + '~t19';
+      L.color = m.color; L.emissive = m.emissive;        // shared: a colour change on the original shows at once
+      if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) L.onBeforeCompile = m.onBeforeCompile;
+      t19Copy(L, m); T19.made++;
+    } else T19.kept++;
+    T19.map.set(m, L);
+  }
+  if (L === null) return m;
+  // every draw (cheap): what the game animates on its materials
+  L.opacity = m.opacity; L.emissiveIntensity = m.emissiveIntensity; L.visible = m.visible;
+  if (L._t19v !== m.version) t19Copy(L, m);
+  else if (L.map !== m.map || L.emissiveMap !== m.emissiveMap || L.transparent !== m.transparent){
+    const re = !!L.map !== !!m.map || !!L.emissiveMap !== !!m.emissiveMap;
+    L.map = m.map; L.emissiveMap = m.emissiveMap; L.transparent = m.transparent;
+    if (re) L.needsUpdate = true;
+  }
+  return L;
+}
+(function t19Hook(){
+  if (typeof renderer === 'undefined' || !renderer) return;
+  const R = renderer, rbd = R.renderBufferDirect, cmp = R.compile;
+  R.renderBufferDirect = function(cam, sc, geo, mat, obj, grp){
+    if (T19.on && mat && !mat.isShaderMaterial) mat = t19Mat(mat);
+    return rbd.call(this, cam, sc, geo, mat, obj, grp);
+  };
+  // compile what Toaster will really draw (the boot's warm-up, mode switches): swapped on the objects for the call only
+  R.compile = function(sc, cam){
+    if (!T19.on) return cmp.apply(this, arguments);
+    const put = [];
+    sc.traverse(o=>{ const m = o.material; if (!m || Array.isArray(m)) return; const L = t19Mat(m); if (L !== m){ put.push(o, m); o.material = L; } });
+    try { return cmp.apply(this, arguments); }
+    finally { for (let i = 0; i < put.length; i += 2) put[i].material = put[i + 1]; }
+  };
+})();
+function t19Set(on){
+  on = !!on;
+  // the procedural surface detail + cloud shadows of the world shaders (patchWorldShading, the far terrain): one shared uniform
+  try { if (typeof WORLD !== 'undefined'){ if (!WORLD.uLite) WORLD.uLite = { value:1 }; WORLD.uLite.value = on ? 0 : 1; } } catch(e){}
+  if (on === T19.on) return;
+  T19.on = on;
+  // switched while playing: build the new set of programs now (one short freeze) instead of a stutter over the next frames
+  if (typeof GFX14 !== 'undefined' && GFX14.booted){ try { renderer.compile(scene, camera); } catch(e){} }
+}
+t19Set(typeof GFXP !== 'undefined' && GFXP.shade === 'simple');
+if (typeof gfxOnChange === 'function') gfxOnChange(function t19OnGfx(P, ch){ if (!ch || ch.indexOf('shade') >= 0) t19Set(P.shade === 'simple'); });
+/* a weak CPU: the frame's shared background budget (far view, forest planning, streaming slices: hitch15) drops from 1.6 to 0.8 ms
+   while Toaster is on -- that work takes a little longer, the frame keeps more of its time */
+addFrameHook(function t19Frame(){
+  if (typeof HITCH15 === 'undefined' || !HITCH15) return;
+  const w = T19.on ? 0.8 : 1.6;
+  if (HITCH15.bg !== w) HITCH15.bg = w;
+});
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
