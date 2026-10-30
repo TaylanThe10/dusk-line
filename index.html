@@ -35203,7 +35203,7 @@ function garageActs(){
     return;
   }
   gEl('gActs').innerHTML = '<button type="button" class="gBtn pri" id="gEquip"' + (equipped ? ' disabled' : '') + '>' + (equipped ? 'Equipped' : 'Equip') + '</button>' +
-    '<button type="button" class="gBtn" id="gDrop">Equip &amp; Drop In</button>';
+    '<button type="button" class="gBtn" id="gDrop">' + (typeof swap22Live === 'function' && swap22Live() ? 'Equip &amp; Ride' : 'Equip &amp; Drop In') + '</button>';
   gEl('gEquip').onclick = ()=> garageEquip(false);
   gEl('gDrop').onclick = ()=> garageEquip(true);
 }
@@ -35213,8 +35213,9 @@ function garageEquip(drop){
   kitIndex = GARAGE.color;
   applyKit(GARAGE.color);
   applyVehicle(id);
+  if (typeof swap22After === 'function') swap22After();          // Release 15.12: mid-run, the new ride stands where the old one was
   if (typeof toast === 'function') toast(FLEET_BY_ID[id].name + ' · ' + FLEET_COLORS[GARAGE.color][0] + ' equipped', true);
-  if (drop){ closeGarage(true); if (typeof startRun === 'function') startRun(); return; }
+  if (drop){ closeGarage(true); if (typeof swap22Resume === 'function' && swap22Resume()) return; if (typeof startRun === 'function') startRun(); return; }
   garageList(); garageInfo(); garageActs();
 }
 
@@ -69875,6 +69876,44 @@ addFrameHook(function look21Hook(){
   if (L21.dirty || bi !== L21.bi || bj !== L21.bj || l21Det() !== L21.det) l21Relay(bi, bj);
 });
 if (typeof gfxOnChange === 'function') gfxOnChange(function(){ L21.dirty = true; });
+/* =========================================================================
+   SWAP22 -- Release 15.12: "make it so you can change your bike and your person mid game"
+   The pause menu gets "Swap bike" and "Swap rider": they open the garage on top of the paused run (bikes, or the riders tab).
+   Equipping a ride mid-run puts it where the old one stood (on the ground, standing still, facing the same way); the garage's
+   second button reads "Equip & Ride" there and closes the garage + un-pauses instead of starting a new run. Choosing a rider
+   swaps the rider on the bike at once. Closing the garage (Esc / x) goes back to the pause menu. Nothing else of the run changes
+   (time, score, money, the room). The garage's own code (mods/fleet_garage.js) calls swap22Live / swap22After / swap22Resume.
+   ========================================================================= */
+const SWAP22 = { wired:false };
+/* a run is going on (paused, or riding / walking with the garage opened from a store) */
+function swap22Live(){ return typeof GAME !== 'undefined' && (GAME === 'pause' || GAME === 'play'); }
+function swap22After(){
+  if (!swap22Live()) return;
+  try { if (typeof onFoot === 'function' && onFoot()) return; } catch(e){}      // on foot (a store): the parked bike just changes
+  try { resetBike({ x:bike.pos.x, z:bike.pos.z, yaw:bike.yaw }); camInit = false; } catch(e){}
+}
+function swap22Resume(){
+  if (!swap22Live()) return false;
+  if (GAME === 'pause' && typeof togglePause === 'function') togglePause();
+  return true;
+}
+function swap22Wire(){
+  if (SWAP22.wired) return;
+  const rb = document.getElementById('resumeBtn');
+  if (!rb || !rb.parentNode || typeof openGarage !== 'function') return;
+  SWAP22.wired = true;
+  injectCSS(`
+    #pause .swap22Row{ display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+    #pause .swap22Row .btn{ margin:0; min-width:150px; }
+  `, 'swap22css');
+  const row = document.createElement('div');
+  row.className = 'swap22Row';
+  row.innerHTML = '<button class="btn ghost" id="swapBikeBtn" type="button">Swap bike</button><button class="btn ghost" id="swapRiderBtn" type="button">Swap rider</button>';
+  rb.parentNode.insertBefore(row, rb.nextSibling);
+  document.getElementById('swapBikeBtn').onclick = ()=>{ try { openGarage(); } catch(e){ console.warn('[swap22] garage', e); } };
+  document.getElementById('swapRiderBtn').onclick = ()=>{ try { openGarage('riders'); } catch(e){ console.warn('[swap22] riders', e); } };
+}
+addFrameHook(function swap22Frame(){ if (!SWAP22.wired) swap22Wire(); });
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
