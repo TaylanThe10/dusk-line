@@ -8343,20 +8343,20 @@ const MAPS = {
     spots:[], jumps:true,
     hMul:0.5, facades:null,
     tree:'palm', leaf:[0x5aa23f,0x3a7a2f], trunk:0x93714c, scrub:0xb4a86a,
-    cycle:[0,0.5], weather:null,
-    sky:{ zenith:'#1f62c8', horizon:'#cfe2f3', gnd:'#b08a5e', sun:'#fff1d2',
-          dir:[0.52,0.50,-0.58], cover:0.76, cloudY:5.0, haze:0.85,
-          fog:'#c4d9ee', fogNear:300, fogFar:1250 },
-    light:{ sun:3.0, sunCol:0xfff0d6, hemi:1.5, skyCol:0xcfe0f5, gndCol:0xd9b98a,
-            rim:0.5, rimCol:0xbcd4ff, bounce:0.6, exposure:0.98 },
+    cycle:[0,0.8], weather:null,
+    sky:{ zenith:'#2a66c2', horizon:'#e3cba3', gnd:'#b08a5e', sun:'#fff0cc',
+          dir:[0.52,0.50,-0.58], cover:0.62, cloudY:5.0, haze:1.25,
+          fog:'#dcc7a3', fogNear:420, fogFar:1700 },
+    light:{ sun:3.05, sunCol:0xffe9c8, hemi:1.45, skyCol:0xcfdcf0, gndCol:0xdcac7a,
+            rim:0.5, rimCol:0xc8d4f0, bounce:0.66, exposure:0.98 },
     night:{ sky:{ zenith:'#0c1233', horizon:'#3a2a52', gnd:'#0a0710', sun:'#ffd9b0',
-                  dir:[-0.5,0.55,-0.3], cover:0.6, haze:0.7, fog:'#21183a', fogNear:140, fogFar:900 },
+                  dir:[-0.5,0.55,-0.3], cover:0.6, haze:0.7, fog:'#231a30', fogNear:160, fogFar:1050 },
             light:{ sun:0.55, sunCol:0xe0c0ff, hemi:0.85, skyCol:0x4a4a88, gndCol:0x30242a,
                     rim:0.42, rimCol:0x8a6ab8, bounce:0.24, exposure:0.96 },
             lamp:0xffc27a },
     pal:{ ground:0xc4a676, concrete:0xcfc2a4, ramp:0xc2ad82, metal:0xa49c8e, dark:0x4f463c, bowl:0xcbbc9a,
-          dirt:0xc1a46f, curb:0xdccfb2, wood:0x9a7048, coping:0xe6dcc6 },
-    mats:{ road:0x58534d, sidewalk:0xd6c39c, plaza:0xc6b084, grass:0x8c9c5a },
+          dirt:0xf0dcb4, curb:0xdccfb2, wood:0x9a7048, coping:0xe6dcc6 },
+    mats:{ road:0x5d564f, sidewalk:0xd9c098, plaza:0xc9ad7e, grass:0x8c9c5a },
     hills:{ low:0xd9a96d, mid:0xbd8450, high:0x9f6a43, rock:0xb4744a },
     cardTints:[0xe2c58a, 0xd3ac70, 0xefd6a0],
     swatch:['#2f6fd0','#e8a35a','#d9533a']
@@ -30180,8 +30180,13 @@ function fbMo15moto(P){
 
   /* ---- front end: fork, clamps, bars, mask / lamp, fender ---- */
   const conv = q('fork') === 'conv';
-  const fk = mo15forkMoto(fr, G, { conv, boots:!!P.boots, span:(P.forkSpan || 0.094)*Math.min(1, scale + 0.08), ro:(P.forkR || 0.0275)*Math.min(1, scale + 0.1), ht:P.ht || 0.13,
-    outer:FX.fork, inner:mo15mat(q('inner'), BK.chrome), foot:mo15mat(q('forkFoot'), M12.anod), clamp:mo15mat(q('clamp'), BK.alloy), guard:(q('fguard') && !conv) ? mo15mat(q('fguardMat'), M) : 0,
+  // Release 15.8 (forks19 kit, fk19Moto): an inverted fork -- thick outer tubes in forged triple clamps, coated stanchions in moulded guards,
+  // forged axle feet, a radial caliper, top-cap adjusters; the body family picks the fork family (guards, caps, adjuster colours)
+  const ffam = { mx:'mx', blade:'mx', pit:'mx', enduro:'enduro', adv:'enduro', tank:'enduro', light:'light', minimal:'light', mini:'light', sm:'street' }[P.body] || 'mx';
+  const fro = Math.min(0.026, P.forkR ? P.forkR*0.86 : 0.025)*Math.min(1, scale + 0.12);
+  const fk = fk19Moto(fr, G, { conv, boots:!!P.boots, fam:ffam, span:(P.forkSpan || 0.094)*Math.min(1, scale + 0.08), ro:fro, ri:fro*0.79, ht:P.ht || 0.13,
+    outer:FX.fork, inner:q('inner') === 'black' ? FK17.stanB : mo15mat(q('inner'), BK.chrome), foot:mo15mat(q('forkFoot'), M12.anod), clamp:mo15mat(q('clamp'), BK.alloy),
+    guard:(q('fguard') && !conv) ? mo15mat(q('fguardMat'), FK19.guard) : 0, adj:{ mx:BK.gold, enduro:FX.acc, light:BK.gold, street:FX.acc }[ffam],
     cal:mo15mat(q('cal'), M12.anod), rotorR:(P.rotorF || 0.13)*Math.min(1, scale + 0.12), rotorX:0.058 });
   C.fk = fk;
   const bt0 = q('bars') || 'mx', BF = mo15barFit(mo15up(fk.SP(fk.tt1), d, 0.052), d, bt0 === 'mx' ? 0.085 : bt0 === 'low' ? 0.05 : 0.02, bt0 === 'flat' ? 0.03 : 0.06, (P.hw || 0.40)*Math.min(1, scale + 0.15), P.grip);
@@ -30672,8 +30677,10 @@ function fbMo15moped(P){
 
   /* ---- front: fork + clamps, bars, lamp, fender ---- */
   const fork = P.fork || 'usd', fsp = Math.max(0.080, tw + 0.034);
-  const fk = mo15forkMoto(fr, G, { conv:fork === 'tele', boots:!!P.boots, span:fsp, ro:fork === 'tele' ? 0.026 : 0.027, ri:fork === 'tele' ? 0.0175 : 0.019, ht:P.ht || 0.15, outer:FX.fork, inner:mo15mat(P.stan, BK.chrome),
-    foot:M12.anod, clamp:mo15mat(P.clamp, M12.anod), guard:0, cal:M12.anod, rotorR:0.09, rotorX:fsp - 0.026, calAng:155 });
+  // Release 15.8 (forks19 kit, fk19Moto 'moped' family): inverted forks in forged clamps (domed caps, a preload clicker), or the classic
+  // telescopic fork with cast sliders + gaiters on the retro rows
+  const fk = fk19Moto(fr, G, { conv:fork === 'tele', boots:!!P.boots, fam:'moped', span:fsp, ro:fork === 'tele' ? 0.026 : 0.0245, ri:fork === 'tele' ? 0.0172 : 0.0192, ht:P.ht || 0.15, outer:FX.fork,
+    inner:P.stan === 'black' ? FK17.stanB : mo15mat(P.stan, BK.chrome), foot:M12.anod, clamp:mo15mat(P.clamp, M12.anod), guard:0, adj:BK.gold, cal:M12.anod, rotorR:0.09, rotorX:fsp - 0.026, calAng:155 });
   const bk = P.bars || 'moto';
   const BF = mo15barFit(mo15up(fk.SP(fk.tt1), d, 0.05), d, bk === 'moto' ? 0.10 : bk === 'cruiser' ? 0.11 : 0.02, bk === 'cruiser' ? 0.16 : bk === 'flat' ? 0.04 : 0.07, bk === 'flat' ? 0.36 : bk === 'cruiser' ? 0.40 : 0.38, P.grip);
   const bc = [BF.c[1] - 0.004, BF.c[0]];
@@ -30855,10 +30862,10 @@ function fbMo15ebike(P){
   const fk = q('fork'), span = q('span') || 0.052, A0 = [fz, Rf], disc = q('disc') || 0, FB = pd15Bk();
   if (fk === 'sus' || fk === 'fat'){
     const fat = fk === 'fat', st = fat ? 0.019 : 0.0165;
-    fk17Sus(FB, G, { kind:'sus', city:true, span:fat ? 0.088 : span, stanR:st, lowK:1.45, lowMat:FX.fork, stanMat:FK17.stanS, crownMat:M12.anod, archMat:FX.fork,
+    fk19Sus(FB, G, { kind:'sus', city:true, span:fat ? 0.088 : span, stanR:st, lowK:1.45, lowMat:FX.fork, stanMat:FK17.stanS, crownMat:M12.anod, archMat:FX.fork,
       travel:fat ? 0.10 : 0.075, knobMat:FX.acc, tyreW:(q('tr') || 0.03)*1.10, archClear:q('fenders') ? (q('fenders') === 'fat' ? 0.030 : 0.028) + 0.012 : 0.012, rotor:disc || 0.08, rotorX:0.050, cal:disc > 0, pistons:2, steerer:false, cups:false });
   } else if (fk === 'usd'){
-    mo15forkMoto(fr, G, { span, ro:0.026, ri:0.0185, ht:q('ht'), outer:FX.fork, inner:BK.chrome, foot:M12.anod, clamp:M12.anod, guard:0, cal:M12.anod, rotorR:disc || 0.09, rotorX:0.050, calAng:150, bike:true });
+    fk19Moto(fr, G, { fam:'bike', span, ro:0.024, ri:0.0185, ht:q('ht'), outer:FX.fork, inner:BK.chrome, foot:M12.anod, clamp:M12.anod, guard:0, adj:FX.acc, cal:M12.anod, rotorR:disc || 0.09, rotorX:0.050, calAng:150 });
   } else {
     const ds = q('design'), FS = { classic:['crown', 0.0100, 0.0150], sleek:['road', 0.0105, 0.0165], cargo:['unicrown', 0.0118, 0.0180], folder:['crown', 0.0085, 0.0125],
                                    beam:['unicrown', 0.0115, 0.0175], cruiser:['crown', 0.0105, 0.0155], metro:['unicrown', 0.0125, 0.0190] }[ds] || ['unicrown', 0.0105, 0.016];
@@ -31650,9 +31657,9 @@ FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
     { col:0x5b2ca0, acc:0xf2f2ee, liv:L(0x1c1e22, 0x1c1e22) });
   MO('xxx', { body:'tank', Rf:0.34, Rr:0.315, wb:1.33, sy:0.90, ha:62.5, fl:0.58, sa:0.50, pv:0.14, tread:'trail', tailZ:0.02, mask:'wedge', spring:'gold', inner:'chrome', graph:'stripe' },
     { col:0xa3192b, acc:0x15171a, liv:L(0xc9a227, 0x15171a) });
-  MO('komodo', { body:'adv', Rf:0.352, Rr:0.319, wb:1.40, sy:0.94, ha:62, fl:0.62, sa:0.50, pv:0.14, tread:'trail', tailZ:0.02, fork:'conv', boots:true, spring:'black' },
+  MO('komodo', { body:'adv', Rf:0.352, Rr:0.319, wb:1.40, sy:0.94, ha:62, fl:0.62, sa:0.50, pv:0.14, tread:'trail', tailZ:0.02, spring:'black' },
     { col:0xc3c9cf, acc:0xff7a1a, liv:L(0x1b1d21, 0x1b1d21, 0x2a2724, 0x2a2724) });
-  MO('ss3', { body:'light', Rf:0.30, Rr:0.30, wb:1.16, sy:0.82, ha:63, fl:0.49, sa:0.42, pv:0.115, tread:'trail', tailZ:0.15, tank:'mx', tankMat:'body', fork:'conv', shroud:'enduro', graph:'stripe', spring:'gold', mask:'round', bezel:'chrome' },
+  MO('ss3', { body:'light', Rf:0.30, Rr:0.30, wb:1.16, sy:0.82, ha:63, fl:0.49, sa:0.42, pv:0.115, tread:'trail', tailZ:0.15, tank:'mx', tankMat:'body', shroud:'enduro', graph:'stripe', spring:'gold', mask:'round', bezel:'chrome' },
     { col:0x2c5a3f, acc:0xd9c38f, liv:L(0xb9bec5, 0x15171a, 0x1b1c1e, 0x5a4632) });
   MO('sr', { body:'sm', Rf:0.31, Rr:0.31, wb:1.21, sy:0.845, ha:62.5, fl:0.52, sa:0.44, pv:0.12, tread:'street', tailZ:0.10, rotorF:0.15, spring:'acc', inner:'gold' },
     { col:0xeef0f2, acc:0x1d4ed8, liv:L(0x1b1d21, 0x1d4ed8) });
@@ -31662,13 +31669,13 @@ FLEET_EXTRA_BUILD.mo15scoot = fbMo15scoot;
     { col:0x4a5058, acc:0xff7a1a, liv:L(0xff7a1a, 0x16181c) });
   MO('varg', { body:'mx', Rf:0.352, Rr:0.319, wb:1.46, sy:0.93, ha:63.5, fl:0.62, off:0.03, sa:0.56, pv:0.15, tread:'mx', num:'7', graph:'split', inner:'gold', spring:'acc', forkR:0.03, chassis:'black', sub:'alloy' },
     { col:0x6c737c, acc:0xff2d3d, liv:L(0x1c1e22, 0x1c1e22) });
-  MO('xqi3', { body:'mini', Rf:0.25, Rr:0.25, wb:1.06, sy:0.73, ha:64, fl:0.43, sa:0.37, pv:0.10, tread:'trail', tailZ:0.14, fork:'conv', spring:'white' },
+  MO('xqi3', { body:'mini', Rf:0.25, Rr:0.25, wb:1.06, sy:0.73, ha:64, fl:0.43, sa:0.37, pv:0.10, tread:'trail', tailZ:0.14, spring:'white' },
     { col:0xff8a66, acc:0xf4f4f0, liv:L(0xf4f4f0, 0xf4f4f0, 0x1b1e22, 0x1b1e22) },);
-  MO('villain', { body:'sm', Rf:0.296, Rr:0.296, wb:1.19, sy:0.83, ha:63, fl:0.50, sa:0.43, pv:0.12, tread:'street', tailZ:0.08, fork:'conv', rotorF:0.15, spring:'black', graph:'block' },
+  MO('villain', { body:'sm', Rf:0.296, Rr:0.296, wb:1.19, sy:0.83, ha:63, fl:0.50, sa:0.43, pv:0.12, tread:'street', tailZ:0.08, rotorF:0.15, spring:'black', graph:'block' },
     { col:0x2843c9, acc:0x111214, liv:L(0x111214, 0xc9a227) });
   MO('r1s', { body:'tank', Rf:0.31, Rr:0.30, wb:1.20, sy:0.85, ha:62.5, fl:0.52, sa:0.44, pv:0.12, tread:'trail', tailZ:0.10, mask:'twin', spring:'acc', inner:'chrome', graph:'fade' },
     { col:0x3d4450, acc:0x2fd2c9, liv:L(0x2fd2c9, 0x2fd2c9) });
-  MO('etm', { body:'pit', Rf:0.222, Rr:0.208, wb:1.04, sy:0.74, ha:62, fl:0.40, sa:0.36, pv:0.10, tread:'mx', tailZ:0.12, fork:'conv', num:'12', spring:'acc' },
+  MO('etm', { body:'pit', Rf:0.222, Rr:0.208, wb:1.04, sy:0.74, ha:62, fl:0.40, sa:0.36, pv:0.10, tread:'mx', tailZ:0.12, num:'12', spring:'acc' },
     { col:0xf0f1f2, acc:0x1f9be0, liv:L(0xc9ccd1, 0x1f9be0) });
   MO('freego', { body:'pit', Rf:0.28, Rr:0.26, wb:1.14, sy:0.80, ha:62.5, fl:0.46, sa:0.40, pv:0.11, tread:'mx', tailZ:0.10, ffend:'beak', guards:true, num:'44', mask:'plateLamp', spring:'black', graph:'stripe' },
     { col:0xd6246e, acc:0x14161a, liv:L(0x14161a, 0x14161a) });
@@ -32477,8 +32484,9 @@ function pd15Hose(B, pts, r, mat){ pd15Put(B, mat || M12.rub, pd15Sweep(pts, r |
 function pd15Fork(B, G, o){
   const kind = o.kind || 'sus';
   if (kind === 'sus' || kind === 'dual'){
-    const r = fk17Sus(B, G, { kind, span:o.span, stanR:o.stanR, lowMat:o.lowMat, stanMat:o.stanMat, crownMat:o.crownMat, archMat:o.archMat,
-      travel:o.travel || fk17Travel(o.word, kind === 'dual' ? 0.20 : 0.14), word:o.word, wordMat:o.wordMat, wordStyle:o.wordStyle, knobMat:o.knobMat,
+    // Release 15.8: the forks19 kit (fk19Sus): coated stanchions, cast lowers + arch, forged crown, dials / knobs, decal band (o.fam picks the family)
+    const r = fk19Sus(B, G, { kind, fam:o.fam, span:o.span, stanR:o.stanR, lowK:o.lowK, lowMat:o.lowMat, stanMat:o.stanMat, crownMat:o.crownMat, archMat:o.archMat,
+      travel:o.travel || fk17Travel(o.word, kind === 'dual' ? 0.20 : 0.14), word:o.word, wordMat:o.wordMat, wordStyle:o.wordStyle, knobMat:o.knobMat, dialMat:o.dialMat, bandMat:o.bandMat,
       htR:o.htR, htR2:o.htR2, rotor:o.rotor, rotorX:o.rotorX, cal:o.cal, calMat:o.calMat, tyreW:o.tyreW, archClear:o.archClear });
     if (r.port){ o._port = r.port; o._hose = r.hose; }
     return { top:r.top, crownS:r.crownS };
@@ -32952,7 +32960,9 @@ function pd15Mtb(P, hard){
 
   /* ---------------- front end: fork, stem, bars, hoses */
   const fk = P.fork || (P.dual ? 'dual' : 'sus');
-  const fo = { kind:fk, span:P.span || (fk === 'dual' ? 0.072 : 0.066), stanR:P.stan || 0.019, stanMat:fk17Stan(P.stanMat), lowMat:FX.fork, rotor:P.rotorF || 0.10, rotorX:P.fatRim ? 0.066 : undefined, tyreW:(P.tw || 0.031)*1.06, archClear:P.ffender ? 0.040 : 0.012,
+  const fam = P.forkFam || (fk === 'dual' ? 'ridge' : (hard && (P.stan || 0.019) <= 0.0165 ? 'xc' : 'ridge'));
+  const fo = { kind:fk, fam, lowK:fam === 'xc' ? 1.27 : (e || fk === 'dual' || (P.stan || 0.019) >= 0.019 ? 1.33 : 1.30),
+               span:P.span || (fk === 'dual' ? 0.072 : 0.066), stanR:P.stan || 0.019, stanMat:fk17Stan(P.stanMat), lowMat:FX.fork, rotor:P.rotorF || 0.10, rotorX:P.fatRim ? 0.066 : undefined, tyreW:(P.tw || 0.031)*1.06, archClear:P.ffender ? 0.040 : 0.012,
                htR:hr0, htR2:hr1, word:P.forkWord, wordMat:P.forkInk ? pd15Ink(P.forkInk) : PD15.white, knobMat:A, expose:P.expose, cages:P.cages, bagMat:P.bag ? pd15Ink(P.bag) : undefined, stack:0.012 };
   const fres = pd15Fork(F, G, fo);
   const ck = pd15CockpitMTB(F, fres.top, d, n, { stem:P.stem || (fk === 'dual' ? 0.050 : 0.045), hw:P.hw || 0.39, rise:P.rise === undefined ? 0.025 : P.rise, back:P.back, up:P.up, cross:P.cross,
@@ -33342,49 +33352,49 @@ FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
                                      guide:true, guard:0.090, forkWord:'DH 200', hw:0.40, rise:0.035, reach:0.62, sad:'race' });
   const L = (col, acc, liv)=> ({ col, acc, liv:Object.assign({ fork:dark, rim:dark, grip:dark, seat:dark, bars:dark }, liv || {}) });
   // downhill
-  R('v10', 'pd15fs', Object.assign({}, DH, { cs:0.438, fc:0.865, ha:63, fl:0.60, link:'twinU', coil:'orange', ink:'acc', logoStyle:'heavy', stanMat:'silver', plate:true, plateNo:7, ffender:true, rimWord:'DH 30', rimInk:'acc' }),
+  R('v10', 'pd15fs', Object.assign({}, DH, { cs:0.438, fc:0.865, ha:63, fl:0.60, link:'twinU', coil:'orange', ink:'acc', logoStyle:'heavy', stanMat:'gold', plate:true, plateNo:7, ffender:true, rimWord:'DH 30', rimInk:'acc' }),
     L(0x16181c, 0xff6a1a, { grip:0xff6a1a }));
-  R('demo', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.445, fc:0.875, ha:62.5, fl:0.60, link:'horst', rk:0.70, coil:'red', ink:'acc', logoStyle:'wide', stanMat:'silver', tubes:'alloy', gus:true, dtBow:0.012, plate:true, plateNo:3 }),
+  R('demo', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.445, fc:0.875, ha:62.5, fl:0.60, link:'horst', rk:0.70, coil:'red', ink:'acc', logoStyle:'wide', forkFam:'bulge', stanMat:'black', tubes:'alloy', gus:true, dtBow:0.012, plate:true, plateNo:3 }),
     L(0xeceef1, 0xd6212c, { grip:0xd6212c, seat:0xeceef1 }));
   R('tues', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.355, cs:0.432, fc:0.855, ha:63.5, fl:0.585, link:'low', rk:0.36, coil:'white', ink:'white', logoStyle:'cond', stanMat:'black', web:true, ttk:-0.020, forkInk:'ink' }),
     L(0x1f6fb8, 0xf4f6f8, { fork:0xf4f6f8, grip:0xf4f6f8 }));
-  R('sender', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.44, fc:0.865, ha:63, fl:0.60, link:'vert', coil:null, pig:true, ink:'acc', logoStyle:'script', stanMat:'silver', tk:1.08, ttk:0.010, can:'acc', plate:true, plateNo:12, rimWord:'CARBON DH', rimInk:'acc' }),
+  R('sender', 'pd15fs', Object.assign({}, DH, { Rr:0.355, Rf:0.375, cs:0.44, fc:0.865, ha:63, fl:0.60, link:'vert', coil:null, pig:true, ink:'acc', logoStyle:'script', stanMat:'gold', tk:1.08, ttk:0.010, can:'acc', plate:true, plateNo:12, rimWord:'CARBON DH', rimInk:'acc' }),
     L(0x2b2e34, 0xd5f03a, { grip:0xd5f03a }));
   // freeride / park
-  R('spindrift', 'pd15fs', Object.assign({}, EN, { Rr:0.355, cs:0.435, fc:0.86, ha:62.5, fl:0.60, st:0.41, sa:76, link:'lever', coil:'gold', ink:'acc', logoStyle:'script', stanMat:'black', guard:0.088, guide:true, ttk:-0.010, forkWord:'COIL 180', tw:0.032 }),
+  R('spindrift', 'pd15fs', Object.assign({}, EN, { Rr:0.355, cs:0.435, fc:0.86, ha:62.5, fl:0.60, st:0.41, sa:76, link:'lever', coil:'gold', ink:'acc', logoStyle:'script', forkFam:'bulge', stanMat:'black', guard:0.088, guide:true, ttk:-0.010, forkWord:'COIL 180', tw:0.032 }),
     L(0x6a2fb5, 0xffd23f, { fork:0xffd23f, grip:0xffd23f }));
   R('clash', 'pd15fs', Object.assign({}, EN, { Rr:0.355, Rf:0.355, cs:0.415, fc:0.845, ha:63, fl:0.58, st:0.38, sa:76, pl:0.10, link:'single', rk:0.60, mount:'bb', coil:'acc', tubes:'alloy', tk:1.10, gus:true, guard:0.090, guide:true, cross:true, rfender:true,
-    ink:'acc', logoStyle:'heavy', stanMat:'silver', tw:0.032, forkWord:'PARK 170', hw:0.40, rise:0.040 }),
+    ink:'acc', logoStyle:'heavy', forkFam:'bulge', stanMat:'silver', tw:0.032, forkWord:'PARK 170', hw:0.40, rise:0.040 }),
     L(0x0f7a8f, 0xffe14a, { rim:0xffe14a, grip:0xffe14a }));
   // enduro
-  R('slash', 'pd15fs', Object.assign({}, EN, { cs:0.435, fc:0.84, ha:64, fl:0.575, link:'hp', ink:'acc', logoStyle:'heavy', stanMat:'silver', rimWord:'ENDURO 30' }),
+  R('slash', 'pd15fs', Object.assign({}, EN, { cs:0.435, fc:0.84, ha:64, fl:0.575, link:'hp', ink:'acc', logoStyle:'heavy', forkFam:'bulge', stanMat:'black', rimWord:'ENDURO 30' }),
     L(0x34506b, 0xe5392a, { grip:0xe5392a }));
   R('meta', 'pd15fs', Object.assign({}, EN, { Rr:0.355, cs:0.425, fc:0.845, ha:63.5, fl:0.575, st:0.42, sa:77, link:'single', rk:0.70, mount:'bb', tubes:'alloy', tk:1.06, gus:true, ink:'acc', logoStyle:'wide', stanMat:'silver', dtBow:0.010, guide:true, forkWord:'AIR 160' }),
     L(0xe9561f, 0x121418));
-  R('megatower', 'pd15fs', Object.assign({}, EN, { cs:0.438, fc:0.845, ha:63.8, fl:0.575, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'silver', bottle:'acc', ttk:0.008, rimWord:'TALLSTACK' }),
+  R('megatower', 'pd15fs', Object.assign({}, EN, { cs:0.438, fc:0.845, ha:63.8, fl:0.575, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'gold', bottle:'acc', ttk:0.008, rimWord:'TALLSTACK' }),
     L(0x2f8f8d, 0xff4d6d, { grip:0xff4d6d }));
-  R('capra', 'pd15fs', Object.assign({}, EN, { cs:0.435, fc:0.85, ha:64, fl:0.575, link:'low', rk:0.46, tubes:'alloy', tk:1.08, ink:'acc', logoStyle:'cond', stanMat:'silver', web:true, ttk:-0.010, band:[0.70, 0.76] }),
+  R('capra', 'pd15fs', Object.assign({}, EN, { cs:0.435, fc:0.85, ha:64, fl:0.575, link:'low', rk:0.46, tubes:'alloy', tk:1.08, ink:'acc', logoStyle:'cond', forkFam:'bulge', stanMat:'black', web:true, ttk:-0.010, band:[0.70, 0.76] }),
     L(0xc3c8cf, 0xff3d2e, { grip:0xff3d2e }));
   // trail
-  R('stumpy', 'pd15fs', Object.assign({}, TR, { cs:0.435, fc:0.80, ha:65.5, fl:0.535, link:'horst', mount:'tt', rk:0.66, ink:'acc', logoStyle:'heavy', stanMat:'silver', tan:true, tyreWord:'TRAIL 2.4' }),
+  R('stumpy', 'pd15fs', Object.assign({}, TR, { cs:0.435, fc:0.80, ha:65.5, fl:0.535, link:'horst', mount:'tt', rk:0.66, ink:'acc', logoStyle:'heavy', stanMat:'gold', tan:true, tyreWord:'TRAIL 2.4' }),
     L(0x3f5c3d, 0xf2a63a, { grip:0xb48a58, seat:0xb48a58 }));
   R('bronson', 'pd15fs', Object.assign({}, TR, { Rr:0.355, Rf:0.355, cs:0.425, fc:0.80, ha:65.5, fl:0.53, st:0.43, link:'twin', ink:'acc', logoStyle:'wide', stanMat:'silver', bottle:'white', tk:0.98 }),
     L(0x5aa8f0, 0x14224d, { fork:0x14224d, grip:0x14224d }));
-  R('yeti', 'pd15fs', Object.assign({}, TR, { cs:0.432, fc:0.81, ha:65, fl:0.54, st:0.44, link:'flex', ink:'acc', logoStyle:'script', stanMat:'black', ttk:0.006, tk:0.96, forkWord:'AIR 130', stan:0.017 }),
+  R('yeti', 'pd15fs', Object.assign({}, TR, { cs:0.432, fc:0.81, ha:65, fl:0.54, st:0.44, link:'flex', ink:'acc', logoStyle:'script', stanMat:'gold', ttk:0.006, tk:0.96, forkWord:'AIR 130', stan:0.017 }),
     L(0x5b6470, 0xd9824a, { grip:0xd9824a, fork:0xb9bec5 }));
 
   /* ---------------- e-MTB (Torque Pine): fat battery down tubes, mid motors, displays */
   const EM = Object.assign({}, EN, { e:true, Rr:0.375, Rf:0.375, pl:0.15, sa:76, st:0.43, ttf:0.82, motor:'full', batt:'int', disp:'bar', ink:'acc', logoStyle:'stencil', spokes:32, tw:0.032, rotorF:0.10, rotorR:0.10, forkWord:'E 170' });
-  R('levo', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.442, fc:0.835, ha:64.5, fl:0.575, link:'horst', disp:'tt', stanMat:'silver', shroud:true }), L(0x4b5560, 0xff6a00, { grip:0xff6a00 }));
-  R('vala', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'silver', ttk:0.006 }), L(0xd9cdb4, 0x1f6f6c, { grip:0x1f6f6c }));
-  R('rail', 'pd15fs', Object.assign({}, EM, { cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'single', rk:0.66, stanMat:'silver', dtw:1.06, rimWord:'E-RATED' }), L(0x80878f, 0xff4a1c, { grip:0xff4a1c }));
-  R('kenevo', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.865, ha:63.5, fl:0.595, link:'horst', rk:0.70, coil:'orange', disp:'tt', stanMat:'silver', rfender:true, ffender:true, rotorF:0.11, rotorR:0.11, tw:0.033, tread:'dh', dth:1.06, forkWord:'E COIL 180' }),
+  R('levo', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.442, fc:0.835, ha:64.5, fl:0.575, link:'horst', disp:'tt', stanMat:'gold', shroud:true }), L(0x4b5560, 0xff6a00, { grip:0xff6a00 }));
+  R('vala', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'gold', ttk:0.006 }), L(0xd9cdb4, 0x1f6f6c, { grip:0x1f6f6c }));
+  R('rail', 'pd15fs', Object.assign({}, EM, { cs:0.448, fc:0.835, ha:64.5, fl:0.575, link:'single', rk:0.66, forkFam:'bulge', stanMat:'black', dtw:1.06, rimWord:'E-RATED' }), L(0x80878f, 0xff4a1c, { grip:0xff4a1c }));
+  R('kenevo', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.448, fc:0.865, ha:63.5, fl:0.595, link:'horst', rk:0.70, coil:'orange', disp:'tt', forkFam:'bulge', stanMat:'silver', rfender:true, ffender:true, rotorF:0.11, rotorR:0.11, tw:0.033, tread:'dh', dth:1.06, forkWord:'E COIL 180' }),
     L(0x8f1d2c, 0xcfd3d8, { grip:0xcfd3d8 }));
-  R('rise', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.82, ha:65.5, fl:0.55, link:'flex', motor:'slim', batt:'slim', disp:'tt', tk:0.84, dtw:0.80, dth:0.78, stan:0.018, stanMat:'silver', tread:'trail', tw:0.030, forkWord:'SL 150', pig:false }),
+  R('rise', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.82, ha:65.5, fl:0.55, link:'flex', motor:'slim', batt:'slim', disp:'tt', tk:0.84, dtw:0.80, dth:0.78, stan:0.018, stanMat:'gold', tread:'trail', tw:0.030, forkWord:'SL 150', pig:false }),
     L(0xa9d6c0, 0x2a6e5c, { grip:0x2a6e5c }));
-  R('moterra', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'twin', stanMat:'silver', tk:1.08, dth:1.08, motor:'box', motorMat:'black', ink:'black' }), L(0xa5e32a, 0x15171a));
+  R('moterra', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'twin', forkFam:'bulge', stanMat:'black', tk:1.08, dth:1.08, motor:'box', motorMat:'black', ink:'black' }), L(0xa5e32a, 0x15171a));
   R('trancex', 'pd15fs', Object.assign({}, EM, { cs:0.445, fc:0.825, ha:65, fl:0.56, link:'dtshock', stanMat:'silver', ttk:-0.018, tread:'trail', tw:0.031, stan:0.018, ink:'black' }), L(0xb0602e, 0x15171a));
-  R('allmtn', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'vert', batt:'side', stanMat:'black', tk:1.12, dtw:1.08, dth:1.08, rfender:true, linkAcc:true }),
+  R('allmtn', 'pd15fs', Object.assign({}, EM, { Rr:0.355, cs:0.445, fc:0.835, ha:64.5, fl:0.575, link:'vert', batt:'side', forkFam:'bulge', stanMat:'black', tk:1.12, dtw:1.08, dth:1.08, rfender:true, linkAcc:true }),
     L(0xf0f0f0, 0xff7a00, { grip:0xff7a00, fork:0xeceef0 }));
 
   /* ---------------- hardtails */
@@ -33460,7 +33470,8 @@ FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
    ========================================================================= */
 const FK17 = {
   stanS: L(0xd9dde2, 0.16, 0.62),     // polished silver stanchions (hard anodised alloy)
-  stanB: L(0x2b2e34, 0.12, 0.70)      // gloss black stanchions (a sharp highlight: reads apart from matte / painted lowers)
+  stanB: L(0x2b2e34, 0.12, 0.70),     // gloss black stanchions (a sharp highlight: reads apart from matte / painted lowers)
+  stanG: L(0xc09447, 0.22, 0.80)      // Release 15.8: gold hard-coat stanchions (a warm bronze-gold, not mirror chrome)
 };
 Object.keys(FK17).forEach(k=> patchWorldShading(FK17[k], {}));
 
@@ -33471,7 +33482,7 @@ function fk17Travel(word, def){
   return t;
 }
 /* stanchion material by name ('black' gloss, 'silver' polished; anything else = the given default) */
-function fk17Stan(k, def){ return k === 'black' ? FK17.stanB : (k === 'silver' || k === 'alloy') ? FK17.stanS : (def || FK17.stanS); }
+function fk17Stan(k, def){ return k === 'black' ? FK17.stanB : k === 'gold' ? FK17.stanG : (k === 'silver' || k === 'alloy') ? FK17.stanS : (def || FK17.stanS); }
 /* rotation about x that lines a part's +y up with the steering axis (its +z then points along n, forward) */
 function fk17Rx(G){ return Math.atan2(G.d[1], -G.d[0]) - Math.PI/2; }
 /* a forged slab (crown, clamp) whose footprint is the hull of circles [[x, f, r], ...] (f = forward of the steering axis), height h along
@@ -33744,6 +33755,376 @@ function fk17Bmx(G, o){
   out.fork.push(bxCylG(P3(ax(cTop - 0.004), 0), P3(ax(cTop + 0.003), 0), 0.0212, 18));    // crown race seat under the head tube
   out.brakeAx = [A[0] - n[0]*fd, A[1] - n[1]*fd];
   return out;
+}
+
+/* =========================================================================
+   FORKS19 kit -- Release 15.8 "real suspension forks": the suspension forks rebuilt to read as the real thing.
+     fk19Sus   MTB / e-MTB / dirt-jump single crown, downhill dual crown and city e-bike suspension forks: coated stanchions (gold /
+               black / silver), cast lowers that taper into the axle feet, flared seal heads with glossy dust wipers, a deep cast arch
+               in front that sweeps down into the lowers, a forged crown (a hollow bridge or a solid one) with the steerer + headset,
+               the air cap (valve) on the left, a two-tier damper dial + lever on the right, the rebound knob under the right leg,
+               bleed buttons, a travel o-ring, a thru-axle with lever / end cap (nuts on a city fork), the post-mount caliper on the left
+               lower with the rotor, and the lowers' own decal band + wordmark (original text, no real brand).
+               Families: 'ridge' (crisp arch, hollow crown, blue dial), 'bulge' (bulged bushing housings, round arch, red dial),
+               'xc' (slim), 'city' (preload knobs, lockout lever, axle nuts); dual crowns get pinch-bolted lower + upper crowns.
+     fk19Moto  e-moto / moped / moto e-bike forks. Inverted (USD): thick outer tubes held by a forged bottom + top triple clamp,
+               coated stanchions below in moulded guards, forged axle feet with pinch bolts, a radial caliper on the left foot with
+               its hose, top caps with preload / compression adjusters. 'conv' (classic mopeds): chrome stanchions from the clamps
+               into fat cast sliders, optional gaiters. Families: 'mx', 'enduro', 'light', 'street', 'moped', 'bike'.
+   Rig space as every builder (see forks17_kit.js): +z forward, +x = rider's left, y up; [z,y] side points; G = fgeoFront().
+   Geometry goes into pd15 buckets (merged per material: parts cost vertices, not draw calls).
+   Only function declarations + one material table here: safe at load time (no TDZ); called when a ride is built.
+   ========================================================================= */
+const FK19 = {
+  wipe : L(0x0f1012, 0.40, 0.10),     // dust wipers / fork seals: black rubber with a soft sheen
+  red  : L(0xc61d2a, 0.30, 0.55),     // anodised dials / knobs / adjusters
+  blue : L(0x1c5bd4, 0.30, 0.55),
+  gold : L(0xd6a333, 0.26, 0.72),
+  guard: L(0x17191d, 0.46, 0.05)      // moulded moto fork guards
+};
+Object.keys(FK19).forEach(k=> patchWorldShading(FK19[k], {}));
+
+/* a patch on a pd15Sweep surface: stations t0..t1, section angles a0..a1 (0 = +x, PI/2 = the section's 'no' axis), lifted off it */
+function fk19Patch(S, t0, t1, a0, a1, nu, nv, lift){
+  const pos = [], idx = [], L0 = lift || 0.0004;
+  for (let i = 0; i <= nu; i++) for (let j = 0; j <= nv; j++){
+    const q = S.at(t0 + (t1 - t0)*i/nu, a0 + (a1 - a0)*j/nv);
+    pos.push(q[0] + q[3]*L0, q[1] + q[4]*L0, q[2] + q[5]*L0);
+  }
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++){ const a = i*(nv + 1) + j, b = a + nv + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  return fk19Out(pos, idx, S.at((t0 + t1)/2, (a0 + a1)/2));
+}
+/* indexed geometry from pos / idx whose normals must face like the surface normal at ref ([x,y,z,nx,ny,nz]): flips the winding if not */
+function fk19Out(pos, idx, ref){
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const N = g.attributes.normal; let dot = 0;
+  for (let i = 0; i < N.count; i++) dot += N.getX(i)*ref[3] + N.getY(i)*ref[4] + N.getZ(i)*ref[5];
+  if (dot < 0){ const I = g.index.array; for (let i = 0; i < I.length; i += 3){ const t = I[i + 1]; I[i + 1] = I[i + 2]; I[i + 2] = t; } g.computeVertexNormals(); }
+  return g;
+}
+/* a moulded C-section shell round a straight leg p0 -> p1 ([x,y,z]): radius r(t) (+ nose bulge toward angle aN), thickness th, from angle a0
+   to a1 (the pd15Sweep section frame: 0 = +x, PI/2 = tangent x (+x) -- toward the rear on a fork leg). Outer, inner, edges and both ends. */
+function fk19Shell(p0, p1, r, th, a0, a1, nA, nT, o){
+  o = o || {};
+  const P0 = new T.Vector3(...p0), tg = new T.Vector3(...p1).sub(P0), len = tg.length(); tg.normalize();
+  const la = new T.Vector3(1, 0, 0).addScaledVector(tg, -tg.x).normalize(), no = new T.Vector3().crossVectors(tg, la).normalize();
+  const nose = o.nose || 0, aN = o.aN === undefined ? -Math.PI/2 : o.aN, flare = o.flare || 0;
+  const pt = (t, a, rr)=>{ const c = P0.clone().addScaledVector(tg, t*len), b = Math.max(0, Math.cos(a - aN)), R = rr + nose*b*b*b + flare*t*t;
+    return [c.x + (la.x*Math.cos(a) + no.x*Math.sin(a))*R, c.y + (la.y*Math.cos(a) + no.y*Math.sin(a))*R, c.z + (la.z*Math.cos(a) + no.z*Math.sin(a))*R]; };
+  const parts = [];
+  const grid = (f, inside)=>{ const pos = [], idx = [];
+    for (let i = 0; i <= nT; i++) for (let j = 0; j <= nA; j++) pos.push(...f(i/nT, a0 + (a1 - a0)*j/nA));
+    for (let i = 0; i < nT; i++) for (let j = 0; j < nA; j++){ const a = i*(nA + 1) + j, b = a + nA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+    const am = (a0 + a1)/2, c = P0.clone().addScaledVector(tg, len/2), q = f(0.5, am);
+    const nx = (q[0] - c.x)*(inside ? -1 : 1), ny = (q[1] - c.y)*(inside ? -1 : 1), nz = (q[2] - c.z)*(inside ? -1 : 1);
+    parts.push(fk19Out(pos, idx, [0, 0, 0, nx, ny, nz])); };
+  grid((t, a)=> pt(t, a, r(t)), false);
+  grid((t, a)=> pt(t, a, r(t) - th), true);
+  // the two long edges + the two ends: flat strips
+  const strip = (A, Bv, ref)=>{ const pos = [], idx = [], m = A.length;
+    for (let i = 0; i < m; i++) pos.push(...A[i], ...Bv[i]);
+    for (let i = 0; i < m - 1; i++){ const a = 2*i; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+    parts.push(fk19Out(pos, idx, ref)); };
+  [a0, a1].forEach((a, e)=>{ const A = [], Bv = []; for (let i = 0; i <= nT; i++){ A.push(pt(i/nT, a, r(i/nT))); Bv.push(pt(i/nT, a, r(i/nT) - th)); }
+    const da = e ? 1 : -1, ref = [0, 0, 0, (-la.x*Math.sin(a) + no.x*Math.cos(a))*da, (-la.y*Math.sin(a) + no.y*Math.cos(a))*da, (-la.z*Math.sin(a) + no.z*Math.cos(a))*da];
+    strip(A, Bv, ref); });
+  [0, 1].forEach(t=>{ const A = [], Bv = []; for (let j = 0; j <= nA; j++){ const a = a0 + (a1 - a0)*j/nA; A.push(pt(t, a, r(t))); Bv.push(pt(t, a, r(t) - th)); }
+    const s = t ? 1 : -1; strip(A, Bv, [0, 0, 0, tg.x*s, tg.y*s, tg.z*s]); });
+  // at(t, a): a point on the outer face + its (radial) normal -- decals are laid on with it
+  const at = (t, a)=>{ const q = pt(t, a, r(t)), ca = Math.cos(a), sa = Math.sin(a); return [q[0], q[1], q[2], la.x*ca + no.x*sa, la.y*ca + no.y*sa, la.z*ca + no.z*sa]; };
+  return { geo:pd15Merge(parts), at, len };
+}
+/* a wordmark laid along a leg-like surface at(t, a) (t up the leg, length len; a = section angle) centred on station tc and angle thc, letters
+   H tall (at most maxL long) on a surface of radius rr; side +1 = the left (+x) face (reads upward, letter tops forward), -1 = the right face */
+function fk19Word(B, mat, at, len, txt, style, tc, H, maxL, thc, side, rr, lift){
+  const R = pd15TextRuns(txt, style), asp = R.w/R.h;
+  let Hh = H, W = Hh*asp; if (maxL && W > maxL){ W = maxL; Hh = W/asp; }
+  const dt = W/len, t0 = tc - dt/2, da = Hh/rr;
+  pd15Put(B, mat, pd15InkGeo(R, (u, v)=> at(side > 0 ? t0 + u*dt : t0 + (1 - u)*dt, thc - (v - 0.5)*da*side), lift === undefined ? 0.0004 : lift));
+}
+
+/* the cast arch of a suspension fork: a bridge in front of the stanchions whose underside hops over the tyre and whose ends sweep down
+   the front of the lowers (rounded-rect section per station). o: span, sR, lR, lowTop, tw (tyre half width), hC (half height at the centre),
+   dep (depth), clear, emb (how far below the seal heads the ends reach), round (section power) */
+function fk19Arch(B, mat, G, o){
+  const d = G.d, n = G.n, A = [G.fz, G.Rf], span = o.span, lR = o.lR, tw = o.tw;
+  const f0 = o.sR + 0.003, sEmb = o.lowTop - (o.emb || 0.060);
+  const ry = ax=> ax < tw ? (G.Rf - tw) + Math.sqrt(tw*tw - ax*ax) : (G.Rf - tw) - (ax - tw)*2.5;
+  const cl = o.clear || 0.012, bot = x=> Math.max(sEmb, Math.sqrt(Math.max(0, Math.pow(ry(Math.abs(x)) + cl, 2) - f0*f0)));
+  const sTop = Math.max(bot(0) + 2*o.hC, o.lowTop - 0.004);
+  const xs = [];
+  [span + lR*0.50, span + lR*0.12, span*0.90, tw + 0.014, tw + 0.004, tw*0.78, tw*0.50, tw*0.22, 0].forEach(x=>{ if (!xs.length || x < xs[xs.length - 1] - 0.002 || x === 0) xs.push(x); });
+  const st = xs.concat(xs.slice(0, -1).reverse().map(x=> -x));
+  const ring = 12, pw = 2/(o.round || 2.8), pos = [], idx = [];
+  st.forEach(x=>{
+    const ax = Math.abs(x), end = ax > span + 0.001, k = Math.min(1, ax/span);
+    const s0 = end ? sEmb + 0.006 : bot(x), s1 = end ? o.lowTop - 0.005 : sTop - 0.006*k*k;
+    const fb = end ? -lR*0.10 : f0 - 0.002, ff = end ? lR*0.86 : f0 + o.dep*(1 + 0.30*k*k);
+    const fc = (fb + ff)/2, hf = (ff - fb)/2, sc = (s0 + s1)/2, hs = Math.max(0.002, (s1 - s0)/2);
+    for (let i = 0; i < ring; i++){
+      const a = i/ring*Math.PI*2, c = Math.cos(a), s = Math.sin(a);
+      const f = fc + hf*Math.sign(c)*Math.pow(Math.abs(c), pw), sv = sc + hs*Math.sign(s)*Math.pow(Math.abs(s), pw);
+      pos.push(x, A[1] + d[1]*sv + n[1]*f, A[0] + d[0]*sv + n[0]*f);
+    }
+  });
+  for (let i = 0; i < st.length - 1; i++) for (let k = 0; k < ring; k++){
+    const a0 = i*ring + k, a1 = i*ring + (k + 1)%ring, b0 = a0 + ring, b1 = a1 + ring;
+    idx.push(a0, b0, a1, a1, b0, b1);
+  }
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  // outward normals: compare with the direction away from the section centre at the middle station
+  const N = g.attributes.normal, P = g.attributes.position, mid = xs.length - 1; let dot = 0, cy = 0, cz = 0;
+  for (let k = 0; k < ring; k++){ cy += P.getY(mid*ring + k)/ring; cz += P.getZ(mid*ring + k)/ring; }
+  for (let k = 0; k < ring; k++){ const i = mid*ring + k; dot += (P.getY(i) - cy)*N.getY(i) + (P.getZ(i) - cz)*N.getZ(i); }
+  if (dot < 0){ const I = g.index.array; for (let i = 0; i < I.length; i += 3){ const t = I[i + 1]; I[i + 1] = I[i + 2]; I[i + 2] = t; } g.computeVertexNormals(); }
+  pd15Put(B, mat, g);
+  return { sTop, front:f0 + o.dep };
+}
+
+/* ---------------------------------------------------------------- bicycle suspension fork
+   o: kind 'sus' | 'dual', fam 'ridge' | 'bulge' | 'xc' | 'city', span (half stanchion spacing), stanR, lowK (lower r / stanchion r), lowMat (FX.fork),
+      stanMat, crownMat, archMat, knobMat (damper dial), dialMat (rebound / valve colour), travel, word / wordMat / wordStyle, bandMat (decal band,
+      false = none), htR / htR2, rotor, rotorX, cal (false = none), calMat, pistons, city, steerer (false = drawn by the caller), cups (false = none),
+      top (axis distance of the stem base), tyreW (the arch hops over it), archClear.
+   Returns { top:[z,y] (stem base), crownS, port:[z,y] (caliper banjo), hose:[[x,y,z]x3], lowTop } -- the fk17Sus contract */
+function fk19Sus(B, G, o){
+  o = o || {};
+  const d = G.d, n = G.n, A = [G.fz, G.Rf], dual = o.kind === 'dual', city = !!o.city, off = G.off;
+  const fam = city ? 'city' : (o.fam || 'ridge'), bulge = fam === 'bulge', xc = fam === 'xc';
+  const K = o.crownMat || M12.anod, LM = o.lowMat || FX.fork, SM = o.stanMat || FK17.stanS, AM = o.archMat || LM, HW = PD15.silver, RB = FK19.wipe;
+  const KN = o.knobMat || FX.acc, K2 = o.dialMat || (bulge ? FK19.red : FK19.blue);
+  const span = o.span || 0.066, sR = o.stanR || 0.019, lR = sR*(o.lowK || (city ? 1.40 : xc ? 1.27 : 1.31));
+  const X3 = (p, x)=> [x, p[1], p[0]], leg = s=> [A[0] + d[0]*s, A[1] + d[1]*s], ax = s=> [G.Q[0] + d[0]*s, G.Q[1] + d[1]*s], d3 = [0, d[1], d[0]];
+  const sH1 = (G.H1[0] - G.Q[0])*d[0] + (G.H1[1] - G.Q[1])*d[1];             // the head tube top along the axis
+  const trav = o.travel || 0.14, cTop = G.L - 0.003, cH = city ? 0.030 : (dual ? 0.040 : xc ? 0.031 : 0.035), cBot = cTop - cH;
+  // the seal heads sit about level with the top of the tyre (the arch then only has to hop over it)
+  const lowTop = Math.max(G.Rf*(city ? 0.93 : 0.97), Math.min(cBot - 0.07, cBot - trav - 0.012));
+  const uBot = sH1 + 0.016, uH = 0.025, uTop = uBot + uH;                     // dual: the upper crown above the head tube
+  const stTop = dual ? uTop + 0.006 : cTop + 0.002;
+  const lowS = {};
+  /* ---- lowers (cast, tapering into the feet), seal heads, dust wipers, stanchions */
+  [-1, 1].forEach(sd=>{
+    const x = sd*span, top = lowTop - 0.012;
+    const sec = [[0, lR*0.70, lR*0.80, 2.5], [0.08, lR*0.76, lR*0.86, 2.4], [0.28, lR*0.84, lR*0.91, 2.2], [0.68, lR*0.95, lR*0.975, 2.05], [0.86, lR, lR, 2]]
+      .concat(bulge ? [[0.93, lR*1.055, lR*1.055, 2], [1, lR*1.02, lR*1.02, 2]] : [[1, lR, lR, 2]]);
+    const S = pd15Sweep([X3(leg(-0.016), x), X3(leg(top*0.5), x), X3(leg(top), x)], sec, { r:16, n:12, cap:'a' });
+    pd15Put(B, LM, S.geo); lowS[sd] = S;
+    const r1 = bulge ? 1.02 : 1;
+    pd15Put(B, LM, pd15Sweep([X3(leg(top - 0.0005), x), X3(leg(lowTop), x)], [[0, lR*r1, lR*r1], [0.45, lR*1.075, lR*1.075], [1, lR*1.05, lR*1.05]], { r:18, n:3, cap:'b' }).geo);
+    pd15Put(B, RB, pd15Sweep([X3(leg(lowTop - 0.001), x), X3(leg(lowTop + 0.011), x)], [[0, lR*1.03, lR*1.03], [0.28, sR*1.36, sR*1.36], [0.72, sR*1.17, sR*1.17], [1, sR*1.035, sR*1.035]], { r:18, n:4 }).geo);
+    pd15Put(B, SM, pd15Sweep([X3(leg(lowTop + 0.004), x), X3(leg(stTop), x)], sR, { r:20, n:2 }).geo);
+    // axle boss: a machined face round the axle, a touch proud of the foot
+    pd15Put(B, LM, pd15Disc(Math.max(0.0145, lR*0.66), lR*1.62, x, 16).translate(0, A[1], A[0]));
+    // bleed button on the back of the lower, under the seal head
+    if (!city){ const b0 = pd15Up(leg(lowTop - 0.030), n, -lR*0.90), b1 = pd15Up(leg(lowTop - 0.030), n, -lR*1.07); pd15Put(B, HW, mo15rodGeo(X3(b0, x), X3(b1, x), 0.0034, 8)); }
+  });
+  /* travel o-ring on the left stanchion (a quarter of the travel used) */
+  if (!city) pd15Put(B, RB, bx15Weld(X3(leg(lowTop + 0.012 + trav*0.24), span), d3, sR, 0.0011));
+  /* ---- the bottom of the legs: rebound knob under the right leg, the air-shaft nut under the left (city: axle nuts only) */
+  if (!city){
+    pd15Put(B, K2, pd15Sweep([X3(leg(-0.0145), -span), X3(leg(-0.026), -span)], [[0, 0.0052, 0.0052], [0.3, 0.0062, 0.0062], [1, 0.0060, 0.0060]], { r:10, n:3, cap:true }).geo);
+    pd15Put(B, K, pd15Sweep([X3(leg(-0.0145), span), X3(leg(-0.0215), span)], 0.0062, { r:6, n:2, cap:true, keepR:true }).geo);
+  }
+  /* ---- axle: thru-axle lever on the drive side + flush end cap (city: nuts on a solid axle) */
+  const xo = span + lR*0.81;
+  if (city){
+    [-1, 1].forEach(sd=>{ pd15Put(B, K, fk17Hex(0.0105, 0.008, sd*(xo + 0.004), A[1], A[0])); pd15Put(B, HW, pd15Disc(0.0052, 0.010, sd*(xo + 0.010), 8).translate(0, A[1], A[0])); });
+  } else {
+    pd15Put(B, HW, pd15Disc(0.0112, 0.0045, xo + 0.002, 14).translate(0, A[1], A[0]));
+    pd15Put(B, K, pd15Disc(0.0044, 0.005, xo + 0.0042, 6).translate(0, A[1], A[0]));                    // hex socket
+    pd15Put(B, K, pd15Disc(0.0128, 0.010, -(xo + 0.004), 16).translate(0, A[1], A[0]));                  // lever pivot
+    const l0 = pd15Up(A, n, -0.004), l1 = pd15Up(pd15Up(A, d, 0.064), n, -0.017);
+    pd15Put(B, K, pd15Sweep([[-(xo + 0.010), l0[1], l0[0]], [-(xo + 0.011), (l0[1] + l1[1])/2, (l0[0] + l1[0])/2], [-(xo + 0.009), l1[1], l1[0]]],
+      [[0, 0.0036, 0.0088, 3], [0.5, 0.0031, 0.0070, 3], [1, 0.0036, 0.0080, 3]], { r:10, n:6, cap:true }).geo);
+  }
+  /* ---- arch: a cast bridge in front of the stanchions, its ends sweeping down the front of the lowers */
+  const tw = Math.min(span - lR*0.75, o.tyreW || span*0.48);
+  fk19Arch(B, AM, G, { span, sR, lR, lowTop, tw, hC:city ? 0.0105 : xc ? 0.0115 : bulge ? 0.0150 : 0.0135, dep:city ? 0.011 : xc ? 0.012 : bulge ? 0.017 : 0.0150,
+    clear:o.archClear, emb:city ? 0.045 : xc ? 0.055 : bulge ? 0.080 : 0.070, round:bulge ? 2.3 : 3.0 });
+  /* ---- crowns: a forged bridge round the stanchion barrels + the steerer boss; 'ridge' / 'xc' single crowns are hollow underneath (the
+     pocket shows from the front); dual crowns carry pinch bolts */
+  const crown = (s0, h, upper)=>{
+    const rB = sR + (upper ? 0.0055 : 0.0068), hollow = !dual && !city && !bulge, ph = hollow ? h*0.56 : h;
+    pd15Put(B, K, fk17Slab(G, [[span, off, rB], [-span, off, rB], [0, 0, 0.0236], [0, off*0.55, 0.020]], ph, ax(s0 + h - ph/2)));
+    [-1, 1].forEach(sd=> pd15Put(B, K, pd15Sweep([X3(leg(s0 - 0.005), sd*span), X3(leg(s0 + h + 0.0012), sd*span)], [[0, rB*0.95, rB*0.95], [0.14, rB, rB], [1, rB, rB]], { r:20, n:3, cap:true }).geo));
+    pd15Put(B, K, pd15Sweep([X3(ax(s0 - 0.004), 0), X3(ax(s0 + h + 0.002), 0)], [[0, 0.0224, 0.0224], [0.16, 0.0240, 0.0240], [1, 0.0240, 0.0240]], { r:18, n:3, cap:true }).geo);
+    if (hollow){
+      // a web at the back + the forged front wall: full height at the barrels and the middle, its lower edge arched up in between (the hollow
+      // under the bridge shows through the arches)
+      pd15Put(B, K, fk17Slab(G, [[span*0.92, off - sR*0.55, 0.005], [-span*0.92, off - sR*0.55, 0.005], [0, -0.006, 0.011]], h*0.92, ax(s0 + h*0.48), 0.002));
+      const fP = (x, f)=>{ const p = pd15Up(ax(s0 + h/2), n, f); return [x, p[1], p[0]]; }, ff = off + rB*0.60, fm = off*0.55 + 0.0165;
+      pd15Put(B, K, pd15Sweep([fP(-span, ff), fP(-span*0.5, (ff + fm)/2 + 0.002), fP(0, fm), fP(span*0.5, (ff + fm)/2 + 0.002), fP(span, ff)], t=>{
+        const k = Math.sin(Math.min(1, Math.abs(t - 0.5)*2)*Math.PI), hh = h/2*(1 - 0.46*k);
+        return [hh, 0.0056, 3, 0, h/2 - hh]; }, { r:12, n:14, ref:new T.Vector3(0, d[1], d[0]), cap:true }).geo);
+    }
+    if (dual) [-1, 1].forEach(sd=> [0.30, 0.72].forEach(k=>{ const p = pd15Up(leg(s0 + h*k), n, rB + 0.0015);
+      pd15Put(B, HW, pd15Disc(0.0044, 0.018, sd*span, 6).translate(0, p[1], p[0])); pd15Put(B, K, pd15Disc(0.0046, 0.004, sd*(span + 0.010), 6).translate(0, p[1], p[0])); }));
+  };
+  crown(cBot, cH, false);
+  if (dual) crown(uBot, uH, true);
+  /* top caps: left = the air spring (a cap with the valve under a small coloured cap), right = the damper (a knurled dial in the accent colour
+     + a small lever); city: preload knobs both sides + a lockout lever */
+  [-1, 1].forEach(sd=>{
+    const x = sd*span, c0 = stTop;
+    pd15Put(B, K, pd15Sweep([X3(leg(c0 - 0.001), x), X3(leg(c0 + 0.007), x)], [[0, sR, sR], [0.6, sR*0.98, sR*0.98], [1, sR*0.86, sR*0.86]], { r:16, n:3, cap:true }).geo);
+    if (city){
+      pd15Put(B, KN, pd15Sweep([X3(leg(c0 + 0.006), x), X3(leg(c0 + 0.017), x)], [[0, sR*0.62, sR*0.62, 3.2], [1, sR*0.62, sR*0.62, 3.2]], { r:12, n:2, cap:true }).geo);
+      if (sd < 0){ const lv = leg(c0 + 0.018); pd15Put(B, M12.anod, pd15Box(0.005, 0.005, 0.030, [x, lv[1] + n[1]*0.012, lv[0] + n[0]*0.012], -Math.atan2(n[1], n[0]))); }
+    } else if (sd > 0){
+      pd15Put(B, K2, pd15Sweep([X3(leg(c0 + 0.006), x), X3(leg(c0 + 0.015), x)], [[0, 0.0058, 0.0058], [1, 0.0050, 0.0050]], { r:10, n:2, cap:true }).geo);
+    } else {
+      pd15Put(B, KN, pd15Sweep([X3(leg(c0 + 0.006), x), X3(leg(c0 + 0.0135), x)], [[0, sR*0.82, sR*0.82, 3.6], [1, sR*0.80, sR*0.80, 3.6]], { r:12, n:2, cap:true }).geo);
+      pd15Put(B, M12.anod, pd15Sweep([X3(leg(c0 + 0.013), x), X3(leg(c0 + 0.0195), x)], sR*0.44, { r:12, n:2, cap:true }).geo);
+      const lv = leg(c0 + 0.0175); pd15Put(B, M12.anod, pd15Box(0.0045, 0.004, sR*1.5, [x, lv[1] + n[1]*sR*0.62, lv[0] + n[0]*sR*0.62], -Math.atan2(n[1], n[0])));
+    }
+  });
+  /* ---- steerer + headset: crown race, lower cup, top cover (single) / upper cup (dual) */
+  const top = o.top !== undefined ? ax(o.top) : fup(G.H1, d, dual ? 0.062 : 0.012);
+  if (o.steerer !== false) pd15Put(B, K, pd15Sweep([X3(ax(cTop), 0), X3(fup(top, d, 0.03), 0)], 0.0145, { r:14, n:2 }).geo);
+  const htR = o.htR || 0.031, htR2 = o.htR2 || 0.026;
+  pd15Put(B, K, pd15Sweep([X3(ax(cTop + 0.0005), 0), X3(ax(cTop + 0.0035), 0)], [0.0232, 0.0232], { r:18, n:2, cap:true }).geo);
+  if (o.cups !== false){
+    pd15Put(B, K, pd15Sweep([X3(pd15Up(G.H0, d, -0.016), 0), X3(pd15Up(G.H0, d, -0.004), 0)], htR*1.02, { r:20, n:2, cap:true }).geo);
+    pd15Put(B, K, pd15Sweep([X3(fup(G.H1, d, -0.002), 0), X3(fup(G.H1, d, dual ? 0.010 : 0.012), 0)], dual ? [htR2*1.03, htR2*1.03] : [[0, htR2*1.02, htR2*1.02], [1, 0.0185, 0.0185]], { r:20, n:2, cap:true }).geo);
+  }
+  /* ---- the lowers' graphics: a decal band in the accent colour round the outer face near the top + the wordmark along the leg */
+  if (o.word){
+    [-1, 1].forEach(sd=>{
+      const S = lowS[sd], ac = sd > 0 ? 0 : Math.PI;
+      if (o.bandMat !== false){
+        pd15Put(B, o.bandMat || FX.acc, fk19Patch(S, 0.775, 0.835, ac - 1.30, ac + 1.30, 1, 10, 0.0005));
+        if (!xc && !city) pd15Put(B, o.bandMat || FX.acc, fk19Patch(S, 0.150, 0.172, ac - 1.10, ac + 1.10, 1, 8, 0.0005));
+      }
+      pd15TubeWord(B, o.wordMat || PD15.white, S, o.word, o.wordStyle || 'heavy', city ? 0.50 : 0.47, lR*0.98, lowTop*(city ? 0.50 : 0.46), { sides:sd, at:0.25 });
+    });
+  }
+  /* ---- post mount on the back of the left leg + the caliper on the rotor behind it; the hose climbs the back of the leg */
+  let port = null, hose = null;
+  if (o.cal !== false){
+    const rr = o.rotor || 0.10, rx = o.rotorX || 0.050, legA = Math.atan2(d[1], d[0]);
+    const ca = legA + (o.calOff || 0.86);
+    port = pd15Caliper(B, A, rr, ca, rx, { mat:o.calMat, pistons:o.pistons || 4, tabMat:LM });
+    const cc = [A[0] + Math.cos(ca)*(rr - 0.010), A[1] + Math.sin(ca)*(rr - 0.010)], tg = [-Math.sin(ca), Math.cos(ca)];
+    [-1, 1].forEach(k=>{
+      const e = [cc[0] + tg[0]*k*0.022 - Math.cos(ca)*0.010, cc[1] + tg[1]*k*0.022 - Math.sin(ca)*0.010];
+      const s = Math.max(0.02, (e[0] - A[0])*d[0] + (e[1] - A[1])*d[1]), b = pd15Up(leg(s), n, -lR*0.55);
+      pd15Put(B, LM, pd15Sweep([[span - 0.006, b[1], b[0]], [rx + 0.016, e[1], e[0]]], [0.0078, 0.0088, 2.6], { r:10, n:2, cap:true }).geo);
+    });
+    hose = [[rx + 0.012, port[1], port[0]], X3(pd15Up(leg(lowTop*0.55), n, -lR*1.12), span + lR*0.35), X3(pd15Up(leg(lowTop + 0.05), n, -lR*1.25), span + sR*1.4)];
+    // hose guide on the back of the left arch end
+    pd15Put(B, M12.anod, pd15Box(0.010, 0.012, 0.008, X3(pd15Up(leg(lowTop - 0.05), n, -lR*1.02), span + lR*0.30), -Math.atan2(d[1], d[0])));
+  }
+  return { top, crownS:cTop, port, hose, lowTop };
+}
+
+/* ---------------------------------------------------------------- moto forks
+   o: conv (conventional: sliders at the bottom), boots (gaiters, conv), fam 'mx' | 'enduro' | 'light' | 'street' | 'moped' | 'bike', span, ro (outer
+      tube r), ri (stanchion r), ht (head tube), outer (FX.fork), inner (stanchion coat), foot, clamp, guard (material | 0 = none), adj (adjuster
+      colour), cal, rotorR, rotorX, calAng, word (guard decal; '' = none), wordMat.
+   Returns the mo15forkMoto contract { top, tTop, tt1, tb0, LP, SP, span, ro, ri } (clamp faces where they always were: the bars, masks,
+   number plates and lamps hang off them) */
+function fk19Moto(fr, G, o){
+  o = o || {};
+  const A = [G.fz, G.Rf], d = G.d, n = G.n, L = G.L, off = G.off, conv = !!o.conv, fam = o.fam || 'mx';
+  const span = o.span || 0.094, ro = o.ro || 0.025, ri = o.ri || ro*0.78, ht = o.ht || 0.13;
+  const LP = t=> mo15up(A, d, t), SP = t=> mo15up(G.Q, d, t), X3 = (p, x)=> [x, p[1], p[0]], rv = p=> [p[1], p[0]];
+  const tb0 = L - 0.030, tb1 = L + 0.006, tbB = L - (conv ? 0.040 : 0.046), tt0 = L + 0.014 + ht + 0.004, tt1 = tt0 + 0.026, tTop = tt1 + 0.020;
+  const B = pd15Bk(), OM = o.outer || FX.fork, IM = o.inner || BK.chrome, FM = o.foot || M12.anod, CM = o.clamp || BK.alloy, HW = BK.alloy, RB = M12.rub;
+  const AJ = o.adj || BK.gold, GM = o.guard === undefined ? FK19.guard : o.guard, moped = fam === 'moped' || fam === 'bike';
+  const tO = conv ? L*0.50 : L*0.44;                                       // USD: the bottom of the outer tube (the seal); conv: the slider top
+  const rr = (conv ? ri : ro) + 0.012;                                      // clamp boss radius round the tubes
+  [-1, 1].forEach(sd=>{
+    const x = sd*span;
+    if (!conv){
+      /* ---- USD: coated stanchion below, dust seal + a machined seal housing at the bottom of the thick outer tube */
+      pd15Put(B, IM, pd15Sweep([X3(LP(0.050), x), X3(LP(tO + 0.050), x)], ri, { r:20, n:2 }).geo);
+      pd15Put(B, RB, pd15Sweep([X3(LP(tO - 0.012), x), X3(LP(tO + 0.003), x)], [[0, ri*1.03, ri*1.03], [0.40, ri*1.19, ri*1.19], [1, ro*0.96, ro*0.96]], { r:20, n:3 }).geo);
+      pd15Put(B, OM, pd15Sweep([X3(LP(tO), x), X3(LP(tO + 0.044), x)], [[0, ro*0.95, ro*0.95], [0.10, ro*1.06, ro*1.06], [0.86, ro*1.06, ro*1.06], [1, ro, ro]], { r:22, n:5, cap:'a' }).geo);
+      pd15Put(B, OM, pd15Sweep([X3(LP(tO + 0.044), x), X3(LP(tTop - 0.004), x)], ro, { r:22, n:2 }).geo);
+      /* ---- forged axle foot: clamps the stanchion, wraps the axle boss, carries the guard + caliper lugs */
+      const fw = ri*1.30;
+      pd15Put(B, FM, pd15Sweep([X3(LP(-0.031), x), X3(LP(0.018), x), X3(LP(0.090), x)],
+        [[0, fw*0.84, 0.0215, 2.7], [0.26, fw, 0.0285, 2.5], [0.62, fw*0.98, ri*1.44, 2.3], [1, ri*1.22, ri*1.22, 2]], { r:16, n:6, cap:true }).geo);
+      pd15Put(B, FM, pd15Disc(0.0215, fw*2 + 0.004, x, 18).translate(0, A[1], A[0]));
+      pd15Put(B, HW, pd15Disc(0.0150, 0.003, x + sd*(fw + 0.0035), 16).translate(0, A[1], A[0]));              // machined axle face
+      // axle pinch bolts on the rear of the foot (heads outward)
+      [-0.011, 0.009].forEach(k=>{ const p = pd15Up(LP(k), n, -0.024); pd15Put(B, HW, pd15Disc(0.0046, 0.010, x + sd*(fw - 0.001), 6).translate(0, p[1], p[0])); });
+      /* ---- the guard: a moulded C-shell over the front + outer side of the stanchion, bolted to the foot; its decal along the outer face */
+      if (GM){
+        const g0 = 0.082, g1 = g0 + (tO - 0.020 - g0)*0.62, rg = t=> ri + 0.0085 + 0.0030*t, aC = -Math.PI/2 + sd*0.42, half = fam === 'street' ? 1.30 : 1.50;
+        const sh = fk19Shell(X3(LP(g0), x), X3(LP(g1), x), rg, 0.0030, aC - half, aC + half, 12, 6, { nose:0.0040, aN:-Math.PI/2 + sd*0.15, flare:0.003 });
+        pd15Put(B, GM, sh.geo);
+        [[0.10, aC - half*0.78], [0.92, aC + sd*0.2]].forEach(([t, a])=>{ const q = sh.at(t, a);
+          pd15Put(B, HW, mo15rodGeo([q[0] - q[3]*0.0006, q[1] - q[4]*0.0006, q[2] - q[5]*0.0006], [q[0] + q[3]*0.0024, q[1] + q[4]*0.0024, q[2] + q[5]*0.0024], 0.0042, 6)); });
+        if (o.word !== '') fk19Word(B, o.wordMat || BK.white, sh.at, sh.len, o.word || ('DL' + Math.round(ri*2000)), 'heavy', 0.50, 0.019, (g1 - g0)*0.62, sd > 0 ? -0.62 : Math.PI + 0.62, sd, ri + 0.012, 0.0004);
+      }
+    } else {
+      /* ---- conventional: chrome stanchions from the clamps down into fat cast sliders (polished or painted), a seal head + wiper on top */
+      pd15Put(B, IM, pd15Sweep([X3(LP(tO - 0.030), x), X3(LP(tTop - 0.004), x)], ri, { r:18, n:2 }).geo);
+      pd15Put(B, OM, pd15Sweep([X3(LP(-0.030), x), X3(LP(tO*0.45), x), X3(LP(tO - 0.012), x)],
+        [[0, ro*0.86, ro*1.30, 2.4], [0.10, ro*0.92, ro*1.14, 2.3], [0.30, ro*0.97, ro, 2.1], [1, ro, ro, 2]], { r:18, n:10, cap:'a' }).geo);
+      pd15Put(B, OM, pd15Sweep([X3(LP(tO - 0.0125), x), X3(LP(tO), x)], [[0, ro, ro], [0.5, ro*1.06, ro*1.06], [1, ro*1.03, ro*1.03]], { r:18, n:3, cap:'b' }).geo);
+      pd15Put(B, RB, pd15Sweep([X3(LP(tO - 0.001), x), X3(LP(tO + 0.011), x)], [[0, ro*1.0, ro*1.0], [0.35, ri*1.38, ri*1.38], [1, ri*1.05, ri*1.05]], { r:18, n:3 }).geo);
+      pd15Put(B, OM, pd15Disc(ro*0.95, ro*2.25, x, 16).translate(0, A[1], A[0]));                            // axle boss
+      [-0.012, 0.010].forEach(k=>{ const p = pd15Up(LP(k), n, -ro*1.05); pd15Put(B, HW, pd15Disc(0.0044, 0.010, x + sd*(ro*0.95), 6).translate(0, p[1], p[0])); });
+      // gaiters: rubber bellows from the slider top to under the bottom clamp
+      if (o.boots){ const gb = tO + 0.004, gt = Math.min(tbB - 0.012, gb + 0.15), nr = Math.max(6, Math.round((gt - gb)/0.016)), pr = [];
+        pr.push([ri + 0.0055, 0]); for (let i = 0; i <= nr*2; i++) pr.push([ri + (i%2 ? 0.0115 : 0.0060) + 0.004*(1 - i/(nr*2)), (i + 0.5)/(nr*2 + 1)]); pr.push([ri + 0.004, 1]);
+        pd15Put(B, M12.rub, mo15latheAlong(pr, X3(LP(gb), x), X3(LP(gt), x), 14)); }
+    }
+    /* ---- tube tops: a hex cap nut, a preload ring and the compression / rebound clicker (family looks) */
+    const cR = conv ? ri*1.02 : ro*0.93, c0 = tTop - 0.004;
+    if (moped){
+      pd15Put(B, conv ? BK.chrome : CM, pd15Sweep([X3(LP(c0), x), X3(LP(c0 + 0.010), x), X3(LP(c0 + 0.016), x)], [[0, cR, cR], [0.55, cR*0.96, cR*0.96], [1, cR*0.40, cR*0.40]], { r:16, n:5, cap:true }).geo);
+      if (sd < 0) pd15Put(B, AJ, pd15Sweep([X3(LP(c0 + 0.014), x), X3(LP(c0 + 0.020), x)], cR*0.34, { r:10, n:2, cap:true }).geo);
+    } else {
+      pd15Put(B, CM, pd15Sweep([X3(LP(c0), x), X3(LP(c0 + 0.011), x)], cR, { r:6, n:2, cap:true, keepR:true }).geo);
+      if (fam !== 'light') pd15Put(B, AJ, pd15Sweep([X3(LP(c0 + 0.011), x), X3(LP(c0 + 0.0165), x)], [[0, cR*0.70, cR*0.70, 3.2], [1, cR*0.66, cR*0.66, 3.2]], { r:12, n:2, cap:true }).geo);
+      const k0 = c0 + (fam === 'light' ? 0.011 : 0.0165);
+      if (fam === 'mx' && sd > 0){ pd15Put(B, M12.anod, pd15Sweep([X3(LP(k0), x), X3(LP(k0 + 0.010), x)], 0.0042, { r:8, n:2, cap:true }).geo); }   // air valve under its cap
+      else pd15Put(B, fam === 'light' ? AJ : M12.anod, pd15Sweep([X3(LP(k0), x), X3(LP(k0 + 0.007), x)], cR*0.36, { r:12, n:2, cap:true }).geo);
+    }
+  });
+  /* ---- axle: its hex head sunk in the left foot, a nut on the right */
+  const fwA = conv ? ro*1.13 : ri*1.30;
+  pd15Put(B, HW, pd15Disc(0.0105, span*2 + fwA*2 + 0.008, 0, 12).translate(0, A[1], A[0]));
+  pd15Put(B, M12.anod, pd15Disc(0.0062, 0.004, span + fwA + 0.0045, 6).translate(0, A[1], A[0]));
+  pd15Put(B, HW, pd15Disc(0.0140, 0.009, -(span + fwA + 0.0045), 6).translate(0, A[1], A[0]));
+  /* ---- triple clamps: a tall forged bottom clamp and a top clamp round the tubes + the steering stem, pinch bolts behind each tube, the
+     steering stem nut on top; a hose guide on the bottom clamp */
+  const clampG = mo15clampGeo(G, [[span, off, rr], [-span, off, rr], [0, 0, 0.035], [0, off + 0.006, 0.031]], tb1 - tbB, tbB);
+  const clampT = mo15clampGeo(G, [[span, off, rr - 0.0015], [-span, off, rr - 0.0015], [0, -0.004, 0.036]], tt1 - tt0, tt0);
+  pd15Put(B, CM, clampG); pd15Put(B, CM, clampT);
+  // the bosses round the tubes stand a little proud of the bottom clamp (a forged look); pinch bolts behind each tube
+  [-1, 1].forEach(sd=>{
+    pd15Put(B, CM, pd15Sweep([X3(LP(tbB - 0.003), sd*span), X3(LP(tb1 + 0.0015), sd*span)], [[0, rr*0.96, rr*0.96], [0.12, rr*1.01, rr*1.01], [1, rr*1.01, rr*1.01]], { r:18, n:3, cap:true }).geo);
+    [tbB + (tb1 - tbB)*0.30, tbB + (tb1 - tbB)*0.72, tt0 + (tt1 - tt0)/2].forEach(t=>{ const s = mo15up(SP(t), n, off - rr - 0.002);
+      pd15Put(B, HW, pd15Disc(0.0044, 0.034, sd*span, 6).translate(0, s[1], s[0])); });
+  });
+  { const s = SP(tt1); pd15Put(B, HW, pd15Sweep([X3(s, 0), X3(mo15up(s, d, 0.012), 0)], 0.0175, { r:6, n:2, cap:true, keepR:true }).geo); }
+  pd15Put(B, CM, pd15Sweep([X3(SP(tb1), 0), X3(SP(tt0), 0)], 0.020, { r:12, n:2 }).geo);               // the steering stem (shows at the ends)
+  /* ---- front brake: a radial caliper on lugs behind the left foot, straddling the rotor; banjo + hose up the back of the guard */
+  const rx = o.rotorX || (span - 0.03), rr0 = o.rotorR || 0.13, ca = mo15deg(o.calAng === undefined ? 150 : o.calAng);
+  const cr = rr0 - 0.021, cc = [A[0] + Math.cos(ca)*cr, A[1] + Math.sin(ca)*cr], tg = [-Math.sin(ca), Math.cos(ca)], rd = [Math.cos(ca), Math.sin(ca)];
+  const CP = (s, q)=> [cc[0] + tg[0]*s + rd[0]*q, cc[1] + tg[1]*s + rd[1]*q];
+  const CL = o.cal || M12.anod, clen = moped ? 0.072 : 0.088, chg = moped ? 0.036 : 0.044;
+  pd15Put(B, CL, pd15Sweep([[rx + 0.0135, ...rv(CP(-clen/2, 0))], [rx + 0.0135, ...rv(CP(0, 0.002))], [rx + 0.0135, ...rv(CP(clen/2, 0))]], [[0, 0.0115, chg*0.38, 3.4], [0.5, 0.0125, chg*0.50, 3.4], [1, 0.0115, chg*0.38, 3.4]], { r:14, n:6, cap:true }).geo);
+  pd15Put(B, CL, pd15Sweep([[rx - 0.0105, ...rv(CP(-clen*0.42, 0))], [rx - 0.0105, ...rv(CP(clen*0.42, 0))]], [0.0090, chg*0.42, 3.4], { r:12, n:2, cap:true }).geo);
+  pd15Put(B, CL, pd15Sweep([[rx + 0.0015, ...rv(CP(-clen*0.36, chg*0.36))], [rx + 0.0015, ...rv(CP(clen*0.36, chg*0.36))]], [0.020, 0.0105, 3.4], { r:12, n:2, cap:true }).geo);
+  [-1, 1].forEach(s=>{ const p = CP(s*clen*0.22, -0.002); pd15Put(B, HW, pd15Disc(0.0080, 0.003, rx + 0.0255, 12).translate(0, p[1], p[0])); });   // piston caps
+  // radial mount: lugs from the back of the foot to the caliper ears + the two radial bolts
+  const fxL = conv ? span : span - ri*0.2;
+  [-1, 1].forEach(s=>{ const e = CP(s*clen*0.36, -chg*0.46), f0 = pd15Up(LP(conv ? 0.03 : 0.012 + s*0.018), n, -(conv ? ro*0.8 : ri*1.1));
+    pd15Put(B, conv ? OM : FM, pd15Sweep([[fxL, f0[1], f0[0]], [rx + 0.016, e[1], e[0]]], [0.0075, 0.0095, 2.8], { r:10, n:2, cap:true }).geo);
+    pd15Put(B, HW, mo15rodGeo([rx + 0.016, ...rv(CP(s*clen*0.36, -chg*0.62))], [rx + 0.016, ...rv(CP(s*clen*0.36, chg*0.10))], 0.0040, 6)); });
+  const bj = CP(-clen*0.30, chg*0.56); pd15Put(B, HW, pd15Disc(0.0062, 0.013, rx + 0.012, 10).translate(0, bj[1], bj[0]));
+  const legBack = (t, k)=> mo15P(mo15up(LP(t), n, -(conv ? ro : ri + 0.012)*k), span + (conv ? ro*0.55 : ri*0.55));
+  const hp = [[rx + 0.018, bj[1] + 0.012, bj[0] + 0.004], legBack(L*0.22, 1.25), legBack(tO - 0.03, 1.15), mo15P(mo15up(LP(tO + 0.07), n, ro + 0.010), span + ro*0.60), mo15P(mo15up(SP(tb0), n, off + 0.055), 0.03)];
+  pd15Put(B, M12.rub, pd15Sweep(hp, 0.0045, { r:6, n:18 }).geo);
+  if (!conv && GM){ const q = legBack(L*0.24, 1.05); pd15Put(B, M12.anod, pd15Box(0.010, 0.016, 0.010, q, -Math.atan2(d[1], d[0]))); }   // hose clip on the guard
+  { const q = mo15up(SP(tbB + 0.010), n, off + rr*0.30); pd15Put(B, M12.anod, pd15Box(0.016, 0.010, 0.020, [0.030, q[1], q[0]], -Math.atan2(n[1], n[0]))); }   // hose guide
+  pd15Flush(B, fr);
+  return { top:SP(tTop), tTop, tt1, tb0, LP, SP, span, ro, ri };
 }
 
 /* =========================================================================
@@ -37669,6 +38050,13 @@ function parkSpotExtra(name, c){
      6 Rhythm          two lanes of three doubles each (a short turbo strip before each), a size up every time
      7 Launch Pads     three quarter-pipe launches (45 / 50 / 55 degrees): 15 / 20 / 29 m flights, up to 11 m high
      8 Sky Drop XL     the tall tower: 8.8 m roll-in, 33 m flight
+     9 Mega Ramp       (Release 15.9) a 7 m roll-in tower -> kicker -> 26 m gap -> landing -> a steel quarter at the end with a deck
+                       and a bank back down
+    10 Dirt Jumps      (15.9) two dirt lines off start mounds: PRO doubles (11 / 13 / 15 m) and GROM tables (8 / 9.5 / 11 m)
+    11 Air Bag         (15.9) a steel kicker and a quarter launch into giant inflatable air bags: land however you like
+   Release 15.9 (stream canyon): real materials (mods/canyon20_look.js): painted steel kickers in the lane's size colour,
+   wooden decks / roll-ins, concrete landings, dirt lines, air bags; every lot reports itself for its dressing (name board,
+   distance boards, plants, floodlights) and the spawn lot gets the start arch + stands.
    Every landing is a hill: a long gentle catch slope, a flat crest, then the steeper back slope to land on, so a rider who
    comes up short rolls up the catch slope instead of slamming into a wall.  jmpHill(F, hl) lays a hill out for a flight of F metres
    (measured with test/t_jump_tune.js on the real physics: the same kicker + strip speed gives the same flight on a BMX or an e-scooter).
@@ -37682,7 +38070,11 @@ function parkSpotExtra(name, c){
    ========================================================================= */
 const JMP = { lots:0, lanes:[], pads:[], towers:[], err:[], padHits:0, hint:false };
 const JMP_PAD = 0xffb020;
+const JMP_KINDS = 12;                                                  // Release 15.9: 9 -> 12 lot kinds
+function jmpM(k, fb){ return (typeof c20Mat === 'function' && c20Mat(k)) || fb; }            // Air Canyon materials (canyon20_look.js)
+function jmpS(pm){ return typeof c20Steel === 'function' ? c20Steel(pm) : pm; }                 // painted-steel twin of a paint colour
 ['TURBO', 'E-SCOOTERS'].forEach(w => { if (PK_ATLAS.items.indexOf(w) < 0) PK_ATLAS.items.push(w); });       // two more painted words (the atlas is built on the first decal)
+if (MAP.jumps) ['SEND IT'].forEach(w => { if (PK_ATLAS.items.indexOf(w) < 0) PK_ATLAS.items.push(w); });        // Release 15.9 (Air Canyon only)
 
 /* ---------------------------------------------------------------- a lot's local frame:  u = along the lot's x, v = along its z (the way the lanes run);
    `R` turns the whole lot (a multiple of 90 degrees).  A piece's local rot r is added to R.  Same maths as pkLW(). */
@@ -37741,24 +38133,32 @@ function jmpHill(F, hl){
       hl (height of the hill's crest), l1 (catch slope length), top (flat crest), l2 (back slope length), mat / matL, run (painted runway),
       pad { len, vt }, flags (pennants over the lip) */
 function jmpDouble(K, u, v0, o){
-  if (o.F) o = Object.assign({}, o, jmpHill(o.F, o.hl));                                // F = the flight this lane is tuned for -> gap / catch / crest / back slope
-  const w = o.w || 3.0, mat = o.mat || PK_MAT.orange, matL = o.matL || PK_MAT.teal, top = o.top || 1.5;
+  if (o.F && !o.hill) o = Object.assign({}, o, jmpHill(o.F, o.hl));                     // F = the flight this lane is tuned for -> gap / catch / crest / back slope
+  if (o.hill) o = Object.assign({}, o, o.hill);                                          // an explicit hill (the air bags: a long soft top)
+  const w = o.w || 3.0, top = o.top || 1.5, look = o.look || 'steel';
+  // Release 15.9: real materials -- painted steel kickers in the lane's size colour (or wood / dirt), concrete / dirt / air-bag landings
+  const mat = look === 'dirt' ? jmpM('dirt', PK_MAT.orange) : look === 'wood' ? jmpM('wood', PK_MAT.orange) : jmpS(o.mat || PK_MAT.orange);
+  const matL = look === 'dirt' || o.landing === 'dirt' ? jmpM('dirt', PK_MAT.teal) : o.landing === 'bag' ? jmpM('bag', PK_MAT.blue) : jmpM('conc', o.matL || PK_MAT.teal);
   let len, h;
   if (o.qR){ const a = o.deg*Math.PI/180; len = o.qR*Math.sin(a); h = o.qR*(1 - Math.cos(a)); K.quarter(u, v0, 0, w, o.qR, o.deg, mat); }
   else { len = o.len; h = o.h; K.bank(u, v0, 0, w, len, h, mat); }
-  const wl = w + 0.9, vc = v0 + len + o.gap;
-  K.bank(u, vc, 0, wl, o.l1, o.hl, matL, { deck:top });                               // catch slope up to the crest
-  K.bank(u, vc + o.l1 + top + o.l2, Math.PI, wl, o.l2, o.hl, matL);                   // back slope (the landing)
+  if (!o.qR && look !== 'dirt' && typeof c20Lip === 'function' && MAP.jumps){ const lp = K.W(u, v0 + len - 0.12); c20Lip(lp[0], h - 0.005, lp[1], K.R, w); }   // a steel lip plate
+  const wl = o.wl || w + 0.9, vc = v0 + len + o.gap;
+  const p1 = K.bank(u, vc, 0, wl, o.l1, o.hl, matL, { deck:top });                    // catch slope up to the crest
+  const p2 = K.bank(u, vc + o.l1 + top + o.l2, Math.PI, wl, o.l2, o.hl, matL);        // back slope (the landing)
+  if (o.landing === 'bag'){ p1.bag = true; p2.bag = true; }                            // canyon20_fun.js: a soft landing anywhere on it
   // paint: runway edge lines, an arrow, a word before the strip (or on the landing box when the lot is too short), a landing box in front of the catch slope
   const run = o.run || 16, y = 0.075, padL = o.pad ? o.pad.len : 0, vs = Math.max(-43.4, v0 - Math.max(run, padL + 4));
-  [-1, 1].forEach(sd => { const a = K.W(u + sd*(w + 0.3), vs), b = K.W(u + sd*(w + 0.3), v0 + len + o.gap); pkLine(a[0], a[1], b[0], b[1], 0.16, PK_PAINT.white, y); });
-  { const a = K.W(u, vs + 2); pkArrow(a[0], a[1], K.R + Math.PI, 2.4, PK_PAINT.white, y); }
+  if (o.paint !== false){
+    [-1, 1].forEach(sd => { const a = K.W(u + sd*(w + 0.3), vs), b = K.W(u + sd*(w + 0.3), v0 + len + o.gap); pkLine(a[0], a[1], b[0], b[1], 0.16, PK_PAINT.white, y); });
+    { const a = K.W(u, vs + 2); pkArrow(a[0], a[1], K.R + Math.PI, 2.4, PK_PAINT.white, y); }
+  }
   const wv = v0 - padL - 4.5;
-  if (wv > -42.6){ const a = K.W(u, wv); pkText(o.word || 'GAP', a[0], a[1], K.R + Math.PI, 1.4, PK_PAINT.yellow, y); }
-  { const c = K.W(u, v0 + len + o.gap*0.5); pkBox(c[0], c[1], K.R, wl*2 - 0.4, o.gap - 1.5 > 2 ? o.gap - 1.5 : 2, 0.16, PK_PAINT.yellow, y);
+  if (o.paint !== false && wv > -42.6){ const a = K.W(u, wv); pkText(o.word || 'GAP', a[0], a[1], K.R + Math.PI, 1.4, PK_PAINT.yellow, y); }
+  if (o.paint !== false){ const c = K.W(u, v0 + len + o.gap*0.5); pkBox(c[0], c[1], K.R, wl*2 - 0.4, o.gap - 1.5 > 2 ? o.gap - 1.5 : 2, 0.16, PK_PAINT.yellow, y);
     if (wv <= -42.6 && o.gap > 7) pkText(o.word || 'GAP', c[0], c[1], K.R + Math.PI, 1.4, PK_PAINT.white, 0.085); }
   // cones along the gap, pennants over the lip
-  for (let k = 0; k < 3; k++){ [-1, 1].forEach(sd => { const c = K.W(u + sd*(w + 1.2), v0 + len + (k + 0.5)*o.gap/3); pkCone(c[0], c[1], 0.05); }); }
+  if (look !== 'dirt') for (let k = 0; k < 3; k++){ [-1, 1].forEach(sd => { const c = K.W(u + sd*(w + 1.2), v0 + len + (k + 0.5)*o.gap/3); pkCone(c[0], c[1], 0.05); }); }
   if (o.flags){
     const a = K.W(u - w - 1.8, v0 + 0.8), b = K.W(u + w + 1.8, v0 + 0.8);
     pkPennants(a[0], a[1], b[0], b[1], h + 4.4, 14);
@@ -37768,7 +38168,8 @@ function jmpDouble(K, u, v0, o){
   const vEnd = vc + o.l1 + top + o.l2, vStart = o.pad ? Math.max(-43.4, v0 - o.pad.len - 3) : vs;
   if (vEnd > 44.2 || v0 - padL < -44.2) JMP.err.push('lane ' + (o.size || '?') + ' overruns the lot: from ' + (v0 - padL).toFixed(1) + ' to ' + vEnd.toFixed(1));
   JMP.lanes.push({ size:o.size || '', lot:Math.round(K.cx) + ',' + Math.round(K.cz), yaw:K.R, h, hl:o.hl, len, gap:o.gap, l1:o.l1, top, l2:o.l2, pad:o.pad ? o.pad.vt : 0, F:o.F || 0,
-                   start:K.W(u, vStart), lip:K.W(u, v0 + len), crest:K.W(u, vc + o.l1), land:K.W(u, vc + o.l1 + top), end:K.W(u, vEnd) });
+                   w, wl, look:o.landing === 'bag' ? 'bag' : look, kind:K.kind,
+                   start:K.W(u, o.startV !== undefined ? o.startV : vStart), lip:K.W(u, v0 + len), crest:K.W(u, vc + o.l1), land:K.W(u, vc + o.l1 + top), end:K.W(u, vEnd) });
   return { h, len, vEnd };
 }
 
@@ -37776,25 +38177,36 @@ function jmpDouble(K, u, v0, o){
    The deck is 16 x 12 m at the lot's west edge, the access ramp climbs along +u, the rider turns right (+v) and drops into the quarter. */
 function jmpTower(K, o){
   const a = o.deg*Math.PI/180, H = o.R*(1 - Math.cos(a)), U = o.R*Math.sin(a), w = o.w || 3.4;
-  const vd = -37.5, D = 12, uD0 = -44 + o.La, uD1 = uD0 + 16, uT = uD0 + 8, vS = vd + D/2;
-  K.bank(-44, vd, Math.PI/2, w, o.La, H, PK_MAT.orange);                                   // access ramp (rises toward +u)
-  K.slab((uD0 + uD1)/2, vd, 0, 8, D/2, H, PK_MAT.pad);                                      // the deck
+  const D = o.D || 12, vd = -43.5 + D/2, uD0 = -44 + o.La, uD1 = uD0 + 16, uT = uD0 + 8, vS = vd + D/2;
+  const wood = jmpM('wood', PK_MAT.orange), grey = jmpM('grey', MAT.metal);                 // Release 15.9: a wooden tower with steel guard walls
+  K.bank(-44, vd, Math.PI/2, w, o.La, H, wood);                                             // access ramp (rises toward +u)
+  K.slab((uD0 + uD1)/2, vd, 0, 8, D/2, H, wood);                                            // the deck
   const g = H + 1.2;                                                                       // guard walls (solid: nobody rolls off the side)
-  K.slab((uD0 + uD1)/2, vd - D/2 - 0.12, 0, 8.2, 0.14, g, MAT.metal);
-  K.slab(uD1 + 0.12, vd, 0, 0.14, D/2 + 0.26, g, MAT.metal);
-  K.slab(uD0 - 0.12, vd - (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, MAT.metal);
-  K.slab(uD0 - 0.12, vd + (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, MAT.metal);
-  K.slab((uD0 + uT - w)/2, vS + 0.12, 0, (uT - w - uD0)/2 + 0.1, 0.14, g, MAT.metal);
-  K.slab((uT + w + uD1)/2, vS + 0.12, 0, (uD1 - uT - w)/2 + 0.1, 0.14, g, MAT.metal);
-  K.quarter(uT, vS + U, Math.PI, w, o.R, o.deg, PK_MAT.blue);                               // drop-in (rises toward -v up to the deck)
+  K.slab((uD0 + uD1)/2, vd - D/2 - 0.12, 0, 8.2, 0.14, g, grey);
+  K.slab(uD1 + 0.12, vd, 0, 0.14, D/2 + 0.26, g, grey);
+  K.slab(uD0 - 0.12, vd - (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, grey);
+  K.slab(uD0 - 0.12, vd + (D/2 + w)/2, 0, 0.14, (D/2 - w)/2, g, grey);
+  K.slab((uD0 + uT - w)/2, vS + 0.12, 0, (uT - w - uD0)/2 + 0.1, 0.14, g, grey);
+  K.slab((uT + w + uD1)/2, vS + 0.12, 0, (uD1 - uT - w)/2 + 0.1, 0.14, g, grey);
+  K.quarter(uT, vS + U, Math.PI, w, o.R, o.deg, wood);                                      // drop-in (rises toward -v up to the deck)
   const vq = vS + U, v0 = vq + o.run, kl = o.kh*2;
-  const L = jmpDouble(K, uT, v0, { size:'T', w, h:o.kh, len:kl, hl:o.hl, F:o.F, mat:PK_MAT.red, matL:PK_MAT.teal, run:o.run,
-                                   pad:{ len:o.padLen || 11, vt:o.vt || 19 }, flags:true, word:'BIG AIR' });
+  const L = jmpDouble(K, uT, v0, { size:o.size || 'T', w, h:o.kh, len:kl, hl:o.hl, F:o.F, mat:PK_MAT.red, matL:PK_MAT.teal, run:o.run,
+                                   pad:{ len:o.padLen || 11, vt:o.vt || 19 }, flags:true, word:o.word || 'BIG AIR' });
+  if (o.endQ){                                                                             // Mega Ramp: a steel quarter after the landing, a deck, a bank back down
+    const q = o.endQ, qa = q.deg*Math.PI/180, qU = q.R*Math.sin(qa), qH = q.R*(1 - Math.cos(qa)), wl = w + 0.9, vQ = L.vEnd + (q.flat || 3);
+    // the kicker gets a back slope (a rider who comes back fakie off the quarter rolls up it instead of into the kicker's back wall)
+    K.bank(uT, v0 + kl + q.kback, Math.PI, w, q.kback, o.kh, jmpS(PK_MAT.red));
+    K.quarter(uT, vQ, 0, wl, q.R, q.deg, jmpS(PK_MAT.blue), { deck:q.deck });
+    K.bank(uT, vQ + qU + q.deck + q.back, Math.PI, wl, q.back, qH, wood);
+    const t = K.W(uT, L.vEnd + 1.2); pkText('VERT', t[0], t[1], K.R + Math.PI, 1.5, PK_PAINT.white, 0.08);
+    JMP.lanes[JMP.lanes.length - 1].endQ = { v:vQ, U:qU, H:qH, end:K.W(uT, vQ + qU + q.deck + q.back) };
+    if (vQ + qU + q.deck + q.back > 44.2) JMP.err.push('mega ramp overruns the lot: ' + (vQ + qU + q.deck + q.back).toFixed(1));
+  }
   // deck dressing: lettering, flags, a lamp
-  pkText('DROP', ...K.W(uT, vd + 1.6), K.R + Math.PI, 1.5, PK_PAINT.white, H + 0.07);
-  pkArrow(...K.W(uT, vd - 1.6), K.R + Math.PI, 2.2, PK_PAINT.yellow, H + 0.07);
+  pkText('DROP', ...K.W(uT, vd + Math.min(1.6, D/2 - 2.2)), K.R + Math.PI, 1.5, PK_PAINT.white, H + 0.07);
+  pkArrow(...K.W(uT, vd - Math.min(1.6, D/2 - 2.4)), K.R + Math.PI, 2.2, PK_PAINT.yellow, H + 0.07);
   [[uD0 + 1, vd - D/2 + 1], [uD1 - 1, vd - D/2 + 1], [uD1 - 1, vS - 1]].forEach((p, i) => { const q = K.W(p[0], p[1]); jmpFlag(q[0], q[1], H, 3.6, [0xf0c53a, 0x3fa0e0, 0xe8483c][i]); });
-  { const q = K.W(uD0 - 6, vd - 5.5); pkText('MEGA', q[0], q[1], K.R + Math.PI/2*3, 1.8, PK_PAINT.yellow, 0.075); }   // painted beside the foot of the access ramp
+  { const q = K.W(uD0 - 6, Math.max(-41.5, vd - 5.5)); pkText('MEGA', q[0], q[1], K.R + Math.PI/2*3, 1.8, PK_PAINT.yellow, 0.075); }   // painted beside the foot of the access ramp
   JMP.towers.push({ H, U, deck:K.W(uT, vd), drop:K.W(uT, vS - 1.2), yaw:K.R, lot:Math.round(K.cx) + ',' + Math.round(K.cz), vq, v0, lane:JMP.lanes[JMP.lanes.length - 1] });
   return L;
 }
@@ -37831,9 +38243,9 @@ const JMP_LOTS = [
   function(K){ jmpTower(K, { R:12, deg:65, La:38, run:14, kh:3.4, hl:2.0, F:33, vt:19, padLen:11 }); },
   /* 2 Giant Pipes */
   function(K){
-    jmpPipe(K, -20, 0, 5.5, 10, 6.5, 80, 1.2, PK_MAT.blue);
-    jmpPipe(K,  21, 0, 4.0, 8, 4.5, 78, 1.0, PK_MAT.teal);
-    const prev = RAMP_MAT; RAMP_MAT = PK_MAT.orange;
+    jmpPipe(K, -20, 0, 5.5, 10, 6.5, 80, 1.2, jmpM('conc', PK_MAT.blue));
+    jmpPipe(K,  21, 0, 4.0, 8, 4.5, 78, 1.0, jmpM('conc', PK_MAT.teal));
+    const prev = RAMP_MAT; RAMP_MAT = jmpS(PK_MAT.orange);
     try { [-27, 0, 27].forEach(v => { const p = K.W(0, v); spine(p[0], p[1], K.R, 3.6, 4.0, 62); }); } finally { RAMP_MAT = prev; }
     [-27, 0, 27].forEach(v => { const t = K.W(0, v + 6.6); pkText('SPINE', t[0], t[1], K.R, 1.3, PK_PAINT.white, 0.085); });
   },
@@ -37845,15 +38257,15 @@ const JMP_LOTS = [
   },
   /* 4 Pyramids */
   function(K){
-    jmpPyramid(K, -24, -24, 3.2, 2.4, 6.8, PK_MAT.green);
-    jmpPyramid(K,  20, -18, 4.6, 3.6, 10, PK_MAT.yellow);
-    jmpPyramid(K,   0,  22, 6.2, 4.8, 13.5, PK_MAT.orange);
+    jmpPyramid(K, -24, -24, 3.2, 2.4, 6.8, jmpM('wood', PK_MAT.green));
+    jmpPyramid(K,  20, -18, 4.6, 3.6, 10, jmpM('conc', PK_MAT.yellow));
+    jmpPyramid(K,   0,  22, 6.2, 4.8, 13.5, jmpS(PK_MAT.orange));
     [[-24, -24], [20, -18], [0, 22]].forEach((p, i) => { const q = K.W(p[0], p[1]); jmpFlag(q[0], q[1], [2.4, 3.6, 4.8][i], 3.4, [0x58b46e, 0xf0c53a, 0xf08a3c][i]); });
   },
   /* 5 Giant Rollers */
   function(K){
     const lanes = [[-33, 20, 4, 1.6, PK_MAT.yellow], [-11, 24, 3, 2.4, PK_MAT.orange], [11, 28, 3, 3.2, PK_MAT.red], [33, 32, 2, 4.0, PK_MAT.pink]];
-    lanes.forEach(l => { const p = K.W(l[0], -42); pkWaves(p[0], p[1], K.R, l[2], l[1], l[3], 4.2, l[4]); const t = K.W(l[0], -43); pkText('WAVES', t[0], t[1], K.R + Math.PI, 1.3, PK_PAINT.white, 0.075); });
+    lanes.forEach(l => { const p = K.W(l[0], -42); pkWaves(p[0], p[1], K.R, l[2], l[1], l[3], 4.2, jmpM('dirt', l[4])); const t = K.W(l[0], -43); pkText('WAVES', t[0], t[1], K.R + Math.PI, 1.3, PK_PAINT.white, 0.075); });
   },
   /* 6 Rhythm: two lanes of three doubles (a short turbo strip before each, a size up every time) */
   function(K){
@@ -37862,7 +38274,7 @@ const JMP_LOTS = [
       let v = -44;
       [[2.2, 1.3, 11, 10, PK_MAT.green], [3.0, 1.8, 15, 12, PK_MAT.yellow], [3.8, 2.4, 18, 13, PK_MAT.orange]].forEach((d, i) => {
         const pl = 4.5;
-        const r = jmpDouble(Kx, u, v + pl, { size:'R' + (i + 1), w:3.0, h:d[0], len:d[0]*2, hl:d[1], F:d[2], mat:d[4], matL:PK_MAT.teal, run:pl + 4, pad:{ len:pl, vt:d[3] }, word:'GAP' });
+        const r = jmpDouble(Kx, u, v + pl, { size:'R' + (i + 1), w:3.0, h:d[0], len:d[0]*2, hl:d[1], F:d[2], mat:d[4], matL:PK_MAT.teal, landing:'dirt', run:pl + 4, pad:{ len:pl, vt:d[3] }, word:'GAP' });
         v = r.vEnd + 0.5;
       });
     };
@@ -37876,7 +38288,34 @@ const JMP_LOTS = [
     jmpDouble(K,  26, -32, { size:'Q3', w:3.4, qR:10, deg:55, hl:2.6, F:29, mat:PK_MAT.red,    matL:PK_MAT.blue, flags:true, run:14, pad:{ len:12, vt:16 }, word:'BIG AIR' });
   },
   /* 8 Sky Drop XL */
-  function(K){ jmpTower(K, { R:14, deg:68, La:40, w:3.6, run:12, kh:4.0, hl:2.4, F:33, vt:19, padLen:11 }); }
+  function(K){ jmpTower(K, { R:14, deg:68, La:40, w:3.6, run:12, kh:4.0, hl:2.4, F:33, vt:19, padLen:11 }); },
+  /* 9 Mega Ramp (15.9): a short deck, a big wooden roll-in, a strip, a steel kicker, a 26 m gap, then a steel quarter with a deck and a bank down */
+  function(K){ jmpTower(K, { R:15, deg:58, La:34, D:8, w:3.8, run:4, kh:3.2, hl:2.6, F:26, vt:17, padLen:4, size:'MR', word:'MEGA',
+                             endQ:{ R:6, deg:74, deck:5, back:8, flat:3, kback:6.5 } }); },
+  /* 10 Dirt Jumps (15.9): two dirt lines, each off a start mound -- PRO doubles and GROM tables, a short strip before each */
+  function(K){
+    const line = (u, size, set) => {
+      K.bank(u, -44, 0, 3.4, 6, 2.6, jmpM('dirt', PK_MAT.orange), { deck:3 });           // the start mound: up from the lot edge ...
+      K.bank(u, -29, Math.PI, 3.4, 6, 2.6, jmpM('dirt', PK_MAT.orange));                  // ... and the roll-in down the other side
+      { const t = K.W(u, -40.5); pkText(size === 'P' ? 'START' : 'KIDS', t[0], t[1], K.R + Math.PI, 1.3, PK_PAINT.white, 2.68); }
+      let v = -29;
+      set.forEach((d, i) => {
+        const pl = 3.5;
+        const r = jmpDouble(K, u, v + pl, { size:size + (i + 1), w:2.8, h:d[0], len:d[0]*1.8, hl:d[1], F:d[2], look:'dirt', run:pl + 2, pad:{ len:pl, vt:d[3] },
+                                            paint:false, startV:i === 0 ? -42.2 : undefined });
+        v = r.vEnd + 0.5;
+      });
+    };
+    line(-14, 'P', [[2.2, 1.3, 11, 10], [2.6, 1.6, 13, 11], [3.0, 1.8, 15, 12]]);
+    line( 14, 'G', [[1.4, 0.9, 8, 8], [1.7, 1.1, 9.5, 9], [2.0, 1.3, 11, 10]]);
+  },
+  /* 11 Air Bag (15.9): a steel kicker and a quarter launch into giant air bags (land on them however you like) */
+  function(K){
+    jmpDouble(K, -17, -30, { size:'AB1', w:3.2, h:4.2, len:8.4, hl:3.0, F:29, mat:PK_MAT.yellow, landing:'bag', wl:6.2, run:14, pad:{ len:12, vt:17 }, flags:true, word:'BIG AIR',
+                              hill:{ gap:12, l1:9, top:12, l2:7 } });
+    jmpDouble(K,  17, -32, { size:'AB2', w:3.2, qR:9, deg:52, hl:3.0, F:24, mat:PK_MAT.orange, landing:'bag', wl:6.2, run:12, pad:{ len:10, vt:14 }, flags:true, word:'SEND IT',
+                              hill:{ gap:8.5, l1:8, top:11, l2:7 } });
+  }
 ];
 
 /* ---------------------------------------------------------------- parked e-scooters (static props: one merged mesh per colour, vertex colours) */
@@ -37942,22 +38381,27 @@ function jmpDress(K, i, j){
 
 function jmpLot(cx, cz, i, j, t, R){
   const K = jmpK(cx, cz, R);
+  K.kind = t;
   sidewalkRing(cx, cz);
   const lotHalf = BLOCK/2 - SIDEWALK_W;
-  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:MAT.plaza });
+  P({ type:'flat', x:cx, z:cz, rot:0, w:lotHalf, d:lotHalf, h:0.05, mat:jmpM('sand', MAT.plaza) });           // 15.9: sand, not grey slabs
   PK.zone = 'air ' + t;
   pkTry('air lot ' + t + ' @' + i + ',' + j, () => JMP_LOTS[t](K, i, j));
+  const sp = jmpSpawnLot();
+  if (sp && sp.i === i && sp.j === j && typeof c20StartArea === 'function') pkTry('air start @' + i + ',' + j, () => c20StartArea(K));   // the start arch + stands
   pkTry('air dress @' + i + ',' + j, () => jmpDress(K, i, j));
+  if (typeof c20LotDone === 'function') c20LotDone({ cx, cz, i, j, t, R });
   PK.zone = ''; JMP.lots++;
 }
-/* every block of the town is a jump lot: kind = (i + 2j) mod 9 (no two neighbours alike), turned by (5i + 3j) mod 4 quarter turns */
+function jmpKind(i, j){ return (((i + 2*j) % JMP_KINDS) + JMP_KINDS) % JMP_KINDS; }
+/* every block of the town is a jump lot: kind = (i + 2j) mod 12 (no two neighbours alike), turned by (5i + 3j) mod 4 quarter turns */
 function buildSpecialBlockMapJump(){
   jmpHook();
   const SPECIAL = {};
   for (let i = -GRID_N; i <= GRID_N; i++){
     for (let j = -GRID_N; j <= GRID_N; j++){
       if (!blockExists(i, j)) continue;
-      const t = (((i + 2*j) % 9) + 9) % 9, R = ((((5*i + 3*j) % 4) + 4) % 4)*Math.PI/2;
+      const t = jmpKind(i, j), R = ((((5*i + 3*j) % 4) + 4) % 4)*Math.PI/2;
       SPECIAL[i + ',' + j] = (cx, cz) => jmpLot(cx, cz, i, j, t, R);
     }
   }
@@ -37969,7 +38413,7 @@ function buildSpecialBlockMapJump(){
    the top-speed clamp in updateRide lets the extra speed through. In the air nothing is added (the speed just carries). */
 function jmpPadTick(dt){
   if (bike.state !== 'ride') return;
-  if (!JMP.welcome){ JMP.welcome = true; try { toast('AIR CANYON · hit a TURBO strip, then the ramp', true); } catch (e) {} }
+  if (!JMP.welcome){ JMP.welcome = true; try { const b = typeof c20BestGet === 'function' ? c20BestGet() : null; toast('AIR CANYON · hit a TURBO strip, then the ramp' + (b ? ' · Canyon best ' + b.d.toFixed(1) + ' m' : ''), true); } catch (e) {} }
   const px = bike.pos.x, pz = bike.pos.z, pads = JMP.pads;
   for (let k = 0; k < pads.length; k++){
     const p = pads[k], dx = px - p.x, dz = pz - p.z;
@@ -37996,12 +38440,17 @@ function jmpPadTick(dt){
   }
 }
 /* the spawn: the start of the 29 m lane (turbo strip first) in the Mega Gaps lot nearest the middle of the map */
-function jmpSpawn(){
+function jmpSpawnLot(){
+  if (jmpSpawnLot.v !== undefined) return jmpSpawnLot.v;
   let best = null;
   for (let i = -GRID_N; i <= GRID_N; i++) for (let j = -GRID_N; j <= GRID_N; j++){
-    if (!blockExists(i, j) || (((i + 2*j) % 9) + 9) % 9 !== 3) continue;
+    if (!blockExists(i, j) || jmpKind(i, j) !== 3) continue;
     const d = Math.hypot(i, j); if (!best || d < best.d) best = { i, j, d };
   }
+  return (jmpSpawnLot.v = best);
+}
+function jmpSpawn(){
+  const best = jmpSpawnLot();
   if (!best) return null;
   const R = ((((5*best.i + 3*best.j) % 4) + 4) % 4)*Math.PI/2, p = jmpK(best.i*CELL, best.j*CELL, R).W(0, -42.5);
   return { x:p[0], z:p[1], yaw:R };
@@ -68035,6 +68484,932 @@ addFrameHook(function t19Frame(){
   const w = T19.on ? 0.8 : 1.6;
   if (HITCH15.bg !== w) HITCH15.bg = w;
 });
+/* the menu's ride card is a second WebGL view (its own context, anti-aliased) drawn every menu frame on top of the city behind the
+   menu: in Toaster it turns at a third of the frame rate (same speed: the skipped time is carried) and at 1x pixels */
+(function t19MiniThrottle(){
+  if (typeof FleetView !== 'function' || !FleetView.prototype || !FleetView.prototype.render) return;
+  const r0 = FleetView.prototype.render;
+  FleetView.prototype.render = function(dt){
+    if (T19.on && this.mini){
+      this._t19dt = (this._t19dt || 0) + (dt || 0);
+      this._t19n = ((this._t19n || 0) + 1) % 3;
+      if (this._t19n !== 1) return;
+      dt = this._t19dt; this._t19dt = 0;
+      if (this.rnd && !this._t19pr){ this._t19pr = this.rnd.getPixelRatio(); this.rnd.setPixelRatio(1); this.w = 0; }
+    } else if (this._t19pr && this.rnd){ this.rnd.setPixelRatio(this._t19pr); this._t19pr = 0; this.w = 0; }
+    return r0.call(this, dt);
+  };
+})();
+/* =========================================================================
+   AIR CANYON 20 -- "make it even better" (Release 15.9, stream `canyon`): the LOOK.
+   Air Canyon only (MAP.jumps): CANYON20.on is false on Dusk City and nothing below builds, hooks or runs there.
+
+   1. The canyon: red-rock walls round the town (a rounded square just outside the fence, open to the east and west
+      where the canyon runs on), buttes, mesas and spires out in the desert, the far hills terraced and recoloured to
+      desert, saguaro cards instead of palm cards on them, the desert floor sand. Banded geometry (every rock band has
+      its own vertices: crisp ledges, smooth along the wall), vertex colours for the strata, ONE rock material that has
+      the far hills' program (vertex colours + map + world shading). 8 wall meshes + 2 butte meshes, no shadow casting.
+   2. The lots: sand ground (no more grey slabs), ramps in real materials (painted steel kickers in the lane's size
+      colour, wooden decks and roll-ins, concrete landings, dirt lines, an inflatable air bag), lip plates, a name board
+      per lot, distance boards along the big landings, desert plants (saguaro, barrel, prickly pear, ocotillo, scrub,
+      dry grass, boulders) wherever the ground is free, floodlights over the lanes (lamp field lamps: real light at
+      night, glowing lenses = PROP.lampLens).
+   3. The start: a start arch over the spawn lane ("AIR CANYON"), spectator stands either side of the first gap with a
+      crowd, banners, string lights.
+   Every placement is deterministic (seeded by lot / position, never Math.random) so every online client builds the
+   same canyon. Visuals are virtual meshes on shared materials (merged per 220 m cell by the batcher); the only solid
+   pieces (gate pylons, stands) are built with the lot. Cheap: no new lights, no new shadow casters, no new shader code.
+   API: CANYON20 (state + stats for tests), c20Mat(key), c20Steel(pkMat), c20StartArea(K), c20LotDone(lot).
+   ========================================================================= */
+const CANYON20 = { on: !!(typeof MAP !== 'undefined' && MAP && MAP.jumps), M:null, G:{}, lots:[], err:[], gate:null,
+  stats:{ walls:0, buttes:0, plants:0, rocks:0, signs:0, boards:0, lamps:0, crowd:0, tris:0, ms:0 } };
+function c20Try(name, fn){ try { return fn(); } catch (e){ CANYON20.err.push(name + ': ' + (e && e.message || e)); if (CANYON20.err.length < 4) console.error('[canyon20] ' + name, e); } }
+
+/* ---------------------------------------------------------------- small deterministic noise */
+function c20H(a, b, c){ let h = Math.imul((a | 0) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul((b | 0) + 0x632be5ab, 0xc2b2ae35) ^ Math.imul((c | 0) + 0x27d4eb2f, 0x165667b1);
+  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12; h = Math.imul(h, 0x297a2d39); h ^= h >>> 15; return (h >>> 0)/4294967296; }
+function c20N1(x, seed){ const i = Math.floor(x), f = x - i, u = f*f*(3 - 2*f), a = c20H(i, seed, 1)*2 - 1, b = c20H(i + 1, seed, 1)*2 - 1; return a + (b - a)*u; }   // -1..1
+function c20F1(x, seed){ return c20N1(x, seed)*0.62 + c20N1(x*2.13 + 7.1, seed + 101)*0.26 + c20N1(x*4.71 + 3.3, seed + 202)*0.12; }
+function c20Lin(hex){ return C(hex); }
+
+/* ---------------------------------------------------------------- textures (canvas, built once, Air Canyon only) */
+function c20Cv(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function c20Tx(c, srgb, rx, ry){
+  const t = new T.CanvasTexture(c);
+  t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = MAXANISO;
+  if (srgb) t.encoding = T.sRGBEncoding;
+  if (rx) t.repeat.set(rx, ry === undefined ? rx : ry);
+  return t;
+}
+/* fine wind-blown sand: grain, soft ripples, pebbles, a few tyre tracks (sRGB) -- tile = 4 m */
+function c20SandCanvas(){
+  const SZ = 256, c = c20Cv(SZ, SZ), g = c.getContext('2d'), im = g.createImageData(SZ, SZ), d = im.data, rnd = mulberry32(2026);
+  for (let y = 0; y < SZ; y++) for (let x = 0; x < SZ; x++){
+    const u = x/SZ, v = y/SZ;
+    const big = TN.fbm(u*4, v*4, 4, 3), rip = Math.sin((v*26 + TN.fbm(u*3, v*3, 3, 2)*3.2)*Math.PI*2), fine = rnd();
+    const k = 0.90 + (big - 0.5)*0.16 + rip*0.022 + (fine - 0.5)*0.10;
+    const i = (y*SZ + x)*4;
+    d[i] = Math.min(255, 214*k); d[i + 1] = Math.min(255, 184*k); d[i + 2] = Math.min(255, 136*k); d[i + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  for (let i = 0; i < 380; i++){                     // pebbles and darker grit
+    const x = rnd()*SZ, y = rnd()*SZ, s = 0.7 + rnd()*1.8, dk = rnd() < 0.7;
+    g.fillStyle = dk ? 'rgba(92,62,38,' + (0.25 + rnd()*0.3).toFixed(2) + ')' : 'rgba(255,246,226,' + (0.25 + rnd()*0.3).toFixed(2) + ')';
+    g.fillRect(x, y, s, s);
+  }
+  g.lineCap = 'round';
+  for (let i = 0; i < 5; i++){                       // old tyre tracks: two faint parallel curves
+    const x = rnd()*SZ, y = rnd()*SZ, a = rnd()*6.28, l = 90 + rnd()*140, b = (rnd() - 0.5)*0.6;
+    for (let w = -1; w <= 1; w += 2){
+      pk14Wrap(SZ, SZ, (dx, dy) => { g.strokeStyle = 'rgba(110,80,52,0.10)'; g.lineWidth = 2.2;
+        const ox = Math.cos(a + 1.57)*w*3, oz = Math.sin(a + 1.57)*w*3;
+        g.beginPath(); g.moveTo(x + dx + ox, y + dy + oz);
+        g.quadraticCurveTo(x + dx + ox + Math.cos(a + b)*l*0.5, y + dy + oz + Math.sin(a + b)*l*0.5, x + dx + ox + Math.cos(a)*l, y + dy + oz + Math.sin(a)*l); g.stroke(); });
+    }
+  }
+  return c;
+}
+/* rock detail (light, multiplied by the vertex colours): horizontal strata, cross-bedding, vertical cracks, varnish streaks.
+   Tile = 16 m along the wall x 12 m up. */
+function c20RockCanvas(){
+  const SZ = 256, c = c20Cv(SZ, SZ), g = c.getContext('2d'), im = g.createImageData(SZ, SZ), d = im.data, rnd = mulberry32(77);
+  for (let y = 0; y < SZ; y++){
+    const v = y/SZ;
+    for (let x = 0; x < SZ; x++){
+      const u = x/SZ, w = TN.fbm(u*2, v*2, 2, 2);
+      const layer = Math.sin((v*22 + w*2.4)*Math.PI*2)*0.5 + 0.5, thin = Math.sin((v*71 + w*5)*Math.PI*2)*0.5 + 0.5;
+      const streak = TN.noise(u*24, v*2, 24);                         // desert varnish runs down the faces
+      let k = 0.80 + layer*0.12 + thin*0.05 + (TN.fbm(u*8, v*8, 8, 3) - 0.5)*0.22 + (rnd() - 0.5)*0.07;
+      k *= 1 - Math.max(0, streak - 0.62)*0.55;
+      const i = (y*SZ + x)*4, b = Math.max(0, Math.min(255, k*255));
+      d[i] = b; d[i + 1] = b*0.97; d[i + 2] = b*0.93; d[i + 3] = 255;
+    }
+  }
+  g.putImageData(im, 0, 0);
+  g.lineCap = 'round';
+  for (let i = 0; i < 46; i++){                     // joints and cracks (mostly vertical)
+    const x = rnd()*SZ, y = rnd()*SZ, l = 12 + rnd()*60, a = Math.PI/2 + (rnd() - 0.5)*0.5;
+    pk14Wrap(SZ, SZ, (dx, dy) => { g.strokeStyle = 'rgba(40,20,12,' + (0.18 + rnd()*0.22).toFixed(2) + ')'; g.lineWidth = 0.8 + rnd()*1.4;
+      g.beginPath(); g.moveTo(x + dx, y + dy); g.lineTo(x + dx + Math.cos(a)*l + (rnd() - 0.5)*6, y + dy + Math.sin(a)*l); g.stroke(); });
+  }
+  return c;
+}
+/* painted steel plate (light grey, tinted by the material colour): 1.2 m panels, seams, rivet rows, scuffed paint (sRGB) */
+function c20SteelCanvas(){
+  const SZ = 256, c = c20Cv(SZ, SZ), g = c.getContext('2d'), im = g.createImageData(SZ, SZ), d = im.data, rnd = mulberry32(313);
+  for (let y = 0; y < SZ; y++) for (let x = 0; x < SZ; x++){
+    const u = x/SZ, v = y/SZ;
+    const k = 0.93 + (TN.fbm(u*6, v*6, 6, 3) - 0.5)*0.08 + (TN.noise(u*3, v*60, 60) - 0.5)*0.03 + (rnd() - 0.5)*0.03;
+    const i = (y*SZ + x)*4, b = Math.min(255, k*255);
+    d[i] = b; d[i + 1] = b; d[i + 2] = b; d[i + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  {                                                  // one plate per tile: a seam + a rivet row along two edges
+    g.fillStyle = 'rgba(30,30,32,0.30)'; g.fillRect(0, 0, SZ, 2); g.fillRect(0, 0, 2, SZ);
+    g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, 2, SZ, 1); g.fillRect(2, 0, 1, SZ);
+    for (let k = 10; k < SZ; k += 20){
+      g.fillStyle = 'rgba(40,40,44,0.38)'; g.fillRect(k, 7, 3, 3); g.fillRect(7, k, 3, 3);
+      g.fillStyle = 'rgba(255,255,255,0.32)'; g.fillRect(k, 7, 1, 1); g.fillRect(7, k, 1, 1);
+    }
+  }
+  g.lineCap = 'round';
+  for (let i = 0; i < 70; i++){                      // scuffs and tyre marks
+    const x = rnd()*SZ, y = rnd()*SZ, l = 6 + rnd()*40, a = Math.PI/2 + (rnd() - 0.5)*0.9, dark = rnd() < 0.75;
+    pk14Wrap(SZ, SZ, (dx, dy) => { g.strokeStyle = dark ? 'rgba(20,18,16,' + (0.10 + rnd()*0.20).toFixed(2) + ')' : 'rgba(200,200,205,' + (0.2 + rnd()*0.3).toFixed(2) + ')';
+      g.lineWidth = 0.8 + rnd()*2.2; g.beginPath(); g.moveTo(x + dx, y + dy); g.lineTo(x + dx + Math.cos(a)*l, y + dy + Math.sin(a)*l); g.stroke(); });
+  }
+  return c;
+}
+/* packed dirt (sRGB): clay-brown, darker damp patches, stones, a ridden line down the middle -- tile = 3 m */
+function c20DirtCanvas(){
+  const SZ = 256, c = c20Cv(SZ, SZ), g = c.getContext('2d'), im = g.createImageData(SZ, SZ), d = im.data, rnd = mulberry32(919);
+  for (let y = 0; y < SZ; y++) for (let x = 0; x < SZ; x++){
+    const u = x/SZ, v = y/SZ;
+    const big = TN.fbm(u*3, v*3, 3, 3), mid = TN.fbm(u*11, v*11, 11, 2), lane = Math.exp(-Math.pow((u - 0.5)/0.16, 2));
+    const k = 0.92 + (big - 0.5)*0.30 + (mid - 0.5)*0.12 + (rnd() - 0.5)*0.12 - lane*0.08;
+    const i = (y*SZ + x)*4;
+    d[i] = Math.max(0, Math.min(255, 150*k)); d[i + 1] = Math.max(0, Math.min(255, 104*k)); d[i + 2] = Math.max(0, Math.min(255, 66*k)); d[i + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  for (let i = 0; i < 420; i++){
+    const x = rnd()*SZ, y = rnd()*SZ, s = 0.8 + rnd()*2.6, t = rnd();
+    g.fillStyle = t < 0.5 ? 'rgba(70,46,30,0.55)' : (t < 0.85 ? 'rgba(206,176,140,0.55)' : 'rgba(150,140,130,0.7)');
+    g.beginPath(); g.ellipse(x, y, s, s*0.7, rnd()*3, 0, 6.29); g.fill();
+  }
+  return c;
+}
+/* inflatable air bag (sRGB): blue quilted pillows with yellow welded seams */
+function c20BagCanvas(){
+  const SZ = 256, c = c20Cv(SZ, SZ), g = c.getContext('2d');
+  // one big puffy cushion per tile (3 m): a bright blue dome of light, darker toward the welded seams
+  const gr = g.createRadialGradient(SZ*0.42, SZ*0.36, 6, SZ*0.5, SZ*0.5, SZ*0.74);
+  gr.addColorStop(0, '#d2e6ff'); gr.addColorStop(0.35, '#7ab4ff'); gr.addColorStop(0.8, '#3d84ea'); gr.addColorStop(1, '#2a62c4');
+  g.fillStyle = gr; g.fillRect(0, 0, SZ, SZ);
+  g.fillStyle = '#ffd84a'; g.fillRect(0, 0, SZ, 5); g.fillRect(0, 0, 5, SZ);          // the welded seam (yellow) round each cushion
+  g.fillStyle = 'rgba(0,0,0,0.10)'; g.fillRect(0, 5, SZ, 3); g.fillRect(5, 0, 3, SZ);
+  return c;
+}
+/* ---------------------------------------------------------------- the sign atlas (1024 x 1024, sRGB)
+   A: 12 lot names (512 x 96, 2 columns)  B: the AIR CANYON banner (1024 x 128)  C: 8 banner words (256 x 64)
+   D: 16 distance plates (128 x 64): 5 M .. 60 M, START, BEST, ...  Cells are looked up with c20Cell(). */
+const C20_LOTNAMES = [['TRIPLE GAP', '#2f8f5b', 'S · M · L'], ['SKY DROP', '#d0483a', 'ROLL-IN TOWER'], ['GIANT PIPES', '#2c6bc4', 'VERT · SPINES'],
+  ['MEGA GAPS', '#c2337e', '29 · 39 · 45 M'], ['PYRAMIDS', '#d98a1f', 'UP AND OVER'], ['GIANT ROLLERS', '#7a4fc0', 'PUMP IT'],
+  ['RHYTHM LINE', '#1f9aa0', 'DOUBLES'], ['LAUNCH PADS', '#e0662a', 'QUARTER KICKERS'], ['SKY DROP XL', '#b8322c', 'THE TALL ONE'],
+  ['MEGA RAMP', '#a8262e', 'ROLL-IN · GAP · QUARTER'], ['DIRT JUMPS', '#8a5a32', 'PRO · GROM LINES'], ['AIR BAG', '#2363c8', 'SEND IT SOFT']];
+const C20_WORDS = ['FULL SEND', 'SEND IT', 'LAND IT', 'NO BRAKES', 'DUSK LINE', 'CANYON JAM', 'FLY HIGH', 'BIG AIR'];
+const C20_PLATES = ['5 M', '10 M', '15 M', '20 M', '25 M', '30 M', '35 M', '40 M', '45 M', '50 M', '55 M', '60 M', 'START', 'BEST', 'LAND', 'GO'];
+function c20Cell(kind, i){
+  if (kind === 'lot') return [(i % 2)*512, Math.floor(i/2)*96, 512, 96];
+  if (kind === 'banner') return [0, 576, 1024, 128];
+  if (kind === 'word') return [(i % 4)*256, 704 + Math.floor(i/4)*64, 256, 64];
+  return [(i % 8)*128, 832 + Math.floor(i/8)*64, 128, 64];          // plate
+}
+function c20SignCanvas(){
+  const W = 1024, c = c20Cv(W, W), g = c.getContext('2d');
+  g.fillStyle = '#e9dcc3'; g.fillRect(0, 0, W, W);
+  const font = (px) => '900 ' + px + 'px "Arial Black", Impact, Arial, sans-serif';
+  const fit = (txt, px, maxW) => { g.font = font(px); const w = g.measureText(txt).width; if (w > maxW){ px = Math.floor(px*maxW/w); g.font = font(px); } return px; };
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r); g.lineTo(x + w, y + h - r);
+    g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath(); };
+  const text = (txt, x, y, px, maxW, col, stroke) => { fit(txt, px, maxW); g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (stroke){ g.lineJoin = 'round'; g.lineWidth = Math.max(3, px*0.14); g.strokeStyle = stroke; g.strokeText(txt, x, y); }
+    g.fillStyle = col; g.fillText(txt, x, y); };
+  C20_LOTNAMES.forEach((n, i) => {
+    const [x, y, w, h] = c20Cell('lot', i);
+    g.fillStyle = '#1a1714'; g.fillRect(x, y, w, h);
+    rr(x + 5, y + 5, w - 10, h - 10, 10); g.fillStyle = n[1]; g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(x + 12, y + 10, w - 24, 6);
+    text(n[0], x + w/2, y + h*0.42, 54, w - 40, '#fffaf0', 'rgba(0,0,0,0.55)');
+    text(n[2], x + w/2, y + h*0.80, 17, w - 60, 'rgba(255,248,230,0.92)');
+  });
+  { const [x, y, w, h] = c20Cell('banner');
+    const gr = g.createLinearGradient(x, y, x + w, y); gr.addColorStop(0, '#b4321f'); gr.addColorStop(0.5, '#e8762a'); gr.addColorStop(1, '#b4321f');
+    g.fillStyle = gr; g.fillRect(x, y, w, h);
+    g.fillStyle = '#2a1a12'; g.fillRect(x, y, w, 8); g.fillRect(x, y + h - 8, w, 8);
+    for (let k = 0; k < 2; k++){ g.fillStyle = '#ffd25a'; g.beginPath(); const cx = k ? x + w - 70 : x + 70, cy = y + h/2;     // a little sun-over-mesa badge each end
+      g.arc(cx, cy - 6, 22, Math.PI, 0); g.fill(); g.fillStyle = '#7a2a18'; g.fillRect(cx - 40, cy + 2, 80, 22); g.fillRect(cx - 26, cy - 8, 30, 12); }
+    text('AIR CANYON', x + w/2, y + h/2 + 2, 96, w - 230, '#fff6e2', '#5a1a0c'); }
+  C20_WORDS.forEach((wd, i) => {
+    const [x, y, w, h] = c20Cell('word', i), cols = ['#d0483a', '#2c6bc4', '#2f8f5b', '#e0a81f', '#1a1714', '#c2337e', '#1f9aa0', '#e0662a'];
+    g.fillStyle = cols[i % cols.length]; g.fillRect(x, y, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(x, y + 4, w, 3); g.fillRect(x, y + h - 7, w, 3);
+    text(wd, x + w/2, y + h/2 + 1, 36, w - 24, i === 3 ? '#1a1714' : '#ffffff', i === 3 ? null : 'rgba(0,0,0,0.35)');
+  });
+  C20_PLATES.forEach((p, i) => {
+    const [x, y, w, h] = c20Cell('plate', i);
+    g.fillStyle = '#1a1714'; g.fillRect(x, y, w, h);
+    rr(x + 4, y + 4, w - 8, h - 8, 6); g.fillStyle = i >= 12 ? '#f5c518' : '#fbf6ea'; g.fill();
+    text(p, x + w/2, y + h/2 + 2, 34, w - 18, i >= 12 ? '#1a1714' : '#b4321f');
+  });
+  return c;
+}
+
+/* ---------------------------------------------------------------- materials (shared; the same programs as the city's: map + world shading,
+   with / without vertex colours). Built once, the first time the canyon asks for one. */
+function c20Mats(){
+  if (CANYON20.M) return CANYON20.M;
+  const M = {}, T0 = performance.now();
+  const mk = (o, w) => { const m = S(Object.assign({ color:C(0xffffff), roughness:0.85, metalness:0 }, o)); patchWorldShading(m, w || {}); return m; };
+  const tx = {
+    sand: c20Tx(c20SandCanvas(), true, 0.25),
+    rock: c20Tx(c20RockCanvas(), true, 1),
+    steel: c20Tx(c20SteelCanvas(), true, 1/2.4, 1/3.2),
+    dirt: c20Tx(c20DirtCanvas(), true, 1/3),
+    bag: c20Tx(c20BagCanvas(), true, 1/3.2),
+    plank: pk14Tx(pk14PlankCanvas(0xa87a4c, 17), true, 0.5),
+    pour: pk14Tx(pk14PourCanvas(256, 41, 'trans'), false, 1/3),
+    sign: c20Tx(c20SignCanvas(), true)
+  };
+  tx.sign.wrapS = tx.sign.wrapT = T.ClampToEdgeWrapping;
+  M.tx = tx;
+  M.sand  = mk({ map:tx.sand, color:C(0xf2e6d2), roughness:1.0 }, { vary:0.9, stain:0.5, skid:0.6 });
+  M.rock  = mk({ map:tx.rock, vertexColors:true, roughness:0.95 }, { vary:0.35 });
+  M.wood  = mk({ map:tx.plank, vertexColors:true, roughness:0.82 }, { vary:0.3, scuff:0.55, stain:0.3 });
+  M.conc  = mk({ map:tx.pour, color:C(0xcdbb9c), roughness:0.8 }, { vary:0.5, joint:0.7, scuff:0.7, stain:0.35 });
+  M.dirt  = mk({ map:tx.dirt, roughness:1.0 }, { vary:0.6, scuff:0.25 });
+  M.bag   = mk({ map:tx.bag, roughness:0.42 }, {});
+  M.sign  = mk({ map:tx.sign, roughness:0.62 }, {});
+  M.steel = {};
+  [['green', 0x3f9a5c], ['yellow', 0xe2b62e], ['orange', 0xe5772c], ['red', 0xcc3b30], ['blue', 0x2f68c0], ['teal', 0x23999a], ['pink', 0xcc4f98], ['grey', 0x8e9298], ['dark', 0x3a3d42]]
+    .forEach(p => { M.steel[p[0]] = mk({ map:tx.steel, color:C(p[1]), roughness:0.5, metalness:0.28 }, { scuff:0.6, rust:0.06, vary:0.2 }); });
+  CANYON20.M = M;
+  CANYON20.stats.texMs = Math.round(performance.now() - T0);
+  return M;
+}
+function c20Mat(k){ if (!CANYON20.on) return null; const M = c20Mats(); return M[k] || M.steel[k] || null; }
+/* the painted-steel twin of one of the park's paint colours (PK_MAT.green -> steel green ...) */
+function c20Steel(pm){
+  if (!CANYON20.on) return pm;
+  const S2 = c20Mats().steel;
+  for (const k in S2) if (PK_MAT[k] === pm) return S2[k];
+  return pm === MAT.metal ? S2.grey : (pm || S2.orange);
+}
+
+/* ---------------------------------------------------------------- geometry helpers */
+/* merge [geometry, colour (hex | fn(i, x, y, z) -> hex), jitter] parts into one indexed geometry with position / normal / colour
+   (+ uv when asked: the rock material has a map; the cloth props have none, so they batch with the lots' pennants) */
+function c20Merge(parts, withUV){
+  let nv = 0, ni = 0;
+  const gs = parts.map(p => {
+    const g = p[0];
+    if (!g.attributes.normal) g.computeVertexNormals();
+    nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count;
+    return g;
+  });
+  const pos = new Float32Array(nv*3), nor = new Float32Array(nv*3), uv = new Float32Array(nv*2), col = new Float32Array(nv*3);
+  const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+  let ov = 0, oi = 0;
+  const cache = {};
+  const lin = (h) => cache[h] || (cache[h] = c20Lin(h));
+  gs.forEach((g, k) => {
+    const n = g.attributes.position.count, P = parts[k], pa = g.attributes.position.array;
+    pos.set(pa, ov*3); nor.set(g.attributes.normal.array, ov*3);
+    if (g.attributes.uv) uv.set(g.attributes.uv.array, ov*2);
+    const jit = P[2] || 0;
+    for (let i = 0; i < n; i++){
+      const x = pa[i*3], y = pa[i*3 + 1], z = pa[i*3 + 2];
+      const c = lin(typeof P[1] === 'function' ? P[1](i, x, y, z) : P[1]);
+      const j = jit ? 1 - jit + 2*jit*c20H(Math.round(x*97), Math.round(y*89), Math.round(z*83)) : 1;
+      col[(ov + i)*3] = c.r*j; col[(ov + i)*3 + 1] = c.g*j; col[(ov + i)*3 + 2] = c.b*j;
+    }
+    if (g.index){ const ia = g.index.array; for (let i = 0; i < ia.length; i++) idx[oi + i] = ia[i] + ov; oi += ia.length; }
+    else { for (let i = 0; i < n; i++) idx[oi + i] = ov + i; oi += n; }
+    ov += n;
+  });
+  const m = new T.BufferGeometry();
+  m.setAttribute('position', new T.BufferAttribute(pos, 3)); m.setAttribute('normal', new T.BufferAttribute(nor, 3));
+  if (withUV) m.setAttribute('uv', new T.BufferAttribute(uv, 2));
+  m.setAttribute('color', new T.BufferAttribute(col, 3));
+  m.setIndex(new T.BufferAttribute(idx, 1));
+  m.computeBoundingSphere();
+  return m;
+}
+/* a lumpy rock: icosahedron with every corner pushed in / out by a hash of its position (shared corners move together) */
+function c20RockGeo(detail, seed, sy){
+  const g = new T.IcosahedronGeometry(1, detail || 0), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++){
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 0.72 + 0.5*c20H(Math.round(x*1000), Math.round(y*1000) + seed*7, Math.round(z*1000));
+    p.setXYZ(i, x*k, Math.max(-0.25, y*k*(sy || 0.7)), z*k);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+/* columnar cactus with ribs (alternate light / dark per vertex round the ring) */
+function c20Rib(light, dark, seg){ return (i) => ((i % (seg + 1)) % 2 ? dark : light); }
+
+/* ---------------------------------------------------------------- plant + prop prototypes (built once, reused by every placement) */
+function c20Proto(name){
+  const G = CANYON20.G;
+  if (G[name]) return G[name];
+  const R = mulberry32(hashSeed('c20' + name));
+  let g = null;
+  const GREEN = 0x5d8a4a, GREEN_D = 0x43703a;
+  if (name.startsWith('saguaro')){
+    const v = +name.slice(7), parts = [], H = 5.0 + v*1.1, r = 0.33 + v*0.04;
+    parts.push([new T.CylinderGeometry(r*0.94, r, H, 8, 1, true).translate(0, H/2, 0), c20Rib(GREEN, GREEN_D, 8), 0.06]);
+    parts.push([new T.SphereGeometry(r*0.94, 8, 2, 0, Math.PI*2, 0, Math.PI/2).translate(0, H, 0), GREEN, 0.06]);
+    const arms = [2, 1, 3][v % 3];
+    for (let a = 0; a < arms; a++){
+      const ang = a*2.4 + R()*0.8, y0 = H*(0.32 + 0.12*a + R()*0.08), out = 0.55 + R()*0.35, up = 0.9 + R()*1.3, ar = r*0.70;
+      const put = (geo) => geo.rotateY(ang);
+      parts.push([put(new T.CylinderGeometry(ar, ar, out + r + ar, 5, 1, true).rotateZ(Math.PI/2).translate((out + r + ar)/2, y0, 0)), c20Rib(GREEN, GREEN_D, 5), 0.06]);
+      parts.push([put(new T.CylinderGeometry(ar*0.95, ar, up + ar, 5, 1, true).translate(r + out, y0 - ar + (up + ar)/2, 0)), c20Rib(GREEN, GREEN_D, 5), 0.06]);
+      parts.push([put(new T.SphereGeometry(ar*0.95, 5, 2, 0, Math.PI*2, 0, Math.PI/2).translate(r + out, y0 + up, 0)), GREEN, 0.06]);
+    }
+    g = c20Merge(parts);
+  } else if (name === 'barrel'){
+    const parts = [[new T.SphereGeometry(0.42, 8, 4, 0, Math.PI*2, 0, Math.PI*0.62).scale(1, 1.25, 1).translate(0, 0.25, 0), c20Rib(0x6f9a4c, 0x4f7a36, 8), 0.05]];
+    for (let k = 0; k < 2; k++){ const a = k*2.6; parts.push([new T.TetrahedronGeometry(0.09).translate(Math.cos(a)*0.12, 0.76, Math.sin(a)*0.12), k ? 0xe2402e : 0xf5c518, 0]); }
+    g = c20Merge(parts);
+  } else if (name === 'pear'){
+    const parts = [];
+    [[0, 0.32, 0, 0, 0.1], [0.28, 0.62, 0.05, 0.5, -0.35], [-0.26, 0.6, -0.04, -0.45, 0.3], [0.05, 0.9, 0.02, 0.1, 0.5], [0.42, 0.95, 0, 0.85, -0.2]].forEach((p, k) => {
+      parts.push([new T.SphereGeometry(0.30, 5, 3).scale(1, 1.25, 0.26).rotateZ(p[3]).rotateY(p[4]).translate(p[0], p[1], p[2]), k % 2 ? 0x7aa04e : 0x6a9244, 0.07]);
+    });
+    parts.push([new T.TetrahedronGeometry(0.07).translate(0.08, 1.24, 0), 0xc23a5a, 0]);
+    g = c20Merge(parts);
+  } else if (name === 'ocotillo'){
+    const parts = [];
+    for (let k = 0; k < 8; k++){
+      const a = k*0.785 + R()*0.4, lean = 0.18 + R()*0.22, L = 2.4 + R()*1.4;
+      parts.push([new T.CylinderGeometry(0.018, 0.05, L, 3, 1, true).translate(0, L/2, 0).rotateZ(lean).rotateY(a), 0x6b5a3a, 0.1]);
+      parts.push([new T.CylinderGeometry(0, 0.05, 0.28, 3, 1, true).translate(0, L + 0.08, 0).rotateZ(lean).rotateY(a), 0xd8402a, 0]);
+    }
+    g = c20Merge(parts);
+  } else if (name.startsWith('scrub')){
+    const v = +name.slice(5), parts = [], cols = [[0x8a9468, 0x6e7a50], [0x9a9060, 0x7c7448], [0x7e8c5e, 0x5f6e44]][v % 3];
+    for (let k = 0; k < 3; k++){
+      const a = k*2.1 + v, s = 0.55 + R()*0.35;
+      parts.push([c20RockGeo(0, v*10 + k, 1).scale(s, s*0.62, s).translate(Math.cos(a)*0.45, s*0.42, Math.sin(a)*0.45), k % 2 ? cols[1] : cols[0], 0.14]);
+    }
+    g = c20Merge(parts);
+  } else if (name === 'grass'){
+    const pos = [], nrm = [];
+    for (let k = 0; k < 9; k++){
+      const a = k*0.698 + R()*0.3, lean = 0.15 + R()*0.35, h = 0.35 + R()*0.35, w = 0.035;
+      const bx = Math.cos(a)*0.06, bz = Math.sin(a)*0.06, tx = bx + Math.cos(a)*lean*h, tz = bz + Math.sin(a)*lean*h, px = -Math.sin(a)*w, pz = Math.cos(a)*w;
+      pos.push(bx - px, 0, bz - pz, bx + px, 0, bz + pz, tx, h, tz);
+      for (let q = 0; q < 3; q++) nrm.push(0, 1, 0);
+    }
+    const gg = new T.BufferGeometry();
+    gg.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); gg.setAttribute('normal', new T.Float32BufferAttribute(nrm, 3));
+    gg.setAttribute('uv', new T.Float32BufferAttribute(new Array(pos.length/3*2).fill(0), 2));
+    g = c20Merge([[gg, (i) => (i % 3 === 2 ? 0xe2cc8e : 0xb09458), 0.12]]);
+  } else if (name.startsWith('rock')){
+    const v = +name.slice(4);
+    g = c20Merge([[c20RockGeo(v > 1 ? 1 : 0, 50 + v, 0.75), [0xa8643e, 0x9c5a38, 0xb8774c, 0x8a4e32][v % 4], 0.16]]);
+  } else if (name.startsWith('fan')){                 // a seated spectator: shirt / skin / pants variants, some cheering
+    const v = +name.slice(3), SH = [0xe8483c, 0x3fa0e0, 0xf0c53a, 0x58b46e, 0xf08a3c, 0xffffff, 0x2a2d33, 0xe070b8][v % 8];
+    const SK = [0xe8b896, 0xc68a62, 0x8a5a3c, 0xf2cfb2][v % 4], PA = [0x2c3e66, 0x3a3d42, 0x6b5a46, 0x1f2a44][v % 4], HA = [0x2a1d14, 0x5a3a20, 0xc89a50, 0x111111][(v + 1) % 4];
+    const parts = [
+      [new T.BoxGeometry(0.40, 0.50, 0.24).translate(0, 0.55, 0), SH, 0.05],
+      [new T.BoxGeometry(0.36, 0.14, 0.42).translate(0, 0.30, 0.16), PA, 0.05],
+      [new T.BoxGeometry(0.30, 0.42, 0.12).translate(0, 0.10, 0.36), PA, 0.05],
+      [new T.SphereGeometry(0.12, 5, 3).translate(0, 0.94, 0.01), (i) => (i < 6 ? HA : SK), 0]
+    ];
+    if (v % 3 === 0){ parts.push([new T.BoxGeometry(0.09, 0.46, 0.09).rotateZ(0.35).translate(0.27, 1.02, 0), SH, 0]); parts.push([new T.BoxGeometry(0.09, 0.46, 0.09).rotateZ(-0.35).translate(-0.27, 1.02, 0), SH, 0]); }
+    else { parts.push([new T.BoxGeometry(0.09, 0.40, 0.09).translate(0.25, 0.55, 0.08), SH, 0]); parts.push([new T.BoxGeometry(0.09, 0.40, 0.09).translate(-0.25, 0.55, 0.08), SH, 0]); }
+    g = c20Merge(parts);
+  } else if (name === 'flood'){                        // a floodlight mast: the lamps sit where the lamp field puts the light (x + 1.42, 8.42)
+    const parts = [
+      [new T.CylinderGeometry(0.09, 0.16, 9.3, 6, 1, true).translate(0, 4.65, 0), 0x8c9096, 0.03],
+      [new T.BoxGeometry(0.55, 0.22, 0.55).translate(0, 0.11, 0), 0x9a968e, 0],
+      [new T.BoxGeometry(1.75, 0.09, 0.09).translate(0.88, 9.1, 0), 0x6e7278, 0],
+      [new T.BoxGeometry(0.07, 0.07, 1.5).translate(1.42, 9.1, 0), 0x6e7278, 0]
+    ];
+    [-0.5, 0, 0.5].forEach(z => parts.push([new T.BoxGeometry(0.42, 0.34, 0.40).rotateX(0.0).rotateZ(-0.45).translate(1.42, 8.72, z), 0x3a3d42, 0]));
+    g = c20Merge(parts);
+  } else if (name === 'lens'){
+    const parts = [];
+    [-0.5, 0, 0.5].forEach(z => parts.push([new T.BoxGeometry(0.36, 0.03, 0.34).rotateZ(-0.45).translate(1.50, 8.56, z), 0xffffff, 0]));
+    g = c20Merge(parts, true); g.deleteAttribute('color');
+  } else if (name === 'bulb'){
+    g = new T.SphereGeometry(0.09, 6, 4);
+  }
+  G[name] = g;
+  return g;
+}
+function c20Put(name, mat, x, y, z, ry, s){
+  _vmo.position.set(x, y, z); _vmo.rotation.set(0, ry || 0, 0);
+  if (Array.isArray(s)) _vmo.scale.set(s[0], s[1], s[2]); else _vmo.scale.set(s || 1, s || 1, s || 1);
+  vmeshAdd(c20Proto(name), mat, false, false);
+}
+/* a dark steel lip plate across the top edge of a built kicker (map_jump.js): a cloth prop too */
+function c20Lip(x, y, z, rot, w){
+  const key = 'lip' + w.toFixed(2);
+  if (!CANYON20.G[key]) CANYON20.G[key] = c20Merge([[new T.BoxGeometry(2*w - 0.02, 0.06, 0.26), 0x34373c, 0]]);
+  _vmo.position.set(x, y, z); _vmo.rotation.set(0, rot, 0); _vmo.scale.set(1, 1, 1);
+  vmeshAdd(CANYON20.G[key], PK_MAT.cloth, false, false);
+}
+
+/* ---------------------------------------------------------------- rock colours (linear, per band role) */
+const C20_ROCK = { talus:0xb8845a, talus2:0xa87450, foot:0x9e5034, red:0xa44a2c, red2:0xb85e38, ledge:0xc08a5e, upper:0xbc6640, upper2:0xcd7a4c,
+                   pale:0xd9b48c, cap:0xe0c8a0, top:0xb48d62, back:0xa5704c, sand:0xcfae7a };
+let C20_RL = null;
+function c20RockCol(role, s, y, out){
+  if (!C20_RL){ C20_RL = {}; for (const k in C20_ROCK) C20_RL[k] = c20Lin(C20_ROCK[k]); }
+  const n = c20H(Math.round(s*3), Math.round(y*5), 7), st = Math.sin(y*0.55 + c20F1(s/40, 5)*2.5);
+  let a = C20_RL[role] || C20_RL.red, b = a, t = 0;
+  if (role === 'red'){ b = C20_RL.red2; t = 0.5 + 0.5*st; }
+  else if (role === 'upper'){ b = C20_RL.upper2; t = 0.5 + 0.5*st; }
+  else if (role === 'talus'){ b = C20_RL.talus2; t = n; }
+  let r = a.r + (b.r - a.r)*t, g = a.g + (b.g - a.g)*t, bl = a.b + (b.b - a.b)*t;
+  let k = 0.88 + 0.24*n;
+  if (role === 'red' || role === 'upper' || role === 'foot') k *= 0.84 + 0.16*(0.5 + 0.5*Math.sin(s*0.37 + c20F1(s/17, 9)*3));   // varnish streaks
+  out[0] = r*k; out[1] = g*k; out[2] = bl*k;
+}
+/* banded strip / ring: nc columns x nr rows, P(c, r, o) fills o = [x, y, z, s (along), role]; every band (r .. r+1) gets its own
+   vertices (crisp ledges), shared along the columns (smooth along the wall). flip = wind the other way (butte outsides). */
+function c20BandGeo(nc, nr, P, flip, closed){
+  const nb = nr - 1, nv = nb*nc*2, pos = new Float32Array(nv*3), uv = new Float32Array(nv*2), col = new Float32Array(nv*3);
+  const rows = []; for (let c = 0; c < nc; c++){ const col_ = []; for (let r = 0; r < nr; r++){ const o = [0, 0, 0, 0, '']; P(c, r, o); col_.push(o); } rows.push(col_); }
+  const cc = [0, 0, 0];
+  for (let b = 0; b < nb; b++) for (let c = 0; c < nc; c++) for (let e = 0; e < 2; e++){
+    const o = rows[c][b + e], i = (b*nc + c)*2 + e, role = rows[c][b][4];
+    pos[i*3] = o[0]; pos[i*3 + 1] = o[1]; pos[i*3 + 2] = o[2];
+    uv[i*2] = o[3]/16; uv[i*2 + 1] = o[1]/12;
+    c20RockCol(role, o[3], o[1], cc); col[i*3] = cc[0]; col[i*3 + 1] = cc[1]; col[i*3 + 2] = cc[2];
+  }
+  const nq = closed ? nc : nc - 1, idx = new (nv > 65535 ? Uint32Array : Uint16Array)(nb*nq*6);
+  let k = 0;
+  for (let b = 0; b < nb; b++) for (let c = 0; c < nq; c++){
+    const c2 = (c + 1) % nc, a = (b*nc + c)*2, bb = (b*nc + c2)*2, a1 = a + 1, b1 = bb + 1;
+    if (!flip){ idx[k++] = a; idx[k++] = bb; idx[k++] = a1; idx[k++] = bb; idx[k++] = b1; idx[k++] = a1; }
+    else { idx[k++] = a; idx[k++] = a1; idx[k++] = bb; idx[k++] = bb; idx[k++] = a1; idx[k++] = b1; }
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('uv', new T.BufferAttribute(uv, 2)); g.setAttribute('color', new T.BufferAttribute(col, 3));
+  g.setIndex(new T.BufferAttribute(idx, 1));
+  g.computeVertexNormals();
+  return g;
+}
+
+/* ---------------------------------------------------------------- the canyon walls: a rounded square just outside the fence */
+const C20_WALL = { A:0, Rc:150, ds:12, L:0, mouth:[170, 340] };
+const C20_PROF = [[-36, -0.006, 'talus'], [-15, 0.07, 'talus'], [0, 0.17, 'foot'], [2.5, 0.20, 'red'], [5.5, 0.50, 'ledge'], [15, 0.54, 'upper'], [18, 0.84, 'pale'],
+                  [22, 0.88, 'cap'], [25, 0.96, 'cap'], [55, 1.0, 'top'], [130, 1.03, 'back'], [190, 0.72, 'back'], [250, 0.30, 'back'], [300, -0.006, 'back']];
+function c20WallAt(s){                                   // point on the wall line, outward normal, side
+  const W = C20_WALL, A = W.A, Rc = W.Rc, Ls = 2*(A - Rc), La = Math.PI*Rc/2, seg = Ls + La;
+  let k = Math.floor(s/seg); const t = s - k*seg; k = ((k % 4) + 4) % 4;
+  if (t < Ls){
+    const q = -A + Rc + t;
+    if (k === 0) return [A, q, 1, 0, 0];
+    if (k === 1) return [-q, A, 0, 1, 1];
+    if (k === 2) return [-A, -q, -1, 0, 2];
+    return [q, -A, 0, -1, 3];
+  }
+  const a = (t - Ls)/Rc + k*Math.PI/2, cx = (k === 0 || k === 3) ? A - Rc : -(A - Rc), cz = (k === 0 || k === 1) ? A - Rc : -(A - Rc);
+  return [cx + Math.cos(a)*Rc, cz + Math.sin(a)*Rc, Math.cos(a), Math.sin(a), k + 0.5];
+}
+function c20WallH(s, x, z, side){                      // wall height here: 70..150 m, low dunes in the east / west canyon mouths
+  let H = 98 + 34*c20F1(s/420, 11) + 16*c20F1(s/97, 12);
+  if (side === 0 || side === 2){ const m = sstep(C20_WALL.mouth[0], C20_WALL.mouth[1], Math.abs(z)); H = 9 + (H - 9)*m; }
+  return Math.max(9, Math.min(150, H));
+}
+function c20Walls(){
+  const W = C20_WALL; W.A = BOUND + 85;
+  W.L = 4*(2*(W.A - W.Rc) + Math.PI*W.Rc/2);
+  const N = Math.floor(W.L/W.ds), cols = [];
+  for (let c = 0; c < N; c++){
+    const s = c*W.ds, p = c20WallAt(s), H = c20WallH(s, p[0], p[1], p[4]);
+    const ph = s/85 + 0.35*c20F1(s/210, 31), fin = 17*Math.max(0, 1 - Math.abs((ph - Math.floor(ph)) - 0.5)*4.4);     // buttresses standing out toward the town
+    const jc = 18*c20F1(s/70, 21) + 9*c20F1(s/26, 22) - fin, gully = Math.max(0, c20F1(s/47, 23) - 0.40)*80, rim = 7*c20F1(s/31, 24), toe = 5*c20F1(s/53, 25);
+    const k = Math.max(0.35, H/100), vs = [], fh = [];
+    const dl = 0.06*c20F1(s/150, 43), du = 0.045*c20F1(s/120, 44), hr = 0.09*c20F1(s/29, 42);              // strata that undulate, a ragged rim
+    C20_PROF.forEach((pr, r) => fh.push(pr[1] + (r === 4 || r === 5 ? dl : 0) + (r === 6 || r === 7 ? du : 0) + (r >= 7 && r <= 10 ? hr : 0)));
+    let last = -1e9;
+    C20_PROF.forEach((pr, r) => {
+      let v = pr[0]*(r >= 2 && r <= 9 ? Math.min(1.25, 0.55 + 0.45*k) : 1);
+      if (r <= 2) v += toe; else if (r <= 9) v += jc + (r >= 3 ? gully : 0) + (r >= 6 ? rim : 0); else v += jc*0.5;
+      v = Math.max(v, last + 0.6); last = v; vs.push(v);
+    });
+    cols.push({ s, x:p[0], z:p[1], nx:p[2], nz:p[3], H, vs, fh });
+  }
+  const SEG = 8, per = Math.ceil(N/SEG), M = c20Mats();
+  for (let g = 0; g < SEG; g++){
+    const c0 = g*per, c1 = Math.min(N, (g + 1)*per + 1), list = [];
+    for (let c = c0; c < c1 + (g === SEG - 1 ? 1 : 0); c++) list.push(cols[c % N]);
+    if (list.length < 2) continue;
+    const geo = c20BandGeo(list.length, C20_PROF.length, (c, r, o) => {
+      const q = list[c], v = q.vs[r], pr = C20_PROF[r], n = c20H(Math.round(q.s), r, 3);
+      o[0] = q.x + q.nx*v; o[2] = q.z + q.nz*v; o[1] = q.fh[r]*q.H + (r === 0 || r === C20_PROF.length - 1 ? -0.6 : (n - 0.5)*0.6*(r <= 1 ? 1.5 : 0.4));
+      o[3] = q.s; o[4] = pr[2];
+    }, false, false);
+    const parts = [[geo, null]];
+    // fallen boulders on the talus (the same rock material: one draw with the wall)
+    const R = mulberry32(hashSeed('c20boulder' + g));
+    for (let k2 = 0; k2 < list.length; k2 += 2){
+      if (R() > 0.55) continue;
+      const q = list[k2], v = -30 + R()*26, sz = 1.2 + R()*R()*4.5, rg = c20RockGeo(R() < 0.3 ? 1 : 0, k2 + g*1000, 0.8);
+      const x = q.x + q.nx*v + (R() - 0.5)*8, z = q.z + q.nz*v + (R() - 0.5)*8;
+      rg.scale(sz, sz, sz).rotateY(R()*6.28).translate(x, Math.max(-0.4, (v + 36)/21*0.07*q.H) - sz*0.18, z);
+      parts.push([rg, R() < 0.5 ? C20_ROCK.talus : C20_ROCK.red2, 0.12]);
+      CANYON20.stats.rocks++;
+    }
+    const merged = c20MergeKeep(parts);
+    const m = new T.Mesh(merged, M.rock);
+    m.userData.noBatch = true; m.userData.noCull = true; m.userData.noFar = true; m.userData.c20 = 'wall';
+    m.castShadow = false; m.receiveShadow = true; m.matrixAutoUpdate = false;
+    worldGroup.add(m); CANYON20.walls = (CANYON20.walls || []).concat(m);
+    CANYON20.stats.walls++; CANYON20.stats.tris += merged.index.count/3;
+  }
+}
+/* like c20Merge, but a part whose colour is null keeps its own colour attribute */
+function c20MergeKeep(parts){
+  const keep = parts.filter(p => p[1] === null), rest = parts.filter(p => p[1] !== null);
+  const a = keep.map(p => p[0]), b = rest.length ? [c20Merge(rest, true)] : [];
+  const all = a.concat(b);
+  if (all.length === 1) return all[0];
+  let nv = 0, ni = 0; all.forEach(g => { nv += g.attributes.position.count; ni += g.index.count; });
+  const pos = new Float32Array(nv*3), nor = new Float32Array(nv*3), uv = new Float32Array(nv*2), col = new Float32Array(nv*3), idx = new (nv > 65535 ? Uint32Array : Uint16Array)(ni);
+  let ov = 0, oi = 0;
+  all.forEach(g => { const n = g.attributes.position.count;
+    pos.set(g.attributes.position.array, ov*3); nor.set(g.attributes.normal.array, ov*3); uv.set(g.attributes.uv.array, ov*2); col.set(g.attributes.color.array, ov*3);
+    const ia = g.index.array; for (let i = 0; i < ia.length; i++) idx[oi + i] = ia[i] + ov; oi += ia.length; ov += n; });
+  const m = new T.BufferGeometry();
+  m.setAttribute('position', new T.BufferAttribute(pos, 3)); m.setAttribute('normal', new T.BufferAttribute(nor, 3));
+  m.setAttribute('uv', new T.BufferAttribute(uv, 2)); m.setAttribute('color', new T.BufferAttribute(col, 3)); m.setIndex(new T.BufferAttribute(idx, 1));
+  m.computeBoundingSphere();
+  return m;
+}
+
+/* ---------------------------------------------------------------- buttes, mesas and spires out in the desert */
+const C20_BUTTE = [[1.55, -0.01, 'talus'], [1.30, 0.10, 'talus'], [1.12, 0.22, 'foot'], [1.02, 0.27, 'red'], [0.98, 0.64, 'ledge'], [0.91, 0.68, 'upper'],
+                   [0.89, 0.93, 'cap'], [0.84, 0.985, 'top'], [0.55, 1.0, 'top'], [0.0, 1.005, 'top']];
+function c20ButteGeo(cx, cz, R, H, ex, rot, seed){
+  const NC = 18, ca = Math.cos(rot), sa = Math.sin(rot), tier = 0.05*c20N1(seed*1.7, seed + 7);
+  return c20BandGeo(NC, C20_BUTTE.length, (c, r, o) => {
+    const a = c/NC*Math.PI*2, pr = C20_BUTTE[r];
+    const wob = 1 + 0.2*c20N1(c*0.8 + seed, seed) + 0.09*c20N1(c*2.3 + seed*3, seed + 1) + (r >= 3 && r <= 6 ? 0.05*(c % 2 ? 1 : -1) : 0);
+    const rr = R*pr[0]*(r >= 3 ? wob : (0.9 + 0.1*wob)), lx = Math.cos(a)*rr*ex, lz = Math.sin(a)*rr;
+    o[0] = cx + lx*ca - lz*sa; o[2] = cz + lx*sa + lz*ca; o[1] = (pr[1] + (r === 4 || r === 5 ? tier : 0))*H*(r >= 6 ? 1 + 0.04*c20N1(c*1.3, seed + 3) : 1);
+    o[3] = a*R*1.4 + seed*31; o[4] = pr[2];
+  }, true, true);
+}
+function c20Buttes(){
+  const A = C20_WALL.A, R = mulberry32(hashSeed('c20buttes')), list = [];
+  const add = (x, z, r, h, ex) => list.push([x, z, r, h, ex, R()*3.14]);
+  for (const sx of [1, -1]){
+    add(sx*(A + 420 + R()*160), (R() - 0.5)*160, 70 + R()*30, 120 + R()*40, 1.6 + R()*0.6);          // the mesa that frames each canyon mouth
+    add(sx*(A + 230 + R()*90), 210 + R()*80, 16 + R()*6, 70 + R()*25, 1);                            // spires near the mouth
+    add(sx*(A + 260 + R()*90), -(200 + R()*90), 22 + R()*8, 85 + R()*25, 1.2);
+    for (let k = 0; k < 4; k++) add(sx*(A + 340 + R()*520), (k < 2 ? 1 : -1)*(380 + R()*560), 40 + R()*60, 80 + R()*80, 1 + R()*1.8);
+  }
+  for (const sz of [1, -1]) for (let k = 0; k < 3; k++) add((k - 1)*620 + (R() - 0.5)*200, sz*(A + 380 + R()*480), 45 + R()*55, 90 + R()*70, 1 + R()*1.6);
+  for (let k = 0; k < 14; k++){                                                                       // hoodoos on the talus, in front of the walls
+    const s = (k + R()*0.6)/14*C20_WALL.L, p = c20WallAt(s), H = c20WallH(s, p[0], p[1], p[4]);
+    if (H < 40) continue;
+    const v = -18 - R()*14; add(p[0] + p[2]*v, p[1] + p[3]*v, 5 + R()*4, 26 + R()*30, 1);
+  }
+  const M = c20Mats();
+  [list.filter(b => b[0] > 0 || (b[0] <= 0 && b[1] > 0 && Math.abs(b[0]) < 800)), list.filter(b => !(b[0] > 0 || (b[0] <= 0 && b[1] > 0 && Math.abs(b[0]) < 800)))].forEach((grp, gi) => {
+    if (!grp.length) return;
+    const geo = c20MergeKeep(grp.map((b, k) => [c20ButteGeo(b[0], b[1], b[2], b[3], b[4], b[5], gi*17 + k*5 + 3), null]));
+    const m = new T.Mesh(geo, M.rock);
+    m.userData.noBatch = true; m.userData.noCull = true; m.userData.noFar = true; m.userData.c20 = 'butte';
+    m.castShadow = false; m.receiveShadow = true; m.matrixAutoUpdate = false;
+    worldGroup.add(m); CANYON20.walls = (CANYON20.walls || []).concat(m);
+    CANYON20.stats.buttes += grp.length; CANYON20.stats.tris += geo.index.count/3;
+  });
+}
+/* the far hills: terraced into benches and recoloured from green-grey to sand / ochre / red rock; their palm cards hidden */
+function c20Hills(){
+  let hill = null;
+  for (const o of worldGroup.children){
+    if (o.isInstancedMesh && o.material && TEX.tree && o.material.map === TEX.tree){ o.visible = false; o.userData.c20Hidden = true; continue; }
+    if (o.isMesh && !o.isInstancedMesh && o.userData.noCull && o.material && o.material.vertexColors && o.geometry && o.geometry.attributes.position.count > 15000) hill = o;
+  }
+  if (!hill) return;
+  const pos = hill.geometry.attributes.position, col = hill.geometry.attributes.color, cc = [0, 0, 0];
+  const sand = c20Lin(0xcfae7a), och = c20Lin(0xc08a55);
+  for (let i = 0; i < pos.count; i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    let y = pos.getY(i);
+    if (y > 3){ const st = 22, f = y/st, fl = Math.floor(f); y = (fl + sstep(0.72, 1.0, f - fl))*st; pos.setY(i, y); }
+    const t = clamp(y/110, 0, 1), n = c20H(Math.round(x/9), Math.round(z/9), 21);
+    if (y > 8 && (y % 22) > 15){ c20RockCol('red', x + z, y, cc); }
+    else { const a = t < 0.4 ? sand : och, b = t < 0.4 ? och : c20Lin(0xb27046), u = t < 0.4 ? t/0.4 : (t - 0.4)/0.6;
+      cc[0] = a.r + (b.r - a.r)*u; cc[1] = a.g + (b.g - a.g)*u; cc[2] = a.b + (b.b - a.b)*u; }
+    const k = 0.9 + 0.2*n;
+    col.setXYZ(i, cc[0]*k, cc[1]*k, cc[2]*k);
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
+  hill.geometry.computeVertexNormals(); hill.geometry.computeBoundingSphere();
+}
+
+/* ---------------------------------------------------------------- signs: faces mapped to atlas cells */
+function c20FaceGeo(kind, i, w, h){
+  const key = 'face_' + kind + i + '_' + w + 'x' + h;
+  if (CANYON20.G[key]) return CANYON20.G[key];
+  const [x, y, cw, ch] = c20Cell(kind, i), g = new T.PlaneGeometry(w, h), uv = g.attributes.uv;
+  const u0 = (x + 2)/1024, u1 = (x + cw - 2)/1024, v1 = 1 - (y + 2)/1024, v0 = 1 - (y + ch - 2)/1024;
+  uv.setXY(0, u0, v1); uv.setXY(1, u1, v1); uv.setXY(2, u0, v0); uv.setXY(3, u1, v0);
+  return (CANYON20.G[key] = g);
+}
+/* a sign board: frame + posts (vertex coloured, one shared geometry per size) and the printed face on the front */
+function c20BoardGeo(w, h, postH, posts){
+  const key = 'board' + w + 'x' + h + 'p' + postH + 'n' + posts;
+  if (CANYON20.G[key]) return CANYON20.G[key];
+  const parts = [[new T.BoxGeometry(w + 0.24, h + 0.24, 0.14).translate(0, postH + h/2, -0.08), 0x2a2622, 0.04]];
+  const px = posts === 1 ? [0] : [-w*0.36, w*0.36];
+  px.forEach(x => parts.push([new T.CylinderGeometry(0.07 + w*0.006, 0.09 + w*0.006, postH + h*0.6, 6, 1, true).translate(x, (postH + h*0.6)/2, -0.2), 0x55585e, 0.04]));
+  return (CANYON20.G[key] = c20Merge(parts));
+}
+const _c20m4 = new T.Matrix4(), _c20q = new T.Quaternion(), _c20e = new T.Euler(), _c20v = new T.Vector3(), _c20s = new T.Vector3(1, 1, 1);
+function c20Face(geo, x, y, z, ry){
+  _c20e.set(0, ry, 0); _c20q.setFromEuler(_c20e); _c20v.set(x, y, z); _c20m4.compose(_c20v, _c20q, _c20s);
+  (CANYON20.faces = CANYON20.faces || []).push(geo.clone().applyMatrix4(_c20m4));
+}
+function c20Sign(kind, i, x, z, gy, ry, w, h, postH, posts){
+  _vmo.position.set(x, gy, z); _vmo.rotation.set(0, ry, 0); _vmo.scale.set(1, 1, 1);
+  vmeshAdd(c20BoardGeo(w, h, postH, posts), PK_MAT.cloth, false, false);
+  const f = [Math.sin(ry), Math.cos(ry)];
+  c20Face(c20FaceGeo(kind, i, w, h), x + f[0]*0.005, gy + postH + h/2, z + f[1]*0.005, ry);
+  CANYON20.stats.signs++;
+}
+/* every printed face of the town in ONE mesh: one draw call for all the signs */
+function c20FacesBuild(){
+  const F = CANYON20.faces; if (!F || !F.length) return;
+  let nv = 0, ni = 0; F.forEach(g => { nv += g.attributes.position.count; ni += g.index.count; });
+  const pos = new Float32Array(nv*3), nor = new Float32Array(nv*3), uv = new Float32Array(nv*2), idx = new (nv > 65535 ? Uint32Array : Uint16Array)(ni);
+  let ov = 0, oi = 0;
+  F.forEach(g => { pos.set(g.attributes.position.array, ov*3); nor.set(g.attributes.normal.array, ov*3); uv.set(g.attributes.uv.array, ov*2);
+    const ia = g.index.array; for (let k = 0; k < ia.length; k++) idx[oi + k] = ia[k] + ov; oi += ia.length; ov += g.attributes.position.count; });
+  const geo = new T.BufferGeometry();
+  geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
+  geo.setIndex(new T.BufferAttribute(idx, 1)); geo.computeBoundingSphere();
+  const m = new T.Mesh(geo, c20Mats().sign);
+  m.userData.noBatch = true; m.userData.noCull = true; m.userData.noFar = true; m.userData.c20 = 'signs';
+  m.castShadow = false; m.receiveShadow = false; m.matrixAutoUpdate = false;
+  worldGroup.add(m);
+  CANYON20.faces = null; CANYON20.signMesh = m;
+}
+
+/* ---------------------------------------------------------------- free ground test for dressing (after the pieces are indexed) */
+function c20Ground(x, z){ return sampleWorld(x, z).h; }
+function c20Free(x, z, r, lanes){
+  if (c20Ground(x, z) > 0.09) return false;
+  for (let k = 0; k < 4; k++){ const a = k*1.5708 + 0.4; if (c20Ground(x + Math.cos(a)*r, z + Math.sin(a)*r) > 0.09) return false; }
+  if (lanes) for (const l of lanes){
+    // distance to the lane's centre line (start .. end) against its half width + a margin
+    const ax = l.start[0], az = l.start[1], bx = l.end[0], bz = l.end[1], dx = bx - ax, dz = bz - az, L2 = dx*dx + dz*dz || 1;
+    const t = Math.max(-0.05, Math.min(1.05, ((x - ax)*dx + (z - az)*dz)/L2)), px = ax + dx*t - x, pz = az + dz*t - z;
+    if (px*px + pz*pz < Math.pow((l.w || 3.2) + 2.6 + r, 2)) return false;
+  }
+  for (const p of JMP.pads){
+    const dx = x - p.x, dz = z - p.z; if (dx*dx + dz*dz > p.r2 + 40) continue;
+    const lx = dx*p.c - dz*p.s, lz = dx*p.s + dz*p.c;
+    if (lx > -p.hw - 2 - r && lx < p.hw + 2 + r && lz > -3 - r && lz < p.len + 3 + r) return false;
+  }
+  return true;
+}
+const C20_PLANTS = [['scrub0', 0.9], ['scrub1', 0.9], ['scrub2', 0.9], ['grass', 0.5], ['grass', 0.5], ['saguaro0', 1.0], ['saguaro1', 1.0], ['saguaro2', 1.0],
+                    ['barrel', 0.6], ['pear', 0.9], ['ocotillo', 1.3], ['rock0', 1.0], ['rock1', 1.1], ['rock2', 1.6]];
+function c20Plant(name, x, z, gy, ry, s){
+  const mat = PK_MAT.cloth;
+  c20Put(name, mat, x, gy, z, ry, s);
+  if (name.startsWith('rock')) CANYON20.stats.rocks++; else CANYON20.stats.plants++;
+}
+
+/* ---------------------------------------------------------------- one lot: name board, plants, floodlights, distance boards, banners */
+function c20DressLot(L){
+  const K = jmpK(L.cx, L.cz, L.R), R = mulberry32(hashSeed('c20lot' + L.i + ',' + L.j)), key = Math.round(L.cx) + ',' + Math.round(L.cz);
+  const lanes = JMP.lanes.filter(l => l.lot === key);
+  const fr = (u, v) => K.W(u, v);
+  // 1. the lot's name board: a far corner, facing back down the lot toward the run-ups (riders read it as they roll in)
+  const corners = [[-38.5, 39.5], [38.5, 39.5], [-38.5, -39.5], [38.5, -39.5]];
+  for (const c of corners){
+    const p = fr(c[0], c[1]);
+    if (!c20Free(p[0], p[1], 1.2, lanes)) continue;
+    const back = c[1] < 0;                                        // a near corner: face the lot's middle instead
+    const ry = L.R + (back ? 0 : Math.PI) + (c[0] < 0 ? -1 : 1)*(back ? -0.35 : 0.35);
+    c20Sign('lot', L.t, p[0], p[1], 0, ry, 8.0, 1.5, 4.6, 2);
+    break;
+  }
+  // 2. distance boards along the bigger landings (5 m steps around the tuned flight), on the right of the landing hill
+  for (const l of lanes){
+    if (!(l.F >= 20) || !l.lip) continue;
+    const f = [Math.sin(l.yaw), Math.cos(l.yaw)], rt = [Math.cos(l.yaw), -Math.sin(l.yaw)], off = (l.w || 3) + 0.9 + 1.6;
+    const d0 = Math.max(5, Math.round((l.F - 5)/5)*5), d1 = Math.min(60, Math.round((l.F + 5)/5)*5);
+    for (let d = d0; d <= d1; d += 5){
+      const x = l.lip[0] + f[0]*d + rt[0]*off, z = l.lip[1] + f[1]*d + rt[1]*off;
+      if (c20Ground(x, z) > 0.09) continue;
+      c20Sign('plate', d/5 - 1, x, z, 0, l.yaw + Math.PI, 1.4, 0.7, 1.15, 1);
+      CANYON20.stats.boards++;
+    }
+  }
+  // 3. floodlights beside the biggest lane's landing (the lamp field lights the lot at night; lenses glow)
+  const big = lanes.slice().sort((a, b) => (b.F || 0) - (a.F || 0))[0];
+  let nl = 0;
+  const flood = (x, z) => {
+    if (nl >= (big && big.F >= 30 ? 2 : 1) || !c20Free(x, z, 0.8, lanes) || !c20Free(x + 1.42, z, 0.6, null)) return;
+    c20Put('flood', PK_MAT.cloth, x, 0, z, 0, 1, false);
+    c20Put('lens', PROP.lampLens, x, 0, z, 0, 1, false);
+    LAMPS.push(x, z); nl++; CANYON20.stats.lamps++;
+  };
+  if (big && big.lip){
+    const rt = [Math.cos(big.yaw), -Math.sin(big.yaw)], f = [Math.sin(big.yaw), Math.cos(big.yaw)], off = (big.w || 3) + 6.5;
+    [[1, 0.35], [-1, 0.75], [-1, 0.2], [1, 0.9]].forEach(q => { const d = (big.F || 20)*q[1]; flood(big.lip[0] + f[0]*d + rt[0]*off*q[0], big.lip[1] + f[1]*d + rt[1]*off*q[0]); });
+  } else {
+    [[-20, -20], [20, 20], [20, -20], [-20, 20]].forEach(q => { const p = fr(q[0], q[1]); flood(p[0], p[1]); });
+  }
+  // 4. banners on the run-up edge (low boards, out of every lane)
+  let nb = 0;
+  for (let k = 0; k < 6 && nb < 1; k++){
+    const u = -36 + R()*72, p = fr(u, -41.2);
+    if (!c20Free(p[0], p[1], 2.4, lanes)) continue;
+    c20Sign('word', Math.floor(R()*C20_WORDS.length), p[0], p[1], 0, L.R + Math.PI, 3.6, 0.9, 0.35, 2);
+    nb++;
+  }
+  // 5. desert plants and rocks: free ground near the lot's edges (never in a lane, on a pad or on a ramp)
+  let np = 0;
+  for (let k = 0; k < 24 && np < 6; k++){
+    const edge = R(), u = edge < 0.5 ? (R() < 0.5 ? -1 : 1)*(33 + R()*9) : -42 + R()*84, v = edge < 0.5 ? -42 + R()*84 : (R() < 0.5 ? -1 : 1)*(33 + R()*9);
+    const pk = C20_PLANTS[Math.floor(R()*C20_PLANTS.length)], s = 0.75 + R()*0.5, p = fr(u, v);
+    if (!c20Free(p[0], p[1], pk[1]*s + 0.4, lanes)) continue;
+    c20Plant(pk[0], p[0], p[1], 0.03, R()*6.283, pk[0].startsWith('saguaro') ? s*0.85 : s);
+    // a clump: grass round a bigger plant
+    if (pk[0] !== 'grass' && R() < 0.6){ const a = R()*6.28, q = [p[0] + Math.cos(a)*1.3, p[1] + Math.sin(a)*1.3]; if (c20Free(q[0], q[1], 0.6, lanes)) c20Plant('grass', q[0], q[1], 0.03, R()*6.28, 0.8 + R()*0.6); }
+    np++;
+  }
+}
+
+/* ---------------------------------------------------------------- the desert between the fence and the canyon walls */
+function c20Desert(){
+  const A = C20_WALL.A, R = mulberry32(hashSeed('c20desert')), B = BOUND + 3;
+  let n = 0;
+  for (let k = 0; k < 2000 && n < 620; k++){
+    const s = R()*C20_WALL.L, p = c20WallAt(s);
+    const v = -(38 + R()*(A - BOUND - 43));                                                       // between the fence and the toe of the walls
+    const x = p[0] + p[2]*v + (R() - 0.5)*10, z = p[1] + p[3]*v + (R() - 0.5)*10;
+    if (Math.abs(x) < B && Math.abs(z) < B) continue;
+    const pick = R(), sc = 0.8 + R()*0.7;
+    const name = pick < 0.22 ? 'saguaro' + (n % 3) : pick < 0.42 ? 'scrub' + (n % 3) : pick < 0.62 ? 'grass' : pick < 0.72 ? 'ocotillo' : pick < 0.8 ? 'pear' : pick < 0.86 ? 'barrel' : 'rock' + (n % 4);
+    c20Plant(name, x, z, -0.3, R()*6.283, name.startsWith('rock') ? sc*(1.2 + R()*1.8) : sc);
+    n++;
+  }
+}
+
+/* ---------------------------------------------------------------- the start: arch over the spawn lane, stands either side of the first gap, a crowd
+   Called from jmpLot() while the city is being built (the pylons and stands are solid pieces). K = the spawn lot's frame, the spawn lane at u = 0. */
+function c20StartArea(K){
+  if (!CANYON20.on) return;
+  const M = c20Mats(), gate = { u:6.6, v:-36.5, h:7.4 };
+  // the arch: two solid steel pylons, a beam overhead with the banner on both faces
+  [-1, 1].forEach(sd => { const p = K.W(sd*gate.u, gate.v); pkSlab(p[0], p[1], K.R, 0.55, 0.55, gate.h, M.steel.red); });
+  const c = K.W(0, gate.v);
+  if (!CANYON20.G.beam) CANYON20.G.beam = c20Merge([[new T.BoxGeometry(2*gate.u + 1.4, 1.75, 0.9).translate(0, 0.875, 0), 0x2c2a28, 0.04]]);
+  _vmo.position.set(c[0], gate.h - 1.75, c[1]); _vmo.rotation.set(0, K.R, 0); _vmo.scale.set(1, 1, 1);
+  vmeshAdd(CANYON20.G.beam, PK_MAT.cloth, false, false);
+  [0, Math.PI].forEach(r => { const f = [Math.sin(K.R + Math.PI + r), Math.cos(K.R + Math.PI + r)];
+    c20Face(c20FaceGeo('banner', 0, 2*gate.u + 0.6, 1.5), c[0] + f[0]*0.47, gate.h - 0.87, c[1] + f[1]*0.47, K.R + Math.PI + r); });
+  // bulbs along the beam's lower edge (PROP.lampLens: they glow at dusk with the street lamps)
+  for (let k = -6; k <= 6; k++){ const p = K.W(k, gate.v - 0.48); _vmo.position.set(p[0], gate.h - 1.82, p[1]); _vmo.rotation.set(0, 0, 0); _vmo.scale.set(1, 1, 1); vmeshAdd(c20Proto('bulb'), PROP.lampLens, false, false); }
+  { const p = K.W(0, -42.1); pkText('START', p[0], p[1], K.R + Math.PI, 1.6, PK_PAINT.white, 0.08); }
+  // stands: five rows, either side of the first gap, facing the lane
+  const stands = [{ u:8.2, rot:K.R + Math.PI }, { u:-8.2, rot:K.R }], vC = -8, hl = 10;
+  stands.forEach((st, si) => {
+    const p = K.W(st.u, vC);
+    pkBleacher(p[0], p[1], st.rot, hl, 5);
+    const R = mulberry32(hashSeed('c20crowd' + si));
+    for (let r = 0; r < 5; r++) for (let q = -hl + 0.6; q <= hl - 0.6; q += 0.78){
+      if (R() < 0.22) continue;
+      const lx = -(r*0.85), w = pkLW(p[0], p[1], st.rot, lx, q);
+      c20Put('fan' + Math.floor(R()*12), PK_MAT.cloth, w[0], 0.42*(r + 1), w[1], st.rot + Math.PI/2 + (R() - 0.5)*0.4, 0.95 + R()*0.12, false);
+      CANYON20.stats.crowd++;
+    }
+    // sponsor boards along the back rail, facing the lane
+    for (let q = -hl + 2.4; q <= hl - 2; q += 4.8){
+      const w = pkLW(p[0], p[1], st.rot, -(5*0.85 - 0.18), q);
+      c20Sign('word', Math.floor(R()*C20_WORDS.length), w[0], w[1], 0.42*5 + 0.9, st.rot + Math.PI/2, 3.6, 0.9, 0.1, 2);
+    }
+  });
+  CANYON20.gate = { x:c[0], z:c[1], yaw:K.R };
+}
+
+/* ---------------------------------------------------------------- hooks */
+/* every lot registers itself while the town is built (map_jump.js jmpLot) */
+function c20LotDone(L){ if (CANYON20.on) CANYON20.lots.push(L); }
+/* after the pieces are indexed (buildTerrain runs then, before the batcher): the canyon, the hills, the desert, every lot's dressing */
+function c20AfterTerrain(){
+  const t0 = performance.now();
+  c20Mats();
+  c20Try('walls', c20Walls);
+  c20Try('buttes', c20Buttes);
+  c20Try('hills', c20Hills);
+  c20Try('ground', () => { if (MAT.dirt){ MAT.dirt.map = CANYON20.M.tx.sand; MAT.dirt.needsUpdate = true; } });
+  c20Try('desert', c20Desert);
+  CANYON20.lots.forEach(L => c20Try('lot ' + L.i + ',' + L.j, () => c20DressLot(L)));
+  c20Try('signs', c20FacesBuild);
+  CANYON20.stats.ms = Math.round(performance.now() - t0);
+}
+/* far canyon pieces are hidden when the fog has them anyway (Toaster / Potato views are short) */
+function c20Tick(){
+  const W = CANYON20.walls; if (!W || !scene.fog) return;
+  const fx = camera.position.x, fz = camera.position.z, far = scene.fog.far + 40;
+  for (let i = 0; i < W.length; i++){
+    const m = W[i], s = m.geometry.boundingSphere; if (!s) continue;
+    const dx = s.center.x - fx, dz = s.center.z - fz;
+    m.visible = Math.sqrt(dx*dx + dz*dz) - s.radius < far;
+  }
+}
+if (CANYON20.on){
+  const _c20bt = buildTerrain;
+  buildTerrain = function(){ const r = _c20bt.apply(this, arguments); c20Try('after terrain', c20AfterTerrain); return r; };
+  if (typeof addFrameHook === 'function') addFrameHook(() => { try { c20Tick(); } catch (e) {} });
+}
+
+/* =========================================================================
+   AIR CANYON 20 -- FUN (Release 15.9, stream `canyon`). Air Canyon only (CANYON20.on): nothing here runs on Dusk City.
+   1. Every jump is measured: take-off point -> touchdown (horizontal metres) and the peak over the take-off. A big one
+      (>= 12 m, or >= 4 m up) is called out ("31.4 m flight · 6.2 m high"); landed clean and >= 15 m it is also a trick in
+      the running line (addTrick "Flight 31 m"), so the score / money / combo / online paths see it like any other trick.
+   2. Canyon best: the longest clean flight is kept on this device (localStorage dusk_line_canyon20_best_v1, versioned and
+      validated); beating it shows an unlock card. The welcome toast quotes it (map_jump.js).
+   3. Air bags (map_jump.js lot 11, pieces flagged .bag): a landing on a bag is always soft -- out of shape, sideways,
+      mid-trick or hard, the bag swallows it (no bail), the speed sinks into it.
+   ========================================================================= */
+const C20F = { air:false, x0:0, z0:0, y0:0, peak:0, t:0, saves0:0, best:null, last:null, n:0, bag:0, calls:0 };
+const C20_BEST_KEY = 'dusk_line_canyon20_best_v1';
+function c20BestGet(){
+  if (C20F.best) return C20F.best;
+  try {
+    const o = JSON.parse(localStorage.getItem(C20_BEST_KEY) || 'null');
+    if (o && o.v === 1 && isFinite(o.d) && o.d > 0 && o.d < 500) C20F.best = { d:+o.d, h:isFinite(o.h) ? +o.h : 0, ride:String(o.ride || '').slice(0, 40), at:+o.at || 0 };
+  } catch (e) {}
+  return C20F.best;
+}
+function c20BestSet(b){
+  C20F.best = b;
+  try { localStorage.setItem(C20_BEST_KEY, JSON.stringify({ v:1, d:+b.d.toFixed(2), h:+b.h.toFixed(2), ride:b.ride, at:b.at })); } catch (e) {}
+}
+function c20Say(type, html, o){
+  C20F.calls++;
+  if (typeof feelToast === 'function') feelToast(type, html, o);
+  else if (typeof toast === 'function') toast(html.replace(/<[^>]+>/g, ''), true);
+}
+/* a landing: d = metres flown (horizontal), h = metres above the take-off at the top, t = seconds in the air */
+function c20Landed(d, h, t, clean){
+  C20F.last = { d, h, t, clean };
+  if (d < 12 && h < 4) return;
+  C20F.n++;
+  c20Say('callout', '<b>' + d.toFixed(1) + ' m</b> flight · ' + h.toFixed(1) + ' m high');
+  if (!clean) return;
+  if (d >= 15 && typeof addTrick === 'function') addTrick('Flight ' + Math.round(d) + ' m', Math.round((d - 10)*8 + h*15));
+  const b = c20BestGet();
+  if (d >= 15 && (!b || d > b.d + 0.05)){
+    const ride = (typeof FLEET_CUR !== 'undefined' && FLEET_CUR && FLEET_BY_ID && FLEET_BY_ID[FLEET_CUR]) ? FLEET_BY_ID[FLEET_CUR].name : '';
+    c20BestSet({ d, h, ride, at:Date.now() });
+    c20Say('unlock', 'Canyon best · ' + d.toFixed(1) + ' m', { kicker:b ? 'New record (was ' + b.d.toFixed(1) + ' m)' : 'First Canyon best' });
+  }
+}
+/* after every physics step: take-off -> air -> touchdown (a bail or a rail catch ends it without a call) */
+function c20FlightTick(dt){
+  const st = bike.state;
+  if (st === 'air'){
+    if (!C20F.air){
+      C20F.air = true; C20F.x0 = bike.pos.x; C20F.z0 = bike.pos.z; C20F.y0 = bike.pos.y; C20F.peak = bike.pos.y; C20F.t = 0;
+      C20F.saves0 = (typeof stats !== 'undefined' && stats) ? stats.saves : 0;
+    } else if (bike.pos.y > C20F.peak) C20F.peak = bike.pos.y;
+    C20F.t += dt;
+    return;
+  }
+  if (!C20F.air) return;
+  C20F.air = false;
+  if (st !== 'ride' || C20F.t < 0.35) return;
+  const d = Math.hypot(bike.pos.x - C20F.x0, bike.pos.z - C20F.z0);
+  if (d > 140 || d > C20F.t*45 + 5) return;                     // not a flight: the rider was put somewhere else (reset, travel)
+  const clean = !(typeof stats !== 'undefined' && stats && stats.saves !== C20F.saves0);
+  c20Landed(d, C20F.peak - C20F.y0, C20F.t, clean);
+}
+if (CANYON20.on){
+  const _c20sp = stepPhysics;
+  stepPhysics = function(dt){
+    const r = _c20sp.apply(this, arguments);
+    try { c20FlightTick(dt); } catch (e) {}
+    return r;
+  };
+  // a reset / respawn / fast travel ends whatever flight was being measured
+  const _c20rb = resetBike;
+  resetBike = function(){ C20F.air = false; return _c20rb.apply(this, arguments); };
+  // the air bags: whatever shape you arrive in, the bag takes it
+  const _c20land = landFromAir;
+  landFromAir = function(s){
+    if (!(s && s.piece && s.piece.bag)) return _c20land.apply(this, arguments);
+    const bt0 = BT, tu0 = tricksUnfinished;
+    BT = Object.assign({}, bt0, { flip:Math.PI + 0.01, side:Math.PI/2 + 0.01, hardMul:99, steepNy:-2, caseWin:Math.PI + 0.01, save:false });
+    tricksUnfinished = function(){ return false; };
+    let r;
+    try { r = _c20land.apply(this, arguments); } finally { BT = bt0; tricksUnfinished = tu0; }
+    if (bike.state === 'ride'){
+      bike.vel.multiplyScalar(0.5);
+      C20F.bag++;
+      if (C20F.bag === 1 || C20F.bag % 4 === 0) c20Say('callout', 'Air bag!');
+    }
+    return r;
+  };
+}
+
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
