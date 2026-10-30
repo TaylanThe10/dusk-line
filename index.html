@@ -3168,7 +3168,7 @@ html.touchUI .st13Prompt b{ width:32px; height:32px; }
 
   <div class="mGrid">
     <aside class="mCol mLeft">
-      <div class="mHead"><span class="mNote">pick a spot</span></div>
+      <div class="mHead"><span class="mNote">your city</span></div>
       <div class="mapList" id="mapList"></div>
       <button class="mpCard" id="mpBtn" type="button">
         <span class="ico" aria-hidden="true"><i></i><i></i></span>
@@ -8362,7 +8362,7 @@ const MAPS = {
     swatch:['#2f6fd0','#e8a35a','#d9533a']
   }
 };
-const MAP_ORDER = ['dusk','palm','neon','frost','jump'];
+const MAP_ORDER = ['dusk'];          // Release 15.8: ONE city (the user: "remove the shaders like snow neon palm just have one")
 function mapKeyFromCode(code){
   const c = String(code || '').charAt(0).toUpperCase();
   for (let i=0;i<MAP_ORDER.length;i++) if (MAPS[MAP_ORDER[i]].code === c) return MAP_ORDER[i];
@@ -8380,7 +8380,8 @@ function mapStoreSet(key){
   try { sessionStorage.setItem(MAP_STORE_KEY, key); } catch(e){}
   try { window.name = String(window.name || '').replace(/(?:^|;)dlmap=\w+/g, '') + ';dlmap=' + key; } catch(e){}
 }
-const MAP = MAPS[mapStoreGet()];
+const MAP = MAPS.dusk;               // Release 15.8: always Dusk City; a saved / linked other city is put back to it
+try { if (mapStoreGet() !== 'dusk') mapStoreSet('dusk'); } catch(e){}
 const MAP_CYCLE = MAP.cycle || [0,1];
 
 /* ---------------------------------------------------------------- materials */
@@ -14097,7 +14098,7 @@ function afterTake(){
   try { const o = JSON.parse(v); return (o && Date.now() - o.t < 120000) ? o : null; } catch(e){ return null; }
 }
 function switchMap(key, after){
-  if (!MAPS[key] || key === MAP.key) return false;
+  if (!MAPS[key] || key === MAP.key || MAP_ORDER.indexOf(key) < 0) return false;
   mapStoreSet(key);
   if (key === 'jump' && typeof jmpPickRide === 'function') jmpPickRide();     // Air Canyon is made for e-scooters
   if (after) afterSet(after);
@@ -28577,7 +28578,7 @@ const FLEET_NAMES15 = {
   zero10x:    ['Glidr', 'Rally Ten', 'Rally-style dual motor: sand paint, orange springs, a curved stem and tyres that eat rough road.'],
   vsett10:    ['Glidr', 'Dual Ten', 'Long-range tank: deep blue paint, a tall braced stem, dual motors and cyan deck lights.'],
   inokim:     ['Glidr', 'Hornet', 'Black and yellow hyper scooter: twin stems, a hydraulic front end and a round dash.'],
-  skyrider:   ['Dusk', 'Skyrider', null]
+  skyrider:   ['Dusk', 'Skyrider', 'The big-air scooter: long-travel suspension front and back, wide bars and a deck that pops. Built to fly off the park kickers.']
 };
 (function(){
   FLEET.forEach(v=>{
