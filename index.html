@@ -9546,7 +9546,7 @@ float rdRgh = 1.0;
   else if (rdM < 3.5) rdPaint(rdP, rdAa, rdCol, rdRgh);
   else if (rdM < 4.5) rdWalkCity(rdP, vWPos.y, normalize(vWNrm), rdAa, rdCol, rdRgh);
   else if (rdM < 5.5) rdWalkStrip(vUv / 0.4, rdP, rdAa, rdCol, rdRgh);
-  else { rdCol = diffuse * sRGBToLinear(texture2D(map, vUv)).rgb; rdRgh = 1.0; }
+  else { rdCol = diffuse * sRGBToLinear(texture2D(map, vUv)).rgb; rdRgh = vWNrm.y > 0.7 ? 2.6 : 1.0; }
   if (rdM < 2.5) rdCol *= uRdC.y;
   diffuseColor.rgb = rdCol;
   /* the aggregate's normal map fades out with distance (no sparkle where a pixel covers many stones) */
@@ -69410,6 +69410,471 @@ if (CANYON20.on){
   };
 }
 
+/* =========================================================================
+   LOOK21 STREETS -- Release 15.9 (helper `look`): "The whole game look: better graphics and details everywhere in
+   Dusk City" -- he judges riding behind the bike at street level.
+   What the before sheets showed (High / Medium, day / golden hour / night): streets with nothing parked along the
+   kerbs (a toy box-car now and then), wide bare sidewalks (one bench or bin per block), tree pits drawn as white
+   squares. This module dresses the streets AROUND THE CAMERA (nothing is stored for the whole city):
+   1. PARKED CARS in the parking lanes the road paint already draws (6.4 m bays from 18.4 m past every crossing, both
+      kerbs, never on bike-lane streets: the same hash the road shader uses), drawn with the traffic's own car models and
+      materials made exactly like the traffic's (instanced -> the traffic's shader programs), in four paint groups. The old box cars (parkedCar,
+      still built for their collision boxes) are drawn by the same pool, so every parked car looks the same; new bays
+      get the same collision box as an old car (runtime pieces, rgPieceAdd) while the pool is on.
+   2. KERBSIDE FURNITURE in the furniture strip by the kerb: litter bins, bike racks, news boxes, benches, signal
+      cabinets, planters, parking signs -- a rhythm per block side from a hash of the block (never drand / Math.random:
+      the city's layout and every online client's copy stay identical), instanced, vertex-coloured, one material made like
+      the traffic cargo's (the same shader program).
+   Follows the graphics mode: only at GFXP.detail >= 1 (Medium: fewer, High+: all). Toaster / Potato / Low (detail 0)
+   are untouched: the box cars stay, nothing new is created, drawn or compiled. Work: one cell check a frame; the pool
+   is re-laid only when the camera crosses into another block (a few ms, no per-frame allocations).
+   API: L21 (state + stats, for tests), look21Relay() (force a re-lay).
+   ========================================================================= */
+const L21 = {
+  on: false, made: false, bi: 1e9, bj: 1e9, dirty: true, det: -1, fail: '',
+  old: [],                // recorded at build time: parkedCar(x, z, rot, y) -> x, z, rot, y
+  oldIdx: null,           // Map 'i,j' (block) -> [indices into old / 4]
+  items: [],              // recorded street items (trees, bins, hydrants): x, z, r
+  itemIdx: null,
+  pieces: new Map(),      // car key -> collision piece (new bays only)
+  keep: new Set(),
+  st: { relays: 0, ms: 0, maxMs: 0, cars: 0, oldCars: 0, wheels: 0, props: 0, pieces: 0 }
+};
+window.L21 = L21;
+const L21_R = 2;                                   // blocks around the camera's block (5 x 5)
+const L21_CAP = { car: [0, 100, 170], wheel: [0, 28, 44] };
+const L21_MAXC = 1600;
+/* paint groups (material colours) and the picks: [group, per-instance tint r, g, b] -- the last group is white paint tinted
+   per car (blue / red / green / beige / dark grey), the others are their colour with a slight per-car shade */
+const L21_PAINT = [0xe4e1da, 0x1c1e22, 0x8e949a, 0xffffff];
+const L21_PICK = [[0, 1, 1, 1], [0, 0.96, 0.95, 0.9], [1, 1, 1, 1], [1, 1.25, 1.25, 1.3], [2, 1, 1, 1], [2, 0.8, 0.82, 0.86],
+                  [3, 0.04, 0.09, 0.22], [3, 0.27, 0.035, 0.035], [3, 0.05, 0.13, 0.07], [3, 0.46, 0.41, 0.3], [3, 0.12, 0.2, 0.36], [0, 1, 1, 1]];
+const L21_GCAP = 64;
+const L21_UG = new Int32Array(12);
+const L21_C = new Float32Array(L21_MAXC*8);        // candidates: x, z, yaw, y, style, colour, dist2, isNew
+const L21_ORD = [];
+
+/* ---------------------------------------------------------------- build-time recording (runs before the city is built) */
+/* only the city grid's own items (region chunks outside the slab stream in and out: never recorded) */
+function l21InCity(x, z){ return typeof CITY_HALF === 'number' && Math.abs(x) < CITY_HALF + 8 && Math.abs(z) < CITY_HALF + 8; }
+(function l21Record(){
+  try {
+    if (typeof parkedCar === 'function'){
+      const base = parkedCar;
+      parkedCar = function(x, z, rot, y){ if (l21InCity(x, z)) L21.old.push(x, z, rot || 0, y || 0); return base.apply(this, arguments); };
+    }
+    const rec = (fn, r)=> function(x, z){ if (l21InCity(x, z)) L21.items.push(x, z, r); return fn.apply(this, arguments); };
+    if (typeof tree === 'function') tree = rec(tree, 1.0);
+    if (typeof trashCan === 'function') trashCan = rec(trashCan, 0.5);
+    if (typeof hydrant === 'function') hydrant = rec(hydrant, 0.6);
+    if (typeof bench === 'function') bench = rec(bench, 1.1);
+    if (typeof bikeRack === 'function') bikeRack = rec(bikeRack, 1.0);
+  } catch(e){ L21.fail = 'record: ' + e.message; }
+})();
+
+/* ---------------------------------------------------------------- hashes */
+function l21H(a, b, c, d){
+  let h = Math.imul((a | 0) + 0x3c6ef372, 0x85ebca6b) ^ Math.imul((b | 0) + 0x1b873593, 0xc2b2ae35) ^ Math.imul((c | 0) + 0x27d4eb2f, 0x165667b1) ^ Math.imul((d | 0) + 0x61c88647, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d); h ^= h >>> 12; h = Math.imul(h, 0x297a2d39); h ^= h >>> 15;
+  return (h >>> 0)/4294967296;
+}
+/* the road shader's rdH2 in float32 (mods/roads14_look.js): which streets carry bike lanes instead of parking */
+const l21F = Math.fround;
+function l21Fr(x){ return l21F(x - Math.floor(x)); }
+function l21RdH2(px, py){
+  px = l21F(px); py = l21F(py);
+  const k = l21F(0.1031), c33 = l21F(33.33);
+  let qx = l21Fr(l21F(px*k)), qy = l21Fr(l21F(py*k)), qz = l21Fr(l21F(px*k));
+  const d = l21F(l21F(l21F(qx*l21F(qy + c33)) + l21F(qy*l21F(qz + c33))) + l21F(qz*l21F(qx + c33)));
+  qx = l21F(qx + d); qy = l21F(qy + d); qz = l21F(qz + d);
+  return l21Fr(l21F(l21F(qx + qy)*qz));
+}
+/* 1 parking, 0 bike lane, -1 too close to the shader's threshold to be sure (no cars there) */
+const L21_STREET = new Map();
+function l21Parking(vert, k){
+  const key = (vert ? 'v' : 'h') + k;
+  let v = L21_STREET.get(key);
+  if (v !== undefined) return v;
+  const rid = vert ? l21F(l21F(k*l21F(1.37)) + l21F(0.3)) : l21F(l21F(k*l21F(2.11)) + l21F(7.9));
+  const h = l21RdH2(rid, 3.7);
+  v = Math.abs(h - 0.62) < 0.012 ? -1 : (h >= 0.62 ? 0 : 1);
+  L21_STREET.set(key, v);
+  return v;
+}
+function l21Node(i, j){
+  if (i < -GRID_N || j < -GRID_N || i >= GRID_N || j >= GRID_N) return false;
+  try { return (typeof rdNodeCtl === 'function') ? rdNodeCtl(i, j) >= 0 : true; } catch(e){ return true; }
+}
+
+/* ---------------------------------------------------------------- recorded items, per block */
+function l21Index(){
+  if (L21.oldIdx && L21.oldIdx._n === L21.old.length && L21.itemIdx._n === L21.items.length) return;
+  const idx = (arr, stride)=>{
+    const m = new Map();
+    for (let k = 0; k < arr.length; k += stride){
+      const key = Math.round(arr[k]/CELL) + ',' + Math.round(arr[k + 1]/CELL);
+      let a = m.get(key); if (!a){ a = []; m.set(key, a); }
+      a.push(k);
+    }
+    return m;
+  };
+  L21.oldIdx = idx(L21.old, 4); L21.oldIdx._n = L21.old.length;
+  L21.itemIdx = idx(L21.items, 3); L21.itemIdx._n = L21.items.length;
+}
+/* is (x, z) within r (+ the item's radius) of a recorded street item of block (i, j)? */
+function l21Blocked(i, j, x, z, r){
+  const a = L21.itemIdx.get(i + ',' + j);
+  if (!a) return false;
+  const I = L21.items;
+  for (let n = 0; n < a.length; n++){ const k = a[n], dx = I[k] - x, dz = I[k + 1] - z, rr = r + I[k + 2]; if (dx*dx + dz*dz < rr*rr) return true; }
+  return false;
+}
+function l21NearOldCar(i, j, x, z, r){
+  const a = L21.oldIdx.get(i + ',' + j);
+  if (!a) return false;
+  const O = L21.old;
+  for (let n = 0; n < a.length; n++){ const k = a[n], dx = O[k] - x, dz = O[k + 1] - z; if (dx*dx + dz*dz < r*r) return true; }
+  return false;
+}
+function l21NearStore(x, z, r){
+  if (typeof STORES === 'undefined' || !STORES.length) return false;
+  for (let n = 0; n < STORES.length; n++){
+    const s = STORES[n]; if (s.map && s.map !== 'dusk') continue;
+    const sx = s.door ? s.door[0] : s.x, sz = s.door ? s.door[1] : s.z, dx = sx - x, dz = sz - z;
+    if (dx*dx + dz*dz < r*r) return true;
+  }
+  return false;
+}
+
+/* ---------------------------------------------------------------- kerbside furniture templates (vertex colours; +z = the road) */
+const L21T = {};
+function l21Tpl(){
+  if (L21T.ready) return L21T;
+  const mk = (fn)=>{ const A = w2Acc(); fn(A); const g = w2Mesh(A); g.computeBoundingSphere(); return g; };
+  L21T.bin = mk(A=>{
+    w2Cyl(A, 0, 0, 0, 0.30, 0.30, 0.06, 10, '#1b1d1f', true);
+    w2Cyl(A, 0, 0.06, 0, 0.27, 0.29, 0.78, 10, '#24402f');
+    w2Cyl(A, 0, 0.84, 0, 0.31, 0.25, 0.12, 10, '#1d2022');
+    w2Box(A, 0, 0.62, -0.285, 0.26, 0.12, 0.03, '#0d0e0f');                 // the slot, sidewalk side
+  });
+  L21T.rack = mk(A=>{
+    for (let k = -1; k <= 1; k++){
+      const x = k*0.78;
+      w2Box(A, x, 0.40, -0.34, 0.05, 0.80, 0.05, '#8d949a'); w2Box(A, x, 0.40, 0.34, 0.05, 0.80, 0.05, '#8d949a');
+      w2Box(A, x, 0.82, 0, 0.05, 0.05, 0.73, '#8d949a');
+    }
+  });
+  L21T.news = mk(A=>{
+    const cols = ['#b7322a', '#2c5c97', '#e2b522'];
+    for (let k = 0; k < 3; k++){
+      const x = (k - 1)*0.52;
+      w2Box(A, x, 0.25, 0, 0.08, 0.50, 0.08, '#2a2c2f');
+      w2Box(A, x, 0.82, 0, 0.46, 0.64, 0.42, cols[k]);
+      w2Box(A, x, 0.92, -0.215, 0.32, 0.24, 0.02, '#1a2027');                // window toward the sidewalk
+      w2Box(A, x, 1.16, 0, 0.48, 0.04, 0.44, '#d9d6cc');
+    }
+  });
+  L21T.bench = mk(A=>{
+    for (const z of [-0.17, -0.03, 0.11]) w2Box(A, 0, 0.45, z, 1.7, 0.04, 0.11, '#86603f');
+    w2Box(A, 0, 0.66, 0.21, 1.7, 0.10, 0.04, '#86603f', 0, -0.18); w2Box(A, 0, 0.82, 0.24, 1.7, 0.10, 0.04, '#86603f', 0, -0.18);
+    for (const x of [-0.72, 0.72]){
+      w2Box(A, x, 0.22, -0.12, 0.06, 0.44, 0.06, '#26292c'); w2Box(A, x, 0.22, 0.16, 0.06, 0.44, 0.06, '#26292c');
+      w2Box(A, x, 0.42, 0.02, 0.06, 0.05, 0.42, '#26292c'); w2Box(A, x, 0.66, 0.21, 0.06, 0.50, 0.05, '#26292c', 0, -0.18);
+      w2Box(A, x, 0.62, -0.06, 0.06, 0.04, 0.40, '#26292c');
+    }
+  });
+  L21T.cabinet = mk(A=>{
+    w2Box(A, 0, 0.05, 0, 0.98, 0.10, 0.66, '#9d998f');
+    w2Box(A, 0, 0.72, 0, 0.82, 1.24, 0.50, '#6c786f');
+    w2Box(A, 0, 1.36, 0, 0.88, 0.05, 0.56, '#58625b');
+    w2Box(A, 0, 0.72, -0.255, 0.012, 1.10, 0.012, '#2e3430');
+    w2Box(A, 0.30, 0.78, -0.258, 0.06, 0.03, 0.012, '#c9ccc4');
+  });
+  L21T.planter = mk(A=>{
+    w2Box(A, 0, 0.30, 0, 1.40, 0.60, 0.90, '#a9a398');
+    w2Box(A, 0, 0.61, 0, 1.46, 0.05, 0.96, '#bdb7ab');
+    w2Box(A, 0, 0.62, 0, 1.26, 0.04, 0.76, '#3b2e24');
+    w2Cyl(A, -0.32, 0.60, 0, 0.36, 0.20, 0.55, 7, '#3e6a33');
+    w2Cyl(A, 0.30, 0.60, 0.05, 0.32, 0.16, 0.48, 7, '#4b7a3a');
+    w2Cyl(A, 0.0, 0.60, -0.12, 0.26, 0.10, 0.62, 6, '#365e2e');
+  });
+  L21T.sign = mk(A=>{
+    w2Cyl(A, 0, 0, 0, 0.03, 0.03, 2.45, 6, '#7f858a');
+    w2Box(A, 0, 2.18, 0.04, 0.32, 0.46, 0.02, '#efede6');
+    w2Box(A, 0, 2.36, 0.052, 0.30, 0.07, 0.006, '#b3141c');
+    w2Box(A, 0, 1.99, 0.052, 0.30, 0.04, 0.006, '#1c1d20');
+  });
+  L21T.list = ['bin', 'rack', 'news', 'bench', 'cabinet', 'planter', 'sign'];
+  L21T.cap = { bin: 120, rack: 70, news: 60, bench: 60, cabinet: 40, planter: 50, sign: 120 };
+  L21T.cast = { bin: true, rack: false, news: true, bench: true, cabinet: true, planter: true, sign: false };
+  L21T.ready = true;
+  return L21T;
+}
+
+/* ---------------------------------------------------------------- the pool (made on first use) */
+const _l21M = new T.Matrix4(), _l21B = new T.Matrix4(), _l21W = new T.Matrix4(), _l21Q = new T.Quaternion(), _l21V = new T.Vector3(),
+      _l21S = new T.Vector3(1, 1, 1), _l21E = new T.Euler(), _l21Col = new T.Color();
+/* every instanced mesh carries per-instance colours (white when unused): the boot's prewarm gives them to every instanced
+   mesh (mods/perf.js, one program instead of two), and three r128 keeps a material's program when only that changes --
+   a shared material compiled with them, drawn for a mesh without them, throws in the renderer */
+function l21Inst(geo, mat, cap, cast){
+  const m = new T.InstancedMesh(geo, mat, cap);
+  m.instanceMatrix.setUsage(T.DynamicDrawUsage);
+  m.instanceColor = new T.InstancedBufferAttribute(new Float32Array(cap*3).fill(1), 3);
+  m.count = 0;
+  m.frustumCulled = false;
+  m.castShadow = !!cast; m.receiveShadow = true;
+  m.userData.noBatch = true; m.userData.noCull = true; m.userData.look21 = true;
+  m.visible = false;
+  scene.add(m);
+  return m;
+}
+function l21Make(){
+  if (L21.made) return !L21.fail;
+  L21.made = true;
+  try {
+    if (typeof ensureVehicles !== 'function' || typeof CAR_STYLES === 'undefined') throw new Error('no traffic models');
+    const V = ensureVehicles();
+    const tpl = l21Tpl();
+    // materials of our own, made exactly like the traffic's (same parameters + shader patch -> the same programs): a shared
+    // material keeps whichever program it was first built with, so the pool never leans on the traffic's draw order. The
+    // paint comes in four groups (white / black / silver / a colour carried by the per-instance colour): one body mesh per
+    // style and group, so the colours never depend on the per-instance colour alone.
+    L21.mats = { paint: [], glass: S({ color:C(0x10161c), roughness:0.08, metalness:0.55 }),
+                 wheel: new T.MeshStandardMaterial({ color:C(0xffffff), roughness:0.75, metalness:0.2, vertexColors:true }),
+                 cargo: S({ color:C(0xffffff), roughness:0.55, metalness:0.12, vertexColors:true }) };
+    patchWorldShading(L21.mats.cargo, { vary:0.08, stain:0.18 });
+    for (let g = 0; g < L21_PAINT.length; g++){ const m = S({ color:C(L21_PAINT[g]), roughness:0.32, metalness:0.35 }); patchWorldShading(m, { vary:0.06, stain:0.08 }); L21.mats.paint[g] = m; }
+    L21.body = []; L21.glass = [];
+    for (let k = 0; k < 3; k++){
+      L21.body[k] = [];
+      for (let g = 0; g < L21_PAINT.length; g++) L21.body[k][g] = l21Inst(V.body[k].geometry, L21.mats.paint[g], L21_GCAP, true);
+      L21.glass[k] = l21Inst(V.glass[k].geometry, L21.mats.glass, L21_CAP.car[2], false);
+    }
+    // a lighter wheel than the traffic's (no spokes: a parked wheel is a tyre and a hub), the traffic wheel material
+    const tyre = vTint(new T.CylinderGeometry(1, 1, 0.24, 12).rotateZ(Math.PI/2), 0x141518);
+    const hub = vTint(new T.CylinderGeometry(0.6, 0.6, 0.25, 8).rotateZ(Math.PI/2), 0xa9aeb4);
+    L21.wheelGeo = vMerge([tyre, hub]);
+    L21.wheel = l21Inst(L21.wheelGeo, L21.mats.wheel, L21_CAP.wheel[2]*4, false);
+    L21.prop = {};
+    for (const n of tpl.list) L21.prop[n] = l21Inst(tpl[n], L21.mats.cargo, tpl.cap[n], tpl.cast[n]);
+  } catch(e){ L21.fail = 'make: ' + (e && e.message || e); return false; }
+  // a rebuilt physics grid drops runtime pieces: put the bays' boxes back
+  try {
+    const base = rebuildPGrid;
+    rebuildPGrid = function(){ const r = base.apply(this, arguments); if (L21.on && typeof rgPieceAdd === 'function') L21.pieces.forEach(p=> rgPieceAdd(p)); return r; };
+  } catch(e){}
+  return true;
+}
+function l21Meshes(fn){
+  if (!L21.body) return;
+  for (let k = 0; k < 3; k++){ for (let g = 0; g < L21.body[k].length; g++) fn(L21.body[k][g]); fn(L21.glass[k]); }
+  fn(L21.wheel);
+  for (const n in L21.prop) fn(L21.prop[n]);
+}
+
+/* ---------------------------------------------------------------- on / off */
+function l21Det(){ const d = (typeof GFXP !== 'undefined' && GFXP) ? +GFXP.detail : 0; return d >= 2 ? 2 : (d >= 1 ? 1 : 0); }
+function l21Want(){
+  if (typeof MAP === 'undefined' || !MAP || MAP.key !== 'dusk' || l21Det() < 1 || L21.fail) return false;
+  const c = camera.position, lim = CITY_HALF + 220;
+  return Math.abs(c.x) < lim && Math.abs(c.z) < lim;
+}
+function l21SetOn(on){
+  if (on && !l21Make()) on = false;
+  L21.on = on;
+  // the old box cars: drawn by the pool while it is on (their collision boxes stay either way)
+  try { for (let k = 0; k < CAR_COLORS.length; k++) CAR_COLORS[k].visible = !on; CAR_GLASS.visible = !on; CAR_TIRE.visible = !on; } catch(e){}
+  l21Meshes(m=>{ m.visible = on; });
+  if (!on){
+    if (typeof rgPieceRemove === 'function') L21.pieces.forEach(p=> rgPieceRemove(p));
+    L21.pieces.clear();
+    L21.bi = 1e9; L21.bj = 1e9;
+  }
+  L21.dirty = true;
+}
+
+/* ---------------------------------------------------------------- one block's cars + furniture */
+const L21_SIDES = [[0, -1], [0, 1], [-1, 0], [1, 0]];          // n, s, w, e: the outward normal (toward the road)
+let _l21N = 0;
+function l21AddCar(x, z, yaw, y, style, col, isNew, cx, cz){
+  if (_l21N >= L21_MAXC) return;
+  const o = _l21N*8, dx = x - cx, dz = z - cz;
+  L21_C[o] = x; L21_C[o + 1] = z; L21_C[o + 2] = yaw; L21_C[o + 3] = y; L21_C[o + 4] = style; L21_C[o + 5] = col; L21_C[o + 6] = dx*dx + dz*dz; L21_C[o + 7] = isNew;
+  _l21N++;
+}
+function l21BlockCars(i, j, cx, cz){
+  const bx = i*CELL, bz = j*CELL, half = CELL/2, bias = Math.max(0, Math.min(1, 1 - Math.max(Math.abs(bx), Math.abs(bz))/(CITY_HALF*0.9)));
+  const occ = 0.50 + 0.30*bias;
+  for (let s = 0; s < 4; s++){
+    const nx = L21_SIDES[s][0], nz = L21_SIDES[s][1], vert = s >= 2;
+    // the street this kerb faces, and the two crossings at its ends
+    const k = vert ? (nx < 0 ? i - 1 : i) : (nz < 0 ? j - 1 : j);
+    if (l21Parking(vert, k) !== 1) continue;
+    const okA = vert ? l21Node(k, j - 1) : l21Node(i - 1, k), okB = vert ? l21Node(k, j) : l21Node(i, k);
+    if (!okA || !okB) continue;
+    const ax = vert ? 0 : 1, az = vert ? 1 : 0;                              // along the kerb
+    const yaw = Math.atan2(-nz, nx);                                       // right-hand traffic on this kerb
+    const rx = bx + nx*(half - 5.25), rz = bz + nz*(half - 5.25);         // bay centre line (5.25 m from the road's centre)
+    let run = 0;
+    for (let q = 0; q < 12; q++){
+      const u = q < 6 ? -half + 18.4 + 6.4*q : half - 18.4 - 6.4*(q - 6);
+      const h = l21H(i, j, s*16 + q, 77);
+      if (h > occ || run >= 3){ run = 0; continue; }
+      const jit = (l21H(i, j, s*16 + q, 78) - 0.5)*0.7, off = (l21H(i, j, s*16 + q, 79) - 0.5)*0.22;
+      const x = rx + ax*(u + jit) - nx*off, z = rz + az*(u + jit) - nz*off;
+      if (l21NearOldCar(i, j, x, z, 5.6) || l21Blocked(i, j, x, z, 2.6) || l21NearStore(x, z, 16)){ run = 0; continue; }
+      const st = l21H(i, j, s*16 + q, 80), style = st < 0.45 ? 0 : (st < 0.75 ? 1 : 2);
+      const flip = l21H(i, j, s*16 + q, 82) < 0.12 ? Math.PI : 0;                                   // a few nose-in from the other way
+      l21AddCar(x, z, yaw + flip + (l21H(i, j, s*16 + q, 83) - 0.5)*0.05, 0, style, (l21H(i, j, s*16 + q, 81)*L21_PICK.length) | 0, 1, cx, cz);
+      run++;
+    }
+  }
+  // the old cars of this block (kerbs, garage decks, store lots) -- drawn by the pool too
+  const a = L21.oldIdx.get(i + ',' + j);
+  if (a) for (let n = 0; n < a.length; n++){
+    const k = a[n], O = L21.old, x = O[k], z = O[k + 1];
+    const st = l21H(Math.round(x*4), Math.round(z*4), 5, 90), style = st < 0.45 ? 0 : (st < 0.75 ? 1 : 2);
+    l21AddCar(x, z, O[k + 2], O[k + 3], style, (l21H(Math.round(x*4), Math.round(z*4), 6, 91)*L21_PICK.length) | 0, 0, cx, cz);
+  }
+}
+/* props: per template, flat arrays of x, z, yaw, tint, dist2 */
+const L21_P = {};
+function l21PropAdd(n, x, z, yaw, tint, cx, cz){
+  let a = L21_P[n]; if (!a){ a = L21_P[n] = { v: new Float32Array(1200*5), n: 0 }; }
+  if (a.n >= 1200) return;
+  const o = a.n*5, dx = x - cx, dz = z - cz;
+  a.v[o] = x; a.v[o + 1] = z; a.v[o + 2] = yaw; a.v[o + 3] = tint; a.v[o + 4] = dx*dx + dz*dz;
+  a.n++;
+}
+function l21BlockProps(i, j, cx, cz, det){
+  const bx = i*CELL, bz = j*CELL, half = BLOCK/2, bias = Math.max(0, Math.min(1, 1 - Math.max(Math.abs(bx), Math.abs(bz))/(CITY_HALF*0.9)));
+  const dens = (0.45 + 0.55*bias)*(det >= 2 ? 1 : 0.6);
+  const put = (n, s, u, inset, rot, r)=>{
+    const nx = L21_SIDES[s][0], nz = L21_SIDES[s][1], ax = s >= 2 ? 0 : 1, az = s >= 2 ? 1 : 0;
+    const x = bx + nx*(half - inset) + ax*u, z = bz + nz*(half - inset) + az*u;
+    if (l21Blocked(i, j, x, z, r) || l21NearStore(x, z, 7)) return false;
+    l21PropAdd(n, x, z, Math.atan2(nx, nz) + (rot || 0), 0.86 + 0.24*l21H(i, j, Math.round(u*10), s + 40), cx, cz);
+    return true;
+  };
+  for (let s = 0; s < 4; s++){
+    const R = (q)=> l21H(i, j, s*32 + q, 300);
+    const vert = s >= 2, nx = L21_SIDES[s][0], nz = L21_SIDES[s][1];
+    const k = vert ? (nx < 0 ? i - 1 : i) : (nz < 0 ? j - 1 : j), parking = l21Parking(vert, k) === 1;
+    const e = R(1) < 0.5 ? 1 : -1;                                          // which end of the side gets what
+    if (R(2) < 0.85*dens) put('bin', s, e*(30 + R(3)*4), 0.75, 0, 0.5);
+    if (R(4) < 0.55*dens) put('bin', s, -e*(31 + R(5)*4), 0.75, 0, 0.5);
+    if (R(6) < 0.45*dens) put('news', s, e*(21 + R(7)*5), 0.85, 0, 1.0);
+    if (R(8) < 0.55*dens) put('rack', s, (R(9) - 0.5)*24, 0.95, 0, 1.2);
+    if (R(10) < 0.40*dens){ const u = -e*(8 + R(11)*10); put('bench', s, u, 0.85, 0, 1.0); }
+    if (R(12) < 0.30*dens && bias > 0.35){ const u = (R(13) - 0.5)*30; put('planter', s, u - 3.2, 1.1, 0, 0.9); put('planter', s, u + 3.2, 1.1, 0, 0.9); }
+    if (s === ((R(14)*4) | 0) && R(15) < 0.7) put('cabinet', s, e*(37.5 + R(16)*2), 0.7, 0, 0.7);
+    if (parking && R(17) < 0.8*dens){ put('sign', s, -e*(42 - R(18)*2), 0.32, 0, 0.3); if (R(19) < 0.6) put('sign', s, e*(4 - R(20)*8), 0.32, 0, 0.3); }
+  }
+}
+
+/* ---------------------------------------------------------------- re-lay */
+function l21Relay(bi, bj){
+  const t0 = performance.now();
+  l21Index();
+  const det = l21Det(), cx = camera.position.x, cz = camera.position.z;
+  L21.bi = bi; L21.bj = bj; L21.dirty = false; L21.det = det;
+  _l21N = 0;
+  for (const n in L21_P) L21_P[n].n = 0;
+  for (let dj = -L21_R; dj <= L21_R; dj++) for (let di = -L21_R; di <= L21_R; di++){
+    const i = bi + di, j = bj + dj;
+    if (!blockExists(i, j)) continue;
+    l21BlockCars(i, j, cx, cz);
+    if (Math.abs(di) <= 1 || Math.abs(dj) <= 1) l21BlockProps(i, j, cx, cz, det);
+  }
+  // nearest cars first
+  L21_ORD.length = _l21N;
+  for (let k = 0; k < _l21N; k++) L21_ORD[k] = k;
+  L21_ORD.sort((a, b)=> L21_C[a*8 + 6] - L21_C[b*8 + 6]);
+  const capC = L21_CAP.car[det], capW = L21_CAP.wheel[det], used = [0, 0, 0], ug = L21_UG;
+  for (let k = 0; k < 12; k++) ug[k] = 0;
+  let nw = 0, nOld = 0;
+  L21.keep.clear();
+  for (let r = 0; r < Math.min(capC, _l21N); r++){
+    const o = L21_ORD[r]*8, x = L21_C[o], z = L21_C[o + 1], yaw = L21_C[o + 2], y = L21_C[o + 3], k = L21_C[o + 4], isNew = L21_C[o + 7] > 0.5;
+    const st = CAR_STYLES[k];
+    _l21E.set(0, yaw, 0, 'YXZ'); _l21Q.setFromEuler(_l21E);
+    _l21B.compose(_l21V.set(x, y, z), _l21Q, _l21S.set(1, 1, 1));
+    const pc = L21_C[o + 5] | 0, g = L21_PICK[pc][0], gs = k*4 + g;
+    if (ug[gs] >= L21_GCAP) continue;
+    const slot = used[k]++, bm = L21.body[k][g], bs = ug[gs]++;
+    bm.setMatrixAt(bs, _l21B); L21.glass[k].setMatrixAt(slot, _l21B);
+    const t = L21_PICK[pc]; _l21Col.setRGB(t[1], t[2], t[3]);
+    bm.setColorAt(bs, _l21Col);
+    if (nw < capW){
+      const R0 = st.wheelR;
+      for (let w = 0; w < 4; w++){
+        _l21Q.identity();
+        _l21M.compose(_l21V.set((w & 1) ? -st.track : st.track, R0, (w < 2) ? st.wheelZ : -st.wheelZ), _l21Q, _l21S.set(1, R0, R0));
+        _l21W.multiplyMatrices(_l21B, _l21M);
+        L21.wheel.setMatrixAt(nw*4 + w, _l21W);
+      }
+      nw++;
+    }
+    if (isNew){
+      const key = Math.round(x*8) + ',' + Math.round(z*8);
+      L21.keep.add(key);
+      if (!L21.pieces.has(key)){
+        const p = { type:'flat', x, z, rot:yaw, w:0.95, d:2.2, h:1.25, base:y, novis:true, l21:true };
+        L21.pieces.set(key, p);
+        if (typeof rgPieceAdd === 'function') rgPieceAdd(p);
+      }
+    } else nOld++;
+  }
+  L21.pieces.forEach((p, key)=>{ if (!L21.keep.has(key)){ if (typeof rgPieceRemove === 'function') rgPieceRemove(p); L21.pieces.delete(key); } });
+  for (let k = 0; k < 3; k++){
+    L21.glass[k].count = used[k]; L21.glass[k].instanceMatrix.needsUpdate = true;
+    for (let g = 0; g < L21.body[k].length; g++){
+      const bm = L21.body[k][g];
+      bm.count = ug[k*4 + g]; bm.instanceMatrix.needsUpdate = true; if (bm.instanceColor) bm.instanceColor.needsUpdate = true;
+    }
+  }
+  L21.wheel.count = nw*4; L21.wheel.instanceMatrix.needsUpdate = true;
+  // furniture: nearest first per kind, capped
+  const tpl = l21Tpl();
+  let np = 0;
+  for (const n of tpl.list){
+    const mesh = L21.prop[n], a = L21_P[n], cap = Math.round(tpl.cap[n]*(det >= 2 ? 1 : 0.7));
+    if (!a || !a.n){ mesh.count = 0; continue; }
+    let cnt = a.n;
+    if (cnt > cap){
+      L21_ORD.length = cnt;
+      for (let k = 0; k < cnt; k++) L21_ORD[k] = k;
+      L21_ORD.sort((p, q)=> a.v[p*5 + 4] - a.v[q*5 + 4]);
+      cnt = cap;
+    } else { L21_ORD.length = cnt; for (let k = 0; k < cnt; k++) L21_ORD[k] = k; }
+    for (let r = 0; r < cnt; r++){
+      const o = L21_ORD[r]*5;
+      _l21Q.setFromAxisAngle(_l21V.set(0, 1, 0), a.v[o + 2]);
+      _l21M.compose(_l21V.set(a.v[o], 0.15, a.v[o + 1]), _l21Q, _l21S.set(1, 1, 1));
+      mesh.setMatrixAt(r, _l21M);
+      const t = a.v[o + 3]; _l21Col.setRGB(t, t, t);
+      mesh.setColorAt(r, _l21Col);
+    }
+    mesh.count = cnt; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    np += cnt;
+  }
+  const ms = performance.now() - t0;
+  const S0 = L21.st;
+  S0.relays++; S0.ms = +ms.toFixed(2); S0.maxMs = Math.max(S0.maxMs, S0.ms);
+  S0.cars = used[0] + used[1] + used[2]; S0.oldCars = nOld; S0.wheels = nw; S0.props = np; S0.pieces = L21.pieces.size;
+}
+function look21Relay(){ L21.dirty = true; }
+
+/* ---------------------------------------------------------------- the frame check */
+addFrameHook(function look21Hook(){
+  const want = l21Want();
+  if (want !== L21.on) l21SetOn(want);
+  if (!L21.on) return;
+  const bi = Math.round(camera.position.x/CELL), bj = Math.round(camera.position.z/CELL);
+  if (L21.dirty || bi !== L21.bi || bj !== L21.bj || l21Det() !== L21.det) l21Relay(bi, bj);
+});
+if (typeof gfxOnChange === 'function') gfxOnChange(function(){ L21.dirty = true; });
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
