@@ -29619,9 +29619,9 @@ const MO15_TPROF = {
 };
 /* tread patterns: kh knob height (m), pitch (m per row), rows: alternating templates of knobs [x / w, width / w, length (m), yaw, height factor] */
 const MO15_TREAD = {
-  mx:     { kh:0.0135, pitch:0.033, rows:[[[0, 0.34, 0.020], [-0.64, 0.22, 0.017], [0.64, 0.22, 0.017]], [[-0.31, 0.26, 0.018], [0.31, 0.26, 0.018], [-0.93, 0.17, 0.016], [0.93, 0.17, 0.016]]] },
-  enduro: { kh:0.0105, pitch:0.032, rows:[[[0, 0.30, 0.018], [-0.58, 0.24, 0.016], [0.58, 0.24, 0.016]], [[-0.29, 0.25, 0.016], [0.29, 0.25, 0.016], [-0.90, 0.19, 0.015], [0.90, 0.19, 0.015]]] },
-  trail:  { kh:0.0070, pitch:0.031, rows:[[[0, 0.42, 0.016], [-0.62, 0.26, 0.016], [0.62, 0.26, 0.016]], [[-0.32, 0.30, 0.016], [0.32, 0.30, 0.016], [-0.90, 0.22, 0.015], [0.90, 0.22, 0.015]]] },
+  mx:     { kh:0.0170, pitch:0.036, rows:[[[0, 0.36, 0.023], [-0.64, 0.24, 0.020], [0.64, 0.24, 0.020]], [[-0.31, 0.28, 0.021], [0.31, 0.28, 0.021], [-0.94, 0.19, 0.019, 0, 1.1], [0.94, 0.19, 0.019, 0, 1.1]]] },
+  enduro: { kh:0.0135, pitch:0.034, rows:[[[0, 0.32, 0.021], [-0.58, 0.26, 0.019], [0.58, 0.26, 0.019]], [[-0.29, 0.27, 0.019], [0.29, 0.27, 0.019], [-0.91, 0.20, 0.018, 0, 1.1], [0.91, 0.20, 0.018, 0, 1.1]]] },
+  trail:  { kh:0.0092, pitch:0.032, rows:[[[0, 0.42, 0.018], [-0.62, 0.27, 0.018], [0.62, 0.27, 0.018]], [[-0.32, 0.31, 0.018], [0.32, 0.31, 0.018], [-0.90, 0.23, 0.017], [0.90, 0.23, 0.017]]] },
   moto:   { kh:0.0055, pitch:0.030, rows:[[[-0.40, 0.40, 0.020, 0.45], [0.40, 0.40, 0.020, -0.45], [-0.88, 0.20, 0.018, 0.2], [0.88, 0.20, 0.018, -0.2]], [[0, 0.30, 0.016], [-0.66, 0.26, 0.018, 0.3], [0.66, 0.26, 0.018, -0.3]]] },
   street: { kh:0.0032, pitch:0.034, rows:[[[-0.44, 0.36, 0.024, 0.55], [0.44, 0.36, 0.024, -0.55]], [[0, 0.26, 0.020], [-0.84, 0.22, 0.020, 0.3], [0.84, 0.22, 0.020, -0.3]]] },
   fat:    { kh:0.0060, pitch:0.034, rows:[[[0, 0.26, 0.018], [-0.52, 0.22, 0.017], [0.52, 0.22, 0.017]], [[-0.26, 0.22, 0.017], [0.26, 0.22, 0.017], [-0.82, 0.18, 0.016], [0.82, 0.18, 0.016]]] },
@@ -30082,9 +30082,9 @@ function mo15coil(k){
   return FX.coil;
 }
 const MO15_FAM = {
-  mx:      { shroud:'mx', tank:'mx', seat:'mx', tail:'mx', side:'mx', ffend:'mx', mask:'plate', graph:'split', xbar:'pad', guards:false, skid:false, stand:false, chassis:'black', sub:'brushed', fguard:true },
+  mx:      { shroud:'mx', tank:'mx', seat:'mx', tail:'mx', side:'mx', ffend:'mx', mask:'plate', graph:'split', xbar:'pad', guards:false, skid:false, stand:false, chassis:'black', sub:'alloy', fguard:true },
   enduro:  { shroud:'enduro', tank:'mx', seat:'mx', tail:'enduro', side:'mx', ffend:'mx', mask:'twin', graph:'stripe', xbar:'pad', guards:true, skid:true, stand:true, chassis:'black', sub:'black', fguard:true },
-  light:   { shroud:'slim', tank:'none', seat:'short', tail:'short', side:'cover', ffend:'low', mask:'round', graph:'stripe', xbar:'pad', guards:false, skid:true, stand:true, chassis:'brushed', sub:'black', batVis:true, fguard:false },
+  light:   { shroud:'slim', tank:'none', seat:'short', tail:'short', side:'cover', ffend:'low', mask:'round', graph:'stripe', xbar:'pad', guards:false, skid:true, stand:true, chassis:'alloy', sub:'black', batVis:true, fguard:false },
   tank:    { shroud:'none', tank:'tall', seat:'mx', tail:'enduro', side:'cover', ffend:'mx', mask:'round', graph:'block', xbar:'bar', guards:true, skid:true, stand:true, chassis:'black', sub:'black', fguard:true },
   adv:     { shroud:'enduro', tank:'adv', seat:'adv', tail:'enduro', side:'cover', ffend:'beak', mask:'rally', graph:'stripe', xbar:'bar', guards:true, skid:true, stand:true, rack:true, chassis:'black', sub:'black', fguard:true },
   sm:      { shroud:'slim', tank:'tear', seat:'step', tail:'tidy', side:'cover', ffend:'sm', mask:'twin', graph:'stripe', xbar:'none', guards:false, skid:false, stand:true, chassis:'grey', sub:'black', fguard:false },
@@ -30102,7 +30102,7 @@ function fbMo15moto(P){
   const hz = (G.H0[0] + G.H1[0])/2, d = G.d, n = G.n;
   const PV = [rz + (P.sa || 0.46), Rr + (P.pv || 0.125)];
   const M = BM.frame, A = FX.acc, PL = FX.plas, CH = mo15mat(q('chassis'), VM.steel), SUB = mo15mat(q('sub'), M12.anod);
-  const SA = mo15mat(q('sa2') || 'brushed', VM.steel);
+  const SA = mo15mat(q('sa2') || 'alloy', BK.alloy);
   const scale = Math.min(1.08, Math.max(0.70, wb/1.30));                                   // small bikes get proportionally smaller parts
   const B = { CH:[], SUB:[], SA:[], DARK:[], ALLOY:[], STEEL:[], RUB:[], BAT:[], BATHI:[], BODY:[], ACC:[], PLAS:[], WHITE:[], CHAIN:[], LED:[], TAIL:[], LAMP:[], SEAT:[], SEAM:[] };
   const add = (k, g)=>{ if (g) B[k].push(g); };
@@ -30195,7 +30195,7 @@ function fbMo15moto(P){
   const ax = 0.096*scale + 0.004;
   [-1, 1].forEach(sd=>{
     add('SA', mo15loftGeo([[sd*(xs - 0.014), PV[1], PV[0] + 0.03], [sd*ax, PV[1] - 0.006, PV[0] - 0.13], [sd*ax, Rr + 0.012, rz + 0.06], [sd*ax, Rr + 0.004, rz - 0.035]],
-      [[0, 0.03, 0.074*scale], [0.25, 0.028, 0.068*scale], [0.85, 0.026, 0.048*scale], [1, 0.026, 0.042*scale]], { n:4, rad:10, seg:16 }));
+      [[0, 0.036, 0.090*scale], [0.25, 0.034, 0.082*scale], [0.85, 0.030, 0.058*scale], [1, 0.030, 0.050*scale]], { n:4.4, rad:12, seg:16 }));
     add('ALLOY', mo15boxGeo([sd*(ax + 0.004), Rr, rz - 0.012], 0.03, 0.036, 0.05));                     // axle block
     add('STEEL', mo15rodGeo([sd*(ax + 0.004), Rr, rz - 0.045], [sd*(ax + 0.004), Rr, rz - 0.075], 0.0045, 8));
   });
@@ -30253,14 +30253,14 @@ function fbMo15moto(P){
 
   /* ---- wheels ---- */
   const tread = q('tread') || 'mx', street = tread === 'street';
-  const tw = P.tw || (street ? 0.060 : 0.052)*Math.min(1, scale + 0.15), twf = P.twf || tw*0.86;
-  const rw = mo15wheelMoto(Rr, { w:tw, h:Rr*(street ? 0.24 : 0.27), prof:street ? 'street' : 'mx', tread, rimW:tw*1.45, rimMat:BM.rim, spokes:36, spokeMat:mo15mat(q('spokes'), BK.chrome), hubMat:mo15mat(q('hub'), BK.alloy),
+  const tw = P.tw || (street ? 0.062 : 0.057)*Math.min(1, scale + 0.15), twf = P.twf || tw*0.86;
+  const rw = mo15wheelMoto(Rr, { w:tw, h:Rr*(street ? 0.24 : 0.27), prof:street ? 'street' : 'mx', tread, rimW:tw*1.45, rimMat:BM.rim, spokes:36, spokeT:0.0016, spokeMat:mo15mat(q('spokes'), VM.steel), hubMat:mo15mat(q('hub'), BK.alloy),
     rotor:{ r:(P.rotorR || 0.11)*Math.min(1, scale + 0.15), x:-0.066, waves:12, carrier:mo15mat(q('carrier'), M12.anod) }, sprocket:{ r:rsR, x:cx, mat:mo15mat(q('spr'), BK.alloy) } });
-  const fw = mo15wheelMoto(Rf, { w:twf, h:Rf*(street ? 0.22 : 0.25), prof:street ? 'street' : 'mx', tread, rimW:twf*1.40, rimMat:BM.rim, spokes:36, spokeMat:mo15mat(q('spokes'), BK.chrome), hubMat:mo15mat(q('hub'), BK.alloy),
+  const fw = mo15wheelMoto(Rf, { w:twf, h:Rf*(street ? 0.22 : 0.25), prof:street ? 'street' : 'mx', tread, rimW:twf*1.40, rimMat:BM.rim, spokes:36, spokeT:0.0016, spokeMat:mo15mat(q('spokes'), VM.steel), hubMat:mo15mat(q('hub'), BK.alloy),
     rotor:{ r:(P.rotorF || 0.13)*Math.min(1, scale + 0.12), x:0.058, waves:street ? 0 : 12, holes:street ? 24 : 18, carrier:mo15mat(q('carrier'), M12.anod) } });
 
   /* ---- merge per material ---- */
-  const MATS = { CH, SUB, SA, DARK:M12.anod, ALLOY:BK.alloy, STEEL:BK.alloy, RUB:M12.anod, BAT:M12.anod, BATHI:mo15mat(q('batCase'), BK.battHi), BODY:M, ACC:A, PLAS:PL, WHITE:BK.white, CHAIN:BM.chain, LED:BK.tail, TAIL:BK.tail, LAMP:BK.lamp, SEAT:BM.seat, SEAM:VM.cream };
+  const MATS = { CH, SUB, SA, DARK:M12.anod, ALLOY:BK.alloy, STEEL:BK.alloy, RUB:M12.anod, BAT:mo15mat(q('batCover'), BK.batt), BATHI:mo15mat(q('batCase'), BK.battHi), BODY:M, ACC:A, PLAS:PL, WHITE:BK.white, CHAIN:BM.chain, LED:BK.tail, TAIL:BK.tail, LAMP:BK.lamp, SEAT:BM.seat, SEAM:VM.cream };
   Object.keys(B).forEach(k=>{ if (B[k].length) mo15add(f, B[k], MATS[k]); });
   if (C.decals) C.decals.forEach(fn=> fn());
   if (C.batLogo && P.logo) mo15decal(f, mo15decalMat(P.logo, mo15css(P.batLogoCol === undefined ? 0xc9ced6 : P.batLogoCol)), C.batLogo[2], [C.batLogo[0], C.batLogo[1]], C.batLogo[3]);
@@ -30304,15 +30304,15 @@ function mo15body(C){
   /* ---- shrouds (side panels round the head of the battery) + graphics + the wordmark ---- */
   const shs = q('shroud');
   if (shs && shs !== 'none'){
-    let sh, r, rz2 = -0.06, ry = 0.12, sx = xs + 0.046, th = 0.015;
-    if (shs === 'mx'){ sh = [[hT[0] + 0.012, hT[1] - 0.045], [seatF + 0.07, sy - 0.002], [seatF - 0.02, sy - 0.042], [seatF + 0.03, yT - 0.07], [hz - 0.20*s, yT - 0.14*s], [fzAt(yT - 0.21*s) + 0.03, yT - 0.25*s], [hB[0] + 0.035, hB[1] - 0.10]]; r = [0.02, 0.03, 0.012, 0.03, 0.04, 0.01, 0.03]; }
-    else if (shs === 'enduro'){ sh = [[hT[0] + 0.006, hT[1] - 0.05], [seatF + 0.08, sy - 0.006], [seatF + 0.0, sy - 0.05], [seatF + 0.04, yT - 0.085], [hz - 0.19*s, yT - 0.15*s], [fzAt(yT - 0.19*s) + 0.04, yT - 0.20*s], [hB[0] + 0.03, hB[1] - 0.09]]; r = [0.03, 0.04, 0.03, 0.04, 0.05, 0.03, 0.04]; }
-    else if (shs === 'slim'){ sh = [[hT[0] + 0.004, hT[1] - 0.05], [hz - 0.22*s, yT + 0.045], [hz - 0.27*s, yT - 0.035], [fzAt(yT - 0.11) + 0.015, yT - 0.12], [hB[0] + 0.02, hB[1] - 0.085]]; r = [0.02, 0.03, 0.03, 0.02, 0.03]; sx = xs + 0.036; rz2 = -0.04; ry = 0.08; }
-    else if (shs === 'blade'){ sh = [[hT[0] + 0.02, hT[1] - 0.035], [seatF + 0.10, sy + 0.012], [seatF - 0.05, sy - 0.03], [seatF + 0.10, yT - 0.05], [hz - 0.14*s, yT - 0.20*s], [fzAt(yT - 0.27*s) + 0.05, yT - 0.30*s], [hB[0] + 0.05, hB[1] - 0.12]]; r = [0.006, 0.01, 0.004, 0.01, 0.01, 0.004, 0.01]; th = 0.012; rz2 = -0.10; ry = 0.15; }
-    else { sh = [[hT[0] + 0.004, hT[1] - 0.05], [seatF + 0.06, sy - 0.01], [seatF + 0.0, yT - 0.06], [hz - 0.17*s, yT - 0.15*s], [fzAt(yT - 0.15*s) + 0.03, yT - 0.16*s], [hB[0] + 0.02, hB[1] - 0.08]]; r = [0.04, 0.05, 0.05, 0.06, 0.05, 0.05]; rz2 = -0.07; ry = 0.08; }
+    let sh, r, rz2 = -0.06, ry = 0.21, sx = xs + 0.056, th = 0.021;                     // (15.16: flared, thicker, further out)
+    if (shs === 'mx'){ sh = [[hT[0] + 0.012, hT[1] - 0.045], [seatF + 0.07, sy - 0.002], [seatF - 0.02, sy - 0.042], [seatF + 0.02, yT - 0.11], [hz - 0.22*s, yT - 0.20*s], [fzAt(yT - 0.29*s) + 0.025, yT - 0.31*s], [hB[0] + 0.035, hB[1] - 0.12]]; r = [0.02, 0.03, 0.012, 0.03, 0.04, 0.012, 0.03]; }
+    else if (shs === 'enduro'){ sh = [[hT[0] + 0.006, hT[1] - 0.05], [seatF + 0.08, sy - 0.006], [seatF + 0.0, sy - 0.05], [seatF + 0.03, yT - 0.12], [hz - 0.20*s, yT - 0.21*s], [fzAt(yT - 0.27*s) + 0.035, yT - 0.28*s], [hB[0] + 0.03, hB[1] - 0.11]]; r = [0.03, 0.04, 0.03, 0.04, 0.05, 0.03, 0.04]; }
+    else if (shs === 'slim'){ sh = [[hT[0] + 0.004, hT[1] - 0.05], [hz - 0.22*s, yT + 0.045], [hz - 0.27*s, yT - 0.035], [fzAt(yT - 0.11) + 0.015, yT - 0.12], [hB[0] + 0.02, hB[1] - 0.085]]; r = [0.02, 0.03, 0.03, 0.02, 0.03]; sx = xs + 0.044; th = 0.018; rz2 = -0.04; ry = 0.14; }
+    else if (shs === 'blade'){ sh = [[hT[0] + 0.02, hT[1] - 0.035], [seatF + 0.10, sy + 0.012], [seatF - 0.05, sy - 0.03], [seatF + 0.08, yT - 0.08], [hz - 0.15*s, yT - 0.25*s], [fzAt(yT - 0.32*s) + 0.045, yT - 0.34*s], [hB[0] + 0.05, hB[1] - 0.13]]; r = [0.006, 0.01, 0.004, 0.01, 0.01, 0.004, 0.01]; th = 0.016; rz2 = -0.10; ry = 0.23; }
+    else { sh = [[hT[0] + 0.004, hT[1] - 0.05], [seatF + 0.06, sy - 0.01], [seatF + 0.0, yT - 0.08], [hz - 0.17*s, yT - 0.19*s], [fzAt(yT - 0.19*s) + 0.03, yT - 0.20*s], [hB[0] + 0.02, hB[1] - 0.09]]; r = [0.04, 0.05, 0.05, 0.06, 0.05, 0.05]; rz2 = -0.07; ry = 0.14; }
     const piv = [hz - 0.16*s, yT - 0.05], shm = pm('shroudMat', 'BODY');
     const shR = mo15round(sh, r, 4);
-    const bb0 = mo15bounds(shR), bc = [bb0.z0 + bb0.w*0.45, bb0.y0 + bb0.h*0.55], bz = shs === 'blade' ? 0.5 : 1.1, by = shs === 'blade' ? 0.3 : 0.7;
+    const bb0 = mo15bounds(shR), bc = [bb0.z0 + bb0.w*0.45, bb0.y0 + bb0.h*0.55], bz = shs === 'blade' ? 0.75 : 1.55, by = shs === 'blade' ? 0.45 : 1.0;
     [-1, 1].forEach(sd=> add(shm, mo15plateGeo(shR, th, { x:sd*sx, bev:th*0.38, bs:1, rz:sd*rz2, ry:sd*ry, piv, bz, by, bc })));
     if ((shs === 'mx' || shs === 'enduro' || shs === 'blade') && P.scoop !== false){
       const sc = mo15clip(shR, [bb0.z1 + 0.1, bb0.y0 + bb0.h*0.42], [bb0.z0 - 0.1, bb0.y0 + bb0.h*0.10]);
@@ -30345,9 +30345,9 @@ function mo15body(C){
   else if (st === 'slim') SK = [[seatF + 0.08, 0.004, 0.026, 0.03], [seatF + 0.0, 0.024, 0.044, 0.05], [seatF - 0.16, 0.030, 0.050, 0.066], [tailZ + 0.14, 0.030, 0.048, 0.064], [tailZ + 0.06, 0.020, 0.036, 0.05]];
   else SK = [[seatF + 0.13, 0.004, 0.03, 0.036], [seatF + 0.05, 0.03, 0.055, 0.062], [seatF - 0.08, 0.04, 0.07, 0.096], [tailZ + 0.22, 0.045, 0.072, 0.104], [tailZ + 0.06, 0.04, 0.062, 0.09], [tailZ - 0.02, 0.024, 0.044, 0.07]];
   // [z, top above sy, foam height, half width]
-  const keys = SK.map(k=> ({ p:[k[0], sy + k[1] - k[2]], up:k[2], dn:0.003, w:k[3]*s + 0.008, wt:(k[3]*s + 0.008)*0.80, n:2.8, nb:8 }));
+  const keys = SK.map(k=> ({ p:[k[0], sy + k[1] - k[2]*1.35], up:k[2]*1.35, dn:0.003, w:k[3]*s + 0.010, wt:(k[3]*s + 0.010)*0.82, n:3.2, nb:8 }));   // (15.16: deeper foam, squarer MX section)
   add('SEAT', mo15sweepGeo(keys, { sub:4, seg:18 }));
-  add('DARK', mo15sweepGeo(SK.map(k=> ({ p:[k[0], sy + k[1] - k[2] - 0.004], up:0.014, dn:0.014, w:k[3]*s + 0.012, wt:k[3]*s + 0.011, n:6, nb:6 })), { sub:3, seg:10 }));
+  add('DARK', mo15sweepGeo(SK.map(k=> ({ p:[k[0], sy + k[1] - k[2]*1.35 - 0.004], up:0.014, dn:0.014, w:k[3]*s + 0.014, wt:k[3]*s + 0.013, n:6, nb:6 })), { sub:3, seg:10 }));
   const pipe = P.pipe ? MO15_PM[P.pipe] || 'ACC' : null;
   if (pipe){
     const pk = mo15cr(keys, 5);
@@ -30364,28 +30364,28 @@ function mo15body(C){
   const kh = hk.reduce((a, k)=> Math.abs(k.p[0] - hz0) < Math.abs(a.p[0] - hz0) ? k : a);
   C.seatZ = hz0; C.seatTop = kh.p[1] + kh.up;
   /* ---- side panels / number plates under the seat ---- */
-  const sds = q('side'), sb = sy + SK[SK.length - 1][1] - SK[SK.length - 1][2];
+  const sds = q('side'), sb = sy + SK[SK.length - 1][1] - SK[SK.length - 1][2]*1.35;
   if (sds && sds !== 'none'){
     const sp = sds === 'mx' ? [[seatF - 0.05, sy - 0.022], [tailZ + 0.12, sy - 0.006], [tailZ + 0.21, sy - 0.16], [PV[0] - 0.02, PV[1] + 0.17], [seatF - 0.02, sy - 0.10]]
                             : [[seatF - 0.06, sy - 0.03], [tailZ + 0.18, sy - 0.02], [tailZ + 0.22, sy - 0.12], [PV[0] - 0.05, PV[1] + 0.16], [seatF - 0.04, sy - 0.10]];
-    const spr = mo15round(sp, sds === 'mx' ? [0.02, 0.03, 0.04, 0.03, 0.03] : [0.04, 0.04, 0.04, 0.04, 0.04], 4), spx = 0.098*s + 0.012, spv = [(seatF + tailZ)/2, sy - 0.08];
-    [-1, 1].forEach(sd=> add(pm('sideMat', sds === 'mx' ? 'BODY' : 'PLAS'), mo15plateGeo(spr, 0.012, { x:sd*spx, bev:0.004, rz:-sd*0.04, ry:-sd*0.035, piv:spv })));
+    const spr = mo15round(sp, sds === 'mx' ? [0.02, 0.03, 0.04, 0.03, 0.03] : [0.04, 0.04, 0.04, 0.04, 0.04], 4), spx = 0.104*s + 0.014, spv = [(seatF + tailZ)/2, sy - 0.08], spt = 0.017, spo = spt/2 + 0.0009;
+    [-1, 1].forEach(sd=> add(pm('sideMat', sds === 'mx' ? 'BODY' : 'PLAS'), mo15plateGeo(spr, spt, { x:sd*spx, bev:0.005, rz:-sd*0.04, ry:-sd*0.035, piv:spv, bz:0.6, by:0.4, bc:spv })));
     if (sds === 'mx' && P.num !== ''){
       const nb = mo15shrink(mo15clip(spr, [spv[0] + 0.5, sy - 0.135], [spv[0] - 0.5, sy - 0.135]) || spr, 0.84), cc = mo15cent(nb), bnb = mo15bounds(nb);
-      [-1, 1].forEach(sd=> add(pm('numBg', 'WHITE'), mo15plateGeo(nb, 0.0016, { x:sd*spx, bev:0, rz:-sd*0.04, ry:-sd*0.035, piv:spv, crease:60 }).translate(sd*0.0069, 0, 0)));
+      [-1, 1].forEach(sd=> add(pm('numBg', 'WHITE'), mo15plateGeo(nb, 0.0016, { x:sd*spx, bev:0, rz:-sd*0.04, ry:-sd*0.035, piv:spv, crease:60, bz:0.6, by:0.4, bc:spv }).translate(sd*spo, 0, 0)));
       const num = String(P.num === undefined ? '' : P.num);
       if (num){ const dm = mo15decalMat(num, mo15css(P.numCol === undefined ? 0x16181c : P.numCol), { style:'num' }), sz = Math.min(bnb.h*0.88, bnb.w*0.62);
-        C.decals.push(()=> [-1, 1].forEach(sd=> mo15decalOnPlate(f, dm, sd, sd*spx, 0.0069 + 0.0008 + 0.0025, [cc[0], cc[1] + 0.002], sz, sz, { rz:-sd*0.04, ry:-sd*0.035, piv:spv }))); }
+        C.decals.push(()=> [-1, 1].forEach(sd=> mo15decalOnPlate(f, dm, sd, sd*spx, spo + 0.0008 + 0.0025, [cc[0], cc[1] + 0.002], sz, sz, { rz:-sd*0.04, ry:-sd*0.035, piv:spv, bz:0.6, by:0.4, bc:spv }))); }
     }
   }
   /* ---- rear fender / tail ---- */
   const tl = q('tail');
-  const shell = (pts, ws, mat, arch)=> add(mat, mo15sweepGeo(pts.map((p, i)=> ({ p, up:0.006, dn:0.002, w:ws[i], wt:ws[i], arch:arch === undefined ? 0.03 : arch, n:2.4, nb:2.4 })), { sub:4, seg:12 }));
+  const shell = (pts, ws, mat, arch)=> add(mat, mo15sweepGeo(pts.map((p, i)=> ({ p, up:0.008, dn:0.002, w:ws[i]*1.2, wt:ws[i]*1.2, arch:(arch === undefined ? 0.03 : arch)*1.75, n:2.4, nb:2.4 })), { sub:4, seg:16 }));
   const tm = pm('tailMat', 'BODY');
   if (tl === 'mx' || tl === 'kick' || tl === 'enduro'){
-    const up2 = tl === 'kick' ? 0.13 : 0.075, len = tl === 'enduro' ? 0.30 : 0.36;
+    const up2 = tl === 'kick' ? 0.14 : tl === 'mx' ? 0.105 : 0.085, len = tl === 'enduro' ? 0.30 : 0.36;      // (15.16: the MX tail kicks up more)
     const pts = [[seatF - 0.10, sb - 0.012], [tailZ + 0.10, sb + 0.002], [tailZ - 0.08, sb + 0.022], [tailZ - len*0.62*s, sb + up2*0.6], [tailZ - len*s, sb + up2]];
-    shell(pts, [0.07, 0.098, 0.096, 0.08, 0.05], tm, 0.032);
+    shell(pts, [0.07, 0.098, 0.098, 0.088, 0.066], tm, 0.032);
     if (tl === 'enduro'){
       const tp = pts[3], tq = pts[4], tz = (tp[0] + tq[0])/2, ty = (tp[1] + tq[1])/2 - 0.03;
       add('TAIL', mo15loftGeo([[0, ty, tz + 0.02], [0, ty, tz - 0.02]], [[0, 0.07, 0.026], [1, 0.064, 0.022]], { n:4, rad:12, seg:2 }));
@@ -30475,7 +30475,7 @@ function mo15front(C){
   }
   /* ---- front fender ---- */
   const ff = q('ffend'), ffm = MB[P.ffMat] || BM.frame, Cc = G.C;
-  const fsh = (pts, ws, mat, c)=> mo15add(fr, mo15sweepGeo(pts.map((p, i)=> ({ p, up:0.006, dn:0.002, w:ws[i], wt:ws[i], arch:0.03, n:2.4, nb:2.4 })), { sub:4, seg:12, c }), mat);
+  const fsh = (pts, ws, mat, c)=> mo15add(fr, mo15sweepGeo(pts.map((p, i)=> ({ p, up:0.007, dn:0.002, w:ws[i]*1.28, wt:ws[i]*1.28, arch:0.052, n:2.4, nb:2.4 })), { sub:4, seg:16, c }), mat);
   if (ff === 'mx' || ff === 'beak'){
     const ty = Math.min(Cc[1] - 0.045, 2*Rf + 0.10*s + 0.02);
     fsh([[Cc[0] - 0.16*s, ty - 0.03], [Cc[0] - 0.02, ty + 0.004], [fz - 0.02, Math.max(2*Rf + 0.055, ty - 0.03)], [fz + 0.16*s, 2*Rf + 0.025], [fz + 0.30*s, 2*Rf - 0.03]], [0.045, 0.062, 0.07, 0.064, 0.046].map(w=> w*Math.min(1, s + 0.1)), ffm);
@@ -32222,6 +32222,11 @@ function pd15Tyre(o){
       knob(-0.28, a, w*0.26, 0.024, undefined, 0.35); knob(0.28, a, w*0.26, 0.024, undefined, -0.35);
       knob(0, b, w*0.22, 0.016, tp.kh*0.8);
       knob(-phiS, b, w*0.22, 0.030, tp.kh*1.1); knob(phiS, b, w*0.22, 0.030, tp.kh*1.1);
+    } else if (tread === 'fatsq'){                                       // 4.8" fat: big square blocks, open spacing (Release 15.16)
+      knob(-0.30, a, w*0.30, 0.031, undefined, 0.05); knob(0.30, a, w*0.30, 0.031, undefined, -0.05);
+      knob(0, b, w*0.30, 0.028, tp.kh*0.92);
+      knob(-0.68, b, w*0.25, 0.030, tp.kh); knob(0.68, b, w*0.25, 0.030, tp.kh);
+      knob(-phiS, a, w*0.24, 0.036, tp.kh*1.15); knob(phiS, a, w*0.24, 0.036, tp.kh*1.15);
     } else if (tread === 'gravel'){
       knob(-0.58, a, w*0.22, 0.008, tp.kh); knob(0.58, b, w*0.22, 0.008, tp.kh);
       knob(-0.86, b, w*0.22, 0.010, tp.kh*1.1); knob(0.86, a, w*0.22, 0.010, tp.kh*1.1);
@@ -32265,6 +32270,22 @@ function pd15RimGeo(rb, iw, d, kind){
   }
   pr.reverse();
   return pd15Lathe(pr, 44);
+}
+/* fat rim cut-outs (Release 15.16): n rounded windows on the rim bed (radius rIn, facing the hub), across +-hw, between the spoke holes;
+   drawn in the rim-strip colour just inside the bed so the wide rim reads as a drilled fat-bike rim */
+function pd15FatWindowsGeo(rIn, hw, n){
+  const pos = [], nrm = [], A = Math.PI*2/n, half = A*0.30, r = rIn - 0.0006, K = 10;
+  for (let i = 0; i < n; i++){
+    const a0 = (i + 0.5)*A, P = [];
+    for (let k = 0; k < K; k++){ const t = k/K*Math.PI*2, c = Math.cos(t), s2 = Math.sin(t), sc = Math.sign(c)*Math.pow(Math.abs(c), 0.55), ss = Math.sign(s2)*Math.pow(Math.abs(s2), 0.55);
+      P.push([sc*hw, a0 + ss*half]); }
+    const C = [0, a0], pt = q=> [q[0], Math.cos(q[1])*r, Math.sin(q[1])*r];
+    for (let k = 0; k < K; k++){ const p0 = pt(C), p1 = pt(P[k]), p2 = pt(P[(k + 1)%K]);
+      pos.push(...p0, ...p1, ...p2);                                     // counter-clockwise seen from the hub: the front faces look inward
+      [C, P[k], P[(k + 1)%K]].forEach(q=> nrm.push(0, -Math.cos(q[1]), -Math.sin(q[1]))); }
+  }
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new T.Float32BufferAttribute(nrm, 3));
+  return g;
 }
 /* laced spokes: n spokes, hub flange radius fr at +-fx (fxR on the drive side), to rim bed radius rr; cross pattern; t thickness; blade -> flat */
 function pd15SpokesGeo(n, fr, fx, fxR, rr, cross, t, blade){
@@ -32370,6 +32391,7 @@ function pd15Wheel(o){
   pd15Tyre({ R:o.R, w:o.w, rb:o.rb, tread:o.tread, kh:o.kh, n:o.n, wall:o.wall, word:o.tyreWord, wordMat:o.tyreWordMat, p:o.tp, seg:o.seg }).forEach(([m, gg])=> pd15Put(B, m, gg));
   const kind = o.rim || 'alloy', rimD = o.rimD || (kind === 'deep' ? 0.045 : 0.022), iw = o.rimW || Math.min(0.016, o.w*0.48);
   pd15Put(B, BM.rim, pd15RimGeo(o.rb, iw, rimD, kind));
+  if (kind === 'fat' && o.windows !== false) pd15Put(B, o.stripMat || FX.acc, pd15FatWindowsGeo(o.rb - rimD - 0.0003, iw*0.62, o.windows || o.spokes || 32));
   const rr = o.rb - rimD + 0.002, rear = o.hub === 'rear';
   const fx = o.fx || (rear ? 0.036 : 0.034), fxR = rear ? (o.fxR || 0.024) : fx, fr = o.fr || (rear ? 0.027 : 0.025), hl = o.hl || (rear ? 0.148 : 0.110);
   if (o.spokes){
@@ -32885,7 +32907,7 @@ function pd15Mtb(P, hard){
 
   /* ---------------- rear end + suspension */
   const lay = hard ? 'ht' : (P.link || 'horst');
-  const xF = 0.040, xR = 0.068, csW = (steel ? 0.0105 : 0.0135)*tk, ssW = (steel ? 0.0085 : 0.0108)*tk;
+  const xF = P.fatRim ? 0.050 : 0.040, xR = P.fatRim ? 0.090 : 0.068, csW = (steel ? 0.0105 : 0.0135)*tk, ssW = (steel ? 0.0085 : 0.0108)*tk;
   let MP = e ? [-0.064, bbY + 0.088] : [-0.044, bbY + 0.060], HP = null, SS1 = null, idler = null, yoke = null, shockA = null, shockB = null, mount = 'dt', coilShock = !!P.coil;
   const rockerPlates = (RF, RR, RS, w)=> pd15Link(B, [[RF[0], RF[1], 0.017], [RR[0], RR[1], 0.0145], [RS[0], RS[1], 0.0145]], w || 0.034, 0.008, linkM);
   switch (lay){
@@ -32975,14 +32997,14 @@ function pd15Mtb(P, hard){
   // dropouts, axle, derailleur hanger
   { const cs = [[RA[0], RA[1], 0.021], [RA[0] + 0.040, RA[1] + 0.028, 0.012]]; if (HP) cs.push([HP[0], HP[1], 0.015]); else cs.push([RA[0] + 0.044, RA[1] - 0.006, 0.012]);
     const dh = pd15Hull(cs, 6); [-1, 1].forEach(s=> pd15Put(B, rearM, pd15Plate(dh, s*(xR + 0.004), 0.010, null, 0.003))); }
-  pd15Put(B, PD15.silver, pd15Disc(0.0105, 0.176, 0, 14).translate(0, Rr, rz));
+  pd15Put(B, PD15.silver, pd15Disc(0.0105, P.fatRim ? 0.218 : 0.176, 0, 14).translate(0, Rr, rz));
   pd15Put(B, K, pd15Box(0.008, 0.012, 0.062, [-(xR + 0.016), Rr - 0.002, rz + 0.022], 0.40));
   // chain-stay protector (drive side, on top of the stay) + seat-stay slap guard
   { const a = pd15Lerp(csFront, csRear, 0.10), b = pd15Lerp(csFront, csRear, 0.62);
     pd15Put(B, M12.rub, pd15Sweep([X3(pd15Up(a, [0, 1], csW*1.25), -(xF + 0.002)), X3(pd15Up(b, [0, 1], csW*1.05), -(xR - 0.010))], t=>{ const r = 0.0105 + 0.0012*Math.cos(t*Math.PI*10); return [r, 0.0045, 2.4]; }, { r:8, n:14, cap:true }).geo); }
 
   /* ---------------- drivetrain + rear brake */
-  const ring = P.ring || (e ? 0.072 : 0.065), chainX = e ? -0.058 : -0.052;
+  const ring = P.ring || (e ? 0.072 : 0.065), chainX = P.fatRim ? -0.074 : (e ? -0.058 : -0.052);
   const crank = pd15Crank({ y:bbY, rings:[ring], armMat:P.crankMat ? pd15Ink(P.crankMat) : K, ringMat:K, pedal:P.pedal || 'flat', pedalMat:P.pedalMat ? pd15Ink(P.pedalMat) : K, guard:P.guard, guardMat:P.guardMat ? pd15Ink(P.guardMat) : K, chainX });
   if (P.stand) crank.rotation.x = -Math.PI/2;
   f.add(crank);
@@ -33037,7 +33059,7 @@ function pd15Mtb(P, hard){
   const tread = P.tread || (fk === 'dual' ? 'dh' : 'enduro'), tw = P.tw || 0.031, kh = P.kh || (tread === 'dh' ? 0.0052 : tread === 'xc' ? 0.0028 : tread === 'fat' ? 0.0060 : 0.0045);
   const wo = (R, rear)=> ({ R, w:tw, rb:R > 0.365 ? (P.fatRim ? 0.2795 : 0.311) : (R > 0.345 ? 0.292 : 0.2795), tread, kh, wall:P.tan ? VM.tan : null, tyreWord:P.tyreWord, tyreWordMat:P.tan ? PD15.ink : PD15.ink,
     rim:P.rim || 'carbon', rimD:P.rimD || (P.fatRim ? 0.016 : 0.024), rimW:P.rimW, spokes:P.spokes || 32, spokeMat:P.spokeMat ? pd15Ink(P.spokeMat) : M12.anod, hub:rear ? 'rear' : 'front',
-    hubMat:P.hubMat ? pd15Ink(P.hubMat) : K, rotor:rear ? rrot : (P.rotorF || 0.10), cassette:rear && !single ? { big:0.105, small:0.021, n:12 } : null, rimWord:P.rimWord, rimWordMat:P.rimInk ? pd15Ink(P.rimInk) : PD15.white,
+    hubMat:P.hubMat ? pd15Ink(P.hubMat) : K, rotor:rear ? rrot : (P.rotorF || 0.10), cassette:rear && !single ? { big:0.105, small:0.021, n:12, x0:P.fatRim ? -0.046 : undefined } : null, rimWord:P.rimWord, rimWordMat:P.rimInk ? pd15Ink(P.rimInk) : PD15.white,
     fx:P.fatRim ? 0.050 : undefined, fxR:P.fatRim ? 0.044 : undefined, hl:P.fatRim ? (rear ? 0.197 : 0.150) : undefined, rotorX:P.fatRim ? (rear ? 0.072 : 0.066) : undefined });
   const rw = pd15Wheel(wo(Rr, true)), fw = pd15Wheel(wo(Rf, false));
   if (single){ const c = pd15Disc(0.032, 0.005, chainX, 20); const g2 = new T.Group(); g2.add(bkMesh(c, M12.steel)); rw.add(g2); }
@@ -34314,6 +34336,47 @@ const FLEET_NAMES18 = {
     if (!n) return;
     v.brand = n[0]; v.model = n[1]; v.name = n[1] ? n[0] + ' ' + n[1] : n[0];
   });
+})();
+
+/* =========================================================================
+   BIKE25 fat (Release 15.16, stream bike25): a NEW full-suspension fat bike at the top of the MTB tab, fatter fat tyres on the
+   other fat bikes, and the tab subtitles that point at them. Loaded right before the fleet core (after names18.js), so the
+   row is in FLEET before FLEET_BY_ID / VEHICLES are built; names18 does not list it, so it keeps its own (fictional) name.
+     fatmtb  Northcut Bigfloat FS -- 26 x 4.8" tyres with big square knobs on 80 mm cut-out rims (the rim strip shows through),
+             a wide-stance fat suspension fork, 800 mm bars, a coil shock, wide 197 mm rear end; physics class 'fat'
+             (bike25_late.js: more grip on dirt / grass / snow, a bit slower on tarmac, soft floaty landings), $1,200.
+   The id contains "mtb" on purpose: an older client that does not know it resolves it (fleetResolve) to a trail MTB.
+   ========================================================================= */
+(function(){
+  const has = id=> FLEET.some(v=> v.id === id);
+  /* ---- the new bike ---- */
+  if (!has('fatmtb')){
+    const dark = 0x15171a;
+    const row = {
+      id:'fatmtb', no:'C29', name:'Northcut Bigfloat FS', brand:'Northcut', model:'Bigfloat FS', cat:'mtb', kind:'New · full-suspension fat bike', cls:'fat', b:'pd15fs',
+      m:[1.06, 1.00, 1.04, 1.14],
+      col:0xff5714, acc:0xffc21a,
+      liv:{ fork:dark, rim:dark, grip:0xffc21a, seat:dark, bars:dark },
+      p:{ Rr:0.386, Rf:0.386, bbd:0.050, cs:0.455, fc:0.80, ha:66, fl:0.56, off:0.051, ht:0.12, sa:75, st:0.43, ttf:0.80, pl:0.14,
+          tubes:'alloy', tk:1.14, gus:true, dtBow:0.010, link:'horst', mount:'tt', rk:0.66, coil:'acc', pig:true,
+          fork:'sus', span:0.094, stan:0.019, stanMat:'gold', forkWord:'FAT 120', forkFam:'ridge',
+          fatRim:true, rim:'fat', rimD:0.018, rimW:0.040, tread:'fatsq', tw:0.061, kh:0.0088, spokes:32, tyreWord:'BIGFLOAT 4.8',
+          hw:0.40, rise:0.032, back:7, stem:0.045, drop:true, rotorF:0.10, rotorR:0.10, guide:true,
+          logo:'NORTHCUT', model:'BIGFLOAT', ink:'white', logoStyle:'heavy', reach:0.62 },
+      desc:'Full-suspension fat bike on huge 26 x 4.8-inch fat tyres with big square knobs. Floats over sand, snow, grass and dirt, lands soft -- a little slower on tarmac.'
+    };
+    // near the top of the MTB tab (the garage and shop list the tab in FLEET order)
+    const i = FLEET.findIndex(v=> v.cat === 'mtb');
+    FLEET.splice(i < 0 ? FLEET.length : i, 0, row);
+  }
+  /* ---- the other fat bikes: really fat tyres (4.4-4.7"), big knobs, cut-out rims ---- */
+  const fix = (id, p)=>{ const v = FLEET.find(r=> r.id === id); if (v && v.p) Object.assign(v.p, p); };
+  fix('mukluk', { tw:0.0585, kh:0.0080, rim:'fat', rimW:0.038, rimD:0.017 });
+  fix('aventure', { tr:0.056 });
+  /* ---- the tab subtitles say where the fat bikes are ---- */
+  const sub = (id, s)=>{ const c = FLEET_CATS.find(c=> c.id === id); if (c) c.sub = s; };
+  sub('mtb', 'Fat-tyre, downhill, enduro, freeride, trail, park and race bikes');
+  sub('ebike', 'Fat-tyre, city, cargo, folding, gravel and cruiser e-bikes');
 })();
 
 /* =========================================================================
@@ -51171,6 +51234,18 @@ function rgRoadBuild(ctrl, opts){
       if (a !== null && a !== undefined && b !== null && b !== undefined) fixed[i] = a + (b - a)*t;
     }
   }
+  // Release 15.16 (trails25, "make me the trails smooth"): a dirt trail meets every dirt trail it crosses at THAT one's height
+  // (pinned where its centre line runs inside the other's core; the smoothing below rounds it in), so a crossing is level
+  // instead of a step -- the bike park trails crossed each other 0.5-0.9 m apart
+  if (surface === 'dirt' && opts.matchCross !== false && ROADS.length){
+    for (let i = 0; i < n; i++){
+      if (fixed[i] === fixed[i]) continue;
+      const nr = rgRoadNearest(pts[i][0], pts[i][1], 14, o=> o !== r && !!o.y && o.surface === 'dirt');
+      if (!nr || nr.d > nr.road.half + 0.6) continue;
+      const b = nr.road.bridge; if (b && b[nr.i] && b[nr.i + 1]) continue;
+      fixed[i] = nr.y;
+    }
+  }
   // smoothed land profile
   const R = Math.max(0, Math.round(r.smooth / RG_ROAD_DS));
   const tmp = new Float32Array(n);
@@ -51360,7 +51435,7 @@ function rgCorridor(x, z){
     if (c < 0){ if (nc === _corN) rgCorGrow(); _corR[nc] = r; _corD[nc] = _roadQ.d; _corI[nc] = i; _corT[nc] = _roadQ.t; nc++; }
     else if (_roadQ.d < _corD[c]){ _corD[c] = _roadQ.d; _corI[c] = i; _corT[c] = _roadQ.t; }
   }
-  let bestW = 0, hb = NaN;
+  let bestW = 0, hb = NaN, sw = 0, swy = 0, dirtOnly = true;
   for (let q = 0; q < nc; q++){
     const r = _corR[q], d = _corD[q], i = _corI[q], t = _corT[q];
     if (r.bridge[i] && r.bridge[i+1]) continue;               // spans leave the land alone
@@ -51370,12 +51445,17 @@ function rgCorridor(x, z){
     const fall = core + Math.min(46, Math.max(3.5, Math.abs(hb - ry)*1.7));
     if (d >= fall) continue;
     const w = d <= core ? 1 : 1 - rgSstep(core, fall, d);
+    if (r.surface === 'dirt'){ const b = w*w; sw += b; swy += b*ry; } else dirtOnly = false;   // w^2: the own trail keeps its line, crossings blend
     if (w > bestW + 1e-6 || (Math.abs(w - bestW) <= 1e-6 && ry > _cor.y)){
       bestW = w; _cor.y = ry; _cor.road = r;
       _cor.surf = d <= r.width/2 + 0.2 ? (r.surface === 'asphalt' ? 6 : 2) : (d <= r.width/2 + r.shoulder + 0.2 ? (r.paved ? 6 : 2) : 0);
       if (r.surface === 'dirt' && d <= r.width/2 + 0.2) _cor.surf = 1;
     }
   }
+  // Release 15.16 (trails25, "make me the trails smooth"): where dirt trails cross / meet each other the land is carved to the
+  // weighted mean of their heights -- the strongest-wins pick above jumped by their whole difference (steps of 0.5-0.9 m on the
+  // bike park trails). Roads with a paved / gravel surface keep the pick (their crossings are levelled where they are laid out).
+  if (dirtOnly && sw > 0 && bestW > 0) _cor.y = swy / sw;
   _cor.w = bestW;
   return _cor;
 }
@@ -72067,6 +72147,275 @@ function* w23LiftBuild(ch){
   W23P.ms = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
 })();
 
+/* =========================================================================
+   BIKE25 late (Release 15.16, stream bike25): runs after every game module (the handling and shop tables exist by now).
+     * the 'fat' class rides like a fat bike: more grip than knobbies on dirt / grass / snow, a bit more rolling drag on tarmac,
+       soft floaty landings (wider landing window, keeps its speed, soaks bigger drops)
+     * the new Northcut Bigfloat FS ('fatmtb') costs $1,200 -- a new save (which starts with $1,500) can buy it at once. It is
+       priced outside the MTB ranking, so the tab's free starter bikes and every other price stay exactly as they were.
+   ========================================================================= */
+(function(){
+  try {
+    if (typeof HND_TYRES !== 'undefined'){
+      //            [lateral grip x, extra rolling drag 1/s]   (knobby: grass 0.96/0.15, dirt 1.03/0.05, snow 0.82/0.16)
+      HND_TYRES.fat = { asphalt:[0.97, 0.07], concrete:[0.97, 0.07], park:[0.99, 0.04], grass:[1.03, 0.08], dirt:[1.08, 0.03], snow:[1.05, 0.05] };
+    }
+    if (typeof HND_CLS !== 'undefined'){
+      HND_CLS.fat = Object.assign({}, HND_CLS.fat || {}, { tyre:'fat', landKeep:0.99, landTol:12, hardK:1.35, saveKeep:0.82 });
+    }
+  } catch(e){ console.warn('bike25: fat handling not applied', e); }
+  try {
+    if (typeof sh13Prices === 'function' && typeof SHOP13 !== 'undefined'){
+      const base = sh13Prices, PRICE = 1200;
+      sh13Prices = function(){
+        if (SHOP13.prices) return SHOP13.prices;
+        const i = FLEET.findIndex(v=> v.id === 'fatmtb');
+        const row = i >= 0 ? FLEET.splice(i, 1)[0] : null;              // rank the tab without it: the starters + prices stay as before
+        let P = null;
+        try { P = base.apply(this, arguments); } finally { if (row) FLEET.splice(i, 0, row); }
+        if (P && row){ P.price.fatmtb = PRICE; P.value.fatmtb = PRICE; delete P.starter.fatmtb; }
+        return P;
+      };
+    }
+  } catch(e){ console.warn('bike25: fat bike price not applied', e); }
+})();
+/* =========================================================================
+   GFXSAFE25 -- Release 15.16: "when you change your graphics mode you crash like crashes your game"
+   1. NEW SHADERS WITHOUT THE BIG FREEZE. A mode change that turns the post effects on / off (POST.setLevel: tone mapping, output
+      encoding and the sky reflections change for every material) or Toaster's simple lighting on / off (toaster19: Lambert <-> PBR)
+      makes EVERY material compile its shader again. three r128 compiled them in the next frame one after another, each one waiting
+      for the driver (and toaster19 forced it at once with renderer.compile): on a Windows laptop (ANGLE / D3D11) that is many
+      seconds in ONE frame -- the GPU watchdog resets the graphics ("The graphics stopped") or the tab dies. Now such a change does
+      what the loading screen does (boot15): the picture holds behind a small "Applying graphics" card, every program is CREATED
+      first so the driver compiles them in parallel (KHR_parallel_shader_compile), the game waits without blocking, then one tiny
+      frame finds them all ready. Without the extension: a slice of the scene's shaders per frame, never all of them in one.
+      The ride is frozen meanwhile (no physics step while nothing is drawn).
+   2. A MODE THAT CRASHED IS UNDONE. The player's own mode change is on trial until 10 s of frames are drawn in it; if the graphics
+      are lost (or the page dies) inside that time, the next start goes back to the mode before it and says so (toast + Settings).
+   API: GFXSAFE (state, for tests), gfxSafeKick(why)        ?gfxsafe=0 turns both off
+   ========================================================================= */
+const GFXSAFE = { on: !/[?&]gfxsafe=0\b/.test(location.search), busy:false, again:false, why:'', runs:0, created:0, waitMs:0, ms:0,
+                  slices:0, inside:0, last:null, err:'', card:null, trial:null, reverted:null, lost:false, t0:0 };
+const GFXSAFE_TRIAL = 'dusk_line_gfx25_trial';
+
+/* ---------------------------------------------------------------- the card */
+function gfxSafeCard(on, text){
+  try {
+    let c = GFXSAFE.card;
+    if (!c){
+      const st = document.createElement('style');
+      st.textContent = '#gfxSafeCard{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:9000;display:none;align-items:center;gap:12px;' +
+        'padding:14px 22px;border-radius:14px;background:rgba(14,16,22,.88);color:#f3efe6;font:600 15px/1.2 system-ui,-apple-system,Segoe UI,sans-serif;' +
+        'box-shadow:0 8px 30px rgba(0,0,0,.45);pointer-events:none;letter-spacing:.02em}' +
+        '#gfxSafeCard.on{display:flex}#gfxSafeCard i{width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#ffb547;' +
+        'animation:gfxSafeSpin .8s linear infinite}@keyframes gfxSafeSpin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(st);
+      c = document.createElement('div'); c.id = 'gfxSafeCard'; c.setAttribute('role', 'status');
+      c.innerHTML = '<i aria-hidden="true"></i><span></span>';
+      document.body.appendChild(c);
+      GFXSAFE.card = c;
+    }
+    if (text) c.querySelector('span').textContent = text;
+    c.classList.toggle('on', !!on);
+  } catch(e){}
+}
+
+/* ---------------------------------------------------------------- 1. the staged recompile */
+function gfxSafeKick(why){
+  if (!GFXSAFE.on || typeof GFX14 === 'undefined' || !GFX14.booted) return;
+  GFXSAFE.why = why || '';
+  if (GFXSAFE.busy){ GFXSAFE.again = true; return; }
+  GFXSAFE.busy = true; GFXSAFE.again = false; GFXSAFE.runs++; GFXSAFE.t0 = performance.now();
+  GFXSAFE.created = 0; GFXSAFE.waitMs = 0; GFXSAFE.slices = 0;
+  gfxSafeCard(true, 'Applying graphics…');
+  // after the rest of this change (gfxApply's other steps, its subscribers) and one painted frame of the card
+  setTimeout(gfxSafeRun, 60);
+}
+function gfxSafeRun(){
+  // (tests: ?pc=sim makes every program "still compiling" at its first look, like a real parallel compile)
+  const ext = typeof _b15ext !== 'undefined' && (!!_b15ext || (typeof _b15sim !== 'undefined' && _b15sim)) && !!_b15gl &&
+              typeof boot15Collect === 'function' && typeof boot15Tiny === 'function';
+  if (!ext){ gfxSafeSlices(); return; }
+  let made = [];
+  // the programs the collect pass creates (a set: three drops the released ones from its list while adding the new ones)
+  const before = new Set(renderer.info.programs || []);
+  GFXSAFE.inside++;
+  try { boot15Collect(function(){ boot15Tiny(function(){ prewarmShaders(); }); }); }
+  catch(e){ GFXSAFE.err = 'collect: ' + e.message; }
+  finally { GFXSAFE.inside--; }
+  made = (renderer.info.programs || []).filter(p=> !before.has(p));
+  GFXSAFE.created = made.length;
+  gfxSafeWait(made, gfxSafeFinal);
+}
+/* the driver compiles in the background: ask (never blocking) until every new program is done */
+function gfxSafeWait(list, done){
+  const gl = _b15gl, gpp = Object.getPrototypeOf(gl).getProgramParameter, CS = (_b15ext && _b15ext.COMPLETION_STATUS_KHR) || 0x91B1;
+  const t0 = performance.now();
+  const poll = ()=>{
+    let left = 0;
+    for (let i = 0; i < list.length; i++){
+      const p = list[i];
+      if (p.__g25ok || !p.program) continue;
+      let ok = true; try { ok = typeof _b15done === 'function' ? _b15done(gpp, p.program) : gpp.call(gl, p.program, CS) !== false; } catch(e){}
+      if (ok) p.__g25ok = 1; else left++;
+    }
+    if (list.length) gfxSafeCard(true, 'Applying graphics… ' + (list.length - left) + '/' + list.length);
+    if (!left || document.hidden || performance.now() - t0 > 30000){ GFXSAFE.waitMs = Math.round(performance.now() - t0); done(); return; }
+    setTimeout(poll, 16);
+  };
+  poll();
+}
+/* no parallel compile: the scene's shaders a slice at a time (each frame waits for a few programs, never for all of them) */
+function gfxSafeSlices(){
+  const list = [];
+  scene.traverse(o=>{ if (o.material && (o.isMesh || o.isPoints || o.isLine || o.isSprite)) list.push(o); });
+  let i = 0, n = 24;
+  const step = ()=>{
+    if (!GFXSAFE.busy) return;
+    const t0 = performance.now();
+    GFXSAFE.inside++;
+    try {
+      const from = i, to = Math.min(list.length, i + n);
+      const fake = Object.create(scene);                   // the same scene (lights, fog, environment), only this slice's objects
+      fake.traverse = function(cb){ for (let k = from; k < to; k++) cb(list[k]); };
+      renderer.compile(fake, camera);
+      i = to;
+    } catch(e){ GFXSAFE.err = 'slice: ' + e.message; i = list.length; }
+    finally { GFXSAFE.inside--; }
+    const ms = performance.now() - t0;
+    n = ms < 25 ? Math.min(400, n*2) : Math.max(4, n >> 1);      // ~a few dozen ms of compiling per frame
+    GFXSAFE.slices++;
+    gfxSafeCard(true, 'Applying graphics… ' + Math.round(100*i/Math.max(1, list.length)) + '%');
+    if (i < list.length) requestAnimationFrame(step); else setTimeout(gfxSafeFinal, 0);
+  };
+  requestAnimationFrame(step);
+}
+/* every program is ready: one tiny frame (the instanced / shadow variants, the uploads), then the game draws again */
+function gfxSafeFinal(){
+  GFXSAFE.inside++;
+  try { if (typeof boot15Tiny === 'function') boot15Tiny(function(){ prewarmShaders(); }); else prewarmShaders(); }
+  catch(e){ GFXSAFE.err = 'prewarm: ' + e.message; }
+  finally { GFXSAFE.inside--; }
+  GFXSAFE.ms = Math.round(performance.now() - GFXSAFE.t0);
+  GFXSAFE.last = { why:GFXSAFE.why, ms:GFXSAFE.ms, created:GFXSAFE.created, waitMs:GFXSAFE.waitMs, slices:GFXSAFE.slices,
+                   programs:renderer.info.programs ? renderer.info.programs.length : 0 };
+  GFXSAFE.busy = false;
+  if (GFXSAFE.again){ GFXSAFE.again = false; gfxSafeKick(GFXSAFE.why); return; }
+  gfxSafeCard(false);
+  if (GFXSAFE.trial) GFXSAFE.trial.t0 = performance.now();         // the trial counts from the first real frame
+}
+/* the hooks: the post tier (POST.setLevel through gfxApplyTier) and Toaster's lighting (toaster19's t19Set) */
+(function gfxSafeHooks(){
+  if (!GFXSAFE.on) return;
+  if (typeof gfxApplyTier === 'function'){
+    const base = gfxApplyTier;
+    gfxApplyTier = function(id){
+      const before = typeof GFX !== 'undefined' ? GFX : null;
+      const r = base.apply(this, arguments);
+      try { if (typeof GFX !== 'undefined' && GFX !== before) gfxSafeKick('tier ' + before + '>' + GFX); } catch(e){}
+      return r;
+    };
+  }
+  if (typeof t19Set === 'function' && typeof T19 !== 'undefined'){
+    const base = t19Set;
+    t19Set = function(on){
+      if (!(typeof GFX14 !== 'undefined' && GFX14.booted) || !!on === T19.on) return base.apply(this, arguments);
+      // the same switch without its synchronous compile of every program: the staged one builds them
+      const rc = renderer.compile; renderer.compile = function(){};
+      try { return base.apply(this, arguments); }
+      finally { renderer.compile = rc; gfxSafeKick('shade ' + (on ? 'simple' : 'full')); }
+    };
+  }
+  // nothing is drawn while the new shaders build (the canvas keeps the last picture under the card) ...
+  if (typeof POST !== 'undefined' && typeof POST.render === 'function'){
+    const r0 = POST.render;
+    POST.render = function(){
+      if (GFXSAFE.busy && !GFXSAFE.inside) return;
+      const r = r0.apply(this, arguments);
+      if (!GFXSAFE.inside && GFXSAFE.trial && !GFXSAFE.lost) GFXSAFE.trial.frames++;      // a frame really drawn in the new mode
+      return r;
+    };
+  }
+  // ... and the ride waits for it
+  if (typeof stepPhysics === 'function'){
+    const s0 = stepPhysics;
+    stepPhysics = function(){
+      if (GFXSAFE.busy) return;
+      return s0.apply(this, arguments);
+    };
+  }
+})();
+
+/* ---------------------------------------------------------------- 2. the trial + the undo after a crash */
+function gfxSafeSnap(){ return { mode:GFX14.mode, base:GFX14.base, custom:Object.assign({}, GFX14.custom || {}) }; }
+function gfxSafeWrite(T){ try { localStorage.setItem(GFXSAFE_TRIAL, JSON.stringify(T)); } catch(e){} }
+function gfxSafeTrial(from){
+  const now = gfxSafeSnap();
+  if (now.mode === from.mode && JSON.stringify(now.custom) === JSON.stringify(from.custom) && now.base === from.base) return;
+  // a trial already running keeps its starting point: the last mode that was drawn for a while
+  const T = GFXSAFE.trial && GFXSAFE.trial.store ? GFXSAFE.trial.store : { from, t:Date.now(), lost:false };
+  T.to = now.mode; T.toName = (GFX_NAMES[now.mode] || now.mode); T.t = Date.now();
+  GFXSAFE.trial = { store:T, t0:performance.now(), frames:0 };
+  gfxSafeWrite(T);
+}
+function gfxSafeTrialEnd(){ GFXSAFE.trial = null; try { localStorage.removeItem(GFXSAFE_TRIAL); } catch(e){} }
+(function gfxSafeTrialHooks(){
+  if (!GFXSAFE.on) return;
+  const wrapReady = (w, b)=>{ try { Object.defineProperty(w, 'ready', { configurable:true, get(){ return b.ready; }, set(v){ b.ready = v; } }); } catch(e){ w.ready = b.ready; } };
+  if (typeof gfxSetPreset === 'function'){
+    const b = gfxSetPreset;
+    gfxSetPreset = function(id, why){
+      const from = (typeof GFX14 !== 'undefined') ? gfxSafeSnap() : null;
+      const r = b.apply(this, arguments);
+      try { if (why === 'user' && from && GFX14.booted) gfxSafeTrial(from); } catch(e){}
+      return r;
+    };
+    wrapReady(gfxSetPreset, b);
+  }
+  if (typeof gfxSetKnob === 'function'){
+    const b = gfxSetKnob;
+    gfxSetKnob = function(k){
+      const from = gfxSafeSnap(), inner = GFXSAFE.trial;
+      const r = b.apply(this, arguments);
+      try { if (k !== 'fpsCap' && GFX14.booted) gfxSafeTrial(inner && inner.store ? inner.store.from : from); } catch(e){}
+      return r;
+    };
+  }
+  // drawn for 10 s (and 90 frames) in the new mode: it works on this computer
+  addFrameHook(function gfxSafeTrialTick(){
+    const T = GFXSAFE.trial;
+    if (!T || GFXSAFE.busy || GFXSAFE.lost || document.hidden) return;
+    if (T.frames >= 90 && performance.now() - T.t0 > 10000) gfxSafeTrialEnd();
+  });
+  try {
+    renderer.domElement.addEventListener('webglcontextlost', function(){
+      GFXSAFE.lost = true; GFXSAFE.busy = false; gfxSafeCard(false);
+      if (GFXSAFE.trial && GFXSAFE.trial.store){ GFXSAFE.trial.store.lost = true; gfxSafeWrite(GFXSAFE.trial.store); }
+    }, false);
+  } catch(e){}
+  // leaving the page normally is not a crash
+  addEventListener('pagehide', function(){ if (GFXSAFE.trial && GFXSAFE.trial.store && !GFXSAFE.trial.store.lost) gfxSafeTrialEnd(); });
+})();
+/* at load: the last start changed the mode, then the graphics were lost / the page died -> back to the mode before it */
+(function gfxSafeRevert(){
+  let T = null; try { T = JSON.parse(localStorage.getItem(GFXSAFE_TRIAL) || 'null'); } catch(e){}
+  if (!T) return;
+  try { localStorage.removeItem(GFXSAFE_TRIAL); } catch(e){}
+  const died = !!T.lost || (typeof PHONE16 !== 'undefined' && !!PHONE16.crash);
+  if (!GFXSAFE.on || !died || !T.from || Date.now() - (+T.t || 0) > 20*60*1000) return;
+  const F = T.from, ok = m => GFX_IDS.indexOf(m) >= 0 || m === 'auto' || m === 'custom';
+  if (!ok(F.mode)) return;
+  GFX14.mode = F.mode;
+  if (GFX_IDS.indexOf(F.base) >= 0) GFX14.base = F.base;
+  GFX14.custom = typeof gfxCleanCustom === 'function' ? gfxCleanCustom(F.custom || {}) : (F.custom || {});
+  GFX14.by = 'user';
+  const back = GFX_NAMES[F.mode] || F.mode, bad = T.toName || 'The last mode';
+  GFX14.note = bad + ' stopped the graphics on this computer - back to ' + back;
+  GFXSAFE.reverted = { from:T.to, to:F.mode, lost:!!T.lost };
+  try { gfxApply(gfxTarget(), { initial:true }); } catch(e){}          // (the first apply ran at gfx14's load, before this module)
+  try { gfxSave(); } catch(e){}
+  try { if (typeof PHONE16 !== 'undefined') PHONE16.crashToast = 'Graphics: back to ' + back + ' - ' + bad + ' was too much for this computer'; } catch(e){}
+})();
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
@@ -73661,9 +74010,9 @@ const FR_DEFS = [
   { id:'bluejay',name:'Blue Jay',     diff:'blue',   route:'blue',  width:3.4, smooth:14,
     tail:[[-2800,5068],[-2783,5058],[-2766,5055],[-2751,5055]], blurb:'Tables and doubles all the way down. Hold your speed, pop the lips.' },
   { id:'iron',   name:'Iron Curtain', diff:'black',  route:'black', width:3.0, smooth:12,
-    tail:[[-2803,5008],[-2785,5007],[-2767,5007],[-2751,5007]], blurb:'Rock gardens, roots, drops and a ladder bridge. Steep and loose.' },
+    tail:[[-2803,5008],[-2785,5007],[-2767,5007],[-2751,5007]], blurb:'Steep and fast: drops, a skinny, a ladder bridge and big doubles.' },
   { id:'westridge', name:'West Ridge Enduro', diff:'blue', route:'wr', width:3.2, smooth:14, own:true, mix:'enduro',
-    tail:[], blurb:'Off the ridge to the end of Westbrook Road: 2.4 km of rock gardens, roots, tables and long fast straights.' },
+    tail:[], blurb:'Off the ridge to the end of Westbrook Road: 2.4 km of tables, doubles, rollers and long fast straights.' },
   { id:'duskdh', name:'Dusk Peak DH', diff:'dblack', route:'dh',    width:3.2, smooth:12,
     tail:[[-2804,5034],[-2785,5031],[-2767,5030],[-2751,5030]], blurb:'From the summit to the car park: 2.8 km, 770 m down. Step-downs, big drops, no brakes.' }
 ];
@@ -74077,6 +74426,7 @@ function* frBerms(t, used){
       // split long turns into <= 34 m pieces
       for (let a = s0; a < s1 - 4; a += 34){
         const b = Math.min(s1, a + 34);
+        if (t.cross && t.cross.some(c=> b > c[0] && a < c[1])) continue;        // trails25: never across another trail's line
         const ramp0 = s0, ramp1 = s1;
         frTrailFeat(t, 'berm', a, b, hw + 3.4, (s, d)=>{
           // parks23: the bank for the design speed through this radius (tan = v^2 k / g, +10 %), 25-40 deg, faded in on gentle bends
@@ -74146,22 +74496,39 @@ function frRollFeat(t, s0, n, lam, amp){
 /* the feature mix per difficulty, placed in order down the trail on free stretches */
 const FR_MIX = {
   green: [ ['roll', 3, 8.5, 0.55], ['table', 9.5, 17, 0.55], ['roll', 4, 7.5, 0.5], ['hip', 10, 16, 0.6], ['roll', 3, 9, 0.6], ['table', 10, 18, 0.65], ['roll', 4, 8, 0.55], ['table', 10, 18, 0.6] ],
-  blue:  [ ['table', 11, 21, 0.8], ['wkick', 12, 24, 1.1], ['double', 12, 24, 1.05], ['roll', 3, 9, 0.7], ['stepup', 12, 26, 0.9], ['double', 13, 25, 1.2], ['hip', 12, 22, 0.9], ['roots', 14], ['stepdown', 13, 22, 1.3], ['wall', 2.4], ['double', 13.5, 25, 1.3] ],
-  black: [ ['rocks', 22], ['roots', 16], ['drop', 12, 2, 1.2], ['skinny', 12, 0.7], ['rocks', 26], ['wdrop', 12.5, 3, 1.6], ['roots', 18], ['bridge', 20, 1.1], ['stepdown', 13, 20, 1.4], ['rocks', 20], ['double', 14, 22, 1.3], ['drop', 13, 2, 1.8], ['wall', 2.6], ['roots', 16], ['rocks', 24] ],
-  enduro:[ ['rocks', 18], ['table', 12, 20, 0.85], ['roots', 16], ['double', 13, 22, 1.1], ['hip', 13, 20, 1.0], ['rocks', 22], ['table', 13, 21, 1.0], ['roll', 3, 10, 0.7], ['stepup', 13.5, 24, 1.0],
-            ['double', 14, 23, 1.3], ['roots', 18], ['rocks', 20], ['stepdown', 14, 20, 1.4], ['double', 14.5, 24, 1.4], ['table', 13.5, 22, 1.1], ['wall', 2.6], ['rocks', 16] ],
-  dblack:[ ['rocks', 26], ['double', 16, 20, 1.4], ['roots', 18], ['drop', 15, 2, 2.0], ['rocks', 30], ['stepdown', 16, 18, 1.8], ['double', 16.5, 21, 1.6], ['wdrop', 15, 3, 3.0], ['rocks', 24], ['roots', 18], ['hip', 15, 20, 1.3],
-           ['double', 17, 22, 1.8], ['rocks', 28], ['drop', 16, 2, 2.2], ['stepup', 15, 24, 1.3], ['double', 16, 20, 1.5], ['rocks', 22], ['roots', 16], ['double', 17, 22, 1.7] ]
+  blue:  [ ['table', 11, 21, 0.8], ['wkick', 12, 24, 1.1], ['double', 12, 24, 1.05], ['roll', 3, 9, 0.7], ['stepup', 12, 26, 0.9], ['double', 13, 25, 1.2], ['hip', 12, 22, 0.9], ['roll', 2, 8, 0.45], ['stepdown', 13, 22, 1.3], ['wall', 2.4], ['double', 13.5, 25, 1.3] ],
+  black: [ ['roll', 3, 9, 0.6], ['roll', 2, 8, 0.45], ['drop', 12, 2, 1.2], ['skinny', 12, 0.7], ['roll', 3, 9, 0.6], ['wdrop', 12.5, 3, 1.6], ['roll', 2, 8, 0.45], ['bridge', 20, 1.1], ['stepdown', 13, 20, 1.4], ['roll', 3, 9, 0.6], ['double', 14, 22, 1.3], ['drop', 13, 2, 1.8], ['wall', 2.6], ['roll', 2, 8, 0.45], ['roll', 3, 9, 0.6] ],
+  enduro:[ ['roll', 3, 9, 0.6], ['table', 12, 20, 0.85], ['roll', 2, 8, 0.45], ['double', 13, 22, 1.1], ['hip', 13, 20, 1.0], ['roll', 3, 9, 0.6], ['table', 13, 21, 1.0], ['roll', 3, 10, 0.7], ['stepup', 13.5, 24, 1.0],
+            ['double', 14, 23, 1.3], ['roll', 2, 8, 0.45], ['roll', 3, 9, 0.6], ['stepdown', 14, 20, 1.4], ['double', 14.5, 24, 1.4], ['table', 13.5, 22, 1.1], ['wall', 2.6], ['roll', 3, 9, 0.6] ],
+  dblack:[ ['roll', 3, 9, 0.6], ['double', 16, 20, 1.4], ['roll', 2, 8, 0.45], ['drop', 15, 2, 2.0], ['roll', 3, 9, 0.6], ['stepdown', 16, 18, 1.8], ['double', 16.5, 21, 1.6], ['wdrop', 15, 3, 3.0], ['roll', 3, 9, 0.6], ['roll', 2, 8, 0.45], ['hip', 15, 20, 1.3],
+           ['double', 17, 22, 1.8], ['roll', 3, 9, 0.6], ['drop', 16, 2, 2.2], ['stepup', 15, 24, 1.3], ['double', 16, 20, 1.5], ['roll', 3, 9, 0.6], ['roll', 2, 8, 0.45], ['double', 17, 22, 1.7] ]
 };
 /* parks23: the turn of the trail over [a, b] (rad, unsigned) */
 function frTurn(t, a, b){ const p = frAt(t, a), q = frAt(t, b); let d = q.yaw - p.yaw; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI; return Math.abs(d); }
 const FR_JUMPK = { table:1, double:1, wkick:1, drop:1, wdrop:1, stepup:1, stepdown:1, hip:1, rhythm:1 };
+/* Release 15.16 (trails25): where another road / trail crosses or touches this one (arc spans, +-6 m) -- no feature is built there
+   (a berm or a jump of one trail sat across the other's line) */
+function frCrossSpans(t){
+  const out = []; let a = -1, b = -1;
+  if (typeof rgRoadNearest !== 'function') return out;
+  for (let s = 0; s <= t.len; s += 2){
+    const p = frAt(t, s), nr = rgRoadNearest(p.x, p.z, 30, o=> o !== t.road);
+    if (nr && nr.d < nr.road.half + t.hw + 2.5){ if (a < 0) a = s; b = s; }
+    else if (a >= 0){ out.push([a - 6, b + 6]); a = -1; }
+  }
+  if (a >= 0) out.push([a - 6, b + 6]);
+  return out;
+}
 function* frPlanTrail(t){
   const used = [[0, 28], [t.len - 48, t.len]];
   t.warns = []; t.arrows = t.arrows || [];
+  t.cross = frCrossSpans(t);
+  for (const c of t.cross) used.push(c);
   yield* frBerms(t, used);
   const free = (a, b)=> used.every(u=> b < u[0] - 10 || a > u[1] + 10);
-  const mix = t.def.mixList || FR_MIX[t.def.mix || t.diff] || [];
+  // trails25: rollers at least one design-speed second long (a fast trail's pump rollers were 2 g compressions at its speed)
+  const vdR = FR_VD[t.diff] || 10;
+  const mix = (t.def.mixList || FR_MIX[t.def.mix || t.diff] || []).map(it=> it[0] === 'roll' ? ['roll', it[1], Math.max(it[2], vdR), Math.min(it[3], vdR > 11 ? 0.5 : it[3])] : it);
   const room = t.len - 90, step = room/(mix.length + 0.5), missed = [];
   let s = 34;
   for (let m = 0; m < mix.length; m++){
@@ -76421,13 +76788,13 @@ const PK23_PARKS = [
         mix:[ ['roll', 3, 8.5, 0.55], ['table', 9.5, 17, 0.55], ['roll', 4, 8, 0.5], ['hip', 10, 16, 0.6], ['roll', 3, 9, 0.6], ['table', 10, 18, 0.6], ['roll', 4, 8, 0.55], ['table', 10, 18, 0.65], ['roll', 3, 9, 0.6] ] },
       { id:'rr-blue', name:'Ridgeback', diff:'blue', route:'blue', width:3.4, smooth:14, tail:[[-6452,-4806]], top:'Ridgeback top',
         blurb:'Tables, doubles, a step-up, a hip and a wallride down the ridge.',
-        mix:[ ['table', 11, 21, 0.8], ['double', 12, 24, 1.05], ['roll', 3, 9, 0.7], ['stepup', 12, 26, 0.9], ['wkick', 12, 24, 1.1], ['hip', 12, 22, 0.9], ['double', 13, 25, 1.2], ['stepdown', 13, 22, 1.3], ['roots', 14], ['wall', 2.4], ['double', 13, 24, 1.2] ] },
+        mix:[ ['table', 11, 21, 0.8], ['double', 12, 24, 1.05], ['roll', 3, 9, 0.7], ['stepup', 12, 26, 0.9], ['wkick', 12, 24, 1.1], ['hip', 12, 22, 0.9], ['double', 13, 25, 1.2], ['stepdown', 13, 22, 1.3], ['roll', 2, 8, 0.45], ['wall', 2.4], ['double', 13, 24, 1.2] ] },
       { id:'rr-black', name:'Talon', diff:'black', route:'black', width:3.0, smooth:12, tail:[[-6452,-4835]], top:'Talon top',
-        blurb:'Steep tech: rock gardens, roots, drops, a skinny and a ladder bridge.',
-        mix:[ ['rocks', 22], ['roots', 16], ['drop', 12, 2, 1.2], ['skinny', 12, 0.7], ['rocks', 24], ['stepdown', 13, 20, 1.4], ['wdrop', 12.5, 3, 1.6], ['bridge', 18, 1.0], ['roots', 18], ['double', 14, 22, 1.3], ['rocks', 20], ['drop', 13, 2, 1.8], ['wall', 2.6] ] },
+        blurb:'Steep and fast: drops, a skinny, a ladder bridge and big doubles.',
+        mix:[ ['roll', 3, 9, 0.6], ['roll', 2, 8, 0.45], ['drop', 12, 2, 1.2], ['skinny', 12, 0.7], ['roll', 3, 9, 0.6], ['stepdown', 13, 20, 1.4], ['wdrop', 12.5, 3, 1.6], ['bridge', 18, 1.0], ['roll', 2, 8, 0.45], ['double', 14, 22, 1.3], ['roll', 3, 9, 0.6], ['drop', 13, 2, 1.8], ['wall', 2.6] ] },
       { id:'rr-dh', name:"Raven's Drop", diff:'dblack', route:'dh', width:3.2, smooth:12, tail:[[-6452,-4865]], top:'Raven Ridge summit',
         blurb:'Summit to car park: 1.6 km and 345 m down. Big doubles, drops, step-downs.',
-        mix:[ ['rocks', 24], ['double', 16, 20, 1.4], ['roots', 16], ['drop', 15, 2, 2.0], ['stepdown', 16, 18, 1.7], ['rocks', 26], ['double', 16.5, 21, 1.6], ['wdrop', 15, 3, 2.6], ['hip', 15, 20, 1.3], ['rocks', 22], ['double', 17, 22, 1.7], ['drop', 16, 2, 2.2], ['stepup', 15, 24, 1.3], ['roots', 16], ['double', 16, 20, 1.5] ] }
+        mix:[ ['roll', 3, 9, 0.6], ['double', 16, 20, 1.4], ['roll', 2, 8, 0.45], ['drop', 15, 2, 2.0], ['stepdown', 16, 18, 1.7], ['roll', 3, 9, 0.6], ['double', 16.5, 21, 1.6], ['wdrop', 15, 3, 2.6], ['hip', 15, 20, 1.3], ['roll', 3, 9, 0.6], ['double', 17, 22, 1.7], ['drop', 16, 2, 2.2], ['stepup', 15, 24, 1.3], ['roll', 2, 8, 0.45], ['double', 16, 20, 1.5] ] }
     ],
     signs:[ { road:'northwood-ln', fromEnd:380, title:'Raven Ridge Bike Park', lines:['Trails · Shuttle · Downhill', 'Straight on · 1.7 km'] },
             { road:'raven-rd', fromEnd:160, title:'Raven Ridge Bike Park', lines:['Trailhead · car park', 'Four trails · uplift'] } ]
