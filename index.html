@@ -10924,7 +10924,7 @@ function rebuildPGrid(){
 function sampleWorld(x, z){
   let bh = 0, bpri = -1, found = false, bp = null;
   let nx = 0, ny = 1, nz = 0;
-  const arr = PGRID.get(Math.floor(x/PHYS_BUCKET) + ',' + Math.floor(z/PHYS_BUCKET));
+  const arr = (typeof p25PGet === 'function') ? p25PGet(Math.floor(x/PHYS_BUCKET), Math.floor(z/PHYS_BUCKET)) : PGRID.get(Math.floor(x/PHYS_BUCKET) + ',' + Math.floor(z/PHYS_BUCKET));   // perf25
   if (arr){
     for (let i=0;i<arr.length;i++){
       const pc = arr[i];
@@ -43480,7 +43480,8 @@ const MOB = {
   look: { id:-1, id2:-1, lx:0, ly:0, d0:0, z0:1, tap:0, tx:0, ty:0, moved:0 },
   hold: { k:'', t:0 },
   shown: false, lastState: '', airPeak: 0,
-  fpsCap: 60, wake: null, perfDone: false, hintT: 0, seen: {}
+  fpsCap: 60, wake: null, perfDone: false, hintT: 0, seen: {},
+  tilt: 0, tiltOn: false                                       // R15.16 (mobile26): tilt steering (mobile26_ctl.js writes them)
 };
 const MOB_TRICKS = {
   whip:'WHIP', bar:'BAR', xup:'X-UP', sup:'SUPER', noh:'NO-H', can:'CAN', tab:'TABLE',
@@ -43546,17 +43547,38 @@ function mobLayoutCompute(W, H, safe, o){
   put('left', px0 + pD/2, py1 + pD/2, pD); put('right', px0 + pD + pg + pD/2, py1 + pD/2, pD);
   put('down', px0 + pD/2, py0 + pD/2, pD); put('up', px0 + pD + pg + pD/2, py0 + pD/2, pD);
 
-  /* top row: respawn / view / pause */
-  const ud = Math.round(Math.max(46, Math.min(54, u * 0.94))), ug = 8;
-  const ux = W - safe.r - 12 - ud, uy = land ? safe.t + 10 : safe.t + 72;
-  put('pause', ux + ud/2, uy + ud/2, ud);
-  put('view',  ux - (ud + ug) + ud/2, uy + ud/2, ud);
-  put('reset', ux - 2 * (ud + ug) + ud/2, uy + ud/2, ud);
-  const utilW = 3 * ud + 2 * ug + 12;
+  /* R15.16 (mobile26): the top bar of a phone game -- PAUSE in the top-left corner (the score / clock / speed card next to it),
+     the minimap in the top-right corner with the camera and respawn buttons beside it (landscape: a row to its left;
+     portrait: a row under it; walk13 adds get-off left of respawn) */
+  const ud = Math.round(Math.max(44, Math.min(tablet ? 54 : 48, u * 0.92))), ug = 8;
+  const topY = safe.t + 10;
+  const mm = Math.round(tablet ? 140 : (land ? Math.min(92, Math.max(80, H * 0.23)) : Math.min(104, Math.max(84, W * 0.25))));
+  const mmX = W - safe.r - 14 - mm;
+  put('pause', 12 + safe.l + ud/2, topY + ud/2, ud);
+  // sideways: camera, then respawn, in a row left of the minimap; upright: a column under it (respawn under camera)
+  const vx = land ? mmX - 10 - ud : W - safe.r - 14 - ud, vy = land ? topY : topY + mm + 10;
+  put('view',  vx + ud/2, vy + ud/2, ud);
+  if (land) put('reset', vx - (ud + ug) + ud/2, vy + ud/2, ud);
+  else put('reset', vx + ud/2, vy + ud + ug + ud/2, ud);
+  const utilW = W - rects.reset.x - safe.r;                   // from the respawn button to the right edge
+  const utilBottom = rects.reset.y + ud;
+
+  /* R15.16 (mobile26): the player's own layout (Pause -> Edit controls): saved per orientation as the centre (fractions of the
+     screen) and a size factor; clamped inside the safe areas whatever the screen */
+  const cu = o.custom;
+  if (cu && typeof cu === 'object'){
+    for (const k in cu){
+      const r = rects[k], c = cu[k];
+      if (!r || !c || !(c.x >= 0 && c.x <= 1 && c.y >= 0 && c.y <= 1)) continue;
+      const d = Math.round(Math.max(k === 'ghost' ? 80 : 44, Math.min(k === 'ghost' ? 260 : 170, r.d * (c.s > 0.5 && c.s < 2 ? c.s : 1))));
+      const cx = Math.max(safe.l + d/2 + 2, Math.min(W - safe.r - d/2 - 2, c.x * W));
+      const cy = Math.max(safe.t + d/2 + 2, Math.min(H - safe.b - d/2 - 2, c.y * H));
+      rects[k] = { x: Math.round(cx - d/2), y: Math.round(cy - d/2), d: d, custom: true };
+    }
+  }
 
   /* what the HUD should do around the controls */
   const clusterTop = Math.min(rects.t3.y, rects.manual.y, rects.ghost.y);
-  const mm = land ? 92 : 104;
   /* the free strip between the two thumbs, where toasts / hints / the air-time pill go */
   let midX = W / 2, midW = W - 28;
   if (land){
@@ -43567,12 +43589,15 @@ function mobLayoutCompute(W, H, safe, o){
     midX = (lo + hi) / 2; midW = Math.max(160, hi - lo);
   }
   const vars = {
-    utilW: utilW, utilBottom: uy + ud, mm: mm, mmTop: uy + ud + 8,
+    utilW: utilW, utilBottom: utilBottom, mm: mm, mmTop: topY, topY: topY, statsL: 12 + safe.l + ud + 8,
+    cashX: Math.round(land ? ((12 + safe.l + ud + 8 + 176) + (rects.reset.x - ud - 8)) / 2 : W / 2),   // sideways: between the card and get-off
     toastB: land ? 10 + safe.b + 12 : Math.round(H - clusterTop + 10), midX: Math.round(midX), midW: Math.round(midW),
-    comboTop: land ? safe.t + 66 : Math.round(Math.min(safe.t + 262, H * 0.34))
+    comboTop: land ? topY + 58 : Math.round(Math.max(topY + mm + 24, H * 0.2))
   };
+  // the stick's zone is the half of the screen its ring is on (a custom layout may have moved the ring across)
+  const zl = cu && cu.ghost ? (rects.ghost.x + rects.ghost.d / 2) < W / 2 : dir > 0;
   return { land: land, u: u, W: W, H: H, rects: rects, vars: vars, ud: ud, tablet: tablet,
-           zone: { x0: dir > 0 ? 0 : W * 0.5, x1: dir > 0 ? W * 0.5 : W, y0: land ? H * (tablet ? 0.2 : 0.26) : H * (tablet ? 0.3 : 0.42) } };
+           zone: { x0: zl ? 0 : W * 0.5, x1: zl ? W * 0.5 : W, y0: land ? H * (tablet ? 0.2 : 0.26) : H * (tablet ? 0.3 : 0.42) } };
 }
 
 /* ---------------------------------------------------------------- settings */
@@ -43580,8 +43605,9 @@ function mobSetting(id, def){ try { const v = xset(id); return v === undefined ?
 if (isTouch){
   registerSetting({ id:'m_stick', label:'Steering', group:'touch', type:'choice', def:'stick',
     options:[ { v:'stick', label:'Thumb stick', hint:'Touch and drag anywhere on the steering side' },
+              { v:'tilt',  label:'Tilt',        hint:'Tilt the phone like a steering wheel (the stick still brakes and flips)' },
               { v:'pad',   label:'Buttons',     hint:'Four on-screen arrows' } ],
-    onChange(){ mobRebuild(); } });
+    onChange(v, init){ mobRebuild(); if (!init && typeof m26TiltSetting === 'function') m26TiltSetting(v); } });
   registerSetting({ id:'m_feel', label:'Steering feel', group:'touch', type:'choice', def:'normal',
     options:[ { v:'smooth', label:'Smooth', hint:'Fine control near the middle, full lock at the edge of the ring' },
               { v:'normal', label:'Normal', hint:'The usual' },
@@ -43627,6 +43653,22 @@ const MOB_SVG = {
   view:  '<svg viewBox="0 0 24 24" width="58%" height="58%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="12.5" height="10" rx="2"/><path d="M15.5 11l5-3v8l-5-3z"/></svg>',
   reset: '<svg viewBox="0 0 24 24" width="58%" height="58%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4.5V9h4.5"/></svg>'
 };
+/* R15.16 (mobile26): the action buttons' icons (24 px grid, drawn in the button's colour; a trick button's icon follows the
+   kind of trick in its slot: spin / flip / pose / ground -- mobile26_ctl.js) */
+const MOB_ICO = (function(){
+  const s = b=> '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + b + '</svg>';
+  return {
+    hop:     s('<path d="M6 12.5l6-6 6 6"/><path d="M6 18.5l6-6 6 6" opacity=".5"/>'),
+    spin:    s('<path d="M20.5 11.2c-.4-2.6-4.1-4.6-8.5-4.6-4.7 0-8.5 2.3-8.5 5.2s3.8 5.2 8.5 5.2c1.5 0 2.9-.2 4.1-.6"/><path d="M13.4 14.6l3 2-2.4 2.6"/>'),
+    flip:    s('<path d="M14.6 20.2A8.2 8.2 0 1 1 19.6 9"/><path d="M20.4 4.6L19.8 9.4 15.2 8.4"/>'),
+    pose:    s('<path d="M12 3.2l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.2l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7z"/>'),
+    ground:  s('<circle cx="14.5" cy="13" r="6.2"/><circle cx="14.5" cy="13" r="1.5"/><path d="M2.5 9.5h4.2M2 13h3.4M2.5 16.5h4.2" opacity=".7"/>'),
+    wheelie: s('<circle cx="6.2" cy="17.2" r="3.9"/><circle cx="17.6" cy="8.4" r="3.9"/><path d="M6.2 17.2l5.4-1.8 6-7"/><path d="M11.6 15.4l-1.8-5.2h2.6"/>'),
+    stoppie: s('<circle cx="6.4" cy="8.4" r="3.9"/><circle cx="17.8" cy="17.2" r="3.9"/><path d="M6.4 8.4l6 7 5.4 1.8"/><path d="M12.4 15.4l1.8-5.2h-2.6"/>'),
+    drift:   s('<path d="M3.5 18.5c4.6 0 4.2-6.2 8.5-6.2s3.9-6.3 8.5-6.3"/><path d="M3 21.6h5.5M15.5 3h5.5" opacity=".55"/>'),
+    tilt:    s('<rect x="7" y="3" width="10" height="18" rx="2.4" transform="rotate(-22 12 12)"/><path d="M2.6 8.4a10 10 0 0 0 0 7.2M21.4 8.4a10 10 0 0 1 0 7.2" opacity=".6"/>')
+  };
+})();
 
 /* ---------------------------------------------------------------- build */
 function mobBuildTouch(){
@@ -43660,6 +43702,23 @@ function mobBuildTouch(){
   }
 }
 function mobSoon(){ clearTimeout(MOB._t); MOB._t = setTimeout(mobLayout, 60); setTimeout(mobLayout, 350); }
+/* R15.16 (mobile26): the player's own button layout (Pause -> Edit controls, mobile26_ctl.js), one per orientation:
+   { land:{ crouch:{ x, y, s } ... }, port:{ ... } } -- centres as fractions of the screen, s = size factor */
+const MOB_LAYOUT_KEY = 'dusk_line_mob26_layout_v1';
+function mobCustom(o){
+  if (MOB.custom === undefined){
+    MOB.custom = null;
+    try { const v = JSON.parse(localStorage.getItem(MOB_LAYOUT_KEY) || 'null'); if (v && typeof v === 'object' && v.v === 1) MOB.custom = v; } catch(e){}
+  }
+  return MOB.custom && MOB.custom[o] && typeof MOB.custom[o] === 'object' ? MOB.custom[o] : null;
+}
+function mobCustomSave(o, map){
+  const all = Object.assign({ v:1 }, MOB.custom || {});
+  if (map && Object.keys(map).length) all[o] = map; else delete all[o];
+  MOB.custom = all;
+  try { localStorage.setItem(MOB_LAYOUT_KEY, JSON.stringify(all)); } catch(e){}
+  mobLayout();
+}
 function mobRebuild(){
   const wrap = MOB.root; if (!wrap) return;
   mobReleaseAll();
@@ -43672,11 +43731,13 @@ function mobRebuild(){
   };
   const pad = mobSetting('m_stick', 'stick') === 'pad';
   const tr = String(mobSetting('m_tricks', 'whip,bar,sup')).split(',');
-  mk('crouch', 'mbHop', '<span>HOP</span>', 'crouch');
-  mk('manual', 'mbMed', '<span>MAN</span>', 'manual');
-  ['t1', 't2', 't3'].forEach((s, i)=> mk(s, 'mbTrick', '<span>' + (MOB_TRICKS[tr[i]] || tr[i]) + '</span>', tr[i]));
-  mk('drift', 'mbSmall', '<span>SLD</span>', 'drift');
-  mk('stoppie', 'mbSmall', '<span>STP</span>', 'stoppie');
+  /* R15.16 (mobile26): every action button is an icon + a short label (HOP keeps its text first: walk13 writes JUMP into it) */
+  const ic = n=> '<i class="mbI">' + (MOB_ICO[n] || '') + '</i>';
+  mk('crouch', 'mbHop', '<span>HOP</span>' + ic('hop'), 'crouch');
+  mk('manual', 'mbMed', ic('wheelie') + '<span>WHEELIE</span>', 'manual');
+  ['t1', 't2', 't3'].forEach((s, i)=> mk(s, 'mbTrick', ic('spin') + '<span>' + (MOB_TRICKS[tr[i]] || tr[i]) + '</span>', tr[i]));
+  mk('drift', 'mbSmall', ic('drift') + '<span>SLIDE</span>', 'drift');
+  mk('stoppie', 'mbSmall', ic('stoppie') + '<span>STOPPIE</span>', 'stoppie');
   mk('pause', 'mbUtil', MOB_SVG.pause, 'm:pause');
   mk('view', 'mbUtil', MOB_SVG.view, 'm:view');
   mk('reset', 'mbUtil mbHold', MOB_SVG.reset, 'm:reset');
@@ -43697,7 +43758,7 @@ function mobLayout(){
   if (!MOB.built) return;
   const W = innerWidth, H = innerHeight, safe = mobReadSafe();
   const L = mobLayoutCompute(W, H, safe, {
-    size: mobSetting('m_size', 'M'), hand: mobSetting('m_hand', 'right')
+    size: mobSetting('m_size', 'M'), hand: mobSetting('m_hand', 'right'), custom: mobCustom(W >= H * 1.08 ? 'land' : 'port')
   });
   MOB.L = L; MOB.W = W; MOB.H = H; MOB.land = L.land; MOB.u = L.u; MOB.safe = safe; MOB.rects = L.rects; MOB.zone = L.zone;
   const rs = document.documentElement.style;
@@ -43709,10 +43770,13 @@ function mobLayout(){
   rs.setProperty('--mob-toast-b', v.toastB + 'px'); rs.setProperty('--mob-combo-top', v.comboTop + 'px');
   rs.setProperty('--mob-mid-x', v.midX + 'px'); rs.setProperty('--mob-mid-w', v.midW + 'px');
   rs.setProperty('--mob-u', L.u + 'px');
+  rs.setProperty('--mob-cash-x', v.cashX + 'px'); rs.setProperty('--mob-top-y', v.topY + 'px'); rs.setProperty('--mob-stats-l', v.statsL + 'px'); rs.setProperty('--mob-ud', L.ud + 'px');
+  document.documentElement.classList.toggle('mobTab', !!L.tablet);
   document.documentElement.classList.toggle('mobLand', L.land);
   document.documentElement.classList.toggle('mobPort', !L.land);
   MOB.stick.R = Math.round(L.u * 1.35);
-  const place = (el, r)=>{ if (!el || !r) return; el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.d + 'px'; el.style.height = r.d + 'px'; };
+  const place = (el, r)=>{ if (!el || !r) return; el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.d + 'px'; el.style.height = r.d + 'px';
+                          el.style.zIndex = r.custom ? '2' : ''; };      // a button the player placed sits on top of any it overlaps
   Object.keys(MOB.els).forEach(k=>{
     if (k === 'ghost') place(MOB.els.ghost, L.rects.ghost);
     else if (k === 'live') MOB.els.live.style.width = MOB.els.live.style.height = (2 * MOB.stick.R) + 'px';
@@ -43788,6 +43852,7 @@ function mobUp(e){
   if (p.kind === 'btn'){
     p.el.classList.remove('act');
     if (p.k === 'm:reset'){ MOB.hold.k = ''; p.el.style.setProperty('--p', 0); }
+    else if (p.k === 'm:tilt'){ try { m26TiltCalibrate(); } catch(_){} }     // on the release: iOS grants motion access only there
     else if (p.k.charAt(0) !== 'm' || p.k.charAt(1) !== ':') touch[p.k] = 0;
   } else if (p.kind === 'stick') mobStickEnd();
   else if (p.kind === 'look') mobLookEnd(e);
@@ -43898,7 +43963,7 @@ function mobLookEnd(e){
 /* ---------------------------------------------------------------- read by the base game's readInput() */
 function mobSteer(base){
   if (!MOB.on) return base;
-  const s = MOB.steer;
+  const s = MOB.steer + (MOB.tiltOn ? MOB.tilt : 0);          // R15.16 (mobile26): tilt steering adds to the thumb
   return s ? Math.max(-1, Math.min(1, base + s)) : base;
 }
 function mobAutoGo(){
@@ -44062,9 +44127,10 @@ function mobGuide(){
     '<div class="tgRow"><b>HOP</b><span>Hold to crouch, let go to jump. Hold it rolling up a ramp and release at the lip.</span></div>' +
     '<div class="tgRow"><b>MAN</b><span>Hold for a wheelie, even from a stop.</span></div>' +
     '<div class="tgRow"><b>Tricks</b><span>Tap a trick button in the air for one rotation, hold it for doubles and triples.</span></div>' +
-    '<div class="tgRow"><b>Top buttons</b><span>Hold the arrow to respawn · camera view · pause.</span></div>' +
+    '<div class="tgRow"><b>Top buttons</b><span>Pause is top-left. Top-right: hold the round arrow to respawn · camera view · get off the bike.</span></div>' +
     '<div class="tgRow"><b>Camera</b><span>Drag empty screen to look around · double-tap to recentre · pinch to zoom.</span></div>' +
-    '<div class="tgRow"><b>Make it yours</b><span>Pause → Touch settings: left-handed, button size, which tricks, buttons instead of the stick.</span></div>';
+    '<div class="tgRow"><b>Tilt</b><span>Pause → Touch settings → Steering: Tilt. Tilt the phone like a handlebar; tap TILT to centre it. With auto-pedal that is one thumb for everything.</span></div>' +
+    '<div class="tgRow"><b>Make it yours</b><span>Pause → Edit controls: drag any button where your thumbs want it and resize it. Touch settings: left-handed, button size, which tricks.</span></div>';
   const grid = card.querySelector('.ctrlGrid');
   card.insertBefore(g, grid || card.children[1] || null);
   mobGuideSide();
@@ -45414,10 +45480,12 @@ function gfxPresetRaw(id){
   if (ph && (id === 'toaster' || id === 'potato' || id === 'low' || id === 'medium')){
     const ps = gfxPhoneScale();
     // Release 15.7 (toaster): the lightest of all -- simple lighting, fewer pixels, the shortest view, almost empty streets
-    if (id === 'toaster') return { scale:Math.round(Math.max(0.6, ps*0.7)*20)/20, shadows:'off', view:0.3, detail:0, crowd:0.2, traffic:0.3, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1, shade:'simple' };
-    if (id === 'potato') return { scale:Math.round(Math.max(0.7, ps*0.85)*20)/20, shadows:'off', view:0.45, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
-    if (id === 'low')    return { scale:ps, shadows:'off', view:0.55, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
-    return { scale:ps, shadows:'low', view:0.7, detail:1, crowd:0.6, traffic:0.6, lamps:4, post:true, ao:0, bloom:true, fxaa:true, sharpen:false, aniso:4 };
+    // Release 15.16 (mobile26): the far skyline out to where the computer modes put it (fog, = the far view's reach; the
+    // full-detail ring stays at view): the city no longer greys out half a block away on a phone; the far boxes are cheap
+    if (id === 'toaster') return { scale:Math.round(Math.max(0.6, ps*0.7)*20)/20, shadows:'off', view:0.3, fog:0.4, detail:0, crowd:0.2, traffic:0.3, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1, shade:'simple' };
+    if (id === 'potato') return { scale:Math.round(Math.max(0.7, ps*0.85)*20)/20, shadows:'off', view:0.45, fog:0.6, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
+    if (id === 'low')    return { scale:ps, shadows:'off', view:0.55, fog:0.7, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
+    return { scale:ps, shadows:'low', view:0.7, fog:0.85, detail:1, crowd:0.6, traffic:0.6, lamps:4, post:true, ao:0, bloom:true, fxaa:true, sharpen:false, aniso:4 };
   }
   switch (id){
     // Release 15.7 ("make it so you can play even with an insanely weak laptop"): Toaster -- cheap per-vertex lighting instead of the
@@ -45865,9 +45933,11 @@ function gfxFrameTime(dtSec){
   if (!playing){ A.acc.length = 0; A.t = 0; A.playT = 0; return; }
   if (!(ms > 0) || ms > 250) return;                    // a tab switch / a long stall is not a frame
   A.playT += ms;
-  if (A.playT < 4000) return;                           // drop-in hitches, shader compiles, first spawns
+  if (A.playT < 3000) return;                           // drop-in hitches, shader compiles, first spawns
   A.acc.push(ms); A.t += ms;
-  if (A.t < 1500) return;
+  // Release 15.16 (perf25, "it gets laggy"): Auto looks at 1 s windows (was 1.5 s) -- with the one-window step below it reacts
+  // to sustained lag in ~1-2 s instead of 3-4.5 s; the trimmed mean still ignores one-off hitches
+  if (A.t < (GFXP.mode === 'auto' ? 1000 : 1500)) return;
   // trimmed mean: drop the slowest 10% so one-off hitches (GC, a shader) decide nothing
   const a = A.acc.sort((x, y)=> x - y), keep = Math.max(1, Math.floor(a.length*0.9));
   let s = 0; for (let i = 0; i < keep; i++) s += a[i];
@@ -45896,10 +45966,12 @@ function gfxAutoStep(avg){
     if (w.scaleOnly && avg > w.avg*0.95){ A.noScale = true; gfxAutoGo(w.from, 'resolution did not help'); A.cool = 1; return; }
   }
   if (avg > tgt*1.23){                                  // under ~49 fps (60 Hz target): one step down
+    // perf25: (1 s windows) really slow (under ~33 fps) steps at once, and two rungs at once under ~27 fps; mildly slow still
+    // needs two windows in a row (no see-sawing on a borderline machine)
     A.good = 0; A.low += avg > tgt*1.8 ? 2 : 1;
     if (A.low < 2 || A.rung >= R.length - 1) return;
     if (now - A.upAt < 15000) A.ceil = Math.max(A.ceil, A.rung + 1);       // we just climbed into this: never climb back above here
-    let r = A.rung + 1;
+    let r = A.rung + (avg > tgt*2.2 && A.rung + 2 < R.length ? 2 : 1);
     while (A.noScale && r < R.length - 1 && gfxRungOnly(r, 'scale')) r++;
     A.lastDown = { from:A.rung, avg, scaleOnly:gfxRungOnly(r, 'scale') };
     gfxAutoGo(r, 'slow ' + avg.toFixed(1) + ' ms');
@@ -65397,7 +65469,9 @@ function aerMatRGB(m){
   if (m.color){ r = m.color.r; g = m.color.g; b = m.color.b; }
   let tr = 1, tg = 1, tb = 1;
   const img = m.map && m.map.image;
-  if (img && (img.width || img.videoWidth)){
+  const q25 = (img && typeof perf25Tint === 'function') ? perf25Tint(img) : null;      // perf25: cached per canvas; a freed canvas is never read back
+  if (q25){ tr = q25[0]; tg = q25[1]; tb = q25[2]; }
+  else if (img && !img.__p16f && (img.width || img.videoWidth)){
     try {
       const cv = document.createElement('canvas'); cv.width = cv.height = 4;
       const x = cv.getContext('2d', { willReadFrequently:true }); x.drawImage(img, 0, 0, 4, 4);
@@ -68095,12 +68169,15 @@ function m16Cell(c, d, near){
   var R = c.m16;
   R.d = d;
   var pre = RENDER_DIST_SHOW + M16.pre, rel = RENDER_DIST_SHOW + M16.rel;
+  // Release 15.16 (perf25): while riding, at most ONE cell gives its GPU buffers back per culling pass (each is a burst of buffer /
+  // VAO deletes: a respawn across the city released a dozen at once = an 80-100 ms frame); the rest go on the next passes (10 a
+  // second). Behind the fast-travel fade / the Tab map, and always on a phone (memory first), all of them at once as before.
   if (R.st === 2){
-    if (d > rel && !near){ m16Release(c); return 0; }
+    if (d > rel && !near){ if (!M16.relAll && (M16.relN | 0) > 0) return 0; M16.relN = 1; m16Release(c); return 0; }
     return near ? 1 : 0;
   }
   if (R.st === 4) return 2;                              // its upload frame: drawn (nothing shows), far skyline stays
-  if (R.st === 3 && d > rel){ m16Release(c); return 0; }
+  if (R.st === 3 && d > rel){ if (!M16.relAll && (M16.relN | 0) > 0) return 0; M16.relN = 1; m16Release(c); return 0; }
   if (R.st === 0 && d < pre){ R.st = 1; M16.queue.push(c); M16.qDirty = true; }
   return 0;
 }
@@ -68117,6 +68194,8 @@ function m16Release(c){
 }
 /* after cullCells: the queue nearest first; teleports (respawn, travel) get a burst of budget */
 function m16Sched(px, pz){
+  M16.relN = 0;                                          // perf25: the next culling pass may release one cell again (all: not riding / a phone)
+  M16.relAll = (typeof GAME !== 'undefined' && GAME !== 'play') || (typeof gfxDevice === 'function' && !!gfxDevice().phone);
   // the margins follow the graphics mode's view distance (a phone's short view keeps fewer cells around)
   var v = (typeof GFXP !== 'undefined') ? clamp(+GFXP.view || 1, 0.5, 1.4) : 1;
   M16.pre = M16.cfg.pre*v; M16.rel = M16.cfg.rel*v;
@@ -72527,7 +72606,7 @@ addFrameHook(function gfx25FarTick(){
   }
   gfx25FarInit(want);
   gfx25FarCasters();
-  GFX25F.every = (GFXP.shadows === 'high') ? 3 : 2;
+  GFX25F.every = (GFXP.shadows === 'high') ? 4 : 3;      // perf25: was 3 / 2 (static casters only, the map moves in whole texels: no visible lag)
   if (GFX25F.on && (++GFX25F.tick % GFX25F.every) !== 0) return;
   GFX25F.tick = 0;
   const t0 = performance.now();
@@ -73850,6 +73929,624 @@ html.padActive #touch .mb, html.padActive #touch .mStickRing{ opacity:0 !importa
   // a pad that was already connected before the page loaded (some browsers only report it on the first press)
   try { const g = pad25Get(); if (g) pad25Connect({ gamepad: g }); } catch(e){}
   window.__pad25 = PAD25;
+})();
+/* =========================================================================
+   PERF25 (Release 15.16 wave 4, helper `perf25`): "this game gets laggy and it can't handle much"
+   Measured on a riding tour on the real game loop (test/t_perf25_tour.js: downtown at speed, Route 14, the 24 km world,
+   a bike park trail, a fast-travel jump; High and the 840M's own pick, Medium). What this module fixes:
+
+   1. THE MAP PAINTER NO LONGER READS TEXTURES BACK FROM THE GPU. The Tab map / minimap painter (aerial15 aerMatRGB) takes
+      each city material's average texture colour from a 4 x 4 draw of its canvas. phone16_tex frees canvases once they are
+      on the GPU, so that draw brought the WHOLE atlas back first: one readPixels of up to 2048 x 1024 (a full GPU pipeline
+      stall) + 2 copies of it in garbage, per atlas, while riding. On the tour that was the worst frame by far (7.6 s,
+      1.2 s, 0.4 s ... in SwiftShader; tens of ms each on a real GPU, plus the GC it caused).
+      Now: the colours are read ONCE per canvas while the canvas is still alive (all 49 city materials on the first menu
+      frame, before phone16's first sweep 0.6 s later), cached per canvas, and a canvas that is already freed is never read
+      back: its materials get a neutral texture tint (the map is a satellite-style picture; a sidewalk 5 % off in shade is
+      invisible, a 100 ms freeze is not).
+   2. sampleWorld without a string key per call (below).
+   Elsewhere (owned files, edited in place / small reps from patches/zzzzzzzzzzzzzzzz_perf25.py):
+   3. mem16_city.js: while riding, at most one packed city cell gives its GPU buffers back per culling pass (a respawn across the
+      city released a dozen at once: an 80-100 ms frame of buffer / VAO deletes); behind a fade / the map / on phones: all.
+   4. highway14_traffic.js hwtSpawn: no car spawns onto land whose surface tile is not built yet (its first pose built the tile
+      synchronously inside trafficTick).
+   5. gfx25_shadow.js (rep): the far shadow cascade (static far skyline only) every 4th frame on High, every 3rd on Ultra / Extreme.
+   6. gfx14_core.js Auto: 1 s windows (was 1.5 s) and two rungs at once under ~27 fps -- reacts in ~1-2 s, never touches the
+      resolution; the 840M keeps its own pick, Medium (gfxGpuPick unchanged: 4 CUs of RDNA 3.5 hold ~60 in Medium's look).
+   ========================================================================= */
+var PERF25 = window.PERF25 = {
+  tint: new WeakMap(), warm: null, warmI: 0, warmDone: false, warmMs: 0, warmN: 0, skipped: 0,
+  stats(){ return { warmDone:this.warmDone, warmN:this.warmN, warmMs:Math.round(this.warmMs), skipped:this.skipped }; }
+};
+const P25_NEUTRAL = [0.74, 0.74, 0.74];
+/* the average colour (0..1) of a texture image, read once per canvas while it is alive; a canvas phone16 has freed: neutral */
+function perf25Tint(img){
+  if (!img) return null;
+  const q = PERF25.tint.get(img);
+  if (q) return q;
+  if (img.__p16f){ PERF25.skipped++; return P25_NEUTRAL; }        // freed: never bring it back from the GPU for a map colour
+  if (!(img.width || img.videoWidth)) return null;
+  let out = null;
+  try {
+    const cv = perf25Tint.cv || (perf25Tint.cv = document.createElement('canvas'));
+    cv.width = cv.height = 4;
+    const x = perf25Tint.x || (perf25Tint.x = cv.getContext('2d', { willReadFrequently:true }));
+    x.clearRect(0, 0, 4, 4);
+    x.drawImage(img, 0, 0, 4, 4);
+    const d = x.getImageData(0, 0, 4, 4).data; let sr = 0, sg = 0, sb = 0;
+    for (let i = 0; i < 64; i += 4){ sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; }
+    out = [sr/16/255, sg/16/255, sb/16/255];
+  } catch(e){ return null; }
+  PERF25.tint.set(img, out);
+  return out;
+}
+/* right after the boot (the first menu frame, before phone16's first sweep 0.6 s later frees anything): every city piece's material
+   colour for the map, all at once (49 materials, a few ms once); runs first among the frame hooks */
+function perf25AerWarm(){
+  const P = PERF25;
+  if (P.warmDone) return;
+  if (typeof BOOT15 === 'undefined' || !BOOT15.tMenu || typeof AER === 'undefined' || typeof aerMatRGB !== 'function' || typeof PIECES === 'undefined') return;
+  const t0 = performance.now(), seen = new Set();
+  for (let i = 0; i < PIECES.length; i++){
+    const m = PIECES[i] && PIECES[i].mat;
+    if (!m || seen.has(m)) continue;
+    seen.add(m); P.warmN++;
+    try { aerMatRGB(m); } catch(e){}
+  }
+  P.warmMs = performance.now() - t0;
+  P.warmDone = true;
+}
+if (typeof FRAME_HOOKS !== 'undefined') FRAME_HOOKS.unshift(perf25AerWarm); else addFrameHook(perf25AerWarm);
+
+/* 2. sampleWorld (every ground query: the bike, cars, people, grass, the trail planner ...) looked its physics bucket up with a
+   string key built per call ('12,-40': two number-to-string conversions + a concatenation) -- 120-140 MB of garbage per 16 s
+   segment of the tour. p25PGet keeps the same bucket arrays under a small-integer key; a PGRID change (rebuild, a streamed piece
+   added / removed) drops just that bucket from the cache (the arrays themselves are shared, so pushes inside them need nothing). */
+var P25_PG = null;
+function p25PGDrop(k){
+  const C = P25_PG;
+  if (typeof k !== 'string'){ C.m.clear(); return; }
+  const i = k.indexOf(',');
+  if (i < 0){ C.m.clear(); return; }
+  C.m.delete((+k.slice(0, i) + 4096)*8192 + (+k.slice(i + 1) + 4096));
+  C.drops++;
+}
+function p25PGHook(M){
+  if (M.__p25) return;
+  M.__p25 = true;
+  const MS = Map.prototype.set, MD = Map.prototype.delete, MC = Map.prototype.clear;
+  M.set = function(k, v){ if (P25_PG.src === this) p25PGDrop(k); return MS.call(this, k, v); };
+  M.delete = function(k){ if (P25_PG.src === this) p25PGDrop(k); return MD.call(this, k); };
+  M.clear = function(){ if (P25_PG.src === this) P25_PG.m.clear(); return MC.call(this); };
+}
+function p25PGet(bx, bz){
+  let C = P25_PG;
+  if (!C) C = P25_PG = { src:null, m:new Map(), miss:0, drops:0 };
+  const G = PGRID;
+  if (C.src !== G){ C.src = G; C.m.clear(); p25PGHook(G); }
+  const k = (bx + 4096)*8192 + (bz + 4096);          // a small integer (64 m buckets: +-262 km fit)
+  let a = C.m.get(k);
+  if (a === undefined){ a = G.get(bx + ',' + bz) || null; C.m.set(k, a); C.miss++; }
+  return a;
+}
+/* =========================================================================
+   MOBILE26 -- a phone game, not a desktop game on a phone (Release 15.16 wave 5, stream mobile26)
+   "make mobile way better i mean by a lot"
+
+   CONTROLS     icon buttons (mobile.js MOB_ICO): HOP shows its charge as a ring that fills while you hold it (the HUD's
+                hop bar is gone on phones), a trick button's icon follows the kind of trick in its slot (spin / flip /
+                pose / ground) and its colour says whether it is ready / locked.
+   TILT         Steering = Tilt (touch settings): the phone is the handlebar (DeviceOrientation; the roll around the
+                screen's own axis, any holding angle, any screen orientation), sensitivity Low / Normal / High,
+                "Centre tilt" (the chip over the stick, or the settings) sets the straight-ahead angle. iOS asks for
+                motion access: the request is made on a tap (choosing Tilt, or the chip). The thumb stick still works on
+                top (brake, flips, fine lines) -- with auto-pedal the whole game plays with ONE thumb.
+   EDITOR       Pause -> Edit controls: drag any button (or the stick ring) where your thumbs want it, pick one and
+                resize it, Reset, Done. Saved per orientation (mobile.js mobCustom / mobCustomSave,
+                localStorage dusk_line_mob26_layout_v1).
+   HAPTICS      the right events: a press, a hop, a landing (by height), a trick, a banked combo, a bail, a respawn,
+                a level-up. Android: navigator.vibrate; iPhone (iOS 18+): the system switch tick (no vibrate API there).
+   HUD          the phone HUD is mobile26.css (pause top-left with the score / clock / speed card beside it, minimap
+                top-right with the camera / respawn buttons, the road ahead left clear); this file only feeds it.
+   MENUS        swipe the garage's stage to browse rides; the shop's sections as a bottom tab bar upright, the garage in three
+                columns sideways, pause on one screen, the map speaking touch (mobile26.css); a tip on the loading screen.
+   BACK         Safari's edge swipe / Android's back pauses a ride (or closes the map, the editor, the garage / shop sheet)
+                instead of leaving the page: one same-URL history entry while a touch player rides.
+   Entry points: m26TiltSetting(v) (mobile.js setting), m26EditOpen(), m26Haptic(kind); tests: window.__m26.
+   ========================================================================= */
+const M26 = {
+  on: false, ios: false, c: -1, full: false, kinds: '', t: 0,
+  tiltWant: false, tiltL: null, tb: 0, tg: 0, tN: 0, tAt: 0, roll: 0, calib: 0, granted: false, tiltErr: '',
+  ed: null, hapT: 0, hapEl: null, lastSt: '', grindT: 0, swipe: null
+};
+const M26_TILT_SENS = { low: 34, normal: 24, high: 15 };       // degrees of roll for full lock
+const M26_TILT_KEY = 'dusk_line_mob26_tilt_v1';
+
+/* ---------------------------------------------------------------- settings */
+if (isTouch){
+  registerSetting({ id:'m_tiltsens', label:'Tilt sensitivity', group:'touch', type:'choice', def:'normal',
+    options:[ { v:'low', label:'Low', hint:'Full lock at a big tilt (34 degrees)' },
+              { v:'normal', label:'Normal', hint:'Full lock at 24 degrees' },
+              { v:'high', label:'High', hint:'Full lock at 15 degrees: small moves, quick turns' } ] });
+}
+
+/* ---------------------------------------------------------------- haptics */
+/* iPhone Safari has no navigator.vibrate; since iOS 18 a switch control clicks the Taptic Engine when it toggles. A hidden
+   <label><input type=checkbox switch></label> clicked from a touch handler gives the same light tick (it does nothing
+   anywhere else). Throttled: one tick per 70 ms at most. */
+function m26IosTick(){
+  const now = performance.now();
+  if (now - M26.hapT < 70) return;
+  M26.hapT = now;
+  try {
+    let l = M26.hapEl;
+    if (!l){
+      l = M26.hapEl = document.createElement('label');
+      l.setAttribute('aria-hidden', 'true');
+      l.style.cssText = 'position:fixed;left:-60px;top:-60px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
+      const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+      l.appendChild(i); document.body.appendChild(l);
+      l.addEventListener('click', e=> e.stopPropagation());      // the toggle still happens; no page listener sees these clicks
+    }
+    l.click();
+  } catch(e){}
+}
+const M26_HAP = { tap:8, hop:12, trick:[9, 30, 9], bank:[12, 45, 22], bail:[40, 30, 70], respawn:[20, 40, 30],
+                  level:[20, 60, 20, 60, 40], grind:7, calib:[10, 40, 10] };
+function m26Haptic(kind, p){
+  try { if (typeof mobBuzz === 'function') mobBuzz(p !== undefined ? p : (M26_HAP[kind] || 8)); } catch(e){}
+}
+/* every mobBuzz (presses, landings, bails ...) also ticks an iPhone */
+function m26WrapBuzz(){
+  if (typeof mobBuzz !== 'function' || mobBuzz._m26) return;
+  const vib = !!(navigator.vibrate);
+  const _b = mobBuzz;
+  mobBuzz = function(p){
+    _b.apply(this, arguments);
+    try { if (!vib && M26.ios && isTouch && mobSetting('m_haptic', true)) m26IosTick(); } catch(e){}
+  };
+  mobBuzz._m26 = true;
+}
+
+/* ---------------------------------------------------------------- the HOP ring + the trick icons (per frame, cheap) */
+function m26TrickKind(k){
+  try {
+    if (typeof TK13 !== 'undefined' && TK13.bySlot){ const t = TK13.bySlot[k]; if (t) return t.kind === 'flip' ? 'flip' : (t.kind === 'hold' ? 'pose' : (t.kind === 'ground' ? 'ground' : 'spin')); }
+  } catch(e){}
+  return ({ whip:'spin', bar:'spin', sup:'pose', xup:'spin', noh:'pose', can:'pose', tab:'pose', not:'pose', decade:'spin', oneh:'pose', seat:'pose', lookb:'pose' })[k] || 'spin';
+}
+function m26TrickIcons(force){
+  if (typeof MOB === 'undefined' || !MOB.els) return;
+  let sig = '';
+  const ks = ['t1', 't2', 't3'];
+  for (let i = 0; i < 3; i++){ const el = MOB.els[ks[i]]; sig += el ? el.dataset.k + ':' + m26TrickKind(el.dataset.k) + ',' : ''; }
+  if (!force && sig === M26.kinds) return;
+  M26.kinds = sig;
+  for (let i = 0; i < 3; i++){
+    const el = MOB.els[ks[i]]; if (!el) continue;
+    const kind = m26TrickKind(el.dataset.k), ico = el.querySelector('.mbI');
+    if (ico && ico.dataset.kind !== kind){ ico.dataset.kind = kind; ico.innerHTML = MOB_ICO[kind] || MOB_ICO.spin; }
+    el.dataset.kind = kind;
+  }
+}
+function m26HudFrame(dt){
+  if (typeof MOB === 'undefined' || !MOB.shown || !MOB.els) return;
+  const hop = MOB.els.crouch;
+  if (hop){
+    let c = 0; try { c = Math.max(0, Math.min(1, +bike.charge || 0)); } catch(e){}
+    c = Math.round(c * 40) / 40;
+    if (c !== M26.c){ M26.c = c; hop.style.setProperty('--c', c); const f = c > 0.97; if (f !== M26.full){ M26.full = f; hop.classList.toggle('m26Full', f); } }
+  }
+  M26.t += dt;
+  if (M26.t > 0.5){ M26.t = 0; m26TrickIcons(false); }
+  // haptics the game had none for: a trick lands into the combo, a grind starts
+  let st = ''; try { st = bike.state; } catch(e){}
+  if (st !== M26.lastSt){ if (st === 'grind') m26Haptic('grind'); M26.lastSt = st; }
+}
+
+/* ---------------------------------------------------------------- tilt steering */
+/* the roll of the phone around the axis through its screen, from DeviceOrientation (beta / gamma) and the screen's angle:
+   the world's "up" in device axes, turned into screen axes; asin(-x) = how far the screen's right side dips (deg, + = right) */
+function m26Roll(beta, gamma, angle){
+  const d = Math.PI / 180, b = beta * d, g = gamma * d;
+  const ux = -Math.cos(b) * Math.sin(g), uy = Math.sin(b);
+  let sx;
+  const a = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+  if (a === 90) sx = -uy; else if (a === 180) sx = -ux; else if (a === 270) sx = uy; else sx = ux;
+  return Math.asin(Math.max(-1, Math.min(1, -sx))) / d;
+}
+function m26ScreenAngle(){
+  try { if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle; } catch(e){}
+  try { if (typeof window.orientation === 'number') return window.orientation; } catch(e){}
+  return 0;
+}
+function m26TiltLoad(){ try { const v = JSON.parse(localStorage.getItem(M26_TILT_KEY) || 'null'); if (v && typeof v.calib === 'number' && Math.abs(v.calib) < 60) M26.calib = v.calib; } catch(e){} }
+function m26TiltSaveCalib(){ try { localStorage.setItem(M26_TILT_KEY, JSON.stringify({ calib: M26.calib })); } catch(e){} }
+function m26TiltSample(e){
+  if (!e || e.beta == null || e.gamma == null) return;
+  M26.tb = +e.beta; M26.tg = +e.gamma; M26.tAt = performance.now(); M26.tN++;
+}
+function m26TiltListen(){
+  if (M26.tiltL) return;
+  M26.tiltL = m26TiltSample;
+  addEventListener('deviceorientation', M26.tiltL);
+  M26.tiltErr = '';
+}
+/* turn tilt on / off; on iOS the motion permission is asked here -- always called from a tap (the settings choice, the chip) */
+function m26TiltEnable(on){
+  M26.tiltWant = !!on;
+  if (!on){
+    if (M26.tiltL){ removeEventListener('deviceorientation', M26.tiltL); M26.tiltL = null; }
+    MOB.tiltOn = false; MOB.tilt = 0; m26TiltChip(); return;
+  }
+  const DOE = window.DeviceOrientationEvent;
+  if (DOE && typeof DOE.requestPermission === 'function' && !M26.granted){
+    let p = null;
+    try { p = DOE.requestPermission(); } catch(e){ p = null; }
+    if (p && p.then){
+      p.then(r=>{
+        if (r === 'granted'){ M26.granted = true; m26TiltListen(); }
+        else { M26.tiltErr = 'denied'; try { toast('Tilt needs Motion & Orientation access (Safari settings)'); } catch(e){} }
+        m26TiltChip();
+      }).catch(()=>{ M26.tiltErr = 'tap'; m26TiltChip(); });
+      return;
+    }
+  }
+  m26TiltListen(); m26TiltChip();
+}
+function m26TiltSetting(v){ m26TiltEnable(v === 'tilt'); if (v === 'tilt'){ try { toast('Tilt the phone to steer -- tap TILT to centre it', true); } catch(e){} } }
+function m26TiltCalibrate(){
+  if (!M26.tN){ m26TiltEnable(true); return; }
+  M26.calib = m26Roll(M26.tb, M26.tg, m26ScreenAngle());
+  m26TiltSaveCalib(); m26Haptic('calib');
+  try { toast('Tilt centred', true); } catch(e){}
+}
+function m26TiltFrame(dt){
+  if (!M26.tiltWant){ if (MOB.tiltOn){ MOB.tiltOn = false; MOB.tilt = 0; } return; }
+  if (!M26.tN) return;                                         // no sample yet (iOS: until the tap that grants motion access)
+  // a sensor that went quiet (permission taken away, the page in the background): the lean fades out instead of sticking.
+  // "Quiet" = no sample for 1.5 s AND 20 frames -- a slow frame on a busy phone is not a dead sensor
+  if (M26.tSeen !== M26.tN){ M26.tSeen = M26.tN; M26.tQuiet = 0; } else M26.tQuiet++;
+  if (M26.tQuiet > 20 && performance.now() - M26.tAt > 1500){
+    MOB.tilt *= Math.max(0, 1 - dt * 6); if (Math.abs(MOB.tilt) < 0.01) MOB.tilt = 0;
+    return;
+  }
+  if (!MOB.tiltOn){ MOB.tiltOn = true; m26TiltChip(); }
+  const roll = m26Roll(M26.tb, M26.tg, m26ScreenAngle()) - M26.calib;
+  M26.roll = roll;
+  const full = M26_TILT_SENS[mobSetting('m_tiltsens', 'normal')] || 24, dz = 2.2;
+  const a = Math.abs(roll), t = a < dz ? 0 : Math.sign(roll) * Math.min(1, Math.pow((a - dz) / (full - dz), 1.15));
+  MOB.tilt += (t - MOB.tilt) * Math.min(1, dt * 16);            // ~60 ms of smoothing: no sensor jitter, no lag you feel
+  if (Math.abs(MOB.tilt) < 0.002) MOB.tilt = 0;
+}
+/* the TILT chip over the stick: shows tilt is on (and how far you lean), tap = centre it (or ask iOS for motion access) */
+function m26TiltChip(){
+  if (typeof MOB === 'undefined' || !MOB.root) return;
+  let c = M26.chip;
+  const want = M26.tiltWant && mobSetting('m_stick', 'stick') === 'tilt';
+  if (!want){ if (c) c.style.display = 'none'; return; }
+  if (!c){
+    c = M26.chip = document.createElement('div');
+    c.className = 'mb m26TiltChip'; c.dataset.k = 'm:tilt';
+    c.innerHTML = '<i class="mbI">' + MOB_ICO.tilt + '</i><span>TILT</span><b></b>';
+    // a tap = mobile.js mobUp -> m26TiltCalibrate() on the finger's RELEASE (a touch pointerdown is no "user gesture" for iOS's
+    // motion permission; the release is)
+  }
+  if (c.parentNode !== MOB.root) MOB.root.appendChild(c);
+  c.style.display = '';
+  const g = MOB.rects && (MOB.rects.ghost || MOB.rects.left), W = MOB.W || innerWidth;
+  if (g){
+    const w = 156, x = Math.max(8, Math.min(W - w - 8, g.x + g.d / 2 - w / 2)), y = Math.max(8, g.y - 46);
+    c.style.left = Math.round(x) + 'px'; c.style.top = Math.round(y) + 'px'; c.style.width = w + 'px'; c.style.height = '36px';
+  }
+  c.classList.toggle('live', !!MOB.tiltOn);
+  c.querySelector('span').textContent = MOB.tiltOn ? 'TILT · TAP TO CENTRE' : (M26.tiltErr === 'denied' ? 'TILT BLOCKED' : 'TAP: TURN ON TILT');
+}
+function m26TiltChipFrame(){
+  const c = M26.chip; if (!c || c.style.display === 'none' || !MOB.tiltOn) return;
+  const b = c.lastChild, v = Math.round(MOB.tilt * 40);
+  if (b && b._v !== v){ b._v = v; b.style.transform = 'translateX(' + v + 'px)'; }
+}
+
+/* ---------------------------------------------------------------- the controls layout editor */
+const M26_ED_KEYS = ['crouch', 't1', 't2', 't3', 'manual', 'drift', 'stoppie', 'ghost', 'left', 'right', 'up', 'down', 'pause', 'view', 'reset'];
+function m26EditOpen(){
+  if (typeof MOB === 'undefined' || !MOB.built || M26.ed) return;
+  const W = innerWidth, H = innerHeight, land = W >= H * 1.08, o = land ? 'land' : 'port';
+  const base = mobLayoutCompute(W, H, mobReadSafe(), { size: mobSetting('m_size', 'M'), hand: mobSetting('m_hand', 'right') }).rects;
+  const cur = mobCustom(o) || {};
+  const map = JSON.parse(JSON.stringify(cur));
+  const ov = document.createElement('div');
+  ov.id = 'm26Ed';
+  ov.innerHTML = '<div class="m26EdBar"><div class="m26EdT"><b>Edit controls</b><span>' + (land ? 'Landscape' : 'Portrait') +
+    ' layout · drag a button to move it, tap one to resize it</span></div>' +
+    '<div class="m26EdSize"><button type="button" data-a="minus" aria-label="Smaller">−</button><input type="range" min="60" max="160" step="5" value="100" aria-label="Size"><button type="button" data-a="plus" aria-label="Bigger">+</button></div>' +
+    '<div class="m26EdWarn">Red buttons overlap: a thumb cannot tell them apart</div>' +
+    '<div class="m26EdBtns"><button type="button" class="btn ghost" data-a="reset">Reset</button><button type="button" class="btn ghost" data-a="cancel">Cancel</button><button type="button" class="btn primary" data-a="done">Done</button></div></div>';
+  document.body.appendChild(ov);
+  document.documentElement.classList.add('m26Editing');
+  M26.ed = { o: o, W: W, H: H, base: base, map: map, sel: '', px: {}, drag: null, ov: ov };
+  const pad = mobSetting('m_stick', 'stick') === 'pad';
+  for (const k of M26_ED_KEYS){
+    const src = MOB.els[k]; if (!src) continue;
+    if (pad ? k === 'ghost' : ['left', 'right', 'up', 'down'].includes(k)) continue;
+    const el = src.cloneNode(true);
+    el.classList.remove('act', 'hide', 'used', 'on');
+    el.classList.add('m26Px'); el.dataset.ed = k; el.style.display = ''; el.style.transform = '';
+    if (k === 'ghost'){ el.style.opacity = '1'; }
+    ov.appendChild(el); M26.ed.px[k] = el;
+  }
+  m26EditPlace();
+  ov.addEventListener('pointerdown', m26EdDown, { passive:false });
+  ov.addEventListener('pointermove', m26EdMove, { passive:false });
+  ov.addEventListener('pointerup', m26EdUp); ov.addEventListener('pointercancel', m26EdUp);
+  const rng = ov.querySelector('input[type=range]');
+  rng.addEventListener('input', ()=> m26EdSize(+rng.value / 100));
+  ov.querySelector('[data-a=minus]').onclick = ()=> m26EdSize(Math.max(0.6, m26EdS() - 0.1));
+  ov.querySelector('[data-a=plus]').onclick = ()=> m26EdSize(Math.min(1.6, m26EdS() + 0.1));
+  ov.querySelector('[data-a=reset]').onclick = ()=>{ M26.ed.map = {}; M26.ed.sel = ''; m26EditPlace(); m26Haptic('tap'); };
+  ov.querySelector('[data-a=cancel]').onclick = ()=> m26EditClose(false);
+  ov.querySelector('[data-a=done]').onclick = ()=> m26EditClose(true);
+  m26EdSelect('');
+}
+function m26EdS(){ const e = M26.ed; return e && e.sel && e.map[e.sel] && e.map[e.sel].s ? e.map[e.sel].s : 1; }
+function m26EdRect(k){
+  const e = M26.ed, b = e.base[k], c = e.map[k];
+  if (!b) return null;
+  if (!c) return b;
+  const r = mobLayoutCompute(e.W, e.H, mobReadSafe(), { size: mobSetting('m_size', 'M'), hand: mobSetting('m_hand', 'right'), custom: { [k]: c } }).rects[k];
+  return r || b;
+}
+function m26EditPlace(){
+  const e = M26.ed; if (!e) return;
+  const R = {};
+  for (const k in e.px){
+    const r = m26EdRect(k), el = e.px[k]; if (!r) continue;
+    R[k] = r;
+    el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.d + 'px'; el.style.height = r.d + 'px';
+    el.classList.toggle('m26Moved', !!e.map[k]);
+    el.classList.toggle('m26Sel', e.sel === k);
+  }
+  // two buttons on top of each other: both turn red (a thumb could not tell them apart); the stick ring may sit under nothing
+  const ks = Object.keys(R), bad = {};
+  for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++){
+    const p = R[ks[i]], q = R[ks[j]];
+    const d = Math.hypot(p.x + p.d / 2 - q.x - q.d / 2, p.y + p.d / 2 - q.y - q.d / 2);
+    if (d < (p.d + q.d) / 2 - 4){ bad[ks[i]] = bad[ks[j]] = 1; }
+  }
+  for (const k in e.px) e.px[k].classList.toggle('m26Bad', !!bad[k]);
+  e.ov.classList.toggle('hasBad', Object.keys(bad).length > 0);
+}
+function m26EdSelect(k){
+  const e = M26.ed; if (!e) return;
+  e.sel = k;
+  e.ov.classList.toggle('hasSel', !!k);
+  const rng = e.ov.querySelector('input[type=range]'); if (rng) rng.value = Math.round(m26EdS() * 100);
+  m26EditPlace();
+}
+function m26EdSize(s){
+  const e = M26.ed; if (!e || !e.sel) return;
+  const k = e.sel, r = m26EdRect(k);
+  const c = e.map[k] || { x: (r.x + r.d / 2) / e.W, y: (r.y + r.d / 2) / e.H };
+  c.s = Math.round(Math.max(0.6, Math.min(1.6, s)) * 100) / 100;
+  e.map[k] = c;
+  const rng = e.ov.querySelector('input[type=range]'); if (rng) rng.value = Math.round(c.s * 100);
+  m26EditPlace();
+}
+function m26EdDown(ev){
+  const e = M26.ed; if (!e) return;
+  const t = ev.target && ev.target.closest ? ev.target.closest('.m26Px') : null;
+  if (!t){ if (!(ev.target && ev.target.closest && ev.target.closest('.m26EdBar'))) m26EdSelect(''); return; }
+  ev.preventDefault();
+  const k = t.dataset.ed, r = m26EdRect(k);
+  try { e.ov.setPointerCapture(ev.pointerId); } catch(_){}
+  e.drag = { id: ev.pointerId, k: k, x0: ev.clientX, y0: ev.clientY, cx: r.x + r.d / 2, cy: r.y + r.d / 2, moved: 0 };
+  m26EdSelect(k); m26Haptic('tap');
+}
+function m26EdMove(ev){
+  const e = M26.ed; if (!e || !e.drag || ev.pointerId !== e.drag.id) return;
+  ev.preventDefault();
+  const d = e.drag, dx = ev.clientX - d.x0, dy = ev.clientY - d.y0;
+  d.moved = Math.max(d.moved, Math.abs(dx) + Math.abs(dy));
+  if (d.moved < 4) return;
+  const c = e.map[d.k] || {};
+  c.x = Math.max(0, Math.min(1, (d.cx + dx) / e.W)); c.y = Math.max(0, Math.min(1, (d.cy + dy) / e.H));
+  if (!c.s) c.s = 1;
+  e.map[d.k] = c;
+  m26EditPlace();
+}
+function m26EdUp(ev){ const e = M26.ed; if (e && e.drag && ev.pointerId === e.drag.id) e.drag = null; }
+function m26EditClose(save){
+  const e = M26.ed; if (!e) return;
+  M26.ed = null;
+  try { e.ov.remove(); } catch(_){}
+  document.documentElement.classList.remove('m26Editing');
+  if (save){
+    const clean = {};
+    for (const k in e.map){ const c = e.map[k]; if (c && c.x >= 0 && c.x <= 1 && c.y >= 0 && c.y <= 1) clean[k] = { x: Math.round(c.x * 1e4) / 1e4, y: Math.round(c.y * 1e4) / 1e4, s: c.s || 1 }; }
+    mobCustomSave(e.o, clean);
+    m26Haptic('calib');
+    try { toast(Object.keys(clean).length ? 'Controls saved' : 'Controls reset', true); } catch(_){}
+  }
+  m26TiltChip();
+}
+
+/* ---------------------------------------------------------------- pause menu + touch settings: the new entries */
+function m26PauseButtons(){
+  const after = $('mobSetBtn') || $('resumeBtn');
+  if (!after || !after.parentNode || $('m26EdBtn')) return;
+  const b = document.createElement('button');
+  b.className = 'btn ghost'; b.id = 'm26EdBtn'; b.type = 'button'; b.textContent = 'Edit controls'; b.style.marginTop = '8px';
+  b.onclick = ()=> m26EditOpen();
+  after.parentNode.insertBefore(b, after.nextSibling);
+  // the touch settings card: centre tilt + edit layout next to Done
+  const card = document.querySelector('#mobSet .mobSetCard'), done = $('mobSetDone');
+  if (card && done && !$('m26SetRow')){
+    const row = document.createElement('div');
+    row.id = 'm26SetRow'; row.className = 'm26SetRow';
+    row.innerHTML = '<button type="button" class="btn ghost" id="m26CalBtn">Centre tilt</button><button type="button" class="btn ghost" id="m26EdBtn2">Edit layout</button>';
+    card.insertBefore(row, done);
+    row.querySelector('#m26CalBtn').onclick = ()=> m26TiltCalibrate();
+    row.querySelector('#m26EdBtn2').onclick = ()=>{ const s = $('mobSet'); if (s) s.classList.add('hide'); m26EditOpen(); };
+  }
+}
+
+/* ---------------------------------------------------------------- garage: browse rides on the bike itself
+   Dragging the bike turns it (fleet_garage.js), so browsing is a quick FLICK (< 280 ms) or the two round arrows on the stage's
+   sides (a tap each: the previous / next ride in the list, as if its card was tapped). */
+function m26GarageArrows(){
+  const st = document.querySelector('.gar .gStage'); if (!st || st.querySelector('.m26GArrow')) return;
+  [['l', -1, 'Previous ride', '\u2039'], ['r', 1, 'Next ride', '\u203A']].forEach(a=>{
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'm26GArrow ' + a[0]; b.setAttribute('aria-label', a[2]); b.textContent = a[3];
+    b.addEventListener('click', e=>{ e.stopPropagation(); m26GarageStep(a[1]); });
+    st.appendChild(b);
+  });
+}
+function m26GarageSwipe(){
+  if (M26.swipe) return;
+  M26.swipe = { id: -1 };
+  if (typeof openGarage === 'function' && !openGarage._m26){
+    const _o = openGarage;
+    openGarage = function(){ const r = _o.apply(this, arguments); try { m26GarageArrows(); } catch(e){} return r; };
+    openGarage._m26 = true;
+  }
+  document.addEventListener('pointerdown', ev=>{
+    if (ev.pointerType !== 'touch') return;
+    const st = ev.target && ev.target.closest ? ev.target.closest('.gar:not(.cust) .gStage') : null;
+    if (!st) return;
+    M26.swipe = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: performance.now() };
+  }, true);
+  document.addEventListener('pointerup', ev=>{
+    const s = M26.swipe; if (!s || s.id !== ev.pointerId) return;
+    M26.swipe = { id: -1 };
+    const dx = ev.clientX - s.x, dy = ev.clientY - s.y, dt = performance.now() - s.t;
+    if (dt > 280 || Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.5) return;      // a flick, not a drag to turn the bike
+    m26GarageStep(dx < 0 ? 1 : -1);
+  }, true);
+}
+/* the next / previous ride card in the garage list (the list's own click = the garage's own preview + select) */
+function m26GarageStep(dir){
+  const list = document.querySelector('.gar .gList'); if (!list) return false;
+  const cards = Array.prototype.slice.call(list.querySelectorAll('.gCard')).filter(c=> c.offsetParent !== null);
+  if (!cards.length) return false;
+  let i = cards.findIndex(c=> c.classList.contains('sel') || c.classList.contains('on') || c.getAttribute('aria-selected') === 'true');
+  const j = Math.max(0, Math.min(cards.length - 1, (i < 0 ? 0 : i + dir)));
+  if (j === i) return false;
+  try { cards[j].click(); cards[j].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); } catch(e){}
+  m26Haptic('tap');
+  return true;
+}
+
+/* ---------------------------------------------------------------- the loading screen on a phone: one useful line while it boots */
+function m26LoadTip(){
+  try {
+    const ld = $('loading'); if (!ld || ld.classList.contains('hide') || $('m26LoadTip')) return;
+    const t = document.createElement('div');
+    t.id = 'm26LoadTip';
+    const port = innerHeight > innerWidth;
+    const tips = port ? ['Turn your phone sideways for the widest view'] :
+      ['Tip: Pause \u2192 Edit controls puts every button where your thumbs want it',
+       'Tip: Pause \u2192 Touch settings \u2192 Steering: Tilt, and ride with one thumb',
+       'Tip: hold HOP, let go at the lip \u2014 the ring shows your pop'];
+    t.textContent = tips[Math.floor(Math.random() * tips.length)];
+    ld.appendChild(t);
+  } catch(e){}
+}
+
+/* ---------------------------------------------------------------- BACK: the edge swipe / the back button pauses, it does not leave
+   Safari's swipe from the left edge (where the steering thumb lives) and Android's back gesture used to navigate away from the
+   page mid-ride. While a touch player rides, the game keeps one history entry of its own (same URL): BACK pauses the ride, closes
+   the map / the editor, or closes the garage / shop / settings sheet; from the plain menu (or on pause) BACK works as usual. */
+function m26BackArm(){
+  if (M26.backArmed) return;
+  try { history.pushState({ m26: 1 }, ''); M26.backArmed = true; } catch(e){}
+}
+function m26Back(){
+  if (!M26.backArmed) return;
+  M26.backArmed = false;
+  let handled = false;
+  try {
+    if (M26.ed){ m26EditClose(false); handled = true; }
+    else if (typeof RGMAP !== 'undefined' && RGMAP.open){ rgMapClose(); handled = true; }
+    else if (GAME === 'play'){ togglePause(); handled = true; }
+    else if (typeof GARAGE !== 'undefined' && GARAGE.open){ closeGarage(); handled = true; }
+    else if (document.querySelector('#shop13.on') && typeof closeShop === 'function'){ closeShop(); handled = true; }
+    else if (document.querySelector('#menuSet.on') && typeof menuSetOpen === 'function'){ menuSetOpen(false); handled = true; }
+  } catch(e){}
+  M26.backN = (M26.backN || 0) + 1;
+  if (handled && GAME !== 'pause' && GAME !== 'menu') m26BackArm();          // still riding: the next BACK is ours again
+  else if (handled && (document.querySelector('#shop13.on') || (typeof GARAGE !== 'undefined' && GARAGE.open))) m26BackArm();
+}
+function m26BackInit(){
+  if (!window.history || !history.pushState) return;
+  addEventListener('popstate', m26Back);
+}
+
+/* ---------------------------------------------------------------- wiring */
+function m26Wrap(){
+  m26WrapBuzz();
+  // a trick into the combo, a banked combo, a level-up: haptics the game had none for
+  if (typeof addTrick === 'function' && !addTrick._m26){
+    const _a = addTrick;
+    addTrick = function(){ const r = _a.apply(this, arguments); try { if (isTouch && GAME === 'play') m26Haptic('trick'); } catch(e){} return r; };
+    addTrick._m26 = true;
+  }
+  if (typeof bankCombo === 'function' && !bankCombo._m26){
+    const _b = bankCombo;
+    bankCombo = function(){ let n = 0; try { n = combo.list.length; } catch(e){} const r = _b.apply(this, arguments); try { if (isTouch && n) m26Haptic('bank'); } catch(e){} return r; };
+    bankCombo._m26 = true;
+  }
+  if (typeof mnyUiLevelUp === 'function' && !mnyUiLevelUp._m26){
+    const _l = mnyUiLevelUp;
+    mnyUiLevelUp = function(){ const r = _l.apply(this, arguments); try { if (GAME === 'play') m26Haptic('level'); } catch(e){} return r; };
+    mnyUiLevelUp._m26 = true;
+  }
+  if (typeof tk13MobLabels === 'function' && !tk13MobLabels._m26){
+    const _t = tk13MobLabels;
+    tk13MobLabels = function(){ const r = _t.apply(this, arguments); try { m26TrickIcons(true); } catch(e){} return r; };
+    tk13MobLabels._m26 = true;
+  }
+  if (typeof mobRebuild === 'function' && !mobRebuild._m26){
+    const _r = mobRebuild;
+    mobRebuild = function(){ const r = _r.apply(this, arguments); try { M26.c = -1; M26.full = false; m26TrickIcons(true); M26.chip = null; m26TiltChip(); } catch(e){} return r; };
+    mobRebuild._m26 = true;
+  }
+  if (typeof mobLayout === 'function' && !mobLayout._m26){
+    const _m = mobLayout;
+    mobLayout = function(){ const r = _m.apply(this, arguments); try { m26TiltChip(); } catch(e){} return r; };
+    mobLayout._m26 = true;
+  }
+}
+(function m26Boot(){
+  try {
+    M26.ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isTouch) return;
+    M26.on = true;
+    document.documentElement.classList.add('m26');
+    m26TiltLoad();
+    m26LoadTip();
+    m26Wrap();
+    m26PauseButtons();
+    m26GarageSwipe();
+    m26BackInit();
+    // a saved Tilt choice: listen at once (Android); iOS needs a tap first: the chip says so until then
+    if (mobSetting('m_stick', 'stick') === 'tilt'){
+      M26.tiltWant = true;
+      const DOE = window.DeviceOrientationEvent;
+      if (!(DOE && typeof DOE.requestPermission === 'function')) m26TiltListen();
+    }
+    addFrameHook(function m26Frame(dt){
+      if (GAME !== 'play') return;
+      if (!M26.backArmed && MOB.shown) m26BackArm();            // riding on a touch screen: BACK pauses from now on
+      m26TiltFrame(dt);
+      m26HudFrame(dt);
+      m26TiltChipFrame();
+    });
+    // a rotation while editing: keep the edits of the old orientation, start the new one
+    addEventListener('resize', ()=>{ const e = M26.ed; if (!e) return; const land = innerWidth >= innerHeight * 1.08; if ((land ? 'land' : 'port') !== e.o){ m26EditClose(true); setTimeout(m26EditOpen, 400); } });
+    window.__m26 = { M26, m26Roll, m26TiltEnable, m26TiltCalibrate, m26EditOpen, m26EditClose, m26GarageStep, m26Haptic, m26Back };
+  } catch(e){ console.warn('mobile26', e); }
 })();
 /*@@LATE@@*/
 /* =========================================================================
@@ -75291,6 +75988,9 @@ function hwtSpawn(){
   if (!pick) return;
   const L = pick.L, d = pick.d + (Math.random() - 0.5)*30;
   if (d < 5 || d > L.len - 10) return;
+  // Release 15.16 (perf25): never spawn onto land whose surface tile is not built yet (the new car's first pose built it
+  // synchronously: a 5-10 ms step inside trafficTick); the streaming builds it soon, the next spawn try gets it
+  if (typeof RG_TILES !== 'undefined' && typeof rgTileKey === 'function' && !RG_TILES.has(rgTileKey(Math.floor(pick.x/RG.tile), Math.floor(pick.z/RG.tile)))) return;
   if (typeof vInView === 'function' && vInView(pick.x, pick.z) && Math.hypot(pick.x - camera.position.x, pick.z - camera.position.z) < 340) return;
   const hw = L.prio >= 4, truck = Math.random() < (L.prio >= 5 ? 0.26 : L.prio === 4 ? 0.12 : 0.04);
   const style = truck ? (Math.random() < 0.58 ? 4 : 3) : (Math.random() < 0.5 ? 0 : (Math.random() < 0.55 ? 1 : 2));
@@ -89179,6 +89879,267 @@ html.touchUI input:not([type]), html.touchUI textarea{ font-size:16px !important
 
 /* ---------- 7. a keyboard on a tablet (or a pad: pad25.js) fades the thumb buttons; the next touch brings them back ---------- */
 html.kbdActive #touch .mb, html.kbdActive #touch .mStickRing{ opacity:0 !important; transition:opacity .25s; }
+
+</style>
+<style id="mobile26css">
+/* =========================================================================
+   mobile26.css -- the phone HUD, the touch controls, the layout editor and phone menus (Release 15.16 wave 5, stream mobile26)
+   Loaded after mobile25.css (at the end of the page body). Everything is scoped to html.touchUI (a phone / tablet, or a touch laptop once
+   touched) or to the editor's own elements: a computer with a mouse sees no change.
+   Geometry comes from mobile.js mobLayoutCompute(): --mob-top-y (the top bar), --mob-stats-l (the card right of PAUSE),
+   --mob-ud (top-bar button size), --mob-mm / --mob-mm-top (minimap), --mob-util-bottom, --mob-combo-top, --mob-mid-x ...
+   ========================================================================= */
+
+/* ---------- 1. the top bar: PAUSE | score + clock card | speed chip under it ... cash ... camera / respawn | minimap ---------- */
+html.touchUI .hudTop, html.touchUI.mobLand .hudTop{
+  left:var(--mob-stats-l, 70px); top:var(--mob-top-y, 10px); right:auto; padding:0; background:none;
+  display:flex; justify-content:flex-start; align-items:stretch; gap:6px;
+}
+html.touchUI .hudTop .stat{
+  display:flex; flex-direction:column; justify-content:center; height:var(--mob-ud, 44px); min-width:0; padding:0 12px 1px;
+  border-radius:14px; background:rgba(9,12,17,.56); border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 3px 12px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.07);
+}
+html.touchUI .hudTop .stat .lbl, html.touchUI .hudTop .stat.right .lbl{
+  display:block; margin:0 0 2px; padding:0; transform:none; clip-path:none; background:none; color:rgba(242,237,228,.62);
+  font-size:9.5px; letter-spacing:.16em; line-height:1; text-shadow:none;
+}
+html.touchUI .hudTop .stat .val{ font-size:24px; line-height:.95; text-shadow:none; padding-right:1px; }
+html.touchUI .hudTop .stat.right{ text-align:left; }
+html.touchUI .hudTop #timerVal{ font-size:21px; }
+html.touchUI .hudTop #timerVal.warn{ color:var(--hot); }
+/* speed / battery: small chips under the card (the HOP charge is the ring on the HOP button now) */
+html.touchUI .hudBot, html.touchUI.mobPort .hudBot{
+  left:var(--mob-stats-l, 70px); top:calc(var(--mob-top-y, 10px) + var(--mob-ud, 44px) + 6px); bottom:auto;
+  flex-direction:row; flex-wrap:nowrap; align-items:center; gap:6px; max-width:none;
+}
+html.m26.touchUI #chargeWrap{ display:none; }        /* phones / tablets: the ring on HOP (a touch laptop keeps the bar) */
+html.touchUI #speedNum{
+  display:inline-flex; align-items:baseline; gap:3px; padding:4px 10px 4px 9px; border-radius:10px;
+  background:rgba(9,12,17,.5); border:1px solid rgba(255,255,255,.08); font-size:17px; line-height:1; text-shadow:none;
+}
+html.touchUI #speedNum em{ font-size:9.5px; margin-left:1px; opacity:.62; letter-spacing:.12em; }
+html.touchUI #battWrap.on, html.touchUI.mobPort #battWrap.on{
+  display:flex; align-items:center; gap:6px; width:auto; padding:5px 9px; border-radius:10px; background:rgba(9,12,17,.5);
+}
+html.touchUI #battWrap .lbl{ margin:0; font-size:9.5px; }
+html.touchUI #battWrap #battBar{ width:54px; height:6px; border-radius:4px; overflow:hidden; }
+html.touchUI #hndWrap{ border-radius:10px; }
+/* the cash: top centre when held sideways, under the chips when upright */
+html.touchUI.mobLand #mnyHud{ left:var(--mob-cash-x, 50%); top:var(--mob-top-y, 10px); transform:translateX(-50%); }
+html.touchUI #mnyHud{ padding:4px 12px 5px; border-radius:14px; background:rgba(9,12,17,.5); border:1px solid rgba(255,255,255,.08); gap:3px; }
+html.touchUI #mnyHud .mhCash{ font-size:22px; }
+html.touchUI.mobPort #mnyHud{ left:var(--mob-stats-l, 70px); top:calc(var(--mob-top-y, 10px) + var(--mob-ud, 44px) + 42px); transform:none; align-items:flex-start; }
+/* the minimap: a rounded tile in the corner */
+html.touchUI #minimap{ border-radius:16px; border:2px solid rgba(255,255,255,.2); box-shadow:0 4px 16px rgba(0,0,0,.32); background:rgba(6,8,12,.6); }
+html.touchUI #hudWanted{ right:calc(16px + var(--mob-r, 0px)); top:calc(var(--mob-mm-top, 10px) + var(--mob-mm, 90px) + 8px); }
+html.touchUI.mobPort #hudWanted{ top:calc(var(--mob-util-bottom, 160px) + 8px); }
+html.touchUI #hudFriends{ top:calc(var(--mob-top-y, 10px) + var(--mob-ud, 44px) + 46px); }
+html.touchUI.mobPort #hudFriends{ top:calc(var(--mob-top-y, 10px) + var(--mob-ud, 44px) + 96px); }
+/* the road ahead stays clear: a lighter band at the bottom, the bail word higher */
+html.touchUI #hud::after{ height:96px; background:linear-gradient(0deg, rgba(6,8,12,.38), rgba(6,8,12,0)); }
+html.touchUI #bail{ top:34%; }
+html.touchUI.mobPort #comboWrap{ max-width:calc(100vw - 2 * var(--mob-ud, 44px) - 52px); }
+/* the narrowest phones (320 px): a tighter card */
+@media (max-width:359px){
+  html.touchUI .hudTop .stat{ padding:0 8px 1px; }
+  html.touchUI .hudTop .stat .val{ font-size:21px; } html.touchUI .hudTop #timerVal{ font-size:18px; }
+}
+
+/* ---------- 2. the buttons: icons + short labels, glassy dark discs, clear pressed state ---------- */
+:is(html.touchUI #touch, #m26Ed) .mb{
+  flex-direction:column; gap:1px; color:#fff; font-family:var(--dl-font-display, inherit); font-style:italic; font-weight:800;
+  letter-spacing:.04em; background:radial-gradient(circle at 50% 30%, rgba(255,255,255,.12), rgba(12,15,21,.48) 68%);
+  border:2px solid rgba(255,255,255,.28);
+  box-shadow:0 6px 18px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -8px 16px rgba(0,0,0,.16);
+}
+:is(html.touchUI #touch, #m26Ed) .mb .mbI{ display:block; width:42%; height:42%; pointer-events:none; }
+:is(html.touchUI #touch, #m26Ed) .mb .mbI svg{ display:block; width:100%; height:100%; }
+:is(html.touchUI #touch, #m26Ed) .mb span{ font-size:.82em; line-height:1; letter-spacing:.05em; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+:is(html.touchUI #touch, #m26Ed) .mb.act{ transform:scale(.92); background:radial-gradient(circle at 50% 38%, rgba(255,186,130,.85), rgba(255,122,69,.55) 72%);
+  border-color:#ffc49a; box-shadow:0 0 24px rgba(255,122,69,.6), inset 0 1px 0 rgba(255,255,255,.3); }
+/* HOP: the big one; its ring fills while you hold it (--c = the hop charge, mobile26_ctl.js) */
+:is(html.touchUI #touch, #m26Ed) .mbHop{ flex-direction:column-reverse; border-width:3px; border-color:rgba(255,214,150,.75); gap:0;
+  background:radial-gradient(circle at 50% 30%, rgba(255,226,180,.22), rgba(16,14,12,.5) 70%); }
+:is(html.touchUI #touch, #m26Ed) .mbHop span{ font-size:1.12em; letter-spacing:.08em; }
+:is(html.touchUI #touch, #m26Ed) .mbHop .mbI{ width:34%; height:30%; color:var(--gold); margin-bottom:-2px; }
+:is(html.touchUI #touch, #m26Ed) .mbHop::before{ content:''; position:absolute; inset:-8px; border-radius:50%; pointer-events:none;
+  background:conic-gradient(from 0deg, var(--gold) calc(var(--c, 0) * 360deg), rgba(255,255,255,0) 0);
+  -webkit-mask:radial-gradient(circle closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+          mask:radial-gradient(circle closest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); }
+:is(html.touchUI #touch, #m26Ed) .mbHop.m26Full::before{ background:var(--gold); filter:drop-shadow(0 0 8px rgba(255,196,107,.9)); }
+:is(html.touchUI #touch, #m26Ed) .mbHop.m26Full{ border-color:#ffe2a8; box-shadow:0 0 26px rgba(255,196,107,.55), inset 0 1px 0 rgba(255,255,255,.25); }
+/* tricks gold, the wheelie teal, the motor buttons quieter */
+:is(html.touchUI #touch, #m26Ed) .mbTrick{ border-color:rgba(255,196,107,.6); }
+:is(html.touchUI #touch, #m26Ed) .mbTrick .mbI{ color:var(--gold); }
+:is(html.touchUI #touch, #m26Ed) .mbTrick.tkLock{ opacity:.55; border-style:dashed; }
+:is(html.touchUI #touch, #m26Ed) .mbTrick.tkNone{ opacity:.3; }
+:is(html.touchUI #touch, #m26Ed) .mbMed{ border-color:rgba(95,214,196,.62); }
+:is(html.touchUI #touch, #m26Ed) .mbMed .mbI{ color:var(--teal); }
+:is(html.touchUI #touch, #m26Ed) .mbSmall{ border-color:rgba(190,205,230,.42); }
+:is(html.touchUI #touch, #m26Ed) .mbSmall span{ font-size:.7em; }
+:is(html.touchUI #touch, #m26Ed) .mbSmall .mbI{ width:40%; height:40%; }
+/* the top-bar buttons: rounded squares (they are not riding buttons) */
+:is(html.touchUI #touch, #m26Ed) .mbUtil{ border-radius:14px; border-width:1px; border-color:rgba(255,255,255,.16);
+  background:rgba(9,12,17,.56); box-shadow:0 3px 12px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.07); }
+:is(html.touchUI #touch, #m26Ed) .mbUtil.act{ background:rgba(255,122,69,.6); }
+:is(html.touchUI #touch, #m26Ed) .mbHold::after{ inset:-3px; border-radius:16px; -webkit-mask:none; mask:none;
+  background:conic-gradient(var(--hot) calc(var(--p) * 360deg), transparent 0); opacity:.85; z-index:-1; }
+/* the stick: a soft ring with arrows where it will appear */
+:is(html.touchUI #touch, #m26Ed) .mGhost{ border:2px solid rgba(255,255,255,.16); background:radial-gradient(circle, rgba(255,255,255,.07), rgba(10,13,18,.14) 70%); }
+:is(html.touchUI #touch, #m26Ed) .mGhost::before, :is(html.touchUI #touch, #m26Ed) .mGhost::after{ position:absolute; top:50%; transform:translateY(-52%);
+  font:800 22px/1 var(--dl-font-display, sans-serif); color:rgba(255,255,255,.4); }
+:is(html.touchUI #touch, #m26Ed) .mGhost::before{ content:'\2039'; left:13%; }
+:is(html.touchUI #touch, #m26Ed) .mGhost::after{ content:'\203A'; right:13%; }
+:is(html.touchUI #touch, #m26Ed) .mGhost b{ font-family:var(--dl-font-display, inherit); font-style:italic; font-weight:800; letter-spacing:.2em; font-size:11px; }
+:is(html.touchUI #touch, #m26Ed) .mLive{ border:2.5px solid rgba(255,255,255,.5); background:radial-gradient(circle, rgba(255,255,255,.09), rgba(10,13,18,.3) 72%); }
+/* the TILT chip over the stick: tap to centre; its bar shows the lean */
+:is(html.touchUI #touch, #m26Ed) .m26TiltChip{ flex-direction:row; gap:6px; border-radius:18px; border-width:1.5px; border-color:rgba(95,214,196,.55);
+  background:rgba(9,12,17,.6); padding:0 10px; overflow:hidden; }
+:is(html.touchUI #touch, #m26Ed) .m26TiltChip .mbI{ width:18px; height:18px; flex:0 0 18px; color:var(--teal); }
+:is(html.touchUI #touch, #m26Ed) .m26TiltChip span{ font-size:10px; letter-spacing:.06em; }
+:is(html.touchUI #touch, #m26Ed) .m26TiltChip b{ position:absolute; left:50%; bottom:3px; width:12px; height:3px; margin-left:-6px; border-radius:2px;
+  background:var(--teal); opacity:0; transition:opacity .2s; }
+:is(html.touchUI #touch, #m26Ed) .m26TiltChip.live b{ opacity:1; }
+:is(html.touchUI #touch, #m26Ed) .m26TiltChip:not(.live){ border-color:rgba(255,196,107,.6); }
+
+/* ---------- 3. the controls layout editor (Pause -> Edit controls) ---------- */
+#m26Ed{ position:fixed; inset:0; z-index:70; touch-action:none; user-select:none; -webkit-user-select:none;
+  background:linear-gradient(180deg, rgba(6,8,12,.5), rgba(6,8,12,.28) 40%, rgba(6,8,12,.5)); }
+html.m26Editing #pause, html.m26Editing #mobSet{ visibility:hidden !important; }
+html.m26Editing #hud{ opacity:.35 !important; }
+#m26Ed .m26Px{ position:absolute; display:flex; outline:2px dashed rgba(255,255,255,.5); outline-offset:4px; transition:none; touch-action:none; }
+#m26Ed .mStickRing.m26Px{ border-radius:50%; }
+#m26Ed .mGhost.m26Px{ opacity:1; pointer-events:auto; }
+#m26Ed .m26Px.m26Moved{ outline-color:rgba(95,214,196,.85); }
+#m26Ed .m26Px.m26Sel{ outline:3px solid var(--gold); box-shadow:0 0 0 8px rgba(255,196,107,.22), 0 6px 18px rgba(0,0,0,.4); }
+.m26EdBar{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(420px, calc(100% - 32px));
+  display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:12px 14px; border-radius:18px;
+  background:rgba(10,13,18,.93); border:1px solid rgba(255,255,255,.14); box-shadow:0 12px 40px rgba(0,0,0,.5); transition:opacity .15s; }
+html.mobLand .m26EdBar{ top:46%; width:min(400px, calc(100% - 2 * var(--mob-u, 48px) * 4)); min-width:280px; }
+.m26EdT{ display:flex; flex-direction:column; gap:3px; text-align:center; }
+.m26EdT b{ font:800 italic 20px/1 var(--dl-font-display, sans-serif); letter-spacing:.04em; text-transform:uppercase; color:var(--gold); }
+.m26EdT span{ font-size:13px; line-height:1.3; opacity:.78; }
+.m26EdSize{ display:none; align-items:center; gap:10px; }
+#m26Ed.hasSel .m26EdSize{ display:flex; }
+.m26EdSize button{ flex:0 0 44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06);
+  color:#fff; font:700 24px/1 sans-serif; }
+.m26EdSize input{ flex:1 1 auto; accent-color:var(--gold); height:44px; }
+.m26EdBtns{ display:flex; gap:8px; justify-content:center; }
+#m26Ed .m26Px.m26Bad{ outline-color:#ff5a3c; box-shadow:0 0 0 6px rgba(255,90,60,.25); }
+.m26EdWarn{ display:none; font-size:12.5px; line-height:1.3; text-align:center; color:#ff8a6a; }
+#m26Ed.hasBad .m26EdWarn{ display:block; }
+.m26EdBtns .btn{ flex:1 1 0; min-height:44px; margin:0; padding:8px 6px; font-size:15px; }
+.m26SetRow{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.m26SetRow .btn{ margin:0; min-height:44px; }
+@media (max-height:520px) and (min-width:560px){ .mobSetCard .m26SetRow{ grid-column:1 / -1; } }
+
+/* ---------- 4. pause on a phone: a bottom sheet of big buttons, the run's numbers on top ---------- */
+html.touchUI #pause .btn{ width:min(320px, 84vw); min-height:48px; border-radius:14px; }
+html.touchUI #pause .btn.primary{ min-height:56px; }
+html.touchUI #pause .swap22Row{ width:min(320px, 84vw); flex-wrap:nowrap; }
+html.touchUI #pause .swap22Row .btn{ flex:1 1 0; width:auto; min-width:0; }
+@media (max-height:520px) and (orientation:landscape){
+  html.touchUI #pause{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-content:center; justify-items:center; column-gap:14px; row-gap:0; }
+  html.touchUI #pause.hide{ display:none; }
+  html.touchUI #pause > :first-child, html.touchUI #pause > :last-child{ margin:0; }
+  html.touchUI #pause .title, html.touchUI #pause #pauseStats{ grid-column:1 / -1; }
+  html.touchUI #pause .btn{ width:min(300px, 42vw); margin-top:8px !important; min-height:44px; }
+  html.touchUI #pause .btn.primary{ min-height:48px; }
+  html.touchUI #pause #mpPauseInfo{ grid-column:1 / -1; }
+}
+
+/* ---------- 5. menus: no hover-only cues, big targets ---------- */
+html.touchUI .gar .gCard{ min-height:52px; }
+html.touchUI .gar .gStage{ touch-action:pan-y; }
+
+/* ---------- 6. the garage held sideways on ANY phone (mobile25 did it for <= 700 px; an iPhone 15 / Pixel at 852-915 px got a
+   squeezed stage ~150 px tall under a full-width header): three columns that all fit -- the rides | the bike | details + Equip ---------- */
+@media (max-height:520px) and (orientation:landscape){
+  html.touchUI .gar:not(.cust){ overflow:hidden; }
+  html.touchUI .gar .gHead{ flex-wrap:nowrap; padding:6px calc(10px + var(--mob-r, 0px)) 6px calc(10px + var(--mob-l, 0px)); gap:8px; }
+  html.touchUI .gar .gTitle span{ display:none; }
+  html.touchUI .gar:not(.cust) .gTitle{ display:none; }
+  html.touchUI .gar .gTabs{ order:0; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none; }
+  html.touchUI .gar:not(.cust) .gBody{ display:grid; flex:1 1 auto; min-height:0; padding-left:var(--mob-l, 0px); padding-right:var(--mob-r, 0px);
+    grid-template-columns:minmax(170px,28%) minmax(0,1fr) minmax(220px,33%); grid-template-rows:minmax(0,1fr); }
+  html.touchUI .gar:not(.cust) .gSide, html.touchUI .gar:not(.cust) .gStage, html.touchUI .gar:not(.cust) .gInfo{ order:0; }
+  html.touchUI .gar:not(.cust) .gStage{ height:auto; min-height:0; }
+  html.touchUI .gar:not(.cust) .gSide{ min-height:0; border-bottom:0; border-right:1px solid rgba(242,237,228,.09); }
+  html.touchUI .gar:not(.cust) .gList{ display:block; overflow-x:hidden; overflow-y:auto; flex:1 1 auto; min-height:0; }
+  html.touchUI .gar:not(.cust) .gList .gCard, html.touchUI .gar:not(.cust) .gList.grid .gCard{ flex:none; width:100%; margin:0 0 6px; }
+  html.touchUI .gar:not(.cust) .gInfo{ grid-column:auto; display:flex; flex-direction:column; min-height:0; max-height:none; border-top:0; border-left:1px solid rgba(242,237,228,.09); }
+  html.touchUI .gar:not(.cust) .gPaneBody{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:8px 10px; }
+  html.touchUI .gar:not(.cust) .gActs{ position:static; box-shadow:none; padding:6px 8px calc(6px + var(--mob-b, 0px)); }
+  html.touchUI .gar:not(.cust) .gViews{ display:none; }
+}
+/* browse rides on the stage: two round arrows on its sides (a flick works too; a drag still turns the bike) */
+.m26GArrow{ display:none; }
+html.touchUI .gar:not(.cust) .m26GArrow{ display:flex; align-items:center; justify-content:center; position:absolute; top:50%; z-index:4;
+  width:46px; height:46px; margin-top:-23px; padding:0 0 4px; border-radius:50%; border:1.5px solid rgba(255,255,255,.22);
+  background:rgba(9,12,17,.62); color:#fff; font:700 30px/1 var(--dl-font-display, sans-serif); box-shadow:0 4px 14px rgba(0,0,0,.35); }
+html.touchUI .gar:not(.cust) .m26GArrow.l{ left:8px; }
+html.touchUI .gar:not(.cust) .m26GArrow.r{ right:8px; }
+html.touchUI .gar:not(.cust) .m26GArrow:active{ background:rgba(255,122,69,.7); transform:scale(.94); }
+
+/* ---------- 7. pause held sideways: one screen, no scrolling -- PAUSED, the run sheet and KEEP RIDING on the left, every other
+   action in two columns on the right (feel12's run sheet goes 2 x 2 so its numbers are not cut) ---------- */
+@media (max-height:520px) and (orientation:landscape){
+  html.touchUI #pause{ display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr); grid-auto-rows:min-content;
+    align-content:center; justify-items:center; align-items:center; column-gap:10px; row-gap:0;
+    padding:calc(8px + var(--mob-t, 0px)) calc(14px + var(--mob-r, 0px)) calc(8px + var(--mob-b, 0px)) calc(14px + var(--mob-l, 0px)); }
+  html.touchUI #pause > :first-child, html.touchUI #pause > :last-child{ margin:0; }
+  html.touchUI #pause .title{ grid-column:1; grid-row:1; font-size:42px !important; }
+  html.touchUI #pause #pauseStats{ grid-column:1; grid-row:2; margin:2px 0 0; font-size:13px; }
+  html.touchUI #pause #fPauseCard{ grid-column:1; grid-row:3 / span 2; margin:12px 0 4px; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 18px; max-width:100%; }
+  html.touchUI #pause #fPauseCard .pc b{ font-size:22px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  html.touchUI #pause #fPauseCard .pc span{ font-size:11px; }
+  html.touchUI #pause #fPauseNote{ display:none; }
+  html.touchUI #pause #resumeBtn{ grid-column:1; grid-row:5 / span 2; margin-top:4px !important; }
+  html.touchUI #pause > :not(.title):not(#pauseStats):not(#fPauseCard):not(#fPauseNote):not(#resumeBtn){ grid-column:auto; }
+  html.touchUI #pause .btn{ width:min(250px, 100%); margin-top:6px !important; }
+  html.touchUI #pause .btn.ghost{ font-size:14px; padding:8px 10px 7px; min-height:42px; }
+  html.touchUI #pause #mpPauseInfo{ grid-column:2 / -1; }
+  html.touchUI #pause .swap22Row{ grid-column:2 / -1; flex-wrap:nowrap; width:100%; margin-top:0; gap:10px; }
+  html.touchUI #pause .swap22Row .btn{ flex:1 1 0; min-width:0; width:auto; }
+}
+
+/* ---------- 8. the full map on a phone speaks touch (it pans, pinches and travels on a tap; no Tab / Esc / wheel) ---------- */
+html.touchUI .rgMFoot > span{ display:none; }
+html.touchUI .rgMFoot::after{ content:'drag to pan \00B7  pinch to zoom \00B7  tap a place to travel there'; }
+
+/* ---------- 9. the FPS counter (Settings > FPS counter): a quiet corner under the stick instead of over PAUSE ---------- */
+html.touchUI #fpsBox{ top:auto; bottom:calc(2px + var(--mob-b, 0px)); left:calc(8px + var(--mob-l, 0px)); opacity:.62; transform:scale(.9); transform-origin:0 100%; }
+/* the stick's STEER label sat under the ring, cut off by the screen edge: inside the ring now */
+html.touchUI #touch .mGhost b{ bottom:auto; top:calc(100% - 22px); font-size:10px; opacity:.55; }
+
+/* ---------- 10. the shop held upright: its sections as a bottom tab bar with icons (the thumb's reach), like a phone app ---------- */
+@media (max-width:600px) and (max-aspect-ratio:1/1){
+  html.touchUI .s13Tabs{ position:fixed; left:0; right:0; bottom:0; z-index:8; order:0; flex:none; display:flex; gap:0; overflow:visible;
+    padding:4px calc(4px + var(--mob-r, 0px)) calc(4px + var(--mob-b, 0px)) calc(4px + var(--mob-l, 0px));
+    background:rgba(10,10,12,.97); border-top:2px solid #000; box-shadow:0 -10px 24px rgba(0,0,0,.55); }
+  html.touchUI .s13Tab{ position:relative; flex:1 1 0; min-width:0; height:56px; flex-direction:column; justify-content:center; gap:5px; padding:0 2px;
+    font-size:11px !important; letter-spacing:.05em; background:none; border:0; box-shadow:none; color:rgba(243,237,225,.62); transform:none !important; }
+  html.touchUI .s13Tab::before{ content:''; width:24px; height:24px; flex:0 0 24px; background:currentColor;
+    -webkit-mask:var(--m26ico) center / contain no-repeat; mask:var(--m26ico) center / contain no-repeat; }
+  html.touchUI .s13Tab i{ position:absolute; top:3px; left:calc(50% + 9px); padding:1px 4px; font-size:9.5px; line-height:1.1; border-radius:6px;
+    background:rgba(243,237,225,.16); color:inherit; }
+  html.touchUI .s13Tab.sel{ color:var(--dl-yellow, #ffd23f); background:none; }
+  html.touchUI .s13Tab:focus, html.touchUI .s13Tab:focus-visible{ outline:none; }
+  html.touchUI .s13Tab.sel::after{ content:''; position:absolute; top:-4px; left:28%; right:28%; height:3px; border-radius:0 0 3px 3px; background:var(--dl-yellow, #ffd23f); }
+  html.touchUI .s13Tab[data-tab=bikes]{ --m26ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='5.5' cy='16' r='3.6'/%3E%3Ccircle cx='18.5' cy='16' r='3.6'/%3E%3Cpath d='M5.5 16l4-7.5h5.2M9.5 8.5L12.5 16h-7M18.5 16l-3.4-8.2h2.6M12.5 16l3.6-6.6'/%3E%3C/svg%3E"); }
+  html.touchUI .s13Tab[data-tab=upgrades]{ --m26ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M13.5 2.5L4.5 14h7l-1 7.5 9-11.5h-7z'/%3E%3C/svg%3E"); }
+  html.touchUI .s13Tab[data-tab=parts]{ --m26ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a4 4 0 0 0-5.4 5.2L3.5 17.3v3.2h3.2l5.8-5.8a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z'/%3E%3C/svg%3E"); }
+  html.touchUI .s13Tab[data-tab=tricks]{ --m26ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z'/%3E%3C/svg%3E"); }
+  html.touchUI .s13Tab[data-tab=store]{ --m26ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8h14l-1 12.5H6z'/%3E%3Cpath d='M9 8V6.5a3 3 0 0 1 6 0V8'/%3E%3C/svg%3E"); }
+  html.touchUI .s13Body{ padding-bottom:calc(64px + var(--mob-b, 0px)); }
+  html.touchUI .s13Acts{ bottom:0; }
+}
+
+/* ---------- 11. the loading screen on a phone: one tip under the progress ---------- */
+#m26LoadTip{ position:absolute; left:50%; bottom:calc(18px + var(--mob-b, env(safe-area-inset-bottom, 0px))); transform:translateX(-50%);
+  width:max-content; max-width:calc(100vw - 40px); text-align:center; font:600 13px/1.35 var(--dl-font-display, sans-serif);
+  letter-spacing:.06em; color:rgba(242,237,228,.72); }
 
 </style>
 </body>
