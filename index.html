@@ -30179,9 +30179,12 @@ function fbMo15moto(P){
   });
 
   /* ---- battery box + motor + controller ---- */
+  const bw = Math.min(0.176, xs*2 - 0.03);
+  // Release 15.17 (gas26): a petrol bike gets an engine + exhaust in the bay instead of the battery box and motor
+  if (P.gas && typeof mo26GasEngine === 'function') mo26GasEngine({ P, add, PV, yB, yT, FB, fzAt, BZr, MZ, mr, xs, scale, sy, rz, fz, Rr, Rf, bw, q });
+  else {
   const bt = yT - 0.012, bb = FB[1] - 0.012;
   const batOut = [[fzAt(bt) - 0.012, bt], [BZr, bt], [BZr, MZ[1] + mr + 0.012], [MZ[0] + mr + 0.016, MZ[1] + mr + 0.012], [MZ[0] + mr + 0.024, bb + 0.02], [fzAt(bb) - 0.018, bb]];
-  const bw = Math.min(0.176, xs*2 - 0.03);
   add('BATHI', mo15plateGeo(batOut, bw, { r:[0.02, 0.02, 0.015, 0.02, 0.03, 0.03], bev:0.014, bs:2 }));
   const inset = (P0, k)=>{ const c = P0.reduce((a, p)=> [a[0] + p[0]/P0.length, a[1] + p[1]/P0.length], [0, 0]); return P0.map(p=> [c[0] + (p[0] - c[0])*k, c[1] + (p[1] - c[1])*k]); };
   {
@@ -30208,6 +30211,7 @@ function fbMo15moto(P){
   });
   // controller (finned black box) between the motor and the shock
   add('DARK', mo15boxGeo([0, MZ[1] + mr + 0.006, PV[0] + 0.035], 0.11*scale, 0.03, 0.08));
+  }
   // countershaft sprocket on the left + chain to the rear sprocket
   const cx = 0.072, fsR = 0.036*scale + 0.006, rsR = Math.min(0.118, Rr*0.36);
   const cs = mo15sprocketGeo(fsR, 13, 0.008, { holes:0, hub:0.012 }); cs.translate(cx, MZ[1], MZ[0]); add('ALLOY', cs);
@@ -34425,19 +34429,19 @@ const FLEET_NAMES18 = {
   const at = ()=>{ const i = FLEET.findIndex(v=> v.cat === 'escooter'); return i < 0 ? FLEET.length : i; };
   const rows = [
     { id:'dtxscoot', no:'D20', name:'Dualtron X Limited', brand:'Dualtron', model:'X Limited', b:'escooter',
-      p:{ Rr:0.18, Rf:0.18, tr:0.064, wb:1.40, dy:0.22, dw:0.28, dt:0.11, deck:'flat', ha:80, bar:1.25, bw:0.76, bars:'tbar', stem:'twin', fold:'none',
+      p:{ Rr:0.18, Rf:0.18, tr:0.064, wb:1.40, dy:0.22, dw:0.28, dt:0.11, deck:'flat', ha:80, bar:1.17, bw:0.76, bars:'tbar', stem:'twin', fold:'none',
           fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, brace:true, stand:true, tread:22 },
       col:0x121316, acc:0xd8a640, liv:{ fork:0xd8a640, rim:0xd8a640, tire:0x0d0e10, grip:0xd8a640, bars:0x111214, glow:0xffb43a },
       m:[2.05, 1.83, 0.86, 0.84], tune:{ power:0.95, manual:-0.45, grip:15.5, camDist:1.08 },
       desc:'The heaviest, fastest thing in the tab: twin 13-inch tyres, twin stems and two huge motors. Around 125 km/h flat out. Lean on it.' },
     { id:'burnescoot', no:'D21', name:'Nami Burn-E 2 Max', brand:'Nami', model:'Burn-E 2 Max', b:'escooter',
-      p:{ Rr:0.16, Rf:0.16, tr:0.056, wb:1.28, dy:0.20, dw:0.25, dt:0.10, deck:'taper', ha:78, bar:1.26, bw:0.70, bars:'moto', stem:'thick', fold:'none',
+      p:{ Rr:0.16, Rf:0.16, tr:0.056, wb:1.28, dy:0.20, dw:0.25, dt:0.10, deck:'taper', ha:78, bar:1.18, bw:0.70, bars:'moto', stem:'thick', fold:'none',
           fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:18 },
       col:0x1b1f27, acc:0xff2e63, liv:{ fork:0xff2e63, rim:0x1b1f27, tire:0x0d0e10, grip:0xff2e63, bars:0x14161b, glow:0xff2e63 },
       m:[2.25, 1.73, 0.90, 0.88], tune:{ power:1.0, manual:-0.42, grip:15.0, camDist:1.06 },
       desc:'Racing hyper scooter with moto bars and the hardest launch of all: 0 to 100 before you can blink. About 118 km/h top.' },
     { id:'wolfkingscoot', no:'D22', name:'Kaabo Wolf King GTR', brand:'Kaabo', model:'Wolf King GTR', b:'escooterX',
-      p:{ Rr:0.17, Rf:0.17, tr:0.060, wb:1.30, dy:0.205, dw:0.26, dt:0.10, deck:'flat', ha:79, bar:1.24, bw:0.72, stem:'aframe', fold:'none',
+      p:{ Rr:0.17, Rf:0.17, tr:0.060, wb:1.30, dy:0.205, dw:0.26, dt:0.10, deck:'flat', ha:79, bar:1.16, bw:0.72, stem:'aframe', fold:'none',
           light:'fork', disp:'round', twist:true, tread:22 },
       col:0x22272e, acc:0x39e26b, liv:{ fork:0x39e26b, rim:0x39e26b, tire:0x0e0f11, grip:0x39e26b, bars:0x181b20, glow:0x39e26b },
       m:[1.95, 1.68, 0.92, 0.92], tune:{ power:0.9, manual:-0.40, grip:16.0, camDist:1.05 },
@@ -34453,6 +34457,247 @@ const FLEET_NAMES18 = {
   try { if (typeof FLEET_TUNE_EXTRA !== 'undefined' && FLEET_TUNE_EXTRA.escooter) FLEET_TUNE_EXTRA.escooter.hiSpeedSteer = 1; } catch(e){}
   const c = FLEET_CATS.find(c=> c.id === 'escooter');
   if (c) c.sub = 'Hyper scooters over 110 km/h, plus stand-up electric commuters, throttle powered';
+})();
+
+/* =========================================================================
+   GAS26 -- Release 15.17: "add gas bike" (integrator)
+   Three PETROL dirt bikes at the top of the dirt-bike tab (now "Dirt Bikes": gas + electric), built by the game's own moto kit
+   (mods/motor15_moto.js, b:'mo15moto') with a real engine in the bay instead of the battery box (mo26GasEngine, called by the kit
+   when P.gas is set): a cast crankcase with clutch / ignition covers, a cylinder + head (finned when air-cooled), spark-plug cap,
+   carburettor + intake boot, radiators on the water-cooled ones, a kick-start and a gear lever, and the exhaust:
+   a two-stroke EXPANSION CHAMBER (header, belly, cone, stinger) into a silencer, or a four-stroke header into a muffler.
+     yz250    Yamaha YZ250        2-stroke 250 motocross   water-cooled  the ring-ding screamer
+     crf450r  Honda CRF450R       4-stroke 450 motocross   water-cooled  the fastest thing with knobblies (~140 km/h)
+     klx110   Kawasaki KLX110R    4-stroke 110 pit bike    air-cooled    small, light, easy
+   Rows carry gas:'2t' | '4t' (mods/gas26_late.js drives the engine sound from it; the e-dirt bikes whine like electric motors).
+   Physics: the dirt-bike classes ('emx' / 'edirt') with per-ride multipliers. A friend on an older version (no gas rows) sees
+   the game's default ride for them (fleetResolve).
+   ========================================================================= */
+/* mirror a part to the other side of the bike (+x is the rider's LEFT): the engine was drawn with the exhaust, clutch cover and kick-start
+   on +x; real bikes carry them on the right, so every engine part goes through this (scale x by -1 + flip the winding) */
+function gas26Mirror(g){
+  if (!g) return g;
+  g.scale(-1, 1, 1);
+  if (g.index){ const a = g.index.array; for (let i = 0; i + 2 < a.length; i += 3){ const t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t; } g.index.needsUpdate = true; }
+  else Object.keys(g.attributes).forEach(k=>{
+    const at = g.attributes[k], n = at.itemSize, arr = at.array;
+    for (let i = 0; i + 2 < at.count; i += 3) for (let j = 0; j < n; j++){ const a = (i + 1)*n + j, b = (i + 2)*n + j, t = arr[a]; arr[a] = arr[b]; arr[b] = t; }
+    at.needsUpdate = true;
+  });
+  return g;
+}
+function mo26GasEngine(E){
+  const { P, PV, yB, yT, fzAt, MZ, xs, scale:s, sy, rz, Rr } = E;
+  const add = (k, g)=> E.add(k, gas26Mirror(g));
+  const twoT = P.gas === '2t', air = P.cool === 'air';
+  const yC0 = yB + 0.015, yC1 = yB + 0.19*s, zR = MZ[0] - 0.03, zF = fzAt(yB + 0.10) - 0.012;
+  const ENG = P.engCol === 'black' ? 'DARK' : 'ALLOY';
+  const W = 0.19*s + 0.02;
+  // crankcase (cast)
+  add(ENG, mo15plateGeo([[zR, yC0 + 0.035], [zR + 0.035, yC0], [zF - 0.045, yC0], [zF, yC0 + 0.05], [zF - 0.02, yC1], [zR + 0.06, yC1 + 0.012], [zR, yC1 - 0.03]],
+    W, { r:0.018, bev:0.01, bs:2 }));
+  // clutch cover (right), ignition cover (left)
+  const cz = (zR + zF)/2 + 0.02, cy = yC0 + 0.095*s, rc = 0.072*s, ri = 0.058*s;
+  add(ENG, mo15latheGeo([[0, 0], [rc, 0], [rc*0.97, 0.013], [rc*0.84, 0.024], [rc*0.45, 0.028], [0, 0.028]], 24).translate(W/2 - 0.004, cy, cz));
+  add(ENG, mo15latheGeo([[0, 0], [ri, 0], [ri*0.96, -0.012], [ri*0.8, -0.022], [0, -0.022]], 20).translate(-(W/2 - 0.004), yC0 + 0.09*s, zR + 0.075*s));
+  for (let i = 0; i < 6; i++){ const a = i/6*Math.PI*2; add('STEEL', mo15xcyl([cz + Math.cos(a)*rc*0.86, cy + Math.sin(a)*rc*0.86], 0.0045, 0.008, W/2 + 0.02, 6)); }
+  // cylinder + head, tilted forward
+  const zc = zF - 0.085*s, A = [0, yC1 - 0.012, zc], B = [0, yC1 + 0.20*s, zc + 0.065*s];
+  const rC = 0.046*s, rF = (air ? 0.072 : 0.058)*s, prof = [[0, 0], [rC, 0]];
+  const nF = air ? 9 : 4;
+  for (let i = 0; i < nF; i++){
+    const t0 = (air ? 0.06 : 0.62) + i*(air ? 0.1 : 0.09);
+    prof.push([rC, t0], [rF, t0 + 0.012], [rF, t0 + 0.045], [rC, t0 + 0.058]);
+  }
+  prof.push([rC*1.05, 0.98], [rC*0.6, 1.0], [0, 1.0]);
+  add(ENG, mo15latheAlong(prof, A, B, 18));
+  add('DARK', mo15rodGeo([0, B[1] - 0.005, B[2] + 0.004], [0.004, B[1] + 0.028, B[2] + 0.026], 0.010, 8));     // plug cap
+  // carburettor + intake boot toward the airbox under the seat
+  const yI = yC1 + 0.095*s;
+  add('ALLOY', mo15rodGeo([0, yI, zc - 0.05*s], [0, yI - 0.006, zc - 0.15*s], 0.026, 12));
+  add('DARK', mo15rodGeo([0, yI - 0.006, zc - 0.15*s], [0, yI + 0.012, PV[0] + 0.02], 0.032, 12));
+  add('DARK', mo15rodGeo([0.03, yI + 0.01, zc - 0.11*s], [0.07, yI + 0.06, zc - 0.11*s], 0.004, 6));          // throttle cable
+  // radiators (water-cooled)
+  if (!air){
+    [-1, 1].forEach(sd=>{
+      const ry = yT - 0.11*s, rzz = fzAt(ry) - 0.045*s, rx = mo15ang([fzAt(ry - 0.1), ry - 0.1], [fzAt(ry + 0.1), ry + 0.1]) + Math.PI/2;
+      add('DARK', mo15boxGeo([sd*(xs + 0.028), ry, rzz], 0.03, 0.18*s, 0.13*s, rx*0.25));
+      add('ALLOY', mo15boxGeo([sd*(xs + 0.010), ry, rzz], 0.008, 0.19*s, 0.14*s, rx*0.25));
+      add('RUB', mo15tubeGeo([[sd*(xs + 0.01), ry - 0.07*s, rzz - 0.04], [sd*0.06, yC1 + 0.05, zc + 0.02]], 0.011, 8, 6));      // hose
+    });
+  }
+  // exhaust: right side (x > 0)
+  if (twoT){
+    const p0 = [0.0, yC1 + 0.085*s, zc + 0.06*s], p1 = [0.035, yC1 - 0.005, zF + 0.05], p2 = [0.095, yB + 0.07, zF - 0.03],
+          p3 = [0.135, yB + 0.11, zR + 0.03], p4 = [0.125, PV[1] + 0.11, PV[0] - 0.07], p5 = [0.115, sy - 0.17, PV[0] - 0.21];
+    add('STEEL', mo15tubeGeo([p0, [0.012, yC1 + 0.06, zc + 0.10*s], p1], 0.022, 12, 10));                      // header
+    add('STEEL', mo15tubeGeo([p1, [0.07, yB + 0.05, zF + 0.01], p2, [0.125, yB + 0.07, (zF + zR)/2], p3], 0.043*s + 0.004, 24, 12));   // belly
+    add('STEEL', mo15tubeGeo([p3, [0.132, PV[1] + 0.03, PV[0] + 0.0], p4], 0.030*s + 0.003, 12, 10));        // cone
+    add('STEEL', mo15tubeGeo([p4, p5], 0.016, 8, 8));                                                           // stinger
+    const e = [0.112, sy - 0.11, rz + 0.17];
+    add('ALLOY', mo15rodGeo(p5, e, 0.036, 14));                                                                 // silencer
+    add('DARK', mo15rodGeo(e, [e[0], e[1] + 0.006, e[2] - 0.02], 0.026, 10));
+  } else {
+    const h0 = [0.0, B[1] - 0.03, B[2] + 0.035], h1 = [0.05, yC1 + 0.07, zF + 0.035], h2 = [0.11, yC1 - 0.01, zF - 0.05],
+          h3 = [0.125, PV[1] + 0.07, PV[0] + 0.02], h4 = [0.12, sy - 0.17, PV[0] - 0.14];
+    add('STEEL', mo15tubeGeo([h0, h1, h2, h3, h4], 0.021*s + 0.003, 30, 10));
+    const e = [0.12, sy - 0.085, rz + 0.13];
+    add('ALLOY', mo15rodGeo(h4, e, 0.045*s + 0.006, 16));                                                        // muffler
+    add('DARK', mo15rodGeo(e, [e[0], e[1] + 0.008, e[2] - 0.022], 0.03, 10));
+    add('ALLOY', mo15boxGeo([0.12, (h4[1] + e[1])/2 - 0.04, (h4[2] + e[2])/2], 0.012, 0.012, 0.05));               // muffler bracket
+  }
+  // kick-start (right) + gear lever (left, ahead of the peg)
+  add('STEEL', mo15rodGeo([W/2 + 0.02, yC0 + 0.12*s, zR + 0.03], [W/2 + 0.05, yC0 + 0.25*s, zR - 0.09], 0.0075, 8));
+  add('DARK', mo15boxGeo([W/2 + 0.055, yC0 + 0.255*s, zR - 0.10], 0.03, 0.012, 0.022));
+  add('STEEL', mo15rodGeo([-(W/2 + 0.015), yC0 + 0.07*s, zR + 0.05], [-(W/2 + 0.04), yC0 + 0.06*s, zR + 0.17], 0.006, 8));
+  void Rr;
+}
+/* =========================================================================
+   The MOTORISED BICYCLE ("gas bike"): a cruiser diamond frame (b:'gas26kit' = the city e-bike chassis, style 'gaskit') with an 80cc
+   two-stroke kit engine in the frame triangle: the crankcase sits in the V between the seat tube and the down tube, a finned cylinder
+   leans forward under the top tube, a peanut tank sits ON the top tube with a fuel line down to the carburettor + chrome air filter,
+   a pull-start cover on the right, the clutch / magneto cover on the left, the exhaust curls forward and down along the down tube
+   into a muffler, and a chain on the LEFT runs from the engine to a big sprocket on the back wheel's spokes (the pedal chain stays
+   on the right). +x is the rider's left.
+   ========================================================================= */
+const GAS26_KIT_DEF = { R:0.335, tr:0.048, bbY:0.285, cs:0.46, fc:0.67, ha:68, fl:0.44, ht:0.17, sa:70, st:0.50, pl:0.10, hw:0.38, rise:0.10, back:0.15,
+  bars:'swept', lean:0.30, stemH:0.08, fork:'rigid', span:0.058, low:0.02, hub:0, fhub:0, disc:0, gears:1, fenders:true, fhw:0.04, rf0:24, rf1:160, ff0:46, ff1:144,
+  saddle:'sprung', ring:0.09, light:'head', wall:'cream', kick:true, reach:0.50, spokes:36 };
+function gas26KitFrame(X){
+  const { f, M, B3, G, BB, RA, sdir, st, bbY } = X;
+  const TTf = fup(G.H1, G.d, -0.03), TTr = fup(BB, sdir, st*0.93);
+  f.add(e12loft([B3(TTr), B3(TTf)], [[0, 0.030, 0.030], [1, 0.031, 0.031]], M, { n:2, seg:3 }));
+  f.add(e12loft([B3(fup(G.H0, G.d, -0.012)), B3(fup(G.H1, G.d, 0.008))], [[0, 0.046, 0.046], [1, 0.046, 0.046]], M, { n:2, seg:3 }));
+  const DTf = fup(G.H0, G.d, 0.03), DT0 = [0.015, bbY + 0.015]; X.dtUp = [DTf[0] - DT0[0], DTf[1] - DT0[1]];
+  f.add(e12loft([B3(DTf), B3(DT0)], [[0, 0.036, 0.036], [1, 0.038, 0.038]], M, { n:2, seg:3 }));
+  f.add(e12loft([B3(BB), B3(fup(BB, sdir, st))], [[0, 0.032, 0.032], [1, 0.030, 0.030]], M, { n:2, seg:3 }));
+  f.add(bkCylX(0.03, 0.08, M, 0, 16).translateY(bbY));
+  const SSt = fup(BB, sdir, st*0.90);
+  e12pairL(f, [SSt, RA], 0.02, 0.058, [[0, 0.016, 0.016], [1, 0.013, 0.013]], M, { n:2 });
+  e12pairL(f, [[-0.02, bbY], RA], 0.035, 0.058, [[0, 0.019, 0.021], [1, 0.015, 0.016]], M, { n:2 });
+  X.rackStay = SSt;
+  X.kit = gas26KitEngine(X, TTr, TTf, DTf, DT0);
+}
+function gas26KitEngine(X, TTr, TTf, DTf, DT0){
+  const { f, M, bbY, sdir, RA } = X;
+  const B = { AL:[], DK:[], CH:[], PT:[], CN:[], WH:[] }, add = (k, g)=>{ if (g) B[k].push(g); };
+  const zDT = y=> DT0[0] + (y - DT0[1])*(DTf[0] - DT0[0])/(DTf[1] - DT0[1]);
+  const zST = y=> (y - bbY)*sdir[0]/sdir[1];
+  const y0 = bbY + 0.105, y1 = bbY + 0.27, m = 0.024, W = 0.10;
+  const a0 = zST(y0) + m, b0 = zDT(y0) - m, a1 = zST(y1) + m, b1 = zDT(y1) - m*1.2;
+  // crankcase: fills the V between the seat tube and the down tube, rounded underneath
+  add('AL', mo15plateGeo([[a0 + 0.012, y0 - 0.006], [(a0 + b0)/2, y0 - 0.026], [b0 - 0.004, y0 - 0.004], [b1, y1 - 0.024], [b1 - 0.022, y1], [a1 + 0.012, y1], [a1, y1 - 0.03]],
+    W, { r:0.018, bev:0.009, bs:2 }));
+  // left: the clutch / magneto cover (round, domed) + the drive sprocket; right: the pull-start cover + its T-handle
+  const cz = (a1 + b1)/2 - 0.03, cy = (y0 + y1)/2 + 0.005;
+  add('AL', mo15latheGeo([[0, 0], [0.060, 0], [0.059, 0.011], [0.050, 0.021], [0.024, 0.026], [0, 0.026]], 22).translate(W/2 - 0.004, cy, cz));
+  for (let i = 0; i < 5; i++){ const a = i/5*Math.PI*2 + 0.3; add('CH', mo15xcyl([cz + Math.cos(a)*0.052, cy + Math.sin(a)*0.052], 0.0045, 0.006, W/2 + 0.02, 6)); }
+  const pz = (a0 + b0)/2 + 0.03, py = y0 + 0.05;
+  add('AL', mo15latheGeo([[0, 0], [0.054, 0], [0.053, -0.013], [0.045, -0.023], [0.019, -0.028], [0, -0.028]], 22).translate(-(W/2 - 0.004), py, pz));
+  add('DK', mo15xcyl([pz, py], 0.014, 0.012, -(W/2 + 0.029), 10));
+  add('DK', mo15rodGeo([-(W/2 + 0.012), py - 0.03, pz + 0.035], [-(W/2 + 0.022), py - 0.04, pz + 0.075], 0.0025, 5));
+  add('DK', mo15boxGeo([-(W/2 + 0.024), py - 0.042, pz + 0.08], 0.014, 0.014, 0.05));
+  // cylinder + head: finned, leaning forward under the top tube; spark plug + cap on top
+  const tilt = 0.21, L = 0.19, zc = b1 - 0.08, A = [0, y1 - 0.006, zc], dir = [0, Math.cos(tilt), Math.sin(tilt)];
+  const at = t=> [A[0], A[1] + dir[1]*L*t, A[2] + dir[2]*L*t], Bh = at(1);
+  const rC = 0.034, prof = [[0, 0], [rC + 0.005, 0], [rC + 0.005, 0.06], [rC, 0.08]];
+  for (let i = 0; i < 9; i++){ const t0 = 0.10 + i*0.092, rF = i < 6 ? 0.056 : 0.064; prof.push([rC, t0], [rF, t0 + 0.012], [rF, t0 + 0.040], [rC, t0 + 0.052]); }
+  prof.push([rC*1.15, 0.97], [rC*0.7, 1.0], [0, 1.0]);
+  add('AL', mo15latheAlong(prof, A, Bh, 16));
+  const pl0 = at(1.0), pl1 = [0, pl0[1] + dir[1]*0.025, pl0[2] + dir[2]*0.025 + 0.004], pl2 = [0, pl1[1] + 0.018, pl1[2] + 0.014];
+  add('WH', mo15rodGeo(pl0, pl1, 0.006, 8));
+  add('DK', mo15rodGeo(pl1, pl2, 0.009, 8));
+  add('DK', mo15tubeGeo([pl2, [0.02, pl2[1] + 0.01, pl2[2] - 0.06], [0.03, pl2[1] - 0.02, pl2[2] - 0.16]], 0.003, 10, 5));      // plug lead back to the CDI
+  add('DK', mo15boxGeo([0.03, pl2[1] - 0.03, pl2[2] - 0.18], 0.03, 0.035, 0.05));                                              // CDI box under the tank
+  // carburettor behind the cylinder (right) + a chrome air filter canister poking out to the right
+  const ci = at(0.36), carZ = ci[2] - 0.09;
+  add('DK', mo15rodGeo([-0.012, ci[1], ci[2] - 0.03], [-0.022, ci[1] - 0.004, carZ + 0.02], 0.013, 10));
+  add('AL', mo15rodGeo([-0.024, ci[1] - 0.004, carZ + 0.022], [-0.026, ci[1] - 0.006, carZ - 0.022], 0.021, 12));
+  add('AL', mo15rodGeo([-0.026, ci[1] + 0.012, carZ + 0.005], [-0.026, ci[1] + 0.034, carZ + 0.005], 0.009, 8));            // the slide top
+  add('CH', mo15latheGeo([[0, 0], [0.044, 0], [0.047, -0.006], [0.047, -0.042], [0.040, -0.051], [0, -0.051]], 22).translate(-0.042, ci[1] - 0.006, carZ - 0.014));
+  // exhaust: out of the front of the cylinder, curling down beside the down tube into a muffler (right side, clear of the front tyre + crank)
+  const ep = at(0.42), yDT = ep[1] - 0.14;
+  const h0 = [-0.012, ep[1], ep[2] + rC], h1 = [-0.032, ep[1] - 0.012, ep[2] + 0.07], h2 = [-0.052, ep[1] - 0.065, zDT(ep[1] - 0.065) + 0.045],
+        h3 = [-0.062, yDT, zDT(yDT) + 0.03], h4 = [-0.066, yDT - 0.04, zDT(yDT) - 0.01];
+  add('CH', mo15tubeGeo([h0, h1, h2, h3, h4], 0.0125, 26, 9));
+  const m1 = [-0.07, bbY + 0.075, Math.max(0.175, zDT(bbY + 0.075) + 0.06)];
+  add('CH', mo15rodGeo(h4, m1, 0.028, 14));
+  add('DK', mo15rodGeo(m1, [m1[0] - 0.002, m1[1] - 0.012, m1[2] - 0.026], 0.010, 8));
+  add('DK', mo15boxGeo([-0.045, (h4[1] + m1[1])/2 + 0.01, (h4[2] + m1[2])/2 + 0.025], 0.03, 0.008, 0.012));                     // muffler bracket
+  // engine mounts: a plate to the down tube, a clamp + strap to the seat tube
+  add('DK', mo15boxGeo([0, y1 - 0.03, (b1 + zDT(y1 - 0.03))/2 + 0.004], 0.03, 0.022, zDT(y1 - 0.03) - b1 + 0.03));
+  const sm = y1 - 0.035, sc = [0, sm, zST(sm)];
+  add('DK', mo15rodGeo([0, sm - 0.018, zST(sm - 0.018)], [0, sm + 0.018, zST(sm + 0.018)], 0.024, 14));
+  add('DK', mo15boxGeo([0, sm, (sc[2] + a1)/2 + 0.004], 0.03, 0.02, Math.max(0.02, a1 - sc[2] + 0.02)));
+  // the drive: a sprocket on the left of the engine, a chain to the big sprocket on the back wheel (left), an idler on the lower run
+  const S0 = [a0 + 0.04, y0 + 0.035], r1 = 0.022, r2 = 0.088, cx = 0.054;
+  const sp0 = mo15sprocketGeo(r1, 10, 0.006, { holes:0, hub:0.009 }); sp0.translate(cx, S0[1], S0[0]); add('AL', sp0);
+  { const dz = RA[0] - S0[0], dy = RA[1] - S0[1], dl = Math.hypot(dz, dy), ux = -dy/dl, uy = dz/dl;
+    [1, -1].forEach(sd=>{
+      const a = [S0[0] + sd*ux*r1, S0[1] + sd*uy*r1], b = [RA[0] + sd*ux*r2, RA[1] + sd*uy*r2], L0 = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const g = new T.BoxGeometry(0.008, 0.0075, L0); g.rotateX(mo15ang(a, b)); g.translate(cx, (a[1] + b[1])/2, (a[0] + b[0])/2); if (g.attributes.uv) g.deleteAttribute('uv'); add('CN', g);
+      if (sd < 0){ const t = 0.38, ip = [a[0] + (b[0] - a[0])*t, a[1] + (b[1] - a[1])*t - 0.014];
+        add('DK', mo15latheGeo([[0, -0.006], [0.017, -0.006], [0.018, 0], [0.017, 0.006], [0, 0.006]], 14).translate(cx, ip[1], ip[0]));
+        add('DK', mo15boxGeo([cx - 0.012, ip[1] - 0.004, ip[0]], 0.006, 0.03, 0.012)); }
+    }); }
+  // the peanut tank on the top tube (frame colour) + a chrome cap + a fuel line down to the carb
+  const u = [TTf[0] - TTr[0], TTf[1] - TTr[1]], ul = Math.hypot(u[0], u[1]); u[0] /= ul; u[1] /= ul;
+  const n = [-u[1], u[0]], C = [TTr[0] + (TTf[0] - TTr[0])*0.58, TTr[1] + (TTf[1] - TTr[1])*0.58], TL = 0.30, up = 0.03;
+  const tA = [0, C[1] - u[1]*TL/2 + n[1]*up, C[0] - u[0]*TL/2 + n[0]*up], tB = [0, C[1] + u[1]*TL/2 + n[1]*up, C[0] + u[0]*TL/2 + n[0]*up];
+  const tank = mo15latheAlong([[0, 0], [0.020, 0.012], [0.038, 0.06], [0.046, 0.15], [0.047, 0.27], [0.041, 0.42], [0.039, 0.50], [0.044, 0.60], [0.051, 0.74], [0.049, 0.87], [0.036, 0.96], [0, 1]], tA, tB, 18);
+  tank.scale(0.84, 1, 1); add('PT', tank);
+  const tp = t=> [0, tA[1] + (tB[1] - tA[1])*t, tA[2] + (tB[2] - tA[2])*t];
+  { const c0 = tp(0.74); add('CH', mo15rodGeo([0, c0[1] + n[1]*0.046, c0[2] + n[0]*0.046], [0, c0[1] + n[1]*0.062, c0[2] + n[0]*0.062], 0.014, 14)); }
+  { const f0 = tp(0.30), q0 = [-0.012, f0[1] - n[1]*0.04, f0[2] - n[0]*0.04];
+    add('DK', mo15tubeGeo([q0, [-0.022, q0[1] - 0.08, q0[2] - 0.01], [-0.026, ci[1] + 0.03, carZ + 0.01]], 0.0035, 12, 6)); }
+  const MAT = { AL:BK.alloy, DK:M12.anod, CH:BK.chrome, PT:X.A || M, CN:BM.chain, WH:BK.white };
+  Object.keys(B).forEach(k=>{ if (B[k].length) mo15add(f, B[k], MAT[k]); });
+  return { r2, cx };
+}
+function fbGas26Kit(P){
+  if (!E12_CITY_DEF.gaskit){ E12_CITY_DEF.gaskit = GAS26_KIT_DEF; E12_FRAMES.gaskit = gas26KitFrame; }
+  const L = fbE12city(Object.assign({}, P, { style:'gaskit' }));
+  // the big rear sprocket bolted through the spokes (a rubber rag joint behind it) -- on the wheel, so it turns with it
+  const sp = mo15sprocketGeo(0.088, 44, 0.004, { holes:9, hub:0.034 }); sp.translate(0.046, 0, 0);
+  L.rear.add(mo15m(sp, BK.alloy));
+  L.rear.add(mo15m(mo15latheGeo([[0.012, -0.004], [0.052, -0.004], [0.052, 0.004], [0.012, 0.004]], 18).translate(0.040, 0, 0), M12.anod));
+  return L;
+}
+FLEET_EXTRA_BUILD.gas26kit = fbGas26Kit;
+(function gas26Rows(){
+  const has = id=> FLEET.some(v=> v.id === id);
+  const L = (fork, rim, seat, grip, bars, tire)=> ({ fork, rim, seat:seat || 0x17181b, grip:grip || 0x17181b, bars:bars || 0x1d1f23, tire:tire || 0x111214, glow:0xeaf4ff });
+  const rows = [
+    { id:'yz250', no:'B20', name:'Yamaha YZ250', brand:'Yamaha', model:'YZ250', kind:'Gas 2-stroke MX', cls:'emx', b:'mo15moto', dirt:true, gas:'2t',
+      m:[1.10, 1.04, 1.02, 1.00],
+      p:{ gas:'2t', cool:'water', body:'mx', Rf:0.345, Rr:0.325, wb:1.28, sy:0.90, ha:63, fl:0.57, sa:0.47, pv:0.13, tread:'mx', num:'25', ffend:'beak', mask:'plate',
+          inner:'gold', spring:'acc', chassis:'alloy', sub:'black', logo:'DUSK LINE', grip:[0.345, 1.141, 0.144], hipZ:-0.192, foot:[0.205, 0.405, -0.135] },
+      col:0x1f46b4, acc:0xf2f3f5, liv:L(0x2a2d33, 0x1a1c20),
+      desc:'Two-stroke 250 motocross: a ring-ding engine that screams to 11,000 rpm, a fat expansion chamber and a light, flickable chassis.' },
+    { id:'crf450r', no:'B21', name:'Honda CRF450R', brand:'Honda', model:'CRF450R', kind:'Gas 4-stroke MX', cls:'emx', b:'mo15moto', dirt:true, gas:'4t',
+      m:[1.16, 1.16, 0.96, 0.96],
+      p:{ gas:'4t', cool:'water', body:'mx', Rf:0.35, Rr:0.33, wb:1.30, sy:0.92, ha:63.5, fl:0.58, sa:0.48, pv:0.13, tread:'mx', num:'450', ffend:'beak', mask:'plate',
+          inner:'gold', spring:'acc', chassis:'alloy', sub:'alloy', logo:'DUSK LINE', grip:[0.345, 1.141, 0.144], hipZ:-0.192, foot:[0.205, 0.405, -0.135] },
+      col:0xd51f1f, acc:0xf4f4f2, liv:L(0x1b1d22, 0x1a1c20),
+      desc:'Four-stroke 450: a deep thump, a wall of torque and the highest top speed of any dirt bike -- about 140 km/h.' },
+    { id:'klx110', no:'B22', name:'Kawasaki KLX110R', brand:'Kawasaki', model:'KLX110R', kind:'Gas pit bike', cls:'edirt', b:'mo15moto', dirt:true, gas:'4t',
+      m:[0.80, 0.66, 1.06, 0.98],
+      p:{ gas:'4t', cool:'air', engCol:'black', body:'pit', Rf:0.27, Rr:0.25, wb:1.12, sy:0.79, ha:62.5, fl:0.45, sa:0.40, pv:0.11, tread:'mx', tailZ:0.10,
+          num:'110', spring:'black', logo:'DUSK LINE', grip:[0.345, 1.031, 0.13], hipZ:-0.12, foot:[0.205, 0.38, -0.14] },
+      col:0x58c21f, acc:0x15171a, liv:L(0x15171a, 0x1a1c20),
+      desc:'Air-cooled 110 pit bike: a little four-stroke that putters along, pulls wheelies all day and never gets you in trouble.' }
+  ];
+  const at = FLEET.findIndex(v=> v.cat === 'edirt');
+  rows.reverse().forEach(r=>{ if (!has(r.id)) FLEET.splice(at < 0 ? FLEET.length : at, 0, Object.assign({ cat:'edirt' }, r)); });
+  const c = FLEET_CATS.find(c=> c.id === 'edirt');
+  if (c){ c.name = 'Dirt Bikes'; c.sub = 'Gas and electric: 2-stroke and 4-stroke motocross, pit bikes, e-dirt and e-MX'; }
+  // the motorised bicycle: first in the moped tab ("Mopeds": motor + pedals), petrol (gas:'kit')
+  const kit = { id:'kit80', no:'C40', name:'Motor Bike 80cc', brand:'Dusk', model:'Kit 80', kind:'Gas motorised bicycle', cat:'moped', cls:'moped', b:'gas26kit', e:true, gas:'kit',
+    m:[0.82, 0.72, 1.02, 0.80], tune:{ drainK:0.25 }, p:{ throttle:true }, col:0x1b1d21, acc:0xc9a24a,
+    desc:'A cruiser bicycle with an 80cc two-stroke kit engine in the frame: a peanut tank, a chain drive and a buzz you hear from blocks away. Pedal it, twist it, about 55 km/h.' };
+  if (!has(kit.id)){ const mi = FLEET.findIndex(v=> v.cat === 'moped'); FLEET.splice(mi < 0 ? FLEET.length : mi, 0, kit); }
+  const mc = FLEET_CATS.find(c=> c.id === 'moped');
+  if (mc){ mc.name = 'Mopeds'; mc.sub = 'A petrol motorised bicycle and motorbike-style e-bikes'; }
 })();
 
 /* =========================================================================
@@ -35171,6 +35416,8 @@ const gEsc = s=> String(s).replace(/[&<>"]/g, c=> ({ '&':'&amp;', '<':'&lt;', '>
 function gEl(id){ return document.getElementById(id); }
 function garagePower(v){
   if (v.cat === 'scooter') return 'Human powered · kick to push';
+  if (v.gas === 'kit') return 'Petrol 80cc 2-stroke kit · pedal + throttle';
+  if (v.gas) return 'Petrol ' + (v.gas === '2t' ? '2-stroke' : '4-stroke') + ' · clutch wheelies · gear shifts';
   if (v.dirt) return 'Electric motorbike · power wheelies';
   if (v.cat === 'escooter') return 'Electric · thumb throttle · big hops';
   if (v.cat === 'moped') return 'Electric · pedal assist · motor tricks';
@@ -47352,7 +47599,7 @@ function hndTipText(cat, touchy){
     road: 'Road bike: ' + k('X', 'SLD') + ' with no steering to sprint. Stop pedalling at speed to tuck. Slicks slip on grass.',
     scooter: touchy ? 'Push scooter: featherweight. The tightest turns and the quickest pop.' : 'Push scooter: tap W in rhythm. Every fresh kick shoves you on.',
     escooter: 'E-scooter: instant torque. ' + k('X', 'SLD') + ' with no steering for Sport mode (eats battery).',
-    edirt: 'E-moto: huge torque. Pin it on dirt or grass to slide the rear. ' + k('SPACE', 'HOP') + ' at the lip for big air.',
+    edirt: 'Dirt bike: huge torque. Pin it on dirt or grass to slide the rear. ' + k('SPACE', 'HOP') + ' at the lip for big air.',
     moped: 'Moped: heavy and planted. ABS brakes: brake hard and keep steering.',
     ebike: 'E-bike: the motor builds as you pedal. ' + k('X', 'SLD') + ' with no steering for Turbo assist.',
     emtb: 'E-MTB: climb assist on slopes, plush landings. ' + k('X', 'SLD') + ' with no steering for Turbo assist.'
@@ -74548,6 +74795,435 @@ function m26Wrap(){
     window.__m26 = { M26, m26Roll, m26TiltEnable, m26TiltCalibrate, m26EditOpen, m26EditClose, m26GarageStep, m26Haptic, m26Back };
   } catch(e){ console.warn('mobile26', e); }
 })();
+/* =========================================================================
+   SOUND25 -- Release 15.17: "make ... the sound effects better" (integrator)
+   Everything stays synthesised (Web Audio, no samples), layered on top of the base game's sounds (initAudio / sfxUpdate):
+     TYRES     the single rumble becomes three layers that follow the ground under the wheels (HND.surf): asphalt = low roll + a
+               fine tyre hiss, concrete = brighter + an expansion-joint tick every ~4 m, skatepark / wood = a hollow resonant roll,
+               dirt / gravel / snow / sand = a soft roll + crunch grains (random short bursts, more with speed), grass = a swish
+     FREEWHEEL a pedal bike coasting ticks like a real hub (36 points a turn: separate clicks when slow, a buzz when fast); pedalling
+               brings a soft chain whir at the cadence instead
+     BRAKES    a hard brake at speed squeals on hard ground (disc), skids on loose ground
+     WIND      a low buffet under the whistle that grows with the square of the speed; in the air a whoosh that follows the spin
+     KICKS     a push scooter's foot scuffs the ground on every stroke (RIDE25)
+     LANDINGS  a suspension thump + the ground's own sound (dirt puff, hollow wood knock, tyre slap on tarmac / concrete)
+     CRASHES   a body slide that scrapes to a stop + the bike's metal clatter
+     AMBIENCE  the world around you, quiet and slow: the city's distant hum (+ a rare far horn), birds by day and crickets by night
+               out of town, waves near the sea and the lakes
+   ?snd25=0 turns it off. API: SND25 (state, for tests), snd25Build(), snd25Update(dt)
+   ========================================================================= */
+const SND25 = { on: !/[?&]snd25=0\b/.test(location.search), built:false, n:null, err:'', grains:0, joints:0, birdAt:0, hornAt:0,
+                cricketAt:0, waveK:0, ambT:0, amb:{ city:0, nature:0, water:0 }, lastYaw:0, lastFlip:0, lastAir:false, lastKick:0, dist:0, surf:'' };
+
+/* the ground's voice: [rumble lowpass Hz (base, + per m/s), rumble gain/(m/s), hiss band Hz, hiss Q, hiss gain/(m/s), hollow gain/(m/s), grains/s per m/s, grain band Hz] */
+const SND25_SURF = {
+  asphalt: [150, 30, 0.0060, 3600, 0.9, 0.0016, 0,      0,   0],
+  concrete:[180, 34, 0.0062, 4200, 0.8, 0.0020, 0,      0,   0],
+  park:    [120, 22, 0.0040, 3000, 1.0, 0.0008, 0.0085, 0,   0],
+  wood:    [120, 22, 0.0040, 3000, 1.0, 0.0008, 0.0085, 0,   0],
+  dirt:    [110, 18, 0.0058, 1800, 0.7, 0.0010, 0,      2.6, 1100],
+  gravel:  [130, 24, 0.0050, 2600, 0.7, 0.0012, 0,      5.5, 2600],
+  grass:   [ 90, 14, 0.0042, 5200, 0.6, 0.0024, 0,      1.2, 4200],
+  sand:    [ 80, 10, 0.0048, 2400, 0.6, 0.0016, 0,      1.6, 1500],
+  snow:    [100, 14, 0.0040, 4800, 0.8, 0.0014, 0,      3.4, 5200],
+  rock:    [160, 30, 0.0064, 2800, 0.8, 0.0014, 0,      1.4, 1900]
+};
+
+function snd25Noise(sec, brown){
+  try { if (typeof noiseBuffer === 'function') return noiseBuffer(AC, sec, !!brown); } catch(e){}
+  const n = Math.max(1, Math.floor(AC.sampleRate*sec)), b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < n; i++){ const w = Math.random()*2 - 1; if (brown){ last = (last + 0.02*w)/1.02; d[i] = last*3.2; } else d[i] = w; }
+  return b;
+}
+/* a looping noise -> filter -> gain chain into the master */
+function snd25Loop(brown, type, freq, q){
+  const src = AC.createBufferSource(); src.buffer = brown ? SND25.n.brown : SND25.n.white; src.loop = true;
+  const f = AC.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q !== undefined) f.Q.value = q;
+  const g = AC.createGain(); g.gain.value = 0;
+  src.connect(f); f.connect(g); g.connect(master);
+  // start somewhere different in the buffer so two loops of the same noise never line up
+  src.start(0, Math.random()*1.5);
+  return { src, f, g };
+}
+function snd25Build(){
+  if (SND25.built || !SND25.on || typeof AC === 'undefined' || !AC || typeof master === 'undefined' || !master) return;
+  SND25.built = true;
+  try {
+    const N = SND25.n = {};
+    N.white = snd25Noise(2, false); N.brown = snd25Noise(2, true);
+    // short grains (crunch / clicks), a few variants
+    N.grain = [];
+    for (let v = 0; v < 6; v++){
+      const len = Math.floor(AC.sampleRate*(0.018 + v*0.006)), b = AC.createBuffer(1, len, AC.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < len; i++){ const e = Math.exp(-i/(len*0.28)); d[i] = (Math.random()*2 - 1)*e; }
+      N.grain.push(b);
+    }
+    // tyres
+    N.roll = snd25Loop(true, 'lowpass', 200, 0.7);
+    N.hiss = snd25Loop(false, 'bandpass', 3600, 0.9);
+    N.hollow = snd25Loop(true, 'bandpass', 230, 3.2);
+    N.grainBus = AC.createBiquadFilter(); N.grainBus.type = 'bandpass'; N.grainBus.frequency.value = 2000; N.grainBus.Q.value = 1.1;
+    N.grainGain = AC.createGain(); N.grainGain.gain.value = 1; N.grainBus.connect(N.grainGain); N.grainGain.connect(master);
+    // freewheel: a pulse train (equal-amplitude cosine harmonics) through a metallic band
+    const H = 64, re = new Float32Array(H), im = new Float32Array(H);
+    for (let k = 1; k < H; k++) re[k] = 1;
+    N.fwOsc = AC.createOscillator(); N.fwOsc.setPeriodicWave(AC.createPeriodicWave(re, im)); N.fwOsc.frequency.value = 20;
+    N.fwHp = AC.createBiquadFilter(); N.fwHp.type = 'highpass'; N.fwHp.frequency.value = 1700;
+    N.fwBp = AC.createBiquadFilter(); N.fwBp.type = 'peaking'; N.fwBp.frequency.value = 3600; N.fwBp.Q.value = 2; N.fwBp.gain.value = 9;
+    N.fwGain = AC.createGain(); N.fwGain.gain.value = 0;
+    N.fwOsc.connect(N.fwHp); N.fwHp.connect(N.fwBp); N.fwBp.connect(N.fwGain); N.fwGain.connect(master); N.fwOsc.start();
+    // chain whir, pulsed by the cadence
+    N.chain = snd25Loop(false, 'bandpass', 1400, 1.3);
+    N.chainLfo = AC.createOscillator(); N.chainLfo.frequency.value = 1.5;
+    N.chainDepth = AC.createGain(); N.chainDepth.gain.value = 0;
+    N.chainTrem = AC.createGain(); N.chainTrem.gain.value = 1;
+    N.chain.g.disconnect(); N.chain.g.connect(N.chainTrem); N.chainTrem.connect(master);
+    N.chainLfo.connect(N.chainDepth); N.chainDepth.connect(N.chainTrem.gain); N.chainLfo.start();
+    // brakes: a disc squeal (sine with a little vibrato) + a loose-ground skid
+    N.sqOsc = AC.createOscillator(); N.sqOsc.type = 'sine'; N.sqOsc.frequency.value = 2650;
+    N.sqVib = AC.createOscillator(); N.sqVib.frequency.value = 6.3; N.sqVibD = AC.createGain(); N.sqVibD.gain.value = 18;
+    N.sqVib.connect(N.sqVibD); N.sqVibD.connect(N.sqOsc.frequency);
+    N.sqGain = AC.createGain(); N.sqGain.gain.value = 0; N.sqOsc.connect(N.sqGain); N.sqGain.connect(master); N.sqOsc.start(); N.sqVib.start();
+    N.skid = snd25Loop(false, 'bandpass', 1100, 0.7);
+    // wind: the low buffet; the air whoosh
+    N.buffet = snd25Loop(true, 'lowpass', 230, 0.8);
+    N.whoosh = snd25Loop(false, 'bandpass', 900, 1.3);
+    // ambience
+    N.hum = snd25Loop(true, 'lowpass', 140, 0.7);
+    N.waves = snd25Loop(true, 'lowpass', 520, 0.6);
+    N.waveLfo = AC.createOscillator(); N.waveLfo.frequency.value = 0.085; N.waveDepth = AC.createGain(); N.waveDepth.gain.value = 0;
+    N.waveTrem = AC.createGain(); N.waveTrem.gain.value = 1;
+    N.waves.g.disconnect(); N.waves.g.connect(N.waveTrem); N.waveTrem.connect(master);
+    N.waveLfo.connect(N.waveDepth); N.waveDepth.connect(N.waveTrem.gain); N.waveLfo.start();
+  } catch(e){ SND25.err = 'build: ' + e.message; SND25.on = false; }
+}
+const _snd25clamp = (v, a, b)=> v < a ? a : v > b ? b : v;
+function snd25Set(p, v, t, tc){ p.setTargetAtTime(v, t, tc || 0.08); }
+/* a one-shot noise grain through a filter of its own (or the shared crunch bus) */
+function snd25Grain(t, vol, bus, f, q){
+  const N = SND25.n, src = AC.createBufferSource(); src.buffer = N.grain[(Math.random()*N.grain.length) | 0];
+  const g = AC.createGain(); g.gain.value = vol;
+  if (bus){ src.connect(g); g.connect(N.grainBus); }
+  else { const fl = AC.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = f; fl.Q.value = q || 1; src.connect(fl); fl.connect(g); g.connect(master); }
+  src.start(t); SND25.grains++;
+}
+function snd25Tone(t, f0, f1, dur, vol, type){
+  const o = AC.createOscillator(); o.type = type || 'sine';
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0006, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.03);
+}
+function snd25Burst(t, dur, type, f0, f1, q, vol){
+  const src = AC.createBufferSource(); src.buffer = SND25.n.white;
+  const fl = AC.createBiquadFilter(); fl.type = type; fl.Q.value = q || 1;
+  fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0006, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(master); src.start(t, Math.random()*1.5); src.stop(t + dur + 0.03);
+}
+function snd25Cat(){ try { const v = FLEET_BY_ID[FLEET_CUR]; return v ? v.cat : ''; } catch(e){ return ''; } }
+function snd25Update(dt){
+  if (!SND25.on || typeof AC === 'undefined' || !AC || (typeof muted !== 'undefined' && muted)) return;
+  if (!SND25.built) snd25Build();
+  if (!SND25.built || !SND25.n || !SND25.n.roll) return;
+  const N = SND25.n, t = AC.currentTime;
+  const play = typeof GAME !== 'undefined' && (GAME === 'play');
+  const spd = play ? Math.hypot(bike.vel.x, bike.vel.z) : 0;
+  const onGround = play && bike.state === 'ride', air = play && bike.state === 'air';
+  const surf = (typeof HND !== 'undefined' && HND.surf) || 'asphalt', S = SND25_SURF[surf] || SND25_SURF.asphalt;
+  SND25.surf = surf;
+  const cat = snd25Cat(), motor = typeof DRIVE !== 'undefined' && (DRIVE.electric || DRIVE.dirt);
+  const pedalBike = !motor && cat !== 'scooter' && cat !== 'escooter';
+  const In0 = (typeof In !== 'undefined') ? In : {};
+  // the base game's single rumble gives way to the layers below
+  try { if (typeof rollGain !== 'undefined' && rollGain) rollGain.gain.setTargetAtTime(0, t, 0.08); } catch(e){}
+  // ---- tyres
+  const sv = onGround ? spd : 0;
+  snd25Set(N.roll.g.gain, _snd25clamp(sv*S[2], 0, 0.14), t);
+  snd25Set(N.roll.f.frequency, S[0] + sv*S[1], t, 0.12);
+  snd25Set(N.hiss.g.gain, _snd25clamp(sv*S[5], 0, 0.045), t);
+  snd25Set(N.hiss.f.frequency, S[3] + sv*30, t, 0.15); N.hiss.f.Q.value = S[4];
+  snd25Set(N.hollow.g.gain, _snd25clamp(sv*S[6], 0, 0.09), t);
+  N.hollow.f.frequency.setTargetAtTime(210 + sv*6, t, 0.15);
+  // crunch grains on loose ground
+  if (S[7] > 0 && sv > 0.6){
+    N.grainBus.frequency.setTargetAtTime(S[8], t, 0.1);
+    const want = S[7]*sv*dt; let k = Math.floor(want) + (Math.random() < want % 1 ? 1 : 0);
+    k = Math.min(k, 6);
+    for (let i = 0; i < k; i++) snd25Grain(t + Math.random()*dt, _snd25clamp(0.03 + sv*0.004, 0.03, 0.12)*(0.5 + Math.random()*0.7), true);
+  }
+  // expansion joints on concrete
+  if (surf === 'concrete' && sv > 1.5){
+    SND25.dist += sv*dt;
+    if (SND25.dist > 4.1){ SND25.dist = 0; SND25.joints++; snd25Burst(t, 0.05, 'bandpass', 900, 500, 1.4, _snd25clamp(0.015 + sv*0.0025, 0.015, 0.06)); }
+  } else SND25.dist = 0;
+  // ---- freewheel / chain (pedal bikes)
+  const R = (typeof VEH !== 'undefined' && VEH && VEH.wheelR) || 0.34;
+  const pedalling = pedalBike && onGround && !!In0.up && !In0.crouch;
+  const coasting = pedalBike && onGround && !In0.up && sv > 0.35;
+  const tick = (sv/(2*Math.PI*R))*36;
+  N.fwOsc.frequency.setTargetAtTime(_snd25clamp(tick, 2, 400), t, 0.05);
+  snd25Set(N.fwGain.gain, coasting ? _snd25clamp(0.010 + sv*0.0016, 0, 0.032) : 0, t, coasting ? 0.05 : 0.03);
+  const cad = _snd25clamp(sv/2.2, 0.8, 2.4);
+  N.chainLfo.frequency.setTargetAtTime(cad, t, 0.2);
+  snd25Set(N.chain.g.gain, pedalling ? _snd25clamp(0.006 + sv*0.0012, 0, 0.022) : 0, t, 0.1);
+  N.chainDepth.gain.setTargetAtTime(pedalling ? 0.45 : 0, t, 0.1);
+  // ---- brakes
+  const braking = onGround && !!In0.down && sv > 4.5;
+  const hard = surf === 'asphalt' || surf === 'concrete' || surf === 'park' || surf === 'wood';
+  snd25Set(N.sqGain.gain, braking && hard && pedalBike ? _snd25clamp((sv - 4)*0.0022, 0, 0.022) : 0, t, braking ? 0.06 : 0.04);
+  N.sqOsc.frequency.setTargetAtTime(2500 + sv*12, t, 0.1);
+  snd25Set(N.skid.g.gain, braking && !hard ? _snd25clamp((sv - 3)*0.006, 0, 0.07) : 0, t, 0.05);
+  // ---- wind buffet + air whoosh (the spin)
+  snd25Set(N.buffet.g.gain, _snd25clamp(spd*spd*0.00012*(air ? 1.4 : 1), 0, 0.09), t, 0.15);
+  let yawRate = 0, flipRate = 0;
+  if (play){
+    let d = bike.yaw - SND25.lastYaw; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI; yawRate = dt > 0 ? Math.abs(d)/dt : 0; SND25.lastYaw = bike.yaw;
+    const fl = +bike.flip || 0; flipRate = dt > 0 ? Math.min(Math.abs(fl - (SND25.lastFlip || 0))/dt, 30) : 0; SND25.lastFlip = fl;
+  }
+  const spin = air ? _snd25clamp(yawRate/9 + flipRate/12, 0, 1) : 0;
+  snd25Set(N.whoosh.g.gain, spin*0.05, t, 0.05);
+  N.whoosh.f.frequency.setTargetAtTime(700 + spin*1100, t, 0.06);
+  // ---- push scooter: the foot scuffs the ground on each stroke
+  try {
+    if (typeof RIDE25 !== 'undefined' && RIDE25.kick){
+      const n = RIDE25.kick.n | 0;
+      if (n !== SND25.lastKick){ SND25.lastKick = n; if (onGround) snd25Burst(t, 0.16, 'bandpass', 1500, 700, 0.9, 0.05); }
+    }
+  } catch(e){}
+  // ---- ambience (every half second: where are we?)
+  SND25.ambT -= dt;
+  if (SND25.ambT <= 0){
+    SND25.ambT = 0.5;
+    let city = 0, nature = 0, water = 0;
+    if (play){
+      const x = bike.pos.x, z = bike.pos.z;
+      let kind = 'city';
+      try { kind = (typeof regionAt === 'function' ? (regionAt(x, z) || {}).kind : 'city') || 'city'; } catch(e){}
+      city = (kind === 'city') ? 1 : (kind === 'suburb' || kind === 'town' || kind === 'highway') ? 0.45 : 0;
+      nature = (kind === 'forest' || kind === 'country' || kind === 'farm' || kind === 'mountain') ? 1 : (kind === 'suburb' || kind === 'town') ? 0.5 : 0.15;
+      try {
+        if (typeof waterLevelAt === 'function'){
+          let w = 0;
+          for (const [dx, dz] of [[0, 0], [45, 0], [-45, 0], [0, 45], [0, -45], [90, 0], [-90, 0], [0, 90], [0, -90]]){ const L = waterLevelAt(x + dx, z + dz); if (L === L) w++; }
+          water = Math.min(1, w/4);
+        }
+      } catch(e){}
+    }
+    SND25.amb.city = city; SND25.amb.nature = nature; SND25.amb.water = water;
+  }
+  const night = (typeof W2_F === 'number') ? W2_F : 0;
+  const A = SND25.amb;
+  snd25Set(N.hum.g.gain, play ? A.city*(0.022 - night*0.008) : 0, t, 0.8);
+  snd25Set(N.waves.g.gain, play ? A.water*0.05 : 0, t, 1.2);
+  N.waveDepth.gain.setTargetAtTime(play ? A.water*0.6 : 0, t, 1.2);
+  if (play){
+    const now = performance.now();
+    // birds by day, crickets by night, out of the city
+    if (A.nature > 0.3 && night < 0.5 && now > SND25.birdAt){
+      SND25.birdAt = now + 1600 + Math.random()*5200/A.nature;
+      const base = 2600 + Math.random()*1900, notes = 2 + (Math.random()*4 | 0);
+      for (let i = 0; i < notes; i++){ const tt = t + i*(0.09 + Math.random()*0.07), f = base*(0.85 + Math.random()*0.4); snd25Tone(tt, f, f*(Math.random() < 0.5 ? 1.35 : 0.7), 0.07 + Math.random()*0.05, 0.012*A.nature, 'sine'); }
+    }
+    if (A.nature > 0.3 && night > 0.6 && now > SND25.cricketAt){
+      SND25.cricketAt = now + 700 + Math.random()*1600;
+      const f = 4200 + Math.random()*900;
+      for (let i = 0; i < 3; i++) snd25Tone(t + i*0.055, f, f, 0.035, 0.006*A.nature, 'sine');
+    }
+    // a far car horn in town, now and then
+    if (A.city > 0.4 && night < 0.7 && now > SND25.hornAt){
+      if (SND25.hornAt) { const tt = t + 0.02, f = 380 + Math.random()*120; snd25Tone(tt, f, f, 0.32, 0.007*A.city, 'square'); snd25Tone(tt, f*1.26, f*1.26, 0.32, 0.005*A.city, 'square'); }
+      SND25.hornAt = now + 18000 + Math.random()*40000;
+    }
+  }
+}
+/* landings and crashes: layered on the base game's own */
+(function snd25Hooks(){
+  if (!SND25.on) return;
+  if (typeof initAudio === 'function'){
+    const b = initAudio;
+    initAudio = function(){ const r = b.apply(this, arguments); try { snd25Build(); } catch(e){ SND25.err = 'init: ' + e.message; } return r; };
+  }
+  if (typeof sfxUpdate === 'function'){
+    const b = sfxUpdate;
+    sfxUpdate = function(dt){ const r = b.apply(this, arguments); try { snd25Update(dt || 1/60); } catch(e){ if (!SND25.err){ SND25.err = 'update: ' + e.message; console.warn('[sound25]', e); } } return r; };
+  }
+  if (typeof sfxLand === 'function'){
+    const b = sfxLand;
+    sfxLand = function(v){
+      const r = b.apply(this, arguments);
+      try {
+        if (SND25.built && AC && !muted){
+          const t = AC.currentTime, k = Math.min(Math.max(+v || 0, 0)/9, 1), s = (typeof HND !== 'undefined' && HND.surf) || 'asphalt';
+          snd25Tone(t, 115, 46, 0.16 + k*0.08, 0.05 + k*0.09, 'sine');                                    // the suspension bottoming
+          if (s === 'dirt' || s === 'grass' || s === 'sand' || s === 'snow' || s === 'gravel') snd25Burst(t, 0.28, 'lowpass', 900, 160, 0.7, 0.05 + k*0.07);
+          else if (s === 'park' || s === 'wood') snd25Burst(t, 0.14, 'bandpass', 280, 200, 4, 0.07 + k*0.09);
+          else snd25Burst(t, 0.07, 'bandpass', 1400, 700, 1.2, 0.03 + k*0.05);
+        }
+      } catch(e){}
+      return r;
+    };
+  }
+  if (typeof sfxBail === 'function'){
+    const b = sfxBail;
+    sfxBail = function(){
+      const r = b.apply(this, arguments);
+      try {
+        if (SND25.built && AC && !muted){
+          const t = AC.currentTime, s = (typeof HND !== 'undefined' && HND.surf) || 'asphalt';
+          const loose = s === 'dirt' || s === 'grass' || s === 'sand' || s === 'snow' || s === 'gravel';
+          snd25Burst(t + 0.05, 0.85, 'bandpass', loose ? 900 : 2200, loose ? 260 : 650, 0.8, loose ? 0.06 : 0.05);   // the slide
+          for (let i = 0; i < 4; i++){ const f = 1500 + Math.random()*1900; snd25Tone(t + 0.02 + i*(0.05 + Math.random()*0.09), f, f*0.94, 0.12, 0.018, 'triangle'); }   // the bike's clatter
+        }
+      } catch(e){}
+      return r;
+    };
+  }
+})();
+
+/* =========================================================================
+   GAS26 SOUND -- Release 15.17: the petrol engines (integrator)
+   A small engine model drives a synthesised engine for the gas bikes (rows with gas:'2t' | '4t', mods/gas26_rows.js):
+     RPM from the wheel speed through a 5-speed box (upshifts with a dip + a pop), clutch slip off the line, a free rev in the air,
+     an idle that wobbles; the sound = a firing pulse train (2-stroke: one fire per turn; 4-stroke: one per two turns + a half-order
+     thump) through a throttle-opened lowpass, a two-stroke "ring" band, a four-stroke growl (soft clip), intake / exhaust hiss,
+     and an off-throttle crackle.
+   The e-dirt bikes stop using the base game's combustion sound: they whine like electric motors (the e-bike motor voice, stronger).
+   The motorised bicycle (gas:'kit', a 'moped' class ride) runs one gear + a centrifugal clutch and a thin, buzzy two-stroke voice.
+   API: GAS26 (state, for tests), gas26Update(dt)
+   ========================================================================= */
+const GAS26 = { on: !/[?&]gas26=0\b/.test(location.search), lbl:'Battery', built:false, n:null, rpm:0, gear:1, type:'', shifts:0, pops:0, crackle:0, lastThr:0, err:'' };
+const GAS26_T = {
+  '2t': { idle:1650, red:11500, fpr:1.0, gears:[0.36, 0.53, 0.70, 0.86, 1.0] },
+  '4t': { idle:1800, red:11000, fpr:0.5, gears:[0.34, 0.51, 0.68, 0.85, 1.0] },
+  '4ts':{ idle:1700, red:8600,  fpr:0.5, gears:[0.40, 0.62, 0.82, 1.0] },         // the little pit bike: 4 gears, lower revs
+  'kit':{ idle:2300, red:7800,  fpr:1.0, gears:[1.0] }                              // the 80cc bicycle kit: one speed + a centrifugal clutch
+};
+function gas26Row(){ try { return FLEET_BY_ID[FLEET_CUR] || null; } catch(e){ return null; } }
+function gas26Build(){
+  if (GAS26.built || typeof AC === 'undefined' || !AC || typeof master === 'undefined' || !master) return;
+  GAS26.built = true;
+  try {
+    const N = GAS26.n = {};
+    const H = 48, re = new Float32Array(H), im = new Float32Array(H);
+    for (let k = 1; k < H; k++){ re[k] = Math.pow(k, -0.62); im[k] = (k % 3 === 0 ? 0.3 : 0)/k; }
+    N.pulse = AC.createPeriodicWave(re, im);
+    N.o1 = AC.createOscillator(); N.o1.setPeriodicWave(N.pulse); N.o1.frequency.value = 30;
+    N.o2 = AC.createOscillator(); N.o2.type = 'sawtooth'; N.o2.frequency.value = 60;
+    N.o3 = AC.createOscillator(); N.o3.type = 'sine'; N.o3.frequency.value = 15;
+    N.g1 = AC.createGain(); N.g1.gain.value = 0.8; N.g2 = AC.createGain(); N.g2.gain.value = 0.25; N.g3 = AC.createGain(); N.g3.gain.value = 0.5;
+    N.shape = AC.createWaveShaper();
+    const cv = new Float32Array(1024); for (let i = 0; i < 1024; i++){ const x = i/511.5 - 1; cv[i] = Math.tanh(x*2.2); } N.shape.curve = cv;
+    N.lp = AC.createBiquadFilter(); N.lp.type = 'lowpass'; N.lp.frequency.value = 900; N.lp.Q.value = 1.4;
+    N.ring = AC.createBiquadFilter(); N.ring.type = 'bandpass'; N.ring.frequency.value = 2400; N.ring.Q.value = 3.5;
+    N.ringG = AC.createGain(); N.ringG.gain.value = 0;
+    N.out = AC.createGain(); N.out.gain.value = 0;
+    N.dip = AC.createGain(); N.dip.gain.value = 1;
+    N.o1.connect(N.g1); N.o2.connect(N.g2); N.o3.connect(N.g3);
+    [N.g1, N.g2, N.g3].forEach(g=> g.connect(N.shape));
+    N.shape.connect(N.lp); N.lp.connect(N.dip);
+    N.o1.connect(N.ring); N.ring.connect(N.ringG); N.ringG.connect(N.dip);
+    N.dip.connect(N.out); N.out.connect(master);
+    // intake / exhaust hiss
+    const nb = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
+    N.noiseBuf = nb;
+    N.ns = AC.createBufferSource(); N.ns.buffer = nb; N.ns.loop = true;
+    N.nf = AC.createBiquadFilter(); N.nf.type = 'bandpass'; N.nf.frequency.value = 950; N.nf.Q.value = 0.8;
+    N.ng = AC.createGain(); N.ng.gain.value = 0;
+    N.ns.connect(N.nf); N.nf.connect(N.ng); N.ng.connect(master);
+    N.o1.start(); N.o2.start(); N.o3.start(); N.ns.start();
+  } catch(e){ GAS26.err = 'build: ' + e.message; GAS26.on = false; }
+}
+function gas26Pop(t, vol, f){
+  const N = GAS26.n, src = AC.createBufferSource(); src.buffer = N.noiseBuf;
+  const fl = AC.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = f || 700; fl.Q.value = 1.2;
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0006, t + 0.05);
+  src.connect(fl); fl.connect(g); g.connect(master); src.start(t, Math.random()*1.5); src.stop(t + 0.07);
+  GAS26.pops++;
+}
+function gas26Label(row){                                    // the HUD gauge reads "Fuel" on a petrol ride
+  const lbl = row && row.gas ? 'Fuel' : 'Battery';
+  if (GAS26.lbl === lbl) return;
+  GAS26.lbl = lbl;
+  try { const el = document.querySelector('#battWrap .lbl'); if (el) el.textContent = lbl; } catch(e){}
+}
+function gas26Update(dt){
+  if (GAS26.on) gas26Label(gas26Row());
+  if (!GAS26.on || typeof AC === 'undefined' || !AC || (typeof muted !== 'undefined' && muted)) return;
+  const row = gas26Row(), t = AC.currentTime;
+  const play = typeof GAME !== 'undefined' && GAME === 'play';
+  const isDirt = typeof DRIVE !== 'undefined' && DRIVE.dirt;
+  const gas = row && row.gas ? row.gas : '', two = gas === '2t' || gas === 'kit';
+  // the base game's combustion voice: never (gas -> this model; e-dirt -> the electric whine below)
+  try { if (typeof engGain !== 'undefined' && engGain){ engGain.gain.setTargetAtTime(0, t, 0.05); engNoiseGain.gain.setTargetAtTime(0, t, 0.05); } } catch(e){}
+  const spd = play ? Math.hypot(bike.vel.x, bike.vel.z) : 0;
+  const thr = (typeof DRIVE !== 'undefined' ? +DRIVE.throttle || 0 : 0);
+  // ---- e-dirt: an electric motor whine (the e-bike motor oscillators)
+  if (isDirt && !gas){
+    try {
+      if (typeof motorGain !== 'undefined' && motorGain){
+        motorGain.gain.setTargetAtTime(play ? Math.min(0.075, 0.012 + thr*0.035 + spd*0.0012) : 0, t, 0.06);
+        motorOsc.frequency.setTargetAtTime(120 + spd*24, t, 0.06); motorOsc2.frequency.setTargetAtTime(241 + spd*48, t, 0.06);
+        motorFilt.frequency.setTargetAtTime(800 + spd*110 + thr*400, t, 0.08);
+      }
+    } catch(e){}
+  }
+  if (!gas){ if (GAS26.built) GAS26.n.out.gain.setTargetAtTime(0, t, 0.05), GAS26.n.ng.gain.setTargetAtTime(0, t, 0.05); GAS26.type = ''; return; }
+  // a petrol ride that the physics treats as electric (the motorised bicycle): no electric whine
+  if (typeof DRIVE !== 'undefined' && DRIVE.electric){ try { if (typeof motorGain !== 'undefined' && motorGain) motorGain.gain.setTargetAtTime(0, t, 0.05); } catch(e){} }
+  if (!GAS26.built) gas26Build();
+  if (!GAS26.built || !GAS26.n || !GAS26.n.o1) return;
+  const N = GAS26.n;
+  const kind = gas === 'kit' ? 'kit' : (gas === '4t' && row.m && row.m[1] < 0.8) ? '4ts' : gas, E = GAS26_T[kind] || GAS26_T['4t'];
+  if (GAS26.type !== kind){ GAS26.type = kind; GAS26.rpm = E.idle; GAS26.gear = 1; }
+  const top = Math.max(8, (typeof VEH !== 'undefined' && VEH && VEH.top) || 30);
+  const ground = play && bike.state === 'ride';
+  let target;
+  if (ground){
+    // the gearbox: upshift near the top of a gear, downshift low in the one below
+    let g = GAS26.gear; const G = E.gears;
+    while (g < G.length && spd > G[g - 1]*top*0.94) g++;
+    while (g > 1 && spd < G[g - 2]*top*0.62) g--;
+    if (g > GAS26.gear){ GAS26.shifts++; N.dip.gain.cancelScheduledValues(t); N.dip.gain.setValueAtTime(0.35, t); N.dip.gain.setTargetAtTime(1, t + 0.07, 0.05); gas26Pop(t + 0.04, 0.05, 600); }
+    GAS26.gear = g;
+    const lo = g > 1 ? G[g - 2]*top*0.62 : 0, hi = G[g - 1]*top;
+    const k = Math.min(1, Math.max(0, spd/hi));
+    target = E.idle + (E.red - E.idle)*k;
+    if (g === 1) target = Math.max(target, E.idle + (E.red - E.idle)*thr*0.55);            // the clutch slips off the line
+    void lo;
+  } else {
+    target = E.idle + (E.red - E.idle)*(play ? thr*0.95 : 0.0);                               // in the air (or the menu): a free rev
+  }
+  const rate = target > GAS26.rpm ? (ground ? 9 : 14) : 6;
+  GAS26.rpm += (target - GAS26.rpm)*(1 - Math.exp(-rate*dt));
+  const rpm = GAS26.rpm + (thr < 0.1 ? Math.sin(t*7.3)*60 : 0), rn = Math.min(1, Math.max(0, (rpm - E.idle)/(E.red - E.idle)));
+  const f = rpm/60*E.fpr;
+  N.o1.frequency.setTargetAtTime(f, t, 0.03);
+  N.o2.frequency.setTargetAtTime(f*(two ? 2.0 : 1.5), t, 0.03);
+  N.o3.frequency.setTargetAtTime(f*0.5, t, 0.03);
+  N.g2.gain.setTargetAtTime(kind === 'kit' ? 0.45 : two ? 0.35 : 0.18, t, 0.2);
+  N.g3.gain.setTargetAtTime(kind === 'kit' ? 0.08 : two ? 0.15 : 0.6, t, 0.2);
+  N.lp.frequency.setTargetAtTime((kind === 'kit' ? 900 : 500) + thr*2200 + rn*2600, t, 0.05);
+  N.ringG.gain.setTargetAtTime(two ? 0.05 + rn*0.25*(0.4 + thr) : 0.0, t, 0.05);
+  N.ring.frequency.setTargetAtTime(1800 + rn*1600, t, 0.05);
+  const vol = play ? (0.045 + thr*0.06 + rn*0.03)*(kind === '4ts' ? 0.75 : kind === 'kit' ? 0.7 : 1) : 0.0;
+  N.out.gain.setTargetAtTime(vol, t, 0.05);
+  N.ng.gain.setTargetAtTime(play ? thr*0.02 + rn*0.01 : 0, t, 0.08);
+  N.nf.frequency.setTargetAtTime(700 + rn*1400, t, 0.08);
+  // off the throttle at high revs: a crackle for a moment
+  if (play && GAS26.lastThr > 0.5 && thr < 0.15 && rn > 0.45) GAS26.crackle = 0.8;
+  GAS26.lastThr = thr;
+  if (GAS26.crackle > 0){
+    GAS26.crackle -= dt;
+    if (Math.random() < dt*(two ? 14 : 9)) gas26Pop(t + Math.random()*dt, 0.03 + Math.random()*0.04, 500 + Math.random()*900);
+  }
+}
+(function gas26Hooks(){
+  if (!GAS26.on || typeof sfxUpdate !== 'function') return;
+  const b = sfxUpdate;
+  sfxUpdate = function(dt){ const r = b.apply(this, arguments); try { gas26Update(dt || 1/60); } catch(e){ if (!GAS26.err){ GAS26.err = 'update: ' + e.message; console.warn('[gas26]', e); } } return r; };
+})();
+
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
