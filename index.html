@@ -8013,6 +8013,7 @@ const W2 = { U:{
   uWet    :{ value:0 },                          // 0..1: wet-street sheen (dusk / night)
   uSkyH   :{ value:new T.Color(0, 0, 0) },       // sky colours the wet ground mirrors (horizon / zenith)
   uSkyZ   :{ value:new T.Color(0, 0, 0) },
+  uLeafSun:{ value:new T.Color(0, 0, 0) },       // gfx25: sun colour x strength for the leaves' backlit glow (world_daynight.js)
   uEnvOn  :{ value:0 }                           // 1 while the real sky reflection map is on (Ultra / High): the cheap sheens below step back
 } };
 const W2_SIGN = { mat:null };                    // emissive shop-sign material (world_props.js fills it in)
@@ -8024,13 +8025,14 @@ const W2_FOG_FRAG = `
 #ifdef USE_FOG
 {
   float ffRaw = smoothstep( fogNear, fogFar, fogDepth );
+  float ffMid = ffRaw * (0.50 + 0.50*ffRaw);          // gfx25: clearer near / mid distance, the same far wall
   vec3 vdw = vWPos - cameraPosition;
   vec3 vdn = vdw * inversesqrt(max(dot(vdw, vdw), 1e-6));
   float fmu = max(dot(vdn, uSunW), 0.0);
   float faz = clamp(dot(normalize(uSunW.xz + 1e-5), normalize(vdn.xz + 1e-5))*0.5 + 0.5, 0.0, 1.0);
   vec3 fcol = fogColor + uFogGlow * (0.22 + 0.78*faz*faz*faz) + uFogSun * pow(fmu, 7.0);
   float hf = exp(-max(vWPos.y, 0.0) * uFogH);
-  float ff = ffRaw * mix(1.0, 0.62 + 0.58*hf, uFogHAmt);
+  float ff = ffMid * mix(1.0, 0.62 + 0.58*hf, uFogHAmt);
   ff = max(ff, smoothstep(0.78, 1.0, ffRaw));          // the far end always reaches full fog: hides the culling pop
   if (uRgHaze.x > 0.0){ float rgW = uRgHaze.x * max(smoothstep(8.0, 170.0, vWPos.y) * step(uRgHaze.w, max(abs(vWPos.x), abs(vWPos.z))), uRgHaze.z);
     float rgL = uRgHaze.y * (1.0 + max(0.0, vWPos.y + cameraPosition.y) / 640.0);
@@ -8476,6 +8478,7 @@ function patchWorldShading(m, o){
     sh.uniforms.uG22Q    = WORLD.uG22Q || (WORLD.uG22Q = { value: 2 });
     sh.uniforms.uG22Park = WORLD.uG22Park || (WORLD.uG22Park = { value: [new T.Vector4(0, 0, -1, -1), new T.Vector4(0, 0, -1, -1)] });
     Object.assign(sh.uniforms, W2.U);
+    if (typeof GFX25F !== 'undefined' && GFX25F) Object.assign(sh.uniforms, GFX25F.U);
     sh.uniforms.uWWet = { value: opts.wet };
     sh.uniforms.uWWin = { value: opts.win };
     sh.uniforms.uWGlass = { value: opts.glass };
@@ -8626,6 +8629,7 @@ function patchWorldShading(m, o){
         }`)
       .replace('#include <normal_fragment_maps>', T.ShaderChunk.normal_fragment_maps.replace(/vUv/g, 'wUv')
         .replace('texture2D( normalMap, wUv )', 'mix( texture2D( normalMap, wUv ), texture2D( normalMap, wUv*0.71 + 0.37 ), wMix )'))
+      .replace('#include <alphatest_fragment>', (typeof FAR25_ALPHA === 'string' && FAR25_ALPHA) ? FAR25_ALPHA : '#include <alphatest_fragment>')
       .replace('#include <roughnessmap_fragment>',
         T.ShaderChunk.roughnessmap_fragment.replace(/vUv/g, 'wUv')
           .replace('texture2D( roughnessMap, wUv )', 'mix( texture2D( roughnessMap, wUv ), texture2D( roughnessMap, wUv*0.71 + 0.37 ), wMix )') + `
@@ -8646,6 +8650,17 @@ function patchWorldShading(m, o){
         #include <tonemapping_fragment>`)
       .replace('#include <emissivemap_fragment>', W2_WIN_FRAG)
       .replace('#include <fog_fragment>', W2_FOG_FRAG);
+    if (typeof GFX25_FAR_PARS === 'string' && GFX25_FAR_PARS && typeof GFX25_LFB === 'string' && typeof GFX25_LEAF === 'object' && GFX25_LEAF){
+      sh.uniforms.uWLeaf = { value: opts.leaf || 0 };
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uWTime, uWLeaf;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n' + GFX25_LEAF.v);
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <shadowmap_pars_fragment>', '#include <shadowmap_pars_fragment>\n' + GFX25_LEAF.pars + GFX25_FAR_PARS)
+        .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n' + GFX25_LEAF.tone)
+        .replace('#include <lights_fragment_begin>', GFX25_LEAF.nrm + GFX25_LFB)
+        .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + GFX25_LEAF.sss);
+    }
   };
   m.needsUpdate = true;
   return m;
@@ -14214,9 +14229,15 @@ const PARKS = [ makePark(PARKS_BASE[0]) ];
    low enough that lamp pools and lit windows carry the picture. Fog distances are not touched (stream `far`).
    ========================================================================= */
 const LIGHT12_LOOK = {
+  /* Release 15.16 (gfx25, "make the graphics better"): the shade was still lit almost like the sun (sky fill 1.0 + side
+     fill 0.42 against a 3.45 sun: ~1.8 stops) and the day haze was grey. Now ~2.7 stops between sunlit and shaded ground:
+     a stronger, warmer sun, a weaker, bluer sky fill (shade reads blue), half the fake side fill, a deeper sky blue with a
+     clearer horizon and less sun glare in the air. Night: a steel-blue (not purple) sky and haze. */
   dusk:{
-    light:{ sun:3.45, sunCol:0xffe4bd, hemi:1.00, skyCol:0x9ebdf0, gndCol:0x8c8270, rim:0.42, rimCol:0xa3c2ec, bounce:0.36, exposure:0.98 },
-    night:{ light:{ sun:0.42, sunCol:0xb4c6ff, hemi:0.50, skyCol:0x2c4688, gndCol:0x17151d, rim:0.26, rimCol:0x45649f, bounce:0.14, exposure:1.02 } }
+    light:{ sun:4.55, sunCol:0xffdbab, hemi:0.76, skyCol:0x92b4f0, gndCol:0x7c6e5a, rim:0.22, rimCol:0x9cbcf0, bounce:0.30, exposure:0.95 },
+    sky:{ zenith:'#174cbc', horizon:'#b4cfee', haze:0.80, fog:'#b0c9e6' },
+    night:{ light:{ sun:0.40, sunCol:0xb4c6ff, hemi:0.46, skyCol:0x29488e, gndCol:0x15161c, rim:0.22, rimCol:0x45649f, bounce:0.12, exposure:1.04 },
+            sky:{ zenith:'#05102c', horizon:'#14274c', fog:'#091425' } }
   },
   palm:{
     light:{ sun:3.55, sunCol:0xffaa66, hemi:0.98, skyCol:0xa9b0e2, gndCol:0xb38866, rim:0.40, rimCol:0xff9aa4, bounce:0.42, exposure:0.98 },
@@ -14324,27 +14345,31 @@ const w2e = t => t*t*(3-2*t);
 const w2ss = (a, b, x)=>{ const t = clamp((x-a)/(b-a), 0, 1); return t*t*(3-2*t); };
 
 /* the dusk keyframe (f = 0.5) of the default map; linear colours */
+/* Release 15.16 (gfx25): a real golden hour instead of an even pink tint -- a strong gold sun against a weak, blue sky fill
+   (sunlit faces gold, shade blue), half the side fill, a muted dusty haze (the warm glow toward the sun comes from uFogGlow,
+   so looking away from the sun the air is cool), a deeper zenith and a hotter glow band by the sun. */
 const W2K = {
-  zenith:C('#24398f'), horizon:C('#eba07c'), gnd:C('#3a3040'), sun:C('#ffb35e'), glow:C('#ff7a32'), fog:C('#d89f94'),
-  sunCol:C(0xffa24c), skyCol:C(0x7e8fd8), gndCol:C(0x7d5644), rimCol:C(0x8d9ef0), bounceCol:C(0xe8a07a),
-  fogNear:110, fogFar:420, cover:0.585, haze:1.55, cloudLum:1.0, glowAmt:1.0,
-  sunI:2.75, hemi:0.78, rim:0.48, bounce:0.42, exposure:1.02,
+  zenith:C('#1d3896'), horizon:C('#e0a27e'), gnd:C('#3a3040'), sun:C('#ffbb62'), glow:C('#ff8236'), fog:C('#ad9ea9'),
+  sunCol:C(0xffad52), skyCol:C(0x6a90e2), gndCol:C(0x5c4434), rimCol:C(0x7b9ae6), bounceCol:C(0xe8a07a),
+  fogNear:110, fogFar:420, cover:0.585, haze:1.35, cloudLum:1.0, glowAmt:1.15,
+  sunI:4.1, hemi:0.50, rim:0.22, bounce:0.34, exposure:1.0,
   dir:new T.Vector3(0.60, 0.090, -0.80).normalize(),        // where the sun disc is at golden hour
   ldir:new T.Vector3(0.60, 0.215, -0.77).normalize(),       // the shadow-casting light never sinks as far (sane shadow bias)
   setDir:new T.Vector3(0.55, -0.30, -0.78).normalize(),      // below the horizon at night
   moon:new T.Vector3(-0.42, 0.52, -0.74).normalize()
 };
 /* day-side glow tint and night-side horizon glow (city light / afterglow) */
-const W2G = { day:C('#ffe7bd'), night:C('#4a62b8') };
+const W2G = { day:C('#ffe7bd'), night:C('#2c4c94') };       // gfx25: night glow a steel blue (was a purple '#4a62b8')
 /* composite grade per map (light stream, Release 12; see light12_post.js): wb = white balance before the tone curve,
    con = contrast in stops around mid grey, punch = curve power, sat = saturation (already-saturated colours get a
    third of it), lo / hi = shadow / highlight tint, black = filmic black level, bloom + bt = glow strength + tint,
    vig = vignette, grain = film grain. Dusk City runs day -> dusk -> night, the others day -> night. */
 const W2_GRADES = {
+  // gfx25: more contrast and colour (AgX is flat by itself), blue shade / warm highlights, no global warm cast at golden hour
   dusk:{
-    day:  { wb:[1.00,1.00,1.00], con:1.10, punch:1.08, sat:1.14, lo:[0.97,0.99,1.05], hi:[1.03,1.00,0.96], black:0.010, bloom:0.30, bt:[1.00,1.00,1.00], vig:0.20, grain:0.014 },
-    dusk: { wb:[1.04,0.99,0.94], con:1.12, punch:1.08, sat:1.12, lo:[0.94,0.97,1.08], hi:[1.06,1.00,0.92], black:0.012, bloom:0.46, bt:[1.10,0.95,0.82], vig:0.24, grain:0.016 },
-    night:{ wb:[0.98,1.00,1.04], con:1.08, punch:1.04, sat:1.08, lo:[0.95,0.98,1.07], hi:[1.03,1.00,0.97], black:0.014, bloom:0.55, bt:[1.00,0.98,1.02], vig:0.28, grain:0.020 }
+    day:  { wb:[1.00,1.00,1.00], con:1.17, punch:1.10, sat:1.22, lo:[0.95,0.99,1.08], hi:[1.04,1.00,0.95], black:0.008, bloom:0.28, bt:[1.00,1.00,1.00], vig:0.20, grain:0.014 },
+    dusk: { wb:[1.02,1.00,0.97], con:1.18, punch:1.10, sat:1.18, lo:[0.92,0.97,1.12], hi:[1.08,1.00,0.88], black:0.010, bloom:0.50, bt:[1.10,0.95,0.80], vig:0.24, grain:0.016 },
+    night:{ wb:[0.98,1.00,1.02], con:1.12, punch:1.06, sat:1.10, lo:[0.96,0.99,1.06], hi:[1.04,1.00,0.95], black:0.012, bloom:0.60, bt:[1.04,0.98,0.94], vig:0.28, grain:0.020 }
   },
   palm:{
     day:  { wb:[1.03,1.00,0.95], con:1.08, punch:1.06, sat:1.12, lo:[0.95,0.98,1.06], hi:[1.05,1.00,0.93], black:0.010, bloom:0.38, bt:[1.08,0.97,0.88], vig:0.22, grain:0.014 },
@@ -14413,7 +14438,7 @@ function updateDayNight(dt){
   /* sunset glow: explicit on the golden map, derived from the sun's height on the others */
   if (G){
     w2c(skyUni.cGlow.value, W2G.day, W2K.glow, W2G.night, f);
-    skyUni.uGlow.value = w2n(0.05, W2K.glowAmt, 0.16, f);
+    skyUni.uGlow.value = w2n(0.05, W2K.glowAmt, 0.10, f);
   } else {
     skyUni.cGlow.value.copy(W2_CGLOW_DAY).lerp(NIGHTC.horizon, f);
     skyUni.uGlow.value = W2_GLOW_DAY0 * (1 - w2ss(0.25, 0.85, f));
@@ -14461,6 +14486,7 @@ function updateDayNight(dt){
   rim.intensity = w2n(dl.rim, W2K.rim, NIGHT_LIGHT.rim, f);
   w2c(rim.color, DAYC.rimCol, W2K.rimCol, NIGHTC.rimCol, f);
   bounce.intensity = w2n(dl.bounce, W2K.bounce, NIGHT_LIGHT.bounce, f);
+  if (W2.U.uLeafSun) W2.U.uLeafSun.value.copy(sun.color).multiplyScalar(sun.intensity * (1 - w2ss(0.55, 0.85, f)));   // gfx25: leaves glow against the sun
   if (G) w2c(bounce.color, W2_BOUNCE_DAY, W2K.bounceCol, W2_BOUNCE_NIGHT, f);
   const ex = w2n(dl.exposure, W2K.exposure, NIGHT_LIGHT.exposure, f);
   renderer.toneMappingExposure = ex;
@@ -14474,7 +14500,7 @@ function updateDayNight(dt){
   const lampOn = w2ss(0.26, 0.60, f);
   PROP.lampLens.emissive.copy(DAY_LAMP_EMISSIVE).lerp(NIGHT_LAMP.emissive, lampOn);
   PROP.lampLens.emissiveIntensity = lerp(DAY_LAMP_INTENSITY, NIGHT_LAMP.intensity, lampOn);
-  PROP.lampGlow.opacity = lerp(0, NIGHT_LAMP_GLOW_OPACITY, lampOn);
+  PROP.lampGlow.opacity = lerp(0, Math.min(1, NIGHT_LAMP_GLOW_OPACITY*1.18), lampOn);     // gfx25: brighter pools under the lamps
   PROP.lampGlow.visible = PROP.lampGlow.opacity > 0.002;
 
   // windows: each one has its own switch-on moment (see the window shader), so the
@@ -14910,7 +14936,7 @@ function lampFieldUpdate(dt){
       if (fade <= 0.001) continue;
       const lx = best[b].x, lz = best[b].z;
       const ly = best[b].y !== undefined ? best[b].y : LF_LAMP_Y;
-      lfWriteSlot(k++, lx, ly, lz, 0, -1, 0, 0.48, 0.90, LF_LAMP_COL, 3.6*night*fade, 20);
+      lfWriteSlot(k++, lx, ly, lz, 0, -1, 0, 0.44, 0.90, LF_LAMP_COL, 5.0*night*fade, 23);
       if (!lite && shaftUsed < SHAFT_N){
         ensureShafts();
         _shM.compose(_shP.set(lx, ly + 0.02, lz), _shQ.identity(), _shS.set(1,1,1));
@@ -18498,7 +18524,7 @@ function updateRide(dt, In){
   if (bike.boostT > 0) bike.boostT = Math.max(0, bike.boostT - dt);
 
   // steering (a heavier bike turns in slower and leans more)
-  const steerAuth = clamp(1.35 - Math.abs(fwd)*0.032, 0.45, 1.35) * VEH.steer;
+  const steerAuth = clamp(1.35 - Math.abs(fwd)*0.032, 0.45, 1.35) * VEH.steer * (VEH.hiSpeedSteer && Math.abs(fwd) > 18 ? Math.pow(18/Math.abs(fwd), 1.6) : 1);
   const dir = fwd >= 0 ? 1 : -1;
   const turn = -In.steer * 2.15 * steerAuth * dir * clamp(Math.abs(fwd)/2.2, 0, 1);
   bike.yaw += turn*dt;
@@ -21079,7 +21105,7 @@ if ($('adminPanel')){
 
 const touch = {};
 function readInput(){
-  In.up     = (keys.up     || touch.up || (isTouch && mobAutoGo())) ? 1:0;
+  In.up     = (keys.up     || touch.up || (MOB.on && mobAutoGo())) ? 1:0;
   In.down   = (keys.down   || touch.down)   ? 1:0;
   In.crouch = (keys.crouch || touch.crouch) ? 1:0;
   In.manual = (keys.manual || touch.manual) ? 1:0;
@@ -21088,7 +21114,8 @@ function readInput(){
     In[k] = (keys[k] || touch[k]) ? 1:0;
   }
   const l = (keys.left || touch.left) ? 1:0, r = (keys.right || touch.right) ? 1:0;
-  In.steer = isTouch ? mobSteer(r - l) : r - l;
+  In.steer = MOB.on ? mobSteer(r - l) : r - l;
+  if (PAD25.on) pad25Steer();
 }
 
 /* touch layout: everything lives in mods/mobile.js (floating stick, auto-pedal, thumb-arc buttons) */
@@ -31326,7 +31353,7 @@ function mo15standRS(o){
   const hz = (zf + zr)/2 + (o.hz || 0), ph = lean*1.02, shz = hz + 0.40*Math.sin(ph), arm = o.arm || 0.42;
   const dz = o.gz - shz, dy = Math.sqrt(Math.max(0.02, arm*arm - dz*dz));
   let hy = o.gy + dy - 0.40*Math.cos(ph);
-  hy = Math.max(ay + 0.78, Math.min(ay + 0.86, hy));
+  hy = Math.max(ay + 0.86, Math.min(ay + 0.92, hy));          // ride25: knees softly bent (0.78-0.86 was a deep crouch)
   if (o.leg !== undefined) hy = ay + o.leg;
   return { hipsY:hy, hipsZ:hz, gripL:[o.gx, o.gy, o.gz], gripR:[-o.gx, o.gy, o.gz], pedalL:[sx, ay, zf], pedalR:[-sx, ay, zr], lean,
     footPitch:0.05, kneeOut:0.22, elbowOut:0.20, sole:[0, -0.075, 0], foot:'flat' };
@@ -31669,7 +31696,7 @@ function fbMo15scoot(P){
 
   /* ---- rider: feet side-on on the deck, hands on the grips (a seated row: on the saddle, feet forward on the deck) ---- */
   const ay = dy + 0.074, zf = z1 - 0.15, zr = Math.max(z0 + 0.15, zf - (P.stance || 0.31));
-  const rs = mo15standRS({ ay, zf, zr, gx, gy, gz, sx:0.05, lean:P.lean === undefined ? 0.12 : P.lean, leg:P.leg });
+  const rs = mo15standRS({ ay, zf, zr, gx, gy, gz, sx:0.05, lean:P.lean === undefined ? 0.18 : P.lean, leg:P.leg });   // ride25: leaning into the bars a touch
   if (P.seat){ rs.hipsY = dy + 0.46 + 0.10 + 0.06; rs.hipsZ = sz2 - 0.06; rs.lean = 0.10; rs.pedalL = [0.07, ay, z1 - 0.08]; rs.pedalR = [-0.07, ay, z1 - 0.08]; rs.kneeOut = 0.45; }
   return { Rr, Rf, rz, fz, hz, frame:f, front:fr, rear:rw, frontW:fw, seated:false, integrated:true, kickable:false, rs, bbY:dy - dt*0.5, bbZ:kz + 0.10 };
 }
@@ -33398,9 +33425,12 @@ function pd15scoot(P){
   const rw = pd15ScootWheel(R, ns, { w:pw }), fw = pd15ScootWheel(R, ns, { w:pw });
   pd15Flush(B, f); pd15Flush(F, fr);
   fmerge(f); fmerge(fr);
-  const ay = dyT + 0.075, zf = dz1 - 0.21, zr = Math.max(dzD + 0.17, zf - 0.30);
-  return { Rr:R, Rf:R, rz, fz, hz, frame:f, front:fr, rear:rw, frontW:fw, seated:false, integrated:true, kickable:true,
-    rs:fStandRS({ ay, zf, zr, gx, gy, gz, sx:0.05, lean:P.lean, leg:P.leg }) };
+  // ride25: a natural stance -- front foot just behind the neck, back foot over the tail (where it kicks from and stomps the brake),
+  // knees softly bent (hips 0.86-0.92 above the ankles: the shared rule's 0.78-0.86 was a deep crouch), the torso leaning into the bars
+  const ay = dyT + 0.075, zf = dz1 - 0.20, zr = Math.max(dzD + 0.10, zf - 0.34);
+  const rs = fStandRS({ ay, zf, zr, gx, gy, gz, sx:0.05, lean:P.lean === undefined ? 0.30 : P.lean, leg:P.leg });
+  if (P.leg === undefined) rs.hipsY = Math.max(ay + 0.86, Math.min(ay + 0.92, rs.hipsY + 0.07));
+  return { Rr:R, Rf:R, rz, fz, hz, frame:f, front:fr, rear:rw, frontW:fw, seated:false, integrated:true, kickable:true, rs, deckW:dw, deckZ:[dzD, dz1] };
 }
 FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
 /* =========================================================================
@@ -34377,6 +34407,52 @@ const FLEET_NAMES18 = {
   const sub = (id, s)=>{ const c = FLEET_CATS.find(c=> c.id === id); if (c) c.sub = s; };
   sub('mtb', 'Fat-tyre, downhill, enduro, freeride, trail, park and race bikes');
   sub('ebike', 'Fat-tyre, city, cargo, folding, gravel and cruiser e-bikes');
+})();
+
+/* =========================================================================
+   ESCOOT25 -- Release 15.16: "add very fast e scooters" (integrator)
+   Three hyper scooters at the top of the E-Scooters tab, each faster than anything there before (the Thunder 3 tops out at ~99 km/h):
+     dtxscoot       Dualtron X Limited      ~125 km/h  huge 13" tyres, twin stems, hydraulic everything, the long heavy one
+     burnescoot     Nami Burn-E 2 Max       ~118 km/h  tall racing stem, moto bars, the quickest launch
+     wolfkingscoot  Kaabo Wolf King GTR     ~115 km/h  a-frame stem, off-road knobblies, sprung twin forks
+   Built by the game's own e-scooter builders (fleet_motos_b.js), class 'escooter' with per-ride overrides: a stronger motor
+   (power / eAccel / eTop), more grip and a calmer steer at speed (steer multiplier), a longer camera. Loaded right before the
+   fleet core (after names18.js), so the rows are in FLEET before FLEET_BY_ID / VEHICLES are built. Ids contain "scoot": an older
+   client that does not know them shows a push scooter (fleetResolve) instead of an error.
+   ========================================================================= */
+(function(){
+  const has = id=> FLEET.some(v=> v.id === id);
+  const at = ()=>{ const i = FLEET.findIndex(v=> v.cat === 'escooter'); return i < 0 ? FLEET.length : i; };
+  const rows = [
+    { id:'dtxscoot', no:'D20', name:'Dualtron X Limited', brand:'Dualtron', model:'X Limited', b:'escooter',
+      p:{ Rr:0.18, Rf:0.18, tr:0.064, wb:1.40, dy:0.22, dw:0.28, dt:0.11, deck:'flat', ha:80, bar:1.25, bw:0.76, bars:'tbar', stem:'twin', fold:'none',
+          fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, brace:true, stand:true, tread:22 },
+      col:0x121316, acc:0xd8a640, liv:{ fork:0xd8a640, rim:0xd8a640, tire:0x0d0e10, grip:0xd8a640, bars:0x111214, glow:0xffb43a },
+      m:[2.05, 1.83, 0.86, 0.84], tune:{ power:0.95, manual:-0.45, grip:15.5, camDist:1.08 },
+      desc:'The heaviest, fastest thing in the tab: twin 13-inch tyres, twin stems and two huge motors. Around 125 km/h flat out. Lean on it.' },
+    { id:'burnescoot', no:'D21', name:'Nami Burn-E 2 Max', brand:'Nami', model:'Burn-E 2 Max', b:'escooter',
+      p:{ Rr:0.16, Rf:0.16, tr:0.056, wb:1.28, dy:0.20, dw:0.25, dt:0.10, deck:'taper', ha:78, bar:1.26, bw:0.70, bars:'moto', stem:'thick', fold:'none',
+          fsus:'hyd', rsus:'arm', shock2:true, ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, stand:true, tread:18 },
+      col:0x1b1f27, acc:0xff2e63, liv:{ fork:0xff2e63, rim:0x1b1f27, tire:0x0d0e10, grip:0xff2e63, bars:0x14161b, glow:0xff2e63 },
+      m:[2.25, 1.73, 0.90, 0.88], tune:{ power:1.0, manual:-0.42, grip:15.0, camDist:1.06 },
+      desc:'Racing hyper scooter with moto bars and the hardest launch of all: 0 to 100 before you can blink. About 118 km/h top.' },
+    { id:'wolfkingscoot', no:'D22', name:'Kaabo Wolf King GTR', brand:'Kaabo', model:'Wolf King GTR', b:'escooterX',
+      p:{ Rr:0.17, Rf:0.17, tr:0.060, wb:1.30, dy:0.205, dw:0.26, dt:0.10, deck:'flat', ha:79, bar:1.24, bw:0.72, stem:'aframe', fold:'none',
+          light:'fork', disp:'round', twist:true, tread:22 },
+      col:0x22272e, acc:0x39e26b, liv:{ fork:0x39e26b, rim:0x39e26b, tire:0x0e0f11, grip:0x39e26b, bars:0x181b20, glow:0x39e26b },
+      m:[1.95, 1.68, 0.92, 0.92], tune:{ power:0.9, manual:-0.40, grip:16.0, camDist:1.05 },
+      desc:'Off-road hyper scooter: a-frame stem, sprung twin forks and 13-inch knobblies. About 115 km/h, and it does not care about the road ending.' }
+  ];
+  const pos = at();
+  rows.reverse().forEach(r=>{
+    if (has(r.id)) return;
+    FLEET.splice(pos, 0, Object.assign({ cat:'escooter', kind:'Hyper e-scooter', cls:'escooter', e:true }, r));
+  });
+  // every e-scooter steers calmer at motorway speed (phys_core's steer authority x (18 / v)^1.6 above 18 m/s, patch): at 100+ km/h a
+  // short tap was a 0.5 rad swerve into the railing
+  try { if (typeof FLEET_TUNE_EXTRA !== 'undefined' && FLEET_TUNE_EXTRA.escooter) FLEET_TUNE_EXTRA.escooter.hiSpeedSteer = 1; } catch(e){}
+  const c = FLEET_CATS.find(c=> c.id === 'escooter');
+  if (c) c.sub = 'Hyper scooters over 110 km/h, plus stand-up electric commuters, throttle powered';
 })();
 
 /* =========================================================================
@@ -35662,6 +35738,7 @@ function custClean(o){
     });
     if (Object.keys(a).length) out.a = a;
   }
+  if (o.pt && typeof ride25PartsClean === 'function'){ const pt = ride25PartsClean(o.pt); if (pt) out.pt = pt; }   // ride25: shape parts
   return Object.keys(out).length ? out : null;
 }
 function custLoad(){
@@ -36622,6 +36699,7 @@ function custRandomise(id){
    palette under its row (suggested colours for that part on top). Every section has its own reset; Undo / Randomise / Reset all on top.
    Opening a section turns the garage viewer to look at that part (garageCustFocus). */
 const CUST_SECS = [
+  { id:'parts', name:'Parts',          slots:[], c:[], top:['pt'],                                view:[0.95, 0.17, 1.0] },   // ride25: shape parts (mods/ride25_parts.js)
   { id:'paint', name:'Frame & paint',  slots:['frame', 'acc', 'fork'], c:['fr', 'ac', 'fk'], top:['f', 'p'],  view:[0.95, 0.17, 1.0] },
   { id:'decal', name:'Stickers',       slots:[], c:[], top:['k'],                                 view:[Math.PI/2, 0.05, 0.86] },
   { id:'wheel', name:'Wheels & tyres', slots:['rim', 'spoke', 'tire', 'wall', 'plas'], c:['rm', 'sp', 'ty', 'tw', 'pl'], top:['fm'], view:[Math.PI/2 - 0.42, 0.10, 0.92] },
@@ -36808,6 +36886,7 @@ function custSecSlots(sec, P){
   });
 }
 function custSecVisible(sec, P){
+  if (sec.id === 'parts') return typeof ride25PartsDefs === 'function' && ride25PartsDefs(CUST_UI.id).length > 0;
   if (sec.id === 'decal') return !P || !!P.decal;
   if (sec.id === 'acc' || sec.id === 'paint' || sec.id === 'wheel' || sec.id === 'cock') return true;
   return custSecSlots(sec, P).length > 0;
@@ -36860,6 +36939,8 @@ function custPanelHtml(){
       h += '<div class="cuSub">Material</div><div class="cuChips" id="cuSeatMat">';
       CUST_SEATS.forEach((s, i)=>{ h += '<button type="button" class="cuChip" data-sm="' + i + '"><i class="s' + i + '"></i>' + s.name + '</button>'; });
       h += '</div>';
+    } else if (sec.id === 'parts'){
+      h += '<div id="cuParts" class="cuIn" style="padding:0"></div>';
     } else if (sec.id === 'light'){
       h += '<div class="cuNote">LED glow lights up strips, displays and the battery lights.</div>';
     } else if (sec.id === 'acc'){
@@ -37076,6 +37157,7 @@ function custSecSummary(sec, cu, L){
   } else if (sec.id === 'decal'){ if (cu.k) out.push(CUST_DECALS[cu.k[0] - 1] + (cu.k[3] === 2 ? ' ×2' : '')); }
   else if (sec.id === 'seat'){ if (cu.s) out.push(CUST_SEATS[cu.s].name); if (custTgtOwn(cu, 'seat')) out.push('Colour'); }
   else if (sec.id === 'acc'){ const n = Object.keys(cu.a || {}).length; out.push(n + ' fitted'); }
+  else if (sec.id === 'parts'){ if (typeof ride25PartsSummary === 'function') out.push(ride25PartsSummary(cu.pt, CUST_UI.id)); }
   else {
     sec.slots.forEach(k=>{ if (custTgtOwn(cu, k)) out.push(custTgtName(k)); });
     if (sec.id === 'wheel' && cu.fm) out.push(FLEET_FINISH[cu.fm].name + ' rims');
@@ -37144,6 +37226,7 @@ function custPanelSync(){
   host.querySelectorAll('#cuRimFin .cuChip').forEach(b=> b.classList.toggle('sel', +b.getAttribute('data-fm') === (L.fm | 0)));
   host.querySelectorAll('#cuBarFin .cuChip').forEach(b=> b.classList.toggle('sel', +b.getAttribute('data-fb') === (L.fb | 0)));
   host.querySelectorAll('#cuSeatMat .cuChip').forEach(b=> b.classList.toggle('sel', +b.getAttribute('data-sm') === (L.sm | 0)));
+  if (typeof ride25PartsSync === 'function') try { ride25PartsSync(host, id); } catch(e){ console.warn('[ride25] parts panel', e); }   // ride25: the Parts chips
   // R13 shop: locked premium options carry their price
   const mark = (el, kind, v)=>{
     const k = custPremiumKey(kind, v), lk = !!k && !custPremiumOk(kind, v);
@@ -40988,8 +41071,9 @@ const PHYS_TUNE = {
               stoppie:0.33, power:0.20, ease:7.0, grip:11.0, drift:0.55, rot:0.97, kick:0, moto:false },
   road:     { accel:10.4, top:27.0, brake:12.0, drag:0.23, steer:1.02, roll:0.30, hop:0.72, grind:true,  hard:16.5, camDist:1.03, lift:0.14, scale:1, manual:-0.38,
               stoppie:0.30, power:0.18, ease:6.5, grip:10.0, drift:0.42, rot:0.90, kick:0, moto:false },
-  /* ---- push scooter: no motor. W = kick-push-glide, light, tiny forgiving hops, rails welcome */
-  pscooter: { accel:7.0,  top:14.0, brake:12.5, drag:0.30, steer:1.12, roll:0.22, hop:0.72, grind:true,  hard:22.0, camDist:0.92, lift:0.10, scale:1, manual:-0.34,
+  /* ---- push scooter: no motor. W = kick-push-glide, light, tiny forgiving hops, rails welcome. ride25: the kick stroke (mods/ride25_kick.js)
+          drives it now, so `accel` only feeds the garage bars; low drag (+ a little rolling resistance there) = a long, slow-fading coast */
+  pscooter: { accel:7.0,  top:14.0, brake:12.5, drag:0.10, steer:1.12, roll:0.22, hop:0.72, grind:true,  hard:22.0, camDist:0.92, lift:0.10, scale:1, manual:-0.34,
               stoppie:0.30, power:0.10, ease:9.0, grip:12.0, drift:0.50, rot:1.15, kick:1.0, moto:false },
   /* ---- electric motorbikes: engine-style accel / top, no rail catch on the off-road ones */
   edirt:    { accel:15.0, top:30.0, brake:17.0, drag:0.21, steer:0.98, roll:0.42, hop:0.78, grind:false, hard:22.0, camDist:1.10, lift:0.26, scale:1, manual:-0.48,
@@ -41608,7 +41692,7 @@ updateRide = function(dt, In){
 
   // steering: a heavier bike turns in slower; up on one wheel the bike pivots about it, so a wheelie /
   // stoppie turns tighter (wheelie circles); a drift holds the tail out at a slip angle that follows the stick
-  const steerAuth = clamp(1.35 - Math.abs(fwd)*0.032, 0.45, 1.35) * VEH.steer;
+  const steerAuth = clamp(1.35 - Math.abs(fwd)*0.032, 0.45, 1.35) * VEH.steer * (VEH.hiSpeedSteer && Math.abs(fwd) > 18 ? Math.pow(18/Math.abs(fwd), 1.6) : 1);
   const dir = fwd >= 0 ? 1 : -1;
   const pivot = clamp(Math.abs(bike.manual)/0.2, 0, 1);
   const lowSpd = pivot > 0.3 ? 1.1 : 2.2;
@@ -43402,6 +43486,12 @@ const MOB_TRICKS = {
   whip:'WHIP', bar:'BAR', xup:'X-UP', sup:'SUPER', noh:'NO-H', can:'CAN', tab:'TABLE',
   not:'NOTH', decade:'DECADE', oneh:'1-HAND', seat:'SEAT', lookb:'LOOK'
 };
+/* R15.16 (mobile25): how the stick turns thumb travel into steering -- dead zone, where full lock is reached, the curve */
+const MOB_FEEL = {
+  smooth: { dz:0.12, full:0.96, exp:1.55 },     // fine lines near the middle: long carves, grinds, big jumps
+  normal: { dz:0.14, full:0.86, exp:1.1 },      // as before
+  quick:  { dz:0.10, full:0.66, exp:1.0 }       // full lock with a short flick: tight streets, spins
+};
 const MOB_PRESETS = {
   'whip,bar,sup':      'Whip · Bar · Super',
   'whip,bar,tab':      'Whip · Bar · Table',
@@ -43414,17 +43504,23 @@ function mobLayoutCompute(W, H, safe, o){
   let sc = o.size === 'S' ? 0.86 : (o.size === 'L' ? 1.16 : 1);
   if (Math.min(W, H) < 340) sc = Math.min(sc, 1);          // the very smallest phones have no room for large buttons
   const land = W >= H * 1.08;
-  const u = Math.max(38, Math.min(64, Math.min(W, H) / 8.2)) * sc;
+  /* R15.16 (mobile25): a tablet (short side >= 600) is held by its sides, not by its bottom corners: the thumb clusters ride
+     higher, and the buttons stay thumb-sized (a finger is as wide on a tablet as on a phone) instead of growing with the screen */
+  const tablet = Math.min(W, H) >= 600;
+  const u = Math.max(40, Math.min(tablet ? 60 : 64, Math.min(W, H) / 8.2)) * sc;
   const dir = o.hand === 'left' ? -1 : 1;                   // +1: the action cluster sits on the right
-  const edgeX = 12 + (dir > 0 ? safe.r : safe.l), edgeY = 10 + safe.b;
+  const edgeX = 14 + (dir > 0 ? safe.r : safe.l) + (tablet ? 10 : 0);
+  const lift = tablet ? Math.round(H * (land ? 0.2 : 0.12)) : 0;
+  const edgeY = 10 + safe.b + lift;
   const hopD = Math.round(u * 1.95), hopR = hopD / 2;
-  const tD = Math.max(40, Math.round(u * 1.2)), mD = Math.max(42, Math.round(u * 1.22)), sD = Math.max(40, Math.round(u * 1.0));
+  // every button at least 46 px across (Apple / Google: 44 / 48 pt), the trick ring a little larger than before
+  const tD = Math.max(48, Math.round(u * 1.24)), mD = Math.max(48, Math.round(u * 1.24)), sD = Math.max(46, Math.round(u * 1.04));
   const cx = dir > 0 ? W - edgeX - hopR : edgeX + hopR, cy = H - edgeY - hopR;
   const rects = {};
   const put = (k, x, y, d)=>{ rects[k] = { x: Math.round(x - d/2), y: Math.round(y - d/2), d: d }; };
   const at = (r, deg)=>{ const a = deg * Math.PI / 180; return { x: cx - dir * r * Math.cos(a), y: cy - r * Math.sin(a) }; };
   put('crouch', cx, cy, hopD);
-  const r1 = hopR + tD/2 + 8;
+  const r1 = hopR + tD/2 + 8 + Math.max(0, tD - u * 1.24) * 0.6;   // a ring of minimum-size buttons sits a little further out
   let p = at(r1, 45);  put('t1', p.x, p.y, tD);
   p = at(r1, 0);       put('t2', p.x, p.y, tD);
   p = at(r1, 90);      put('t3', p.x, p.y, tD);
@@ -43441,7 +43537,7 @@ function mobLayoutCompute(W, H, safe, o){
   }
 
   /* the steering hand: a floating stick (hint ring only) or four arrows */
-  const edgeS = 12 + (dir > 0 ? safe.l : safe.r);            // the steering side has its own inset (a notch is on one side only)
+  const edgeS = 14 + (dir > 0 ? safe.l : safe.r) + (tablet ? 10 : 0);   // the steering side has its own inset (a notch is on one side only)
   const sR = Math.round(u * (land ? 1.45 : 1.3));
   const sx = dir > 0 ? edgeS + sR + 4 : W - edgeS - sR - 4, sy = H - edgeY - sR - 6;
   rects.ghost = { x: Math.round(sx - sR), y: Math.round(sy - sR), d: sR * 2 };
@@ -43451,7 +43547,7 @@ function mobLayoutCompute(W, H, safe, o){
   put('down', px0 + pD/2, py0 + pD/2, pD); put('up', px0 + pD + pg + pD/2, py0 + pD/2, pD);
 
   /* top row: respawn / view / pause */
-  const ud = Math.round(Math.max(40, Math.min(54, u * 0.94))), ug = 8;
+  const ud = Math.round(Math.max(46, Math.min(54, u * 0.94))), ug = 8;
   const ux = W - safe.r - 12 - ud, uy = land ? safe.t + 10 : safe.t + 72;
   put('pause', ux + ud/2, uy + ud/2, ud);
   put('view',  ux - (ud + ug) + ud/2, uy + ud/2, ud);
@@ -43472,11 +43568,11 @@ function mobLayoutCompute(W, H, safe, o){
   }
   const vars = {
     utilW: utilW, utilBottom: uy + ud, mm: mm, mmTop: uy + ud + 8,
-    toastB: land ? edgeY + 12 : Math.round(H - clusterTop + 10), midX: Math.round(midX), midW: Math.round(midW),
+    toastB: land ? 10 + safe.b + 12 : Math.round(H - clusterTop + 10), midX: Math.round(midX), midW: Math.round(midW),
     comboTop: land ? safe.t + 66 : Math.round(Math.min(safe.t + 262, H * 0.34))
   };
-  return { land: land, u: u, W: W, H: H, rects: rects, vars: vars, ud: ud,
-           zone: { x0: dir > 0 ? 0 : W * 0.5, x1: dir > 0 ? W * 0.5 : W, y0: land ? H * 0.26 : H * 0.42 } };
+  return { land: land, u: u, W: W, H: H, rects: rects, vars: vars, ud: ud, tablet: tablet,
+           zone: { x0: dir > 0 ? 0 : W * 0.5, x1: dir > 0 ? W * 0.5 : W, y0: land ? H * (tablet ? 0.2 : 0.26) : H * (tablet ? 0.3 : 0.42) } };
 }
 
 /* ---------------------------------------------------------------- settings */
@@ -43486,6 +43582,10 @@ if (isTouch){
     options:[ { v:'stick', label:'Thumb stick', hint:'Touch and drag anywhere on the steering side' },
               { v:'pad',   label:'Buttons',     hint:'Four on-screen arrows' } ],
     onChange(){ mobRebuild(); } });
+  registerSetting({ id:'m_feel', label:'Steering feel', group:'touch', type:'choice', def:'normal',
+    options:[ { v:'smooth', label:'Smooth', hint:'Fine control near the middle, full lock at the edge of the ring' },
+              { v:'normal', label:'Normal', hint:'The usual' },
+              { v:'quick',  label:'Quick',  hint:'Full lock with a short flick of the thumb' } ] });
   registerSetting({ id:'m_auto', label:'Auto-pedal', group:'touch', type:'toggle', def:true,
     hintOn:'You pedal by yourself; pull the stick down to brake', hintOff:'Push the stick up (GO) to pedal',
     onChange(){ mobRebuild(); } });
@@ -43530,7 +43630,7 @@ const MOB_SVG = {
 
 /* ---------------------------------------------------------------- build */
 function mobBuildTouch(){
-  if (!isTouch) return;
+  if (!isTouch && !MOB.hybrid) return;
   const wrap = $('touch');
   if (!wrap) return;
   MOB.on = true; MOB.root = wrap;
@@ -43551,6 +43651,12 @@ function mobBuildTouch(){
     document.addEventListener('visibilitychange', ()=>{ if (document.hidden) mobAway(); else mobWake(); });
     addEventListener('pagehide', mobAway);
     addFrameHook(mobTick);
+    /* R15.16 (mobile25): a keyboard on a tablet / phone (iPad keyboard case, Bluetooth): riding keys fade the thumb buttons
+       out of the view (still there: the next touch brings them back) */
+    if (isTouch){
+      addEventListener('keydown', e=>{ if (e.isTrusted && GAME === 'play' && KEYMAP[e.code]) document.documentElement.classList.add('kbdActive'); }, true);
+      addEventListener('pointerdown', e=>{ if (e.pointerType === 'touch') document.documentElement.classList.remove('kbdActive'); }, true);
+    }
   }
 }
 function mobSoon(){ clearTimeout(MOB._t); MOB._t = setTimeout(mobLayout, 60); setTimeout(mobLayout, 350); }
@@ -43613,7 +43719,7 @@ function mobLayout(){
     else {
       place(MOB.els[k], L.rects[k]);
       if (k === 'pause' || k === 'view' || k === 'reset') MOB.els[k].style.fontSize = Math.round(L.ud * 0.34) + 'px';
-      else MOB.els[k].style.fontSize = Math.max(10, Math.round(L.rects[k].d * 0.2)) + 'px';
+      else MOB.els[k].style.fontSize = Math.max(12, Math.round(L.rects[k].d * 0.21)) + 'px';
     }
   });
   MOB.lastMotor = null;
@@ -43635,7 +43741,7 @@ function mobDown(e){
   e.preventDefault();
   const root = MOB.root;
   try { root.setPointerCapture(e.pointerId); } catch(_){}
-  const t = e.target && e.target.closest ? e.target.closest('.mb') : null;
+  const t = (e.target && e.target.closest ? e.target.closest('.mb') : null) || mobNearBtn(e.clientX, e.clientY);
   if (t && t.dataset.k){
     const k = t.dataset.k;
     MOB.ptr.set(e.pointerId, { kind:'btn', k:k, el:t });
@@ -43657,6 +43763,18 @@ function mobDown(e){
   }
   MOB.ptr.set(e.pointerId, { kind:'look' });
   mobLookStart(e);
+}
+/* R15.16 (mobile25): a thumb that lands just outside a button still presses the nearest one (within ~a quarter of its size,
+   10-18 px) instead of grabbing the camera -- the right thumb works by feel, without looking */
+function mobNearBtn(x, y){
+  let best = null, bd = 1e9;
+  for (const k in MOB.els){
+    const el = MOB.els[k], r = MOB.rects[k];
+    if (!el || !r || !el.dataset || !el.dataset.k || el.style.display === 'none') continue;
+    const h = r.d / 2, d = Math.hypot(x - (r.x + h), y - (r.y + h)) - h;
+    if (d < Math.min(18, Math.max(10, r.d * 0.26)) && d < bd){ bd = d; best = el; }
+  }
+  return best;
 }
 function mobMove(e){
   const p = MOB.ptr.get(e.pointerId); if (!p) return;
@@ -43715,8 +43833,8 @@ function mobStickOut(){
   const k2 = len > R ? R / len : 1;
   s.kx = dx * k2; s.ky = dy * k2;
   s.nx = s.kx / R; s.ny = s.ky / R;
-  const dz = 0.14, a = Math.abs(s.nx);
-  MOB.steer = a < dz ? 0 : Math.sign(s.nx) * Math.pow(Math.min(1, (a - dz) / (0.86 - dz)), 1.1);
+  const F = MOB_FEEL[mobSetting('m_feel', 'normal')] || MOB_FEEL.normal, dz = F.dz, a = Math.abs(s.nx);
+  MOB.steer = a < dz ? 0 : Math.sign(s.nx) * Math.pow(Math.min(1, (a - dz) / (F.full - dz)), F.exp);
   const wasUp = s.up, wasDown = s.down;
   s.down = s.ny > (s.down ? 0.28 : 0.46);
   s.up = s.ny < -(s.up ? 0.28 : 0.46);
@@ -43779,12 +43897,12 @@ function mobLookEnd(e){
 
 /* ---------------------------------------------------------------- read by the base game's readInput() */
 function mobSteer(base){
-  if (!isTouch) return base;
+  if (!MOB.on) return base;
   const s = MOB.steer;
   return s ? Math.max(-1, Math.min(1, base + s)) : base;
 }
 function mobAutoGo(){
-  if (!isTouch || !MOB.on || !mobSetting('m_auto', true)) return false;
+  if (!MOB.on || !mobSetting('m_auto', true)) return false;
   if (GAME !== 'play' || bike.state !== 'ride') return false;
   if (touch.down || touch.manual || keys.down || keys.manual) return false;
   return true;
@@ -43792,10 +43910,18 @@ function mobAutoGo(){
 
 /* ---------------------------------------------------------------- per frame */
 /* the frame cap is the graphics mode's now (all devices, gfx14_core.js); kept for old callers */
-function mobSkipFrame(now){ return (typeof gfxSkipFrame === 'function') ? gfxSkipFrame(now) : false; }
+function mobSkipFrame(now){
+  /* R15.16 (mobile25): behind the menus a phone / tablet draws the slow orbit at <= 30 fps -- half the GPU work while
+     you browse the garage, the shop or the settings: a cooler phone, smoother scrolling (rides keep the chosen cap) */
+  if (GAME === 'menu' && isTouch){
+    if (now - (MOB.menuT || 0) < 29) return true;
+    MOB.menuT = now;
+  }
+  return (typeof gfxSkipFrame === 'function') ? gfxSkipFrame(now) : false;
+}
 function mobTick(dt){
   const wrap = MOB.root; if (!wrap) return;
-  const show = GAME === 'play';
+  const show = GAME === 'play' && (!MOB.hybrid || MOB.hyShow);
   if (show !== MOB.shown){
     MOB.shown = show;
     wrap.classList.toggle('show', show);
@@ -43973,6 +44099,25 @@ function mobIosTip(){
 
 /* (Release 15.4: a lost GPU context is handled for every device by mods/phone16_core.js -- a "Tap to reload" card at once) */
 
+/* R15.16 (mobile25): a touch-screen laptop / a convertible is a computer (keyboard + mouse, gfxDevice() in perf.js), but the
+   first finger on the screen during a ride brings the touch controls (and the touch HUD layout); a key press puts them away
+   again until the next touch. Nothing is listened to on a computer without a touch screen. */
+function mobHybridInit(){
+  if (isTouch || !(navigator.maxTouchPoints > 0)) return;
+  const set = on=>{
+    if (MOB.hyShow === on) return;
+    MOB.hyShow = on;
+    document.documentElement.classList.toggle('touchUI', on); document.body.classList.toggle('touchUI', on);
+    if (on) mobLayout();
+  };
+  addEventListener('pointerdown', e=>{
+    if (e.pointerType !== 'touch' || GAME !== 'play') return;
+    if (!MOB.hybrid){ MOB.hybrid = true; MOB.hyShow = false; mobBuildTouch(); }
+    set(true);
+  }, true);
+  addEventListener('keydown', e=>{ if (MOB.hybrid && MOB.hyShow && !e.repeat && e.isTrusted) set(false); }, true);
+}
+
 /* ---------------------------------------------------------------- CSS */
 injectCSS(`
 :root{ --mob-mid-x:50vw; --mob-mid-w:92vw; --mob-t:0px; --mob-r:0px; --mob-b:0px; --mob-l:0px; --mob-util-w:0px; --mob-util-bottom:60px; --mob-mm:96px; --mob-mm-top:70px;
@@ -44014,7 +44159,7 @@ html.touchUI #pause > :last-child, html.touchUI #results > :last-child, html.tou
 .mStickRing{ position:absolute; left:0; top:0; border-radius:50%; pointer-events:none; box-sizing:border-box; }
 .mGhost{ border:1.5px dashed rgba(242,237,228,.30); background:radial-gradient(circle, rgba(255,255,255,.05), rgba(10,13,18,.12) 70%); transition:opacity .4s; }
 .mGhost i{ position:absolute; left:50%; top:50%; width:34%; height:34%; margin:-17% 0 0 -17%; border-radius:50%; border:1.5px solid rgba(242,237,228,.28); }
-.mGhost b{ position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:9px; letter-spacing:.3em; font-weight:600; opacity:.55; text-shadow:0 1px 6px #000; }
+.mGhost b{ position:absolute; left:0; right:0; bottom:-20px; text-align:center; font-size:11px; letter-spacing:.26em; font-weight:600; opacity:.7; text-shadow:0 1px 6px #000; }
 .mGhost.hide{ opacity:0; }
 .mGhost.used{ opacity:.55; }
 .mGhost.used b{ opacity:0; }
@@ -44190,6 +44335,7 @@ html.touchUI #controls .ctrlGrid{ display:none; }
 
 /* ---------------------------------------------------------------- boot */
 (function mobBoot(){
+  try { mobHybridInit(); } catch(e){}
   if (!isTouch) return;
   mobSettingsPanel(); mobGuide(); mobMenuTune(); mobIosTip();
   MOB.fpsCap = (function(){ const v = mobSetting('m_fps', '60'); return v === '30' ? 30 : (v === 'max' ? 0 : 60); })();
@@ -52279,17 +52425,28 @@ function rgMaterials(){
   const base = m.onBeforeCompile;
   m.onBeforeCompile = function(sh){
     base.call(this, sh);
-    sh.uniforms.uRgRock = { value:RGM.rockTex }; sh.uniforms.uRgDirt = { value:RGM.dirtTex };
+    sh.uniforms.uRgRock = { value:RGM.rockTex }; sh.uniforms.uRgDirt = { value:RGM.dirtTex }; sh.uniforms.uRgEdge = RG_EDGE;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec3 rgSurf; varying vec3 vRgSurf;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRgSurf = rgSurf;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uRgRock, uRgDirt; varying vec3 vRgSurf;')
+      .replace('#include <common>', '#include <common>\nuniform sampler2D uRgRock, uRgDirt; uniform vec2 uRgEdge; varying vec3 vRgSurf;')
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' +
+        '{ float rgE = smoothstep(uRgEdge.x, uRgEdge.y, length(vWPos.xz - cameraPosition.xz));\n' +
+        '  if (rgE > 0.0 && fract(52.9829189*fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) < rgE) discard; }')
       .replace('diffuseColor *= texelColor;',
         '{ float rgD = length(vWPos - cameraPosition);\n' +
         '  vec3 rgT = texelColor.rgb * vec3(1.03, 0.98, 1.09);\n' +
         '  rgT = mix(rgT, texture2D(uRgDirt, vWPos.xz*0.21).rgb, clamp(vRgSurf.y, 0.0, 1.0));\n' +
-        '  rgT = mix(rgT, texture2D(uRgRock, vWPos.xz*0.09 + vWPos.y*0.05).rgb, clamp(vRgSurf.x, 0.0, 1.0));\n' +
+        // Release 15.16 (far look): the rock is mapped triplanar -- a steep face took the top-down rock texture stretched into long
+        // vertical smears (the mountains read as smudged from any distance)
+        '  if (vRgSurf.x > 0.002){\n' +
+        '    vec3 rgB = abs(normalize(vWNrm)); rgB *= rgB; rgB *= rgB; rgB /= (rgB.x + rgB.y + rgB.z);\n' +
+        '    vec3 rgK = texture2D(uRgRock, vWPos.zy*0.09).rgb*rgB.x + texture2D(uRgRock, vWPos.xz*0.09).rgb*rgB.y + texture2D(uRgRock, vWPos.xy*0.09).rgb*rgB.z;\n' +
+        // (the rock / grass edge: the per-vertex weight broken up by a little noise -- big triangles on steep faces made it a staircase)
+        '    float rgRW = smoothstep(0.22, 0.78, vRgSurf.x + (wNoise(vWPos.xz*0.07 + vWPos.y*0.05) - 0.5)*0.42);\n' +
+        '    rgT = mix(rgT, rgK, rgRW);\n' +
+        '  }\n' +
         '  wGrassW = clamp((vColor.g - max(vColor.r, vColor.b))/max(vColor.g, 0.001)*2.2, 0.0, 1.0) * (1.0 - clamp(vRgSurf.x + vRgSurf.y, 0.0, 1.0));\n' +
         '  float rgR = vRgSurf.z;\n' +                                    // farm fields: crop rows / plough furrows up close
         '  if (abs(rgR) > 0.02){\n' +
@@ -52322,7 +52479,7 @@ function rgMaterials(){
   RGM.bridge = S({ color:C(0x9a9890), roughness:0.86, metalness:0 }); useSet(RGM.bridge, CTEX, 0.4); patchWorldShading(RGM.bridge, { grime:0.8, vary:0.5, stain:0.4 });
   RGM.rail = S({ color:C(0xa5adb4), roughness:0.38, metalness:0.55 }); patchWorldShading(RGM.rail, { rust:0.1 });
   RGM.rock = S({ color:C(0x8b8780), roughness:0.92, metalness:0 }); RGM.rock.map = RGM.rockTex; patchWorldShading(RGM.rock, { vary:0.7 });
-  RGM.pine = S({ color:C(0x3b5a3a), roughness:0.95, metalness:0 }); patchWorldShading(RGM.pine, {});
+  RGM.pine = S({ color:C(0x3b5a3a), roughness:0.95, metalness:0 }); patchWorldShading(RGM.pine, { leaf:1 });   // gfx25: leaf look
   RGM.post = S({ color:C(0xe8e6df), roughness:0.6, metalness:0 }); patchWorldShading(RGM.post, { grime:0.5 });
   RGM.refl = S({ color:C(0xffb347), roughness:0.3, metalness:0, emissive:C(0xff9a2a), emissiveIntensity:0.6 }); patchWorldShading(RGM.refl, {});
   RGM.signPost = S({ color:C(0x8e969c), roughness:0.45, metalness:0.5 }); patchWorldShading(RGM.signPost, { rust:0.1 });
@@ -52501,11 +52658,24 @@ const RG_COL = {
 };
 /* albedo + detail weights (rock, dirt, field rows) for a terrain vertex; writes col[k*3..], sw[k*3..] (no allocations).
    sw.z = field rows: |z| = how much the row stripes show, sign = which way they run (the shader draws them up close) */
+/* Release 15.16 (far look): how rocky the ground looks, CONTINUOUS in slope and height (the surface class flips between grass and
+   rock from one vertex to the next: on the 16-32 m grids of the distant chunks every mountain side was a green / grey staircase).
+   The class itself (physics, sounds) is unchanged. */
+function rgRockT(x, z, h, ny){
+  // (a band around the class thresholds -- ny < 0.80 rock; mountains: ny < 0.90 above 260 m -- so open grass stays grass)
+  let t = 1 - rgSstep(0.765, 0.835, ny);
+  const m = rgMountainMask(x, z);
+  if (m > 0.45) t = Math.max(t, (1 - rgSstep(0.875, 0.925, ny))*rgSstep(245, 275, h)*rgSstep(0.5, 0.6, m));
+  const sl = 600 + 50*rgNoise(x*0.003, z*0.003);
+  return Math.max(t, rgSstep(sl - 50, sl, h));             // toward the snow line: rock first
+}
 function rgVertexLook(x, z, h, ny, sid, col, sw, k){
   let r, g, b, wr = 0, wd = 0, rows = 0, t;
   const v1 = rgNoise(x*0.0035 + 3.3, z*0.0035 - 1.1), v2 = rgNoise(x*0.021, z*0.021 + 7.7);
   const K = RG_COL;
-  switch (RG_SURF[sid]){
+  let cls = RG_SURF[sid], rockT = -1;
+  if (cls === 'rock' || cls === 'grass'){ rockT = rgRockT(x, z, h, ny); if (cls === 'rock' && rockT < 0.999) cls = 'grass'; }
+  switch (cls){
     case 'asphalt': case 'gravel': r = K.gravel[0]; g = K.gravel[1]; b = K.gravel[2]; wd = 1; break;
     case 'dirt': {
       const fm = rgFieldAt(x, z);
@@ -52551,6 +52721,11 @@ function rgVertexLook(x, z, h, ny, sid, col, sw, k){
         const fo = rgForestAt(x, z);
         if (fo > 0.05){ t = fo*0.75; r += (K.forest[0] - r)*t; g += (K.forest[1] - g)*t; b += (K.forest[2] - b)*t; }
         if (h > 420){ t = rgSstep(420, 640, h)*0.6; r += (K.rock[0] - r)*t; g += (K.rock[1] - g)*t; b += (K.rock[2] - b)*t; wr = t; }
+        // (far look) the rock of steep / high ground blended in continuously (the same colour the 'rock' case paints)
+        if (rockT > 0){
+          const q2 = 0.5 + 0.5*v1, rr = K.rock[0] + (K.rockD[0] - K.rock[0])*q2, rg = K.rock[1] + (K.rockD[1] - K.rock[1])*q2, rb = K.rock[2] + (K.rockD[2] - K.rock[2])*q2;
+          r += (rr - r)*rockT; g += (rg - g)*rockT; b += (rb - b)*rockT; wr = Math.max(wr, rockT);
+        }
       }
       wd = Math.max(0, (0.88 - ny)*3);
     }
@@ -53153,6 +53328,9 @@ function rgPineCardTex(){
   g.fillStyle = '#4a3a2a'; g.fillRect(W/2 - 2.5, H*0.80, 5, H*0.20);
   for (let k = 0; k < 5; k++){
     const top = H*(0.04 + k*0.16), wid = W*(0.16 + k*0.075), bot = top + H*0.30;
+    // (far look) a solid tier under the needle clumps: the small mip levels keep the tree's body instead of thinning it to a sliver
+    g.fillStyle = 'rgb(' + (31 + k*2) + ',' + (66 + k*3) + ',44)';
+    g.beginPath(); g.moveTo(W/2, top + H*0.01); g.lineTo(W/2 + wid*0.86, bot - H*0.02); g.lineTo(W/2 - wid*0.86, bot - H*0.02); g.closePath(); g.fill();
     for (let q = 0; q < 26; q++){
       const t = Math.random(), y = top + (bot - top)*t, hw = wid*t;
       g.fillStyle = 'rgba(' + (30 + q % 3*6) + ',' + (68 + (q*7) % 22) + ',' + (44 + (q*5) % 14) + ',1)';
@@ -53624,6 +53802,7 @@ function rgRefresh(){
   const det = (typeof detailLevel === 'function') ? detailLevel() : 2;
   const R = [640, 860, 1080][tier] * (det === 0 ? 0.85 : 1) * Math.max(0.7, Math.min(1.25, rgView())) * ((typeof p16StreamMul === 'function') ? p16StreamMul() : 1);
   RGS.radius = R;
+  RG_EDGE.value.x = R*0.74; RG_EDGE.value.y = R*0.93;      // (far look) the loaded land dissolves into the far land before its chunks end
   const fx = RGX.focus.x, fz = RGX.focus.z;
   const C0 = RG.chunk, half = RG.half + C0;
   const i0 = Math.floor((cam.x - R)/C0), i1 = Math.floor((cam.x + R)/C0), j0 = Math.floor((cam.z - R)/C0), j1 = Math.floor((cam.z + R)/C0);
@@ -53753,6 +53932,10 @@ function rgMaskSet(ch, on){
 }
 
 /* ---------------------------------------------------------------- the far view (own pass, own depth range) */
+/* Release 15.16 (far look): where the streamed terrain ends, it dissolves (a screen dither over the last ~20 % of the radius) into the
+   far terrain drawn under it -- the edge of the loaded chunks was a staircase of 256 m squares in two different colours on every
+   mountain side. x = dissolve start, y = gone (m, horizontal distance from the camera); rgRefresh keeps it on RGS.radius. */
+const RG_EDGE = { value: new T.Vector2(1e7, 1e7 + 1) };
 const RGF = { scene:null, cam:null, sky:null, mat:null, tiles:[], built:false, gen:null, roadsRev:-1, roads:null, lights:null, lightList:[], skyline:null, ok:false, uni:null,
               job:null, boxes:null, boxesDirty:false, lightsDirty:false, staticDone:false };
 /* aerial haze length at ground level (m): 1 - exp(-distance / L) of the fog colour; L grows with the height of the sight line */
@@ -53773,12 +53956,12 @@ const RG_FAR_FRAG = `
 uniform vec3 uSunDir, uSunCol, uRimDir, uRimCol, uSkyCol, uGndCol, uAmb;
 uniform vec3 uFogColor, uFogGlow, uFogSun, uSunW; uniform vec4 uRgHaze;
 uniform float uFogNear, uFogFar, uFogH, uFogHAmt, uSlab, uWTime, uWCover, uWCScale, uWCStr, uWater, uWin, uWLite;
-uniform sampler2D uMask;
+uniform sampler2D uMask; uniform vec2 uRgEdge;
 varying vec3 vWP; varying vec3 vN; varying vec3 vCol;
 ` + W_NOISE + `
 void main(){
   vec2 mu = (vWP.xz + 12288.0) / 24576.0;
-  if (mu.x > 0.0 && mu.x < 1.0 && mu.y > 0.0 && mu.y < 1.0 && texture2D(uMask, mu).r > 0.5) discard;
+  if (mu.x > 0.0 && mu.x < 1.0 && mu.y > 0.0 && mu.y < 1.0 && texture2D(uMask, mu).r > 0.5 && length(vWP.xz - cameraPosition.xz) < uRgEdge.x) discard;
   vec3 n = normalize(vN);
   vec3 alb = vCol;
   vec3 light = mix(uGndCol, uSkyCol, n.y*0.5 + 0.5) + uAmb + uSunCol * max(dot(n, uSunDir), 0.0) + uRimCol * max(dot(n, uRimDir), 0.0);
@@ -53837,7 +54020,7 @@ function rgFarInit(){
     uFogColor:{ value:new T.Color() }, uFogNear:{ value:240 }, uFogFar:{ value:1000 },
     uFogGlow:W2.U.uFogGlow, uFogSun:W2.U.uFogSun, uSunW:W2.U.uSunW, uFogH:W2.U.uFogH, uFogHAmt:W2.U.uFogHAmt, uRgHaze:W2.U.uRgHaze,
     uWTime:WORLD.uTime, uWCover:WORLD.uCover, uWCScale:WORLD.uCloudScale, uWCStr:WORLD.uCloudStrength, uWLite:WORLD.uLite || (WORLD.uLite = { value:1 }),
-    uMask:{ value:RG_MASK.tex }, uSlab:{ value:RG.slab }
+    uMask:{ value:RG_MASK.tex }, uSlab:{ value:RG.slab }, uRgEdge:RG_EDGE
   };
   // every far material exists from the start (2 shader programs: land / water / buildings, the night lights) and
   // is compiled by rgStart in the menu -- never later, when the far view finishes building in the middle of a ride
@@ -72180,6 +72363,235 @@ function* w23LiftBuild(ch){
   } catch(e){ console.warn('bike25: fat bike price not applied', e); }
 })();
 /* =========================================================================
+   GFX25 (Release 15.16, stream gfx25) -- "make the graphics better": the per-time tables that live outside the owned files.
+   The light / colour tables themselves are in light12_look.js (day + night), world_daynight.js (golden hour + grade) and
+   world_sky.js (fog curve). Here: Dusk City's fog distances (far12_view.js keeps them in FARV.mapFog; the graphics mode's
+   view multiplier still scales them) -- the near / mid distance clearer, the far fade where it was.
+   ========================================================================= */
+(function gfx25Fog(){
+  if (typeof FARV === 'undefined' || !FARV.mapFog || MAP.key !== 'dusk') return;
+  FARV.mapFog.day  = [300, 1000];      // was 240..1000
+  FARV.mapFog.gold = [250, 900];       // was 180..900
+  FARV.mapFog.night = [150, Math.max(800, FARV.mapFog.night[1] || 800)];   // was 120..800
+  try { farFogApply(); } catch(e){}
+})();
+
+/* =========================================================================
+   GFX25 FAR SHADOWS (Release 15.16, stream gfx25) -- High / Ultra / Extreme only
+   The sun's shadow map covers a box of ~80 x 130 m around the rider (light12_sun.js), so beyond ~60 m the city never
+   shadowed itself: no long building shadows across the avenues at golden hour, the far street lit as flat as the near one.
+   Now a second, coarse cascade:
+     - one more depth map from the sun (2048^2, ~24 MB of GPU memory) covering ~640 x 640 m, centred ~200 m ahead of the camera
+       (it reaches ~520 m up the street you look down), moved in whole texels in the light's own plane (no crawling edges);
+     - drawn every 3rd frame (every 2nd on Ultra / Extreme) as a plain depth render from the sun (three's RGBA-packed depth
+       material, back faces, like its own shadow pass) of the big casters only: each city cell's merged far-skyline mesh
+       (walls + roofs, 1 draw per cell, see far12_view.js; layer 5 -- everything else stays out of this pass);
+     - read by the world materials only (patchWorldShading: buildings, streets, terrain), for the sun only: the darker of the
+       near map (sharp, fading out at its box edge) and the far map (4 bilinear PCF taps, normal offset) -- so beyond the near
+       box the far map takes over and inside it the far map only adds the long shadows of towers the near map cannot reach;
+     - no light is added (NUM_DIR_LIGHTS / shadow counts unchanged: no program for anything else changes).
+   Medium and below / Toaster / phones in Low: nothing runs (uFarP.x = 0, no pass, no extra draw).
+   ========================================================================= */
+var GFX25F = {             // var: patchWorldShading's compile hook checks it with typeof (no TDZ)
+  U: { uFarMat:{ value:new T.Matrix4() }, uFarMap:{ value:null }, uFarP:{ value:new T.Vector4(0, 1/2048, 0, 0) } },
+  light:null, cam:null, tick:0, on:false, size:0, half:320, ahead:0.62, dist:900, depth:1500, every:3,
+  casters:[], drawn:0, ms:0, lastAt:0
+};
+window.__gfx25f = GFX25F;
+/* the GLSL (world materials only, via patchWorldShading -- patches/zzzzzzzzzzzz_gfx25.py) */
+var GFX25_FAR_PARS = `
+uniform mat4 uFarMat; uniform sampler2D uFarMap; uniform vec4 uFarP;    // x on, y texel (uv), z depth bias, w normal offset (m)
+float gfx25FarTap(vec2 uv, float z){ return step(z, unpackRGBAToDepth(texture2D(uFarMap, uv))); }
+float gfx25Sun(float nearS, vec4 nsc){
+  if (uFarP.x < 0.5) return nearS;
+  vec4 fc = uFarMat * vec4(vWPos + normalize(vWNrm) * uFarP.w, 1.0);
+  vec2 fe = min(fc.xy, 1.0 - fc.xy);
+  float fin = smoothstep(0.0, 0.05, min(fe.x, fe.y));
+  if (fin <= 0.0 || fc.z > 1.0) return nearS;
+  float z = fc.z - uFarP.z, tx = uFarP.y;
+  vec2 p = fc.xy / tx - 0.5, fr = fract(p), b = (floor(p) + 0.5) * tx;
+  float s = mix(mix(gfx25FarTap(b, z), gfx25FarTap(b + vec2(tx, 0.0), z), fr.x),
+                mix(gfx25FarTap(b + vec2(0.0, tx), z), gfx25FarTap(b + vec2(tx), z), fr.x), fr.y);
+  s = mix(1.0, s, fin);
+  // the near map (sharp, fading out at its box edge) and the far map (coarse, every big caster up to ~900 m up-sun): the darker
+  // wins, so inside the near box the far map only adds what the near one misses and the seam needs no blend band
+  return min(nearS, s);
+}
+`;
+var GFX25_LFB = (function(){
+  const ch = T.ShaderChunk.lights_fragment_begin;
+  const k = 'getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )';
+  if (ch.split(k).length !== 2) return ch;            // three changed under us: no far shadow, nothing breaks
+  return ch.replace(k, 'gfx25Sun( ' + k + ', vDirectionalShadowCoord[ i ] )');
+})();
+
+const _g25Clr = new T.Color(), _g25F = new T.Vector3(), _g25R = new T.Vector3(), _g25U = new T.Vector3(), _g25D = new T.Vector3(), _g25C = new T.Vector3();
+
+function gfx25FarWant(){
+  if (typeof GFXP === 'undefined' || typeof GAME === 'undefined' || GAME === 'loading') return 0;
+  const s = GFXP.shadows;
+  if (GFXP.shade === 'simple') return 0;
+  return (s === 'high' || s === 'ultra' || s === 'extreme') ? 2048 : 0;     // 2048^2 everywhere: ~24 MB of GPU memory
+}
+function gfx25FarInit(size){
+  if (!GFX25F.light){
+    const L = new T.DirectionalLight(0xffffff, 0);          // never added to the scene: only its shadow camera / map are used
+    L.castShadow = true;
+    const c = L.shadow.camera;
+    c.left = -GFX25F.half; c.right = GFX25F.half; c.top = GFX25F.half; c.bottom = -GFX25F.half;
+    c.near = 1; c.far = GFX25F.depth; c.updateProjectionMatrix();
+    L.shadow.autoUpdate = true;
+    GFX25F.light = L;
+    L.shadow.camera.layers.set(5);                          // only the big casters (layer 5) are drawn into the far map
+  }
+  if (!GFX25F.depthMat){
+    // the same depth program three's own shadow pass uses for front-side casters (RGBA packing, back faces): +0 programs
+    GFX25F.depthMat = new T.MeshDepthMaterial({ depthPacking:T.RGBADepthPacking, side:T.BackSide });
+  }
+  if (!GFX25F.rt || GFX25F.rt.width !== size){
+    if (GFX25F.rt) GFX25F.rt.dispose();
+    GFX25F.rt = new T.WebGLRenderTarget(size, size, { minFilter:T.NearestFilter, magFilter:T.NearestFilter, generateMipmaps:false });
+    GFX25F.rt.texture.name = 'gfx25.farShadow';
+  }
+  GFX25F.light.shadow.mapSize.set(size, size);
+  GFX25F.size = size;
+}
+/* the big casters: the city cells' far meshes (walls + roofs, toggled visible for the pass). The countryside's tree pools were
+   tried too: their instanced depth variants cost +3 programs for shadows the near map already draws within ~60 m -- left out */
+function gfx25FarCasters(){}
+const GFX25_FAR_TMP = [];
+function gfx25FarPass(){
+  const L = GFX25F.light, sh = L.shadow, sc = sh.camera, ms = GFX25F.size;
+  // centre: ahead of the camera along the view, snapped to whole texels in the light's plane
+  _g25D.copy(SUNDIR).normalize();
+  camera.getWorldDirection(_g25F); _g25F.y = 0;
+  const fl = _g25F.length();
+  if (fl > 1e-3) _g25F.multiplyScalar(GFX25F.half * GFX25F.ahead / fl); else _g25F.set(0, 0, 0);
+  _g25R.set(0, 1, 0).cross(_g25D);
+  if (_g25R.lengthSq() < 1e-8) _g25R.set(1, 0, 0); else _g25R.normalize();
+  _g25U.copy(_g25D).cross(_g25R);
+  _g25C.set(camera.position.x + _g25F.x, 0, camera.position.z + _g25F.z);
+  const tx = (sc.right - sc.left) / ms;
+  const r = Math.round(_g25C.dot(_g25R) / tx) * tx, u = Math.round(_g25C.dot(_g25U) / tx) * tx, d = _g25C.dot(_g25D);
+  _g25C.copy(_g25R).multiplyScalar(r).addScaledVector(_g25U, u).addScaledVector(_g25D, d);
+  L.target.position.copy(_g25C);
+  L.position.copy(_g25C).addScaledVector(_g25D, GFX25F.dist);
+  L.target.updateMatrixWorld(); L.updateMatrixWorld();
+  // city cells within reach: their merged far mesh casts for this pass only
+  const cx = _g25C.x, cz = _g25C.z, reach = GFX25F.half * 1.5 + 160, list = GFX25_FAR_TMP;
+  list.length = 0;
+  if (typeof CULL_CELLS !== 'undefined'){
+    for (let i = 0; i < CULL_CELLS.length; i++){
+      const c = CULL_CELLS[i], m = c.far;
+      if (!m) continue;
+      const dx = c.cx - cx, dz = c.cz - cz;
+      if (dx*dx + dz*dz > (reach + c.r)*(reach + c.r)) continue;
+      m.layers.enable(5);                          // (r128's Layers has no isEnabled)
+      list.push(m, m.visible ? 1 : 0);
+      m.visible = true;
+    }
+  }
+  // a plain render of layer 5 from the light's camera with the depth material (three's shadowMap.render() needs the state of a
+  // render in progress, so the map is drawn like any other target): no near shadow pass inside it, white = nothing in the way
+  sh.updateMatrices(L);                                   // positions sh.camera, computes sh.matrix (world -> map uv + depth)
+  const SM = renderer.shadowMap, au = SM.autoUpdate, nu = SM.needsUpdate;
+  const ri = renderer.info.render, c0 = ri.calls;
+  const rt0 = renderer.getRenderTarget(), ov = scene.overrideMaterial, ac = renderer.autoClear;
+  renderer.getClearColor(_g25Clr); const ca = renderer.getClearAlpha();
+  SM.autoUpdate = false; SM.needsUpdate = false;
+  try {
+    renderer.setRenderTarget(GFX25F.rt);
+    renderer.setClearColor(0xffffff, 1); renderer.clear(true, true, false);
+    scene.overrideMaterial = GFX25F.depthMat; renderer.autoClear = false;
+    renderer.render(scene, sc);
+  } catch(e){ GFX25F.err = String(e); }
+  scene.overrideMaterial = ov; renderer.autoClear = ac;
+  renderer.setRenderTarget(rt0); renderer.setClearColor(_g25Clr, ca);
+  SM.autoUpdate = au; SM.needsUpdate = nu;
+  for (let i = 0; i < list.length; i += 2){ const m = list[i]; m.visible = !!list[i + 1]; }
+  GFX25F.drawn = ri.calls - c0;
+  if (GFX25F.err) return false;
+  GFX25F.U.uFarMat.value.copy(sh.matrix);
+  GFX25F.U.uFarMap.value = GFX25F.rt.texture;
+  const P = GFX25F.U.uFarP.value;
+  P.y = 1 / ms;
+  P.z = 0.45 / (sc.far - sc.near);              // depth bias: 0.45 m
+  P.w = tx * 1.6;                                // normal offset: 1.6 texels
+  return true;
+}
+addFrameHook(function gfx25FarTick(){
+  const want = (typeof SUNDIR !== 'undefined' && typeof renderer !== 'undefined' && renderer.shadowMap.enabled) ? gfx25FarWant() : 0;
+  const P = GFX25F.U.uFarP.value;
+  if (!want || GFX25F.off || (typeof W2_F === 'number' && W2_F > 0.80)){   // off (GFX25F.off: A/B checks), or deep night (the moon's shadows stay near)
+    P.x = 0; GFX25F.on = false; return;
+  }
+  gfx25FarInit(want);
+  gfx25FarCasters();
+  GFX25F.every = (GFXP.shadows === 'high') ? 3 : 2;
+  if (GFX25F.on && (++GFX25F.tick % GFX25F.every) !== 0) return;
+  GFX25F.tick = 0;
+  const t0 = performance.now();
+  const ok = gfx25FarPass();
+  GFX25F.ms = performance.now() - t0;
+  P.x = ok ? 1 : 0; GFX25F.on = ok;
+});
+
+/* =========================================================================
+   GFX25 TREES (Release 15.16, stream gfx25) -- "trees are low-poly green blobs"
+   Same geometry, instancing, streaming and tree counts; the leaf materials (PROP.leaf / leafDark: the city's round trees, the
+   countryside broadleaves and bushes; RGM.pine: the conifers) get, through patchWorldShading (one uniform, uWLeaf; every other
+   world material skips it on that uniform, so no program is added and Toaster's Lambert swap still takes them):
+     - lumpy crowns: the lobe surface pushed in / out by a smooth 3D wave of the world position (no perfect spheres);
+     - wind: a slow sway of the crown plus a quick leafy flutter (vertex shader, uWTime);
+     - two-tone colour: cool, darker undersides and inner leaves, warm sun-lit tops, a per-clump variation;
+     - normals bent toward the sky, so a crown shades as one soft mass instead of a pile of balls;
+     - a soft translucent edge when you look toward the sun through the leaves (backlit glow, stronger at the silhouette).
+   ========================================================================= */
+var GFX25_LEAF = {
+  pars: `
+uniform float uWLeaf; uniform vec3 uLeafSun;
+`,
+  v: `
+if (uWLeaf > 0.0){
+  vec4 g25p = modelMatrix * vec4(transformed, 1.0);
+  #ifdef USE_INSTANCING
+  g25p = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
+  #endif
+  float g25n = sin(g25p.x*1.7 + g25p.y*1.1 + 1.3) * sin(g25p.z*1.5 - g25p.y*0.9 + 0.7) + 0.5*sin(g25p.x*3.9 - g25p.z*3.3 + g25p.y*2.7);
+  transformed += objectNormal * g25n * 0.13 * uWLeaf;
+  float g25t = uWTime;
+  vec3 g25w = vec3(sin(g25t*1.05 + g25p.x*0.045 + g25p.z*0.031), 0.0, cos(g25t*0.83 + g25p.z*0.047 + g25p.x*0.02)) * 0.075;
+  g25w += vec3(sin(g25t*5.3 + g25p.y*3.1 + g25p.x*2.0), 0.6*sin(g25t*4.1 + g25p.x*2.7), cos(g25t*6.1 + g25p.z*2.9)) * 0.022;
+  transformed += g25w * uWLeaf;
+}
+`,
+  tone: `
+if (uWLeaf > 0.0){
+  vec3 lwn = normalize(vWNrm);
+  float lup = smoothstep(-0.55, 0.85, lwn.y);
+  float lvar = wNoise(vWPos.xz*0.42 + vWPos.y*0.55 + 3.7);
+  diffuseColor.rgb *= mix(vec3(0.60, 0.72, 0.78), vec3(1.12, 1.10, 0.84), lup) * (0.84 + 0.32*lvar);
+}
+`,
+  nrm: `
+if (uWLeaf > 0.0) normal = normalize(normal + (viewMatrix * vec4(0.0, 0.62, 0.0, 0.0)).xyz);
+`,
+  sss: `
+if (uWLeaf > 0.0){
+  vec3 lV = normalize(cameraPosition - vWPos);
+  float lb = pow(max(dot(-lV, uSunW), 0.0), 3.0);
+  float lr = 1.0 - abs(dot(normalize(vWNrm), lV));
+  reflectedLight.directDiffuse += material.diffuseColor * uLeafSun * lb * (0.25 + 0.75*lr) * 0.55;
+}
+`
+};
+(function gfx25LeafFlags(){
+  try {
+    [PROP.leaf, PROP.leafDark].forEach(m=>{ if (m && m.userData && m.userData.worldOpts){ m.userData.worldOpts.leaf = 1; m.needsUpdate = true; } });
+  } catch(e){}
+})();
+
+/* =========================================================================
    GFXSAFE25 -- Release 15.16: "when you change your graphics mode you crash like crashes your game"
    1. NEW SHADERS WITHOUT THE BIG FREEZE. A mode change that turns the post effects on / off (POST.setLevel: tone mapping, output
       encoding and the sky reflections change for every material) or Toaster's simple lighting on / off (toaster19: Lambert <-> PBR)
@@ -72415,6 +72827,1029 @@ function gfxSafeTrialEnd(){ GFXSAFE.trial = null; try { localStorage.removeItem(
   try { gfxApply(gfxTarget(), { initial:true }); } catch(e){}          // (the first apply ran at gfx14's load, before this module)
   try { gfxSave(); } catch(e){}
   try { if (typeof PHONE16 !== 'undefined') PHONE16.crashToast = 'Graphics: back to ' + back + ' - ' + bad + ' was too much for this computer'; } catch(e){}
+})();
+/* =========================================================================
+   FAR25 LOOK -- Release 15.16: "when you look at stuff from far it looks bad" (integrator)
+   1. FOLIAGE KEEPS ITS BODY FAR AWAY. Every alpha-cut world material (tree cards, conifer cones, leaf clusters, grass cards) cut
+      its leaves at alpha 0.5; the texture's smaller mip levels average the thin leaves away, so a tree 150 m out was cut down to a
+      few dark slivers (the far hills looked sprinkled with specks). The cut-off now eases from 0.5 near to ~0.2 far
+      (patchWorldShading's alphatest step, every world material with an alpha cut; no program added).
+   2. (region14_core.js, the terrain shader) the rock is mapped triplanar and its edge with the grass is broken up by noise:
+      steep mountain faces were long vertical smears with a staircase edge.
+   ========================================================================= */
+var FAR25_ALPHA = `
+#ifdef ALPHATEST
+  if ( diffuseColor.a < ALPHATEST * mix(1.0, 0.42, smoothstep(22.0, 190.0, length(vWPos - cameraPosition))) ) discard;
+#endif
+`;
+
+/* =========================================================================
+   RIDE25 -- Release 15.16 wave 2 (stream ride25): push scooters that ride like push scooters.
+   1. A REAL KICK. W on a push scooter used to be a motor (a 0.85 s "kick cycle" that pushed at 11 m/s^2 and reached 14 m/s in
+      about 3 s) and the rider never took a foot off the deck. Now W is a kick STROKE: the back foot steps down beside the deck,
+      plants, pushes back (the push is a smooth half-sine force while the foot is on the ground), lifts and steps back on.
+      Every stroke adds speed, less and less as you go faster (a foot can only push so fast: J0 * (1 - (v/vk)^2)), held W keeps
+      a natural rhythm (a short glide between strokes that grows with speed), a fresh tap starts the next stroke at once, so
+      kicking in rhythm is quicker than holding. Off W the scooter COASTS: low rolling drag + a little constant rolling
+      resistance, so a coast fades slowly instead of dying in 3 s. The physics top speed is unchanged (hills, ramps, the boost).
+   2. CARVING WITH A LEAN. Scooters (push and electric) lean into a turn from the turn they are really making
+      (lean = atan(v * yaw rate / g), scaled), instead of a fixed 12 deg roll whatever the speed.
+   3. THE KICK IN THE RIDER POSE (the local rider): while the back foot is down the hips drop, the torso leans in a touch and
+      the back leg follows the kick path (grip12Pose is wrapped; the standing leg and the arms are solved by grip12 as before).
+   API: RIDE25 (state, for tests: RIDE25.kick.n strokes, .foot 0..1 how far the foot is down), RIDE25_K (the tune), ride25Kick()
+   ========================================================================= */
+const RIDE25 = { on:true, kick:{ active:false, t:0, T:0, tp:0, ph:0, foot:0, w:0, n:0, glide:9, upPrev:false, J:0 }, roll:0, yaw:null };
+const RIDE25_K = {
+  J0:2.00, vk:13.5,               // m/s a stroke adds from a standstill; the foot can't push past vk (integrator: was 1.7 / 11 -- tailwhips and
+                                   // barspins off the small kickers need ~10 m/s: held W ~9, kicked in rhythm ~10.5)
+  reach:0.13, rec:0.27,            // s: the foot down to the ground / back up onto the deck
+  L:0.55, plantMin:0.12, plantMax:0.40,   // the push: L metres of ground under the foot, between these times
+  gap0:0.06, gapK:0.045,           // W held: the glide between strokes, s (+ per m/s)
+  rr:0.12,                         // m/s^2 rolling resistance on top of the (lower) class drag
+  drop:0.065, leanK:0.12,          // the body over a kick: hips down (m), torso forward (rad)
+  rollK:0.50, rollMax:0.45, eRollK:0.42, eRollMax:0.36, rollRate:9   // lean = atan(v*yaw rate/g)*k, capped (26 / 21 deg)
+};
+function ride25Smooth(x){ x = x < 0 ? 0 : x > 1 ? 1 : x; return x*x*(3 - 2*x); }
+/* the old W drive stays where the world was tuned around it: under the G boost / a turbo strip, and on Air Canyon (map 'jump') */
+function ride25OldDrive(){ return (bike.boostT > 0) || (typeof MAP !== 'undefined' && MAP && MAP.id === 'jump'); }
+
+/* ---------------------------------------------------------------- physics */
+function ride25Kick(dt, In){
+  const K = RIDE25.kick, P = RIDE25_K;
+  const vx = bike.vel.x, vz = bike.vel.z, v = Math.sqrt(vx*vx + vz*vz);
+  const ok = bike.state === 'ride' && !In.crouch && !In.manual && !In.stoppie && !In.down && Math.abs(bike.manual || 0) < 0.06;
+  const up = !!In.up, edge = up && !K.upPrev;
+  K.upPrev = up;
+  if (K.active){
+    K.t += dt;
+    if (!ok && K.t < P.reach + K.tp) K.t = P.reach + K.tp;                 // hop / brake / wheelie mid-stroke: the foot comes back up
+    const t1 = K.t - P.reach;
+    if (ok && t1 > 0 && t1 < K.tp){
+      const a = K.J*(Math.PI/2)/K.tp*Math.sin(Math.PI*t1/K.tp);
+      bike.vel.x += Math.sin(bike.yaw)*a*dt; bike.vel.z += Math.cos(bike.yaw)*a*dt;
+    }
+    if (K.t >= K.T){ K.active = false; K.glide = 0; K.t = 0; }
+  } else {
+    K.glide += dt;
+    if (ok && (edge || (up && K.glide >= P.gap0 + P.gapK*v))){
+      K.active = true; K.t = 0; K.n++;
+      K.tp = Math.max(P.plantMin, Math.min(P.plantMax, P.L/Math.max(v, 0.6)));
+      K.T = P.reach + K.tp + P.rec;
+      const fxT = (RIDE25.fx && RIDE25.fx.top) || 1, vk = P.vk*fxT;
+      K.J = P.J0*Math.max(0, 1 - (v/vk)*(v/vk));
+    }
+  }
+  // rolling resistance (the class drag is low now, so a coast fades slowly but does stop)
+  if (bike.state === 'ride' && v > 0.02){
+    const d = Math.min(v, P.rr*dt);
+    bike.vel.x -= vx/v*d; bike.vel.z -= vz/v*d;
+  }
+  K.ph = K.active ? K.t/K.T : 0;
+  const r = P.reach/(K.T || 1), p = K.tp/(K.T || 1);
+  K.foot = K.active ? (K.ph < r ? ride25Smooth(K.ph/r) : K.ph < r + p ? 1 : 1 - ride25Smooth((K.ph - r - p)/(1 - r - p))) : 0;
+  K.w = K.active ? (K.ph < r ? ride25Smooth(K.ph/r) : K.ph < r + p ? 1 : 1 - ride25Smooth((K.ph - r - p)/((1 - r - p)*0.6))) : 0;
+  bike.kick = K.active && K.ph >= r && K.ph < r + p ? 1 : 0;
+}
+/* scooters lean into the turn they are really making */
+function ride25Carve(dt, y0, kickV){
+  if (bike.state !== 'ride'){ RIDE25.roll = bike.roll; return; }
+  const P = RIDE25_K, v = Math.hypot(bike.vel.x, bike.vel.z);
+  let w = (bike.yaw - y0)/Math.max(1e-4, dt);
+  if (w > 50 || w < -50) w = 0;
+  const k = kickV ? P.rollK : P.eRollK, mx = kickV ? P.rollMax : P.eRollMax;
+  let tgt = -Math.atan(v*w/9.81)*k;
+  tgt = tgt > mx ? mx : tgt < -mx ? -mx : tgt;
+  RIDE25.roll += (tgt - RIDE25.roll)*(1 - Math.exp(-P.rollRate*dt));
+  bike.roll = RIDE25.roll;
+}
+(function ride25Hooks(){
+  if (typeof updateRide !== 'function' || typeof physAccel !== 'function') return;
+  const _pa = physAccel;
+  physAccel = function(eOn, dt){
+    if (RIDE25.on && VEH && VEH.kick > 0 && !ride25OldDrive()) return 0;  // the kick stroke drives a push scooter (ride25Kick)
+    return _pa(eOn, dt);
+  };
+  const _ur = updateRide;
+  updateRide = function(dt, In){
+    const V = VEH, cat = (typeof FLEET_BY_ID !== 'undefined' && FLEET_CUR && FLEET_BY_ID[FLEET_CUR]) ? FLEET_BY_ID[FLEET_CUR].cat : '';
+    const kickV = RIDE25.on && V && V.kick > 0, scoot = RIDE25.on && (kickV || cat === 'escooter');
+    if (kickV && typeof HND !== 'undefined' && HND.prof && HND.prof.kickImp) HND.prof.kickImp = 0;   // the old tap impulse: the stroke does it now
+    const y0 = bike.yaw, v0 = Math.hypot(bike.vel.x, bike.vel.z), old = kickV && ride25OldDrive();
+    _ur(dt, In);
+    // a carve rolls round the turn: the grip step kills the sideways speed like a skid, which a motor hides but a kick can't --
+    // give back most of what a turn took beyond the rolling drag (push scooters; never when braking / bailing / off the ground)
+    if (kickV && !old && bike.state === 'ride' && !In.down && Math.abs(bike.yaw - y0) > 0.15*dt){
+      const v1 = Math.hypot(bike.vel.x, bike.vel.z), exp = v0*(1 - Math.exp(-(VEH.drag || 0.1)*dt)), lost = v0 - v1 - exp;
+      if (lost > 0 && v1 > 0.3){ const k = (v1 + lost*0.8)/v1; bike.vel.x *= k; bike.vel.z *= k; }
+    }
+    if (kickV && !old) ride25Kick(dt, In);
+    else if (RIDE25.kick.active || RIDE25.kick.w){ RIDE25.kick.active = false; RIDE25.kick.foot = RIDE25.kick.w = 0; }
+    if (scoot) ride25Carve(dt, y0, kickV); else RIDE25.roll = bike.roll;
+  };
+  // off the ground the stroke ends (the foot goes back to the deck) and the next landing starts a fresh rhythm
+  const _ua = updateAir;
+  updateAir = function(dt, In){
+    const K = RIDE25.kick;
+    if (K.active){ K.active = false; K.t = 0; }
+    if (K.foot > 0 || K.w > 0){ K.foot = Math.max(0, K.foot - dt*5); K.w = Math.max(0, K.w - dt*5); }
+    K.upPrev = !!(In && In.up);
+    return _ua(dt, In);
+  };
+})();
+
+/* ---------------------------------------------------------------- the kick in the rider pose */
+const _r25 = { S:new T.Vector3(), A:new T.Vector3(), c:new T.Vector3(), c2:new T.Vector3(), q:new T.Quaternion(), q2:new T.Quaternion(), qb:new T.Quaternion(),
+               fq:new T.Quaternion(), up:new T.Vector3(0, 1, 0), x:new T.Vector3(1, 0, 0), pole:new T.Vector3() };
+/* where the kicking (back, right) foot's sole is, in bikePivot space, at stroke phase u; out = [x, y, z, yaw, pitch] */
+function ride25KickPath(K, R, V, out){
+  const P = RIDE25_K, pr = R.pedalR, pf = R.pedalL, sole = V.sole;
+  const xs = pr.x + sole.x*-1, ys = pr.y + sole.y + 0.002, zs = pr.z + sole.z;
+  const xg = Math.min(xs - 0.10, -0.165), yg = 0.006, zA = pf.z - 0.05, zB = zs - 0.20;
+  const T = K.T || 1, r = P.reach/T, p = K.tp/T, u = K.ph;
+  if (u < r){
+    const s = ride25Smooth(u/r);
+    out[0] = xs + (xg - xs)*s; out[1] = ys + (yg - ys)*s + 0.05*Math.sin(Math.PI*s); out[2] = zs + (zA - zs)*s; out[3] = 0.55 + (0.08 - 0.55)*s; out[4] = 0;
+  } else if (u < r + p){
+    const s = (u - r)/p;
+    out[0] = xg; out[1] = yg; out[2] = zA + (zB - zA)*s; out[3] = 0.08; out[4] = 0.55*ride25Smooth((s - 0.45)/0.55);
+  } else {
+    const s = (u - r - p)/(1 - r - p), e = ride25Smooth(s), ex = ride25Smooth((s - 0.35)/0.65);
+    out[0] = xg + (xs - xg)*ex; out[1] = yg + (ys - yg)*e + 0.17*Math.sin(Math.PI*Math.min(1, s*1.1)); out[2] = zB + (zs - zB)*e;
+    out[3] = 0.08 + (0.55 - 0.08)*e; out[4] = 0.55*(1 - e) + 0.25*Math.sin(Math.PI*s);
+  }
+  return out;
+}
+const _r25path = [0, 0, 0, 0, 0];
+function ride25KickLeg(C, K){
+  const I = (typeof GRIP12_RIGS !== 'undefined') ? GRIP12_RIGS.get(C.K) : null; if (!I) return;
+  const B = C.B, F = I.foot.Right, up = B.RightUpLeg, leg = B.RightLeg, foot = B.RightFoot;
+  if (!F || !up || !leg || !foot || !C.K.RightUpLeg) return;
+  const V = C.V, path = ride25KickPath(K, C.R, V, _r25path), w = K.foot;
+  if (w <= 0.001) return;
+  // the foot frame in bike space (yaw about up, pitch about x), the sole point -> the ankle target (a flat foot stands on its middle,
+  // a lifting heel on the ball)
+  C.bikePivot.getWorldQuaternion(_r25.qb);
+  _r25.q.setFromAxisAngle(_r25.up, -path[3]); _r25.q2.setFromAxisAngle(_r25.x, path[4]); _r25.q.multiply(_r25.q2);
+  _r25.fq.copy(_r25.qb).multiply(_r25.q);
+  _r25.S.set(path[0], path[1], path[2]); C.bikePivot.localToWorld(_r25.S);
+  const hb = ride25Smooth(path[4]/0.40);
+  _r25.c.copy(F.mid).lerp(_r25.c2.copy(F.ball), hb).applyQuaternion(_r25.fq);
+  _r25.A.copy(_r25.S).sub(_r25.c);
+  // blend from where grip12 put the foot (on the deck) to the kick target as the foot leaves the deck
+  if (w < 0.999){ foot.getWorldPosition(_r25.c2); _r25.A.lerp(_r25.c2, 1 - w); }
+  up.quaternion.copy(C.K.RightUpLeg.q); leg.quaternion.copy(C.K.RightLeg.q);
+  riderAxis(_r25.pole, -(V.kneeOut || 0.3)*0.6, 0.10, 1.0);
+  twoBoneIK(up, leg, foot, _r25.A, _r25.pole);
+  // a leg too short for the ground (the rider stands tall now): the next frames drop the hips by what was missing, so the planted
+  // foot really reaches the ground (kept per vehicle: one stroke calibrates it)
+  if (w > 0.99){
+    foot.getWorldPosition(_r25.c2);
+    if (K.extraLk !== C.lk){ K.extraLk = C.lk; K.extra = 0; }
+    const gap = _r25.c2.distanceTo(_r25.A);
+    if (gap > 0.004) K.extra = Math.min(0.14, (K.extra || 0) + gap*0.8);
+  }
+  _r25.fq.multiply(F.Qf);
+  foot.getWorldQuaternion(_r25.q2);
+  _r25.q2.slerp(_r25.fq, w);
+  foot.parent.getWorldQuaternion(_r25.q); foot.quaternion.copy(_r25.q.invert().multiply(_r25.q2));
+  foot.updateMatrixWorld(true);
+}
+/* every rider stands naturally on a deck: the hips are solved per RIG from the legs it really has (riders are scaled to one height
+   but their legs differ: Mia / Bruno crouched at 110-125 deg knees, the X-Bot stood nearly straight at 145-170), so the knees settle
+   at RIDE25_K.knee whoever rides. Measured after each pose (the standing legs), applied to the next one (half a step at a time). */
+const R25_FIT = new WeakMap(), _r25f = { a:new T.Vector3(), b:new T.Vector3(), c:new T.Vector3(), m:new T.Matrix4() };
+RIDE25_K.knee = 150*Math.PI/180;
+function ride25FitAdj(C){ const st = R25_FIT.get(C.K); return (st && st.lk === C.lk) ? st.adj : 0; }
+function ride25FitPost(C, skipRight){
+  const B = C.B; if (!B.LeftUpLeg || !B.LeftLeg || !B.LeftFoot || !B.RightUpLeg || !B.RightLeg || !B.RightFoot) return;
+  let st = R25_FIT.get(C.K);
+  if (!st || st.lk !== C.lk){ st = { adj:0, lk:C.lk }; R25_FIT.set(C.K, st); }
+  _r25f.m.copy(C.bikePivot.matrixWorld).invert();
+  let sum = 0, n = 0;
+  for (let i = 0; i < 2; i++){
+    if (i === 1 && skipRight) continue;
+    const sd = i ? 'Right' : 'Left';
+    const H = B[sd + 'UpLeg'].getWorldPosition(_r25f.a).applyMatrix4(_r25f.m), Kn = B[sd + 'Leg'].getWorldPosition(_r25f.b).applyMatrix4(_r25f.m),
+          A = B[sd + 'Foot'].getWorldPosition(_r25f.c).applyMatrix4(_r25f.m);
+    const L1 = H.distanceTo(Kn), L2 = Kn.distanceTo(A), dx = H.x - A.x, dz = H.z - A.z, dy = H.y - A.y;
+    const h2 = L1*L1 + L2*L2 - 2*L1*L2*Math.cos(RIDE25_K.knee) - dx*dx - dz*dz;
+    if (h2 <= 0.01 || !(L1 > 0.1)) continue;
+    sum += Math.sqrt(h2) - dy; n++;
+  }
+  if (!n) return;
+  const want = Math.max(-0.10, Math.min(0.16, st.adj + sum/n));
+  st.adj += (want - st.adj)*0.5;
+}
+(function ride25PoseHook(){
+  if (typeof grip12Pose !== 'function') return;
+  const _gp = grip12Pose;
+  grip12Pose = function(C){
+    const V = C.V, lk = C.lk, R = C.R;
+    if (!RIDE25.on || !V || V.style !== 'deck' || !R || !lk || !lk.rs || !lk.rs.pedalL || (lk.rs.hipsY - lk.rs.pedalL[1]) < 0.70) return _gp(C);   // (seated rows keep their pose)
+    const K = RIDE25.kick, local = typeof GRIP12_LOCAL !== 'undefined' && C === GRIP12_LOCAL;
+    const kick = local && !!(VEH && VEH.kick > 0) && (K.w > 0.001 || K.foot > 0.001);
+    const hy = R.hipsY, ln = V.lean;
+    R.hipsY = hy + ride25FitAdj(C) - (kick ? (RIDE25_K.drop + (K.extraLk === lk ? (K.extra || 0) : 0))*K.w : 0);
+    if (kick) V.lean = ln + RIDE25_K.leanK*K.w;
+    try { _gp(C); } finally { R.hipsY = hy; V.lean = ln; }
+    try {
+      if (kick) ride25KickLeg(C, K);
+      const st = C.st || {};
+      if (!kick && st.state === 'ride' && !st.wf && !((st.crouch || 0) > 0.05)) ride25FitPost(C, false);
+    } catch(e){ if (!RIDE25.err){ RIDE25.err = e.message; console.warn('[ride25] scooter pose', e); } }
+  };
+})();
+/* =========================================================================
+   RIDE25 PARTS -- Release 15.16 wave 2 (stream ride25): "make it so you can change every thing for your bike / scooter".
+   The garage Customise tab gets a PARTS section: parts that change the SHAPE of the ride, through each builder's own params
+   (the same params the factory rows use), so a part is real geometry and the rider fits it (bar height moves the hands, a longer
+   deck moves the feet: the builders solve the rider landmarks from their geometry).
+     push scooters  deck length / width / shape, bar height / width / style, wheel size + core, clamp, pegs, brake, grip tape
+     e-scooters     bar height / width / style, stem, tyres, front suspension, fenders, lights, deck lights
+     BMX            wheels (spoked / 48 / mag / tri-spoke / disc), tyres, bars (style, rise, width), stem, pegs 0 / 2 / 4, brake
+     MTB + e-MTB    fork (sus / dual crown / rigid), tyres, bar width + rise, pedals, chain guide
+     road           rims (low / mid / deep), tyres (race / all-road / gravel), bar width, bottles
+     e-bikes        bars, saddle, tyres, rack, wheels, light        e-motos   fork, tyres, bars, pad, guards, light, fender
+     mopeds         tank, seat, fenders, headlight, bars, tyres, wheels, rack
+   Saved per vehicle inside the customisation (`pt` in dusk_line_cust_v1: { part key: option code }, ~100 bytes), so it rides in
+   custPack -> friends with this release see your parts (ghosts get their own build of that shape); older clients drop the unknown
+   key in custClean and show the stock shape. A part that can't be built falls back to the stock shape (never a broken ride).
+   Small physics effects (<= 5%): wider bars steer more, knobby tyres grip more off-road and roll a touch slower, slicks the other way.
+   API: ride25PartsDefs(id), ride25PartsGet(id), ride25PartsSet(id, pt) (tests / UI), ride25PartsClean(o), ride25PartsFx(id),
+        ride25PartsSummary(pt), ride25PartsSync(host, id) (the panel), ride25Rebuild(id)
+   ========================================================================= */
+const R25P_KEY = /^[a-z0-9]{1,4}$/, R25P_VAL = /^[a-z0-9]{1,8}$/;
+/* option: [code, label, params (object or fn(rowParams) -> object), fx?] ; the UI adds "Stock" (no override) in front */
+const R25P_FAM = {
+  pd15scoot: [
+    { k:'dl', g:'Deck', n:'Deck length', o:[['short', 'Short', P=> ({ dl:Math.max(0.46, (P.dl || 0.52) - 0.05) }), { steer:1.03 }], ['long', 'Long', P=> ({ dl:(P.dl || 0.52) + 0.06 }), { steer:0.97 }]] },
+    { k:'dw', g:'Deck', n:'Deck width', o:[['narrow', 'Narrow', { dw:0.112 }], ['wide', 'Wide', { dw:0.138 }]] },
+    { k:'ds', g:'Deck', n:'Deck shape', o:[['flat', 'Flat', { deck:'flat' }], ['flare', 'Flared', { deck:'flare' }], ['taper', 'Tapered', { deck:'taper' }], ['box', 'Box', { deck:'box' }]] },
+    { k:'gt', g:'Deck', n:'Grip tape', o:[['plain', 'Plain', { tape:'' }], ['logo', 'Logo', P=> ({ tape:P.tape || 'acc', tapeArt:'logo' })], ['stripe', 'Stripes', P=> ({ tape:P.tape || 'acc', tapeArt:'stripe' })], ['split', 'Split', P=> ({ tape:P.tape || 'white', tapeArt:'split' })]] },
+    { k:'bh', g:'Bars', n:'Bar height', o:[['low', 'Low', P=> ({ bar:(P.bar || 0.98) - 0.07 })], ['high', 'Tall', P=> ({ bar:(P.bar || 0.98) + 0.07 })]] },
+    { k:'bw', g:'Bars', n:'Bar width', o:[['narrow', 'Narrow', { bw:0.50 }, { steer:0.96 }], ['wide', 'Wide', { bw:0.66 }, { steer:1.04 }]] },
+    { k:'bs', g:'Bars', n:'Bar style', o:[['tbar', 'T-bar', { bars:'tbar' }], ['y', 'Y-bar', { bars:'y' }], ['over', 'Oversize', { bars:'oversize' }], ['swept', 'Swept', { bars:'swept' }]] },
+    { k:'cl', g:'Bars', n:'Clamp', o:[['scs', 'SCS', { clamp:'scs' }], ['ihc', 'IHC', { clamp:'ihc' }], ['hic', 'HIC', { clamp:'hic' }], ['4bolt', '4-bolt', { clamp:'4bolt' }]] },
+    { k:'ws', g:'Wheels', n:'Wheel size', o:[['110', '110 mm', { wr:0.055 }, { steer:1.02, top:0.98 }], ['120', '120 mm', { wr:0.060 }, { steer:0.99, top:1.02 }], ['125', '125 mm', { wr:0.0625 }, { steer:0.98, top:1.03 }]] },
+    { k:'wc', g:'Wheels', n:'Wheel core', o:[['hollow', 'Hollow', { spokes:0 }], ['s3', '3 spoke', { spokes:3 }], ['s5', '5 spoke', { spokes:5 }], ['s8', '8 spoke', { spokes:8 }]] },
+    { k:'pg', g:'Hardware', n:'Pegs', o:[['off', 'None', { pegs:false }], ['on', '2 pegs', { pegs:true }]] },
+    { k:'bk', g:'Hardware', n:'Brake', o:[['flex', 'Flex', { brake:'flex' }], ['alloy', 'Alloy', { brake:'alloy' }], ['none', 'None', { brake:'none' }]] }
+  ],
+  mo15scoot: [
+    { k:'bh', g:'Cockpit', n:'Bar height', o:[['low', 'Low', P=> ({ bar:(P.bar || 1.1) - 0.07 })], ['high', 'Tall', P=> ({ bar:(P.bar || 1.1) + 0.07 })]] },
+    { k:'bw', g:'Cockpit', n:'Bar width', o:[['narrow', 'Narrow', P=> ({ bw:Math.max(0.42, (P.bw || 0.56) - 0.07) }), { steer:0.96 }], ['wide', 'Wide', P=> ({ bw:(P.bw || 0.56) + 0.08 }), { steer:1.04 }]] },
+    { k:'bs', g:'Cockpit', n:'Bars', o:[['tbar', 'Straight', { bars:'tbar' }], ['moto', 'Moto', { bars:'moto' }]] },
+    { k:'st', g:'Cockpit', n:'Stem', o:[['single', 'Slim', { stem:'single' }], ['thick', 'Thick', { stem:'thick' }], ['curve', 'Curved', { stem:'curve' }], ['twin', 'Twin', { stem:'twin' }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['street', 'Street', { tread:0, solid:false }, { top:1.02, off:0.92 }], ['off', 'Off-road', { tread:16, solid:false }, { top:0.98, off:1.10 }], ['solid', 'Solid', { solid:true, tread:0 }, { grip:0.97 }]] },
+    { k:'su', g:'Wheels', n:'Front suspension', o:[['none', 'Rigid', { fsus:'none' }], ['spring', 'Spring', { fsus:'spring' }], ['dual', 'Dual spring', { fsus:'dual' }], ['hyd', 'Hydraulic', { fsus:'hyd' }]] },
+    { k:'fd', g:'Body', n:'Fenders', o:[['short', 'Short', { ffend:'arc', rfend:'arc' }], ['long', 'Long', { ffend:'high', rfend:'long' }], ['none', 'None', { ffend:'none', rfend:'none' }]] },
+    { k:'lt', g:'Body', n:'Headlight', o:[['stem', 'Stem', { light:'stem' }], ['bar', 'Bar', { light:'bar' }], ['wide', 'Wide', { light:'wide' }], ['twin', 'Twin', { light:'twin' }], ['none', 'None', { light:'none' }]] },
+    { k:'ne', g:'Body', n:'Deck lights', o:[['off', 'Off', { neon:false }], ['on', 'On', { neon:true }]] }
+  ],
+  bx15: [
+    { k:'wh', g:'Wheels', n:'Wheels', o:[['spoke', '36 spoke', { mags:0, solid:false, spokes:36 }], ['s48', '48 spoke', { mags:0, solid:false, spokes:48 }], ['mag', 'Mag 5', { mags:5, solid:false }], ['tri', 'Tri-spoke', { mags:3, solid:false }], ['disc', 'Disc', { solid:true, mags:0 }, { top:1.01 }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['slim', 'Slim', { tr:0.024, tf:0.024 }, { top:1.02, grip:0.97 }], ['street', 'Street', { tr:0.030, tf:0.030 }], ['fat', 'Fat', { tr:0.037, tf:0.035 }, { top:0.98, grip:1.03, off:1.05 }]] },
+    { k:'bs', g:'Cockpit', n:'Bars', o:[['bmx', 'BMX', { bars:'bmx' }], ['race', 'Race', { bars:'race' }], ['old', 'Old school', { bars:'old' }], ['cruiser', 'Cruiser', { bars:'cruiser' }], ['flat', 'Cross brace', { bars:'flat' }]] },
+    { k:'br', g:'Cockpit', n:'Bar rise', o:[['low', 'Low', { rise:0.15 }], ['high', 'High', { rise:0.235 }]] },
+    { k:'bw', g:'Cockpit', n:'Bar width', o:[['narrow', 'Narrow', { hw:0.34 }, { steer:0.96 }], ['wide', 'Wide', { hw:0.42 }, { steer:1.04 }]] },
+    { k:'sm', g:'Cockpit', n:'Stem', o:[['front', 'Front load', { stem:'front' }], ['top', 'Top load', { stem:'top' }]] },
+    { k:'pg', g:'Hardware', n:'Pegs', o:[['none', 'None', { pegs:'none' }], ['rear', '2 pegs', { pegs:'rear' }], ['both', '4 pegs', { pegs:'both' }]] },
+    { k:'bk', g:'Hardware', n:'Brake', o:[['u', 'U-brake', { brake:'u' }], ['none', 'Brakeless', { brake:false }]] }
+  ],
+  pd15fs: [
+    { k:'fk', g:'Front', n:'Fork', o:[['sus', 'Suspension', { fork:'sus' }], ['dual', 'Dual crown', { fork:'dual' }], ['rigid', 'Rigid', { fork:'rigid' }, { hop:0.98 }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['xc', 'XC fast', { tread:'xc', tw:0.0245 }, { top:1.03, off:0.94 }], ['trail', 'Trail', { tread:'trail', tw:0.029 }], ['dh', 'DH knobby', { tread:'dh', tw:0.032 }, { top:0.97, off:1.10 }]] },
+    { k:'bw', g:'Cockpit', n:'Bar width', o:[['narrow', 'Narrow', { hw:0.35 }, { steer:0.96 }], ['wide', 'Wide', { hw:0.42 }, { steer:1.04 }]] },
+    { k:'br', g:'Cockpit', n:'Bar rise', o:[['flat', 'Flat', { rise:0.0 }], ['riser', 'Riser', { rise:0.035 }], ['high', 'High', { rise:0.06 }]] },
+    { k:'pd', g:'Drive', n:'Pedals', o:[['flat', 'Flat', { pedal:'flat' }], ['clip', 'Clipless', { pedal:'clip' }]] },
+    { k:'cg', g:'Drive', n:'Chain guide', o:[['none', 'None', { guard:false, guide:false }], ['bash', 'Bash guard', { guard:0.090, guide:false }], ['guide', 'Guide', { guard:0.090, guide:true }]] }
+  ],
+  pd15road: [
+    { k:'rm', g:'Wheels', n:'Rims', o:[['low', 'Low', { deep:0.026 }, { top:0.99 }], ['mid', 'Mid', { deep:0.045 }], ['deep', 'Deep', { deep:0.065 }, { top:1.02, steer:0.98 }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['race', 'Race 25', { tw:0.0125, tread:'road' }, { top:1.02, off:0.90 }], ['allr', 'All-road', { tw:0.0160, tread:'road' }], ['gravel', 'Gravel', { tw:0.0200, tread:'gravel' }, { top:0.98, off:1.10 }]] },
+    { k:'bw', g:'Cockpit', n:'Bar width', o:[['narrow', 'Narrow', { hw:0.185 }, { steer:0.97 }], ['wide', 'Wide', { hw:0.225 }, { steer:1.03 }]] },
+    { k:'bt', g:'Frame', n:'Bottles', o:[['none', 'None', { bottle:false }], ['one', 'One', { bottle:'down' }], ['two', 'Two', { bottle:'both' }]] }
+  ],
+  mo15ebike: [
+    { k:'bs', g:'Cockpit', n:'Bars', o:[['flat', 'Flat', { bars:'flat' }], ['riser', 'Riser', { bars:'riser' }], ['swept', 'Swept back', { bars:'swept' }]] },
+    { k:'sd', g:'Comfort', n:'Saddle', o:[['comfort', 'Comfort', { saddle:'comfort' }], ['sport', 'Sport', { saddle:'sport' }], ['leather', 'Leather', { saddle:'leather' }], ['cruiser', 'Cruiser', { saddle:'cruiser' }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['city', 'City', { tread:'city' }, { top:1.02, off:0.94 }], ['trail', 'Trail', { tread:'trail' }, { top:0.98, off:1.08 }]] },
+    { k:'wh', g:'Wheels', n:'Wheels', o:[['spoke', 'Spoked', { mags:0, deep:0 }], ['deep', 'Deep rim', { mags:0, deep:0.032 }], ['cast', 'Cast 5', { mags:5 }]] },
+    { k:'rk', g:'Comfort', n:'Rack', o:[['none', 'None', { rack:false }], ['rack', 'Rear rack', { rack:true }]] },
+    { k:'lt', g:'Comfort', n:'Light', o:[['head', 'Bar lamp', { light:'head' }], ['crown', 'Fork lamp', { light:'crown' }]] }
+  ],
+  mo15moto: [
+    { k:'fk', g:'Front', n:'Fork', o:[['usd', 'Upside-down', { fork:'usd' }], ['conv', 'Conventional', { fork:'conv' }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['mx', 'MX knobby', { tread:'mx' }, { top:0.97, off:1.10 }], ['enduro', 'Enduro', { tread:'enduro' }, { off:1.05 }], ['trail', 'Trail', { tread:'trail' }], ['street', 'Street', { tread:'street' }, { top:1.03, off:0.90 }]] },
+    { k:'bs', g:'Cockpit', n:'Bars', o:[['mx', 'MX', { bars:'mx' }], ['low', 'Low', { bars:'low' }], ['flat', 'Flat', { bars:'flat' }]] },
+    { k:'xb', g:'Cockpit', n:'Bar pad', o:[['bar', 'Cross bar', { xbar:'bar' }], ['pad', 'Pad', { xbar:'pad' }], ['none', 'None', { xbar:'none' }]] },
+    { k:'hg', g:'Cockpit', n:'Hand guards', o:[['off', 'None', { guards:false }], ['on', 'Fitted', { guards:true }]] },
+    { k:'ms', g:'Body', n:'Front light', o:[['plate', 'Plate', { mask:'plate' }], ['round', 'Round', { mask:'round' }], ['twin', 'Twin', { mask:'twin' }], ['wedge', 'Wedge', { mask:'wedge' }], ['rally', 'Rally', { mask:'rally' }], ['none', 'None', { mask:'none' }]] },
+    { k:'fe', g:'Body', n:'Front fender', o:[['mx', 'MX', { ffend:'mx' }], ['beak', 'Beak', { ffend:'beak' }], ['low', 'Low', { ffend:'low' }], ['sm', 'Supermoto', { ffend:'sm' }]] }
+  ],
+  mo15moped: [
+    { k:'tk', g:'Body', n:'Tank', o:[['box', 'Box', { tank:'box' }], ['tear', 'Teardrop', { tank:'tear' }], ['cafe', 'Cafe', { tank:'cafe' }], ['none', 'None', { tank:'none' }]] },
+    { k:'se', g:'Body', n:'Seat', o:[['bench', 'Bench', { seat:'bench' }], ['cafe', 'Cafe', { seat:'cafe' }], ['tracker', 'Tracker', { seat:'tracker' }], ['tuck', 'Tuck & roll', { seat:'tuck' }]] },
+    { k:'fe', g:'Body', n:'Fenders', o:[['hug', 'Hugger', { fenders:'hug' }], ['fat', 'Fat', { fenders:'fat' }], ['flat', 'Flat', { fenders:'flat' }], ['mx', 'MX', { fenders:'mx' }], ['short', 'Short', { fenders:'short' }]] },
+    { k:'lp', g:'Body', n:'Headlight', o:[['round', 'Round', { lamp:'round' }], ['chrome', 'Chrome', { lamp:'chrome' }], ['square', 'Square', { lamp:'square' }], ['cowl', 'Cowl', { lamp:'cowl' }], ['twin', 'Twin', { lamp:'twin' }]] },
+    { k:'bs', g:'Cockpit', n:'Bars', o:[['moto', 'Moto', { bars:'moto' }], ['flat', 'Flat', { bars:'flat' }], ['cruiser', 'Cruiser', { bars:'cruiser' }]] },
+    { k:'ty', g:'Wheels', n:'Tyres', o:[['moto', 'Moto', { tread:'moto' }], ['knob', 'Knobby', { tread:'knob' }, { top:0.97, off:1.10 }], ['street', 'Street', { tread:'street' }, { top:1.03, off:0.90 }]] },
+    { k:'wh', g:'Wheels', n:'Wheels', o:[['spoke', 'Spoked', { mags:0 }], ['cast', 'Cast', { mags:6 }]] },
+    { k:'rk', g:'Body', n:'Rack', o:[['none', 'None', { rack:false }], ['rack', 'Rack', { rack:true }]] }
+  ]
+};
+R25P_FAM.pd15ht = R25P_FAM.pd15fs;
+const R25P_VIEW = { Deck:[Math.PI/2 + 0.25, 0.55, 0.92], Bars:[0.42, 0.46, 0.86], Cockpit:[0.42, 0.46, 0.86], Front:[0.6, 0.2, 0.9], Wheels:[Math.PI/2 - 0.42, 0.10, 0.92],
+                    Hardware:[-Math.PI/2 + 0.32, 0.12, 0.9], Drive:[-Math.PI/2 + 0.32, 0.12, 0.9], Body:[0.95, 0.17, 1.0], Frame:[Math.PI/2, 0.10, 0.95], Comfort:[1.25, 0.4, 0.95] };
+const R25P = { sig:{}, variants:new Map(), building:false, err:{} };
+
+function ride25PartsDefs(id){
+  const v = typeof FLEET_BY_ID !== 'undefined' ? FLEET_BY_ID[id] : null;
+  return (v && R25P_FAM[v.b]) || [];
+}
+/* custClean's helper: a small { key: code } map (unknown keys / codes are ignored where they are used, so this stays forward-compatible) */
+function ride25PartsClean(o){
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  const out = {}; let n = 0;
+  for (const k in o){
+    if (n >= 16) break;
+    const v = o[k];
+    if (R25P_KEY.test(k) && typeof v === 'string' && R25P_VAL.test(v)){ out[k] = v; n++; }
+  }
+  return n ? out : null;
+}
+function ride25PartsGet(id){ const c = typeof custGet === 'function' ? custGet(id) : null; return (c && c.pt) ? c.pt : null; }
+function ride25PartsSig(pt){ if (!pt) return ''; return Object.keys(pt).sort().map(k=> k + '=' + pt[k]).join(','); }
+/* the param overrides of a part set for vehicle id (only the parts its builder has) */
+function ride25PartsParams(id, pt){
+  const out = {}, P = (FLEET_BY_ID[id] && FLEET_BY_ID[id].p) || {};
+  if (!pt) return out;
+  ride25PartsDefs(id).forEach(d=>{
+    const code = pt[d.k]; if (!code) return;
+    const o = d.o.find(x=> x[0] === code); if (!o) return;
+    Object.assign(out, typeof o[2] === 'function' ? o[2](P) : o[2]);
+  });
+  return out;
+}
+/* the physics multipliers of a part set (each clamped to +-5%) */
+function ride25PartsFx(id, pt){
+  pt = pt === undefined ? ride25PartsGet(id) : pt;
+  if (!pt) return null;
+  const fx = { steer:1, grip:1, off:1, top:1, hop:1 }; let any = false;
+  ride25PartsDefs(id).forEach(d=>{
+    const code = pt[d.k]; if (!code) return;
+    const o = d.o.find(x=> x[0] === code); if (!o || !o[3]) return;
+    for (const k in o[3]) if (fx[k] !== undefined){ fx[k] *= o[3][k]; any = true; }
+  });
+  if (!any) return null;
+  for (const k in fx) fx[k] = Math.max(0.90, Math.min(1.10, fx[k]));
+  return fx;
+}
+function ride25PartsSummary(pt, id){
+  if (!pt) return '';
+  const defs = id ? ride25PartsDefs(id) : null, out = [];
+  const adj = /^(Short|Long|Narrow|Wide|Low|Tall|High|Flat|Riser|Slim|Fat|Street|Off|On|Mid|Deep|One|Two|Plain)$/, noun = /^(Hardware|Body|Comfort|Drive|Frame|Front)$/;
+  if (defs) defs.forEach(d=>{ const c = pt[d.k]; if (!c) return; const o = d.o.find(x=> x[0] === c); if (!o) return;
+    out.push(o[1] === 'None' ? 'No ' + d.n.toLowerCase() : adj.test(o[1]) ? o[1] + ' ' + (noun.test(d.g) ? d.n : d.g).toLowerCase() : o[1]); });
+  else out.push(Object.keys(pt).length + ' parts');
+  return out.slice(0, 3).join(' · ') + (out.length > 3 ? ' +' + (out.length - 3) : '');
+}
+
+/* ---------------------------------------------------------------- building with parts
+   fleetBuild(id) builds the LOCAL player's version (their saved parts merged into the row's params). A friend's ghost with other
+   parts gets its own cached build (ride25Variant) for the moment ghostCreate runs. */
+function ride25BuildRaw(id, pt){
+  const v = FLEET_BY_ID[id], fn = FLEET_BUILD[v.b] || FLEET_EXTRA_BUILD[v.b];
+  const over = ride25PartsParams(id, pt);
+  const p0 = v.p || {};
+  let lk;
+  const sad = typeof SADDLE !== 'undefined' ? SADDLE : null, prevCtx = sad ? sad.ctx : null;
+  if (sad) sad.ctx = v;                                                    // the row's own saddle, as saddle12's fleetBuild wrapper does
+  if (Object.keys(over).length){
+    try { v.p = Object.assign({}, p0, over); lk = fn(v.p); }
+    catch(e){ R25P.err[id] = e.message; console.warn('[ride25] parts build failed, stock shape', id, e); lk = null; }
+    finally { v.p = p0; }
+  }
+  try { if (!lk) lk = fn(p0); } finally { if (sad) sad.ctx = prevCtx; }
+  lk.R = lk.Rr; lk.id = id;
+  if (typeof custPrep === 'function'){ try { custPrep(lk); } catch(e){ console.warn('customisation parts skipped', id, e); } }
+  return lk;
+}
+(function ride25BuildHook(){
+  if (typeof fleetBuild !== 'function') return;
+  const _fb = fleetBuild;
+  fleetBuild = function(id){
+    if (FLEET_LOOKS[id] || R25P.building) return _fb(id);
+    const pt = ride25PartsGet(id), over = pt ? ride25PartsParams(id, pt) : null;
+    if (!over || !Object.keys(over).length){ const lk = _fb(id); R25P.sig[id] = ''; return lk; }
+    // the row's params with the parts on top, for this one build (the builders + saddle12 read v.p through the row)
+    const v = FLEET_BY_ID[id], p0 = v.p;
+    v.p = Object.assign({}, p0 || {}, over);
+    let lk;
+    try { lk = _fb(id); R25P.sig[id] = ride25PartsSig(pt); }
+    catch(e){
+      console.warn('[ride25] parts build failed, stock shape', id, e); R25P.err[id] = e.message;
+      v.p = p0; delete FLEET_LOOKS[id]; delete BIKE_LOOKS['f_' + id];
+      lk = _fb(id); R25P.sig[id] = '';
+    }
+    finally { v.p = p0; }
+    return lk;
+  };
+  Object.keys(_fb).forEach(k=>{ try { fleetBuild[k] = _fb[k]; } catch(e){} });
+})();
+/* throw away the built look of id and build it again with the saved parts; the live rig + every viewer that shows it follow */
+function ride25Rebuild(id){
+  const old = FLEET_LOOKS[id];
+  if (old){
+    [old.frame, old.front, old.rear, old.frontW].forEach(g=>{ if (g && g.parent) g.parent.remove(g); });
+    delete FLEET_LOOKS[id]; delete BIKE_LOOKS['f_' + id];
+  }
+  const t0 = performance.now();
+  fleetBuild(id);
+  R25P.lastMs = Math.round(performance.now() - t0);
+  if (typeof FLEET_CUR !== 'undefined' && id === FLEET_CUR){
+    try { applyVehicle(id); } catch(e){ console.warn('[ride25] re-apply', e); }
+  }
+  const views = [];
+  if (typeof GARAGE !== 'undefined'){ if (GARAGE.view) views.push(GARAGE.view); if (GARAGE.mini) views.push(GARAGE.mini); }
+  if (typeof FLEET_VIEWS !== 'undefined') FLEET_VIEWS.forEach(w=>{ if (views.indexOf(w) < 0) views.push(w); });
+  views.forEach(w=>{
+    if (!w || w.id !== id) return;
+    try { const r = w.riderId || false; w.id = null; w.setVehicle(id, { kit:w.kit, cust:w.cust, rider:r }); } catch(e){ console.warn('[ride25] viewer', e); }
+  });
+  // the old geometry: viewers + rig have moved on (a geometry three still meets again is simply uploaded again)
+  if (old) setTimeout(()=>{ [old.frame, old.front, old.rear, old.frontW].forEach(g=>{ if (g) g.traverse(o=>{ if (o.isMesh && o.geometry && !o.geometry.__r25keep) o.geometry.dispose(); }); }); }, 1500);
+}
+/* a friend's ghost: the vehicle in THEIR parts (cached per id + part set; the local player's own set is FLEET_LOOKS itself) */
+function ride25Variant(id, pt){
+  const sig = id + '|' + ride25PartsSig(pt);
+  let lk = R25P.variants.get(sig);
+  if (lk) return lk;
+  R25P.building = true;
+  try { lk = ride25BuildRaw(id, pt); } finally { R25P.building = false; }
+  R25P.variants.set(sig, lk);
+  if (R25P.variants.size > 8){ const k = R25P.variants.keys().next().value; R25P.variants.delete(k); }
+  return lk;
+}
+(function ride25GhostHook(){
+  if (typeof ghostCreate !== 'function') return;
+  const _gc = ghostCreate;
+  ghostCreate = function(spec){
+    try {
+      const id = fleetResolve(spec.veh || FLEET_DEFAULT), mine = ride25PartsSig(ride25PartsGet(id));
+      const theirs = ride25PartsSig(spec.cust && typeof spec.cust === 'object' ? ride25PartsClean(spec.cust.pt) : null);
+      if (theirs !== mine && !spec.preview){
+        const lk = ride25Variant(id, theirs ? ride25PartsClean(spec.cust.pt) : null), keep = FLEET_LOOKS[id];
+        FLEET_LOOKS[id] = lk;
+        try { return _gc(spec); } finally { if (keep) FLEET_LOOKS[id] = keep; else delete FLEET_LOOKS[id]; }
+      }
+    } catch(e){ console.warn('[ride25] ghost parts', e); }
+    return _gc(spec);
+  };
+})();
+/* a customisation change that touched the parts rebuilds the ride (undo, reset, section reset, a part chip ...) */
+(function ride25CommitHook(){
+  if (typeof custCommit !== 'function') return;
+  const _cc = custCommit;
+  custCommit = function(id){
+    const want = ride25PartsSig(ride25PartsGet(id));
+    if (FLEET_LOOKS[id] && (R25P.sig[id] || '') !== want) ride25Rebuild(id);
+    return _cc(id);
+  };
+})();
+/* set (or clear with {} / null) the parts of id, saved like any customisation */
+function ride25PartsSet(id, pt){
+  const clean = ride25PartsClean(pt);
+  if (typeof custEdit === 'function') custEdit(id, d=>{ if (clean) d.pt = clean; else delete d.pt; });
+  return ride25PartsGet(id);
+}
+function ride25PartsFromPack(o){ return (o && typeof custUnpack === 'function') ? ((custUnpack(o) || {}).pt || null) : null; }
+
+/* ---------------------------------------------------------------- physics: small part effects on the live ride */
+(function ride25PartsPhysHook(){
+  if (typeof handlingApply === 'function'){
+    const _ha = handlingApply;
+    handlingApply = function(){
+      const r = _ha.apply(this, arguments);
+      try { ride25PartsPhys(); } catch(e){ console.warn('[ride25] parts physics', e); }
+      return r;
+    };
+  }
+})();
+function ride25PartsPhys(){
+  RIDE25.fx = null;
+  if (typeof VEH === 'undefined' || !VEH || !VEH._hb || typeof FLEET_CUR === 'undefined') return;   // only on the per-apply record (never the shared one)
+  const fx = ride25PartsFx(FLEET_CUR); if (!fx) return;
+  const B = VEH._hb;
+  B.steer *= fx.steer; B.grip *= fx.grip; B.top *= fx.top; if (B.eTop) B.eTop *= fx.top; B.hop *= fx.hop;
+  VEH.steer = B.steer; VEH.hop = B.hop;
+  B.__g0 = B.grip; RIDE25.fx = fx;
+}
+/* off-road grip: knobby tyres bite on grass / dirt / gravel / snow, slicks slide (the base grip handling13 reads each step) */
+(function ride25OffHook(){
+  if (typeof updateRide !== 'function') return;
+  const _ur = updateRide;
+  updateRide = function(dt, In){
+    const fx = RIDE25.fx, B = VEH && VEH._hb;
+    if (fx && fx.off !== 1 && B && B.__g0 !== undefined && typeof HND !== 'undefined'){
+      const loose = HND.surf && HND.surf !== 'asphalt' && HND.surf !== 'concrete' && HND.surf !== 'wood' && HND.surf !== 'metal';
+      B.grip = B.__g0*(loose ? fx.off : 1);
+    }
+    return _ur(dt, In);
+  };
+})();
+
+/* ---------------------------------------------------------------- the Parts section of the Customise panel */
+function ride25PartsSync(host, id){
+  const box = host && host.querySelector('#cuParts'); if (!box) return;
+  const defs = ride25PartsDefs(id), pt = ride25PartsGet(id) || {};
+  if (box.__id !== id){
+    box.__id = id;
+    let h = '', g = '';
+    defs.forEach(d=>{
+      if (d.g !== g){ g = d.g; }
+      h += '<div class="cuSub">' + d.n + '</div><div class="cuChips r25p" data-r25k="' + d.k + '">' +
+           '<button type="button" class="cuChip" data-r25p="' + d.k + ':">Stock</button>';
+      d.o.forEach(o=>{ h += '<button type="button" class="cuChip" data-r25p="' + d.k + ':' + o[0] + '">' + o[1] + '</button>'; });
+      h += '</div>';
+    });
+    h += '<div class="cuNote">Parts change the shape of the ride: the rider fits every combination. Friends online see them too.' +
+         (R25P.err[id] ? ' (One of these parts did not fit this ride, so it is shown stock.)' : '') + '</div>';
+    box.innerHTML = h;
+  }
+  box.querySelectorAll('[data-r25p]').forEach(b=>{
+    const kv = b.getAttribute('data-r25p').split(':');
+    b.classList.toggle('sel', (pt[kv[0]] || '') === kv[1]);
+  });
+  if (!host.__r25){
+    host.__r25 = true;
+    host.addEventListener('click', e=>{
+      const b = e.target && e.target.closest ? e.target.closest('[data-r25p]') : null;
+      if (!b || !host.contains(b)) return;
+      e.preventDefault(); e.stopPropagation();
+      const id2 = CUST_UI.id; if (!id2) return;
+      const kv = b.getAttribute('data-r25p').split(':'), d = ride25PartsDefs(id2).find(x=> x.k === kv[0]);
+      custEdit(id2, dd=>{ const p = Object.assign({}, dd.pt || {}); if (kv[1]) p[kv[0]] = kv[1]; else delete p[kv[0]]; if (Object.keys(p).length) dd.pt = p; else delete dd.pt; });
+      if (d && typeof garageCustFocus === 'function' && R25P_VIEW[d.g]) try { garageCustFocus(R25P_VIEW[d.g]); } catch(err){}
+    }, true);
+  }
+}
+/* =========================================================================
+   PAD25 -- game controllers on every device (Release 15.16, stream mobile25)
+
+   The Gamepad API ("standard" mapping: Xbox / PlayStation / Switch Pro / most
+   Bluetooth pads, on a computer, a phone, a tablet or a TV browser).
+
+   RIDING   left stick  steer (analog) / spin in the air / up-down = flips in the air
+            RT pedal · LT brake · A hold = crouch, let go = hop
+            X / Y / B   the three trick buttons (same choice as the touch buttons)
+            LB wheelie (manual) · RB spin (hold in the air: full spin, stick picks the side)
+            right stick look around · R3 recentre · L3 trick list
+            d-pad ^ camera view · v hold = respawn · < get off / on · > use (shop, door ...)
+            Start pause · Select / View the map
+   MENUS    d-pad or left stick moves a gold focus ring between the buttons of the
+            screen on top (spatial: the nearest button that way), A presses it,
+            B goes back (= Esc), LB / RB switch tabs, right stick scrolls,
+            Start on the main menu = Drop In.
+   OTHER    plug / unplug toasts (unplugged mid-ride = pause), light rumble on
+            landings / bails / respawns where the pad has it, the Controls page
+            shows the layout, two settings (tricks, rumble) once a pad is seen.
+
+   Cost: nothing at all until the browser reports a pad ("gamepadconnected");
+   then one getGamepads() read per frame. The pad writes the same `keys` the
+   keyboard does (edge-triggered: only on its own changes, so a keyboard held at
+   the same time is never released by it) plus an analog steer added in
+   readInput (patches/zzzzzzzzzzzzzzz_mobile25.py).
+   ========================================================================= */
+const PAD25 = {
+  on: false, idx: -1, id: '', n: 0,
+  b: new Float32Array(17), pb: new Float32Array(17), ax: [0, 0, 0, 0],
+  steer: 0, spin: 0, held: {}, used: 0,
+  nav: { dir: '', t0: 0, last: 0 }, focus: null,
+  hold: { k: '', t: 0, done: false },
+  lastState: '', airPeak: 0, setDone: false, guideDone: false, warned: false
+};
+const PAD25_TRICKS_DEF = 'whip,bar,sup';
+const PAD25_NAV_SEL = 'button, a[href], input:not([type=hidden]), select, textarea, [role=button], [role=tab], [tabindex]:not([tabindex="-1"]), ' +
+  '.btn, .kit, .mapCard, .mode, .gCard, .gTab, .rideCard';
+
+function pad25Dz(v, dz){ const a = Math.abs(v); return a < dz ? 0 : Math.sign(v) * Math.min(1, (a - dz) / (1 - dz)); }
+function pad25Btn(i){ return PAD25.b[i] > 0.5; }
+function pad25Edge(i){ return PAD25.b[i] > 0.5 && PAD25.pb[i] <= 0.5; }
+function pad25Up(i){ return PAD25.b[i] <= 0.5 && PAD25.pb[i] > 0.5; }
+function pad25Setting(id, def){ try { const v = xset(id); return v === undefined ? def : v; } catch(e){ return def; } }
+
+/* ---------------------------------------------------------------- plug / unplug */
+function pad25Get(){
+  let all = null;
+  try { all = navigator.getGamepads ? navigator.getGamepads() : null; } catch(e){ all = null; }
+  if (!all) return null;
+  if (PAD25.idx >= 0 && all[PAD25.idx] && all[PAD25.idx].connected) return all[PAD25.idx];
+  for (let i = 0; i < all.length; i++){ const g = all[i]; if (g && g.connected){ PAD25.idx = g.index; PAD25.id = g.id || ''; return g; } }
+  return null;
+}
+function pad25Kind(id){
+  id = String(id || '').toLowerCase();
+  if (/054c|playstation|dualshock|dualsense|wireless controller/.test(id)) return 'ps';
+  if (/057e|nintendo|switch|joy-con|pro controller/.test(id)) return 'nin';
+  return 'xbox';
+}
+function pad25Connect(e){
+  const g = e && e.gamepad;
+  PAD25.on = true; PAD25.n++;
+  if (g){ PAD25.idx = g.index; PAD25.id = g.id || ''; }
+  document.documentElement.classList.add('padUI');
+  document.documentElement.setAttribute('data-pad', pad25Kind(PAD25.id));
+  pad25Settings();
+  pad25Guide();
+  try { toast('🎮 Controller connected · A hop · X Y B tricks · Start pause', false); } catch(_){}
+}
+function pad25Disconnect(e){
+  const g = pad25Get();
+  if (g) return;                                   // another pad is still there
+  pad25Release();
+  PAD25.on = false; PAD25.idx = -1;
+  pad25Focus(null);
+  document.documentElement.classList.remove('padUI', 'padActive');
+  try {
+    if (GAME === 'play' && (!e || !e.gamepad || PAD25.used)){ togglePause(); toast('Controller disconnected · paused', false); }
+    else toast('Controller disconnected', true);
+  } catch(_){}
+}
+
+/* ---------------------------------------------------------------- settings (registered when a pad is first seen) */
+function pad25Settings(){
+  if (PAD25.setDone || typeof registerSetting !== 'function') return;
+  PAD25.setDone = true;
+  const presets = (typeof MOB_PRESETS !== 'undefined') ? MOB_PRESETS : { 'whip,bar,sup': 'Whip · Bar · Super' };
+  registerSetting({ id:'pad_tricks', label:'Controller X · Y · B', group:'pad', type:'choice', def:PAD25_TRICKS_DEF,
+    options:Object.keys(presets).map(k=> ({ v:k, label:presets[k] })) });
+  registerSetting({ id:'pad_rumble', label:'Controller rumble', group:'pad', type:'toggle', def:true,
+    hintOn:'A light rumble on landings, bails and respawns', hintOff:'No rumble' });
+  try { renderXSettings(); } catch(e){}
+}
+function pad25TrickKeys(){
+  const s = String(pad25Setting('pad_tricks', PAD25_TRICKS_DEF)).split(',');
+  return [s[0] || 'whip', s[1] || 'bar', s[2] || 'sup'];
+}
+
+/* ---------------------------------------------------------------- rumble */
+function pad25Rumble(strong, weak, ms){
+  if (!PAD25.on || !pad25Setting('pad_rumble', true)) return;
+  try {
+    const g = pad25Get(); if (!g) return;
+    const a = g.vibrationActuator;
+    if (a && a.playEffect) a.playEffect('dual-rumble', { startDelay:0, duration:ms, weakMagnitude:weak, strongMagnitude:strong }).catch(()=>{});
+    else if (g.hapticActuators && g.hapticActuators[0] && g.hapticActuators[0].pulse) g.hapticActuators[0].pulse(strong, ms);
+  } catch(e){}
+}
+
+/* ---------------------------------------------------------------- keys the pad holds (edge-triggered) */
+function pad25Set(k, on){
+  const v = on ? 1 : 0;
+  if ((PAD25.held[k] || 0) === v && (!v || keys[k])) return;     // (re-asserts a held key something else cleared: map, blur)
+  PAD25.held[k] = v;
+  keys[k] = v;
+}
+function pad25Release(){
+  for (const k in PAD25.held){ if (PAD25.held[k]) keys[k] = 0; PAD25.held[k] = 0; }
+  PAD25.steer = 0; PAD25.spin = 0; PAD25.hold.k = '';
+  try { if (PAD25.look){ camCtl.drag = false; PAD25.look = false; } } catch(e){}
+}
+function pad25Key(code, key){
+  try {
+    const t = document.body || document;
+    t.dispatchEvent(new KeyboardEvent('keydown', { code: code, key: key || code, bubbles: true, cancelable: true }));
+    t.dispatchEvent(new KeyboardEvent('keyup', { code: code, key: key || code, bubbles: true, cancelable: true }));
+  } catch(e){}
+}
+
+/* ---------------------------------------------------------------- is a menu / overlay on top? */
+function pad25Menuish(){
+  if (typeof GAME !== 'undefined' && GAME !== 'play') return true;
+  try { if (GARAGE.open) return true; } catch(e){}
+  try { if (typeof shopIsOpen === 'function' && shopIsOpen()) return true; } catch(e){}
+  try { if (EVU.open) return true; } catch(e){}
+  try { if (RGMAP.open) return true; } catch(e){}
+  try { if (physTMEl && physTMEl.classList.contains('on')) return true; } catch(e){}
+  return !!document.querySelector('.screen:not(.hide)');
+}
+/* the layer on top: the innermost fixed element under the screen's middle that covers most of the screen */
+function pad25Root(){
+  const W = innerWidth, H = innerHeight;
+  const pts = [[0.5, 0.5], [0.5, 0.3], [0.5, 0.72], [0.3, 0.5], [0.7, 0.5]];
+  for (let i = 0; i < pts.length; i++){
+    let el = document.elementFromPoint(W * pts[i][0], H * pts[i][1]);
+    while (el && el !== document.body && el !== document.documentElement){
+      if (el.id === 'touch' || el.tagName === 'CANVAS') break;
+      const cs = getComputedStyle(el);
+      if (cs.position === 'fixed'){
+        const r = el.getBoundingClientRect();
+        if (r.width >= W * 0.42 && r.height >= H * 0.42) return el;
+      }
+      el = el.parentElement;
+    }
+  }
+  return null;
+}
+function pad25Cands(root){
+  const out = [], seen = new Set();
+  const list = root.querySelectorAll(PAD25_NAV_SEL);
+  for (let i = 0; i < list.length; i++){
+    const el = list[i];
+    if (el.disabled || seen.has(el)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 6 || r.height < 6) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.pointerEvents === 'none' || +cs.opacity < 0.05) continue;
+    // a card that holds real buttons: the buttons are the stops, not the card
+    if (el.tagName !== 'BUTTON' && el.querySelector('button')) continue;
+    seen.add(el);
+    out.push({ el: el, x: r.left + r.width / 2, y: r.top + r.height / 2, r: r });
+  }
+  return out;
+}
+function pad25Focus(el){
+  if (PAD25.focus && PAD25.focus !== el) PAD25.focus.classList.remove('pad25F');
+  PAD25.focus = el || null;
+  if (el){
+    el.classList.add('pad25F');
+    try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch(e){}
+  }
+}
+function pad25Start(cands){
+  const pref = ['#startBtn', '#resumeBtn', '.btn.primary', '.setDone', '.kit.sel', '.sel', '.on'];
+  for (let i = 0; i < pref.length; i++){
+    const c = cands.find(o=> o.el.matches(pref[i]) && o.y > 0 && o.y < innerHeight);
+    if (c) return c.el;
+  }
+  let best = null, bs = 1e9;
+  cands.forEach(o=>{ const s = o.y * 2 + o.x; if (o.y > 0 && o.y < innerHeight && s < bs){ bs = s; best = o.el; } });
+  return best || (cands[0] && cands[0].el) || null;
+}
+/* the nearest stop that way: distance along the direction plus 2.5x the sideways miss */
+function pad25Pick(cands, from, dir){
+  const r = from.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const dx = dir === 'left' ? -1 : dir === 'right' ? 1 : 0, dy = dir === 'up' ? -1 : dir === 'down' ? 1 : 0;
+  let best = null, bs = 1e9;
+  for (let i = 0; i < cands.length; i++){
+    const o = cands[i]; if (o.el === from) continue;
+    // edge-to-edge along the axis, so a wide button next to a small one is still "to the right"
+    let along, side;
+    if (dx){ along = dx > 0 ? o.r.left - r.right : r.left - o.r.right; side = Math.max(0, Math.abs(o.y - cy) - (o.r.height + r.height) / 4); if (along < -r.width * 0.25) continue; along = Math.max(0, along) + Math.abs(o.x - cx) * 0.1; }
+    else { along = dy > 0 ? o.r.top - r.bottom : r.top - o.r.bottom; side = Math.max(0, Math.abs(o.x - cx) - (o.r.width + r.width) / 4); if (along < -r.height * 0.25) continue; along = Math.max(0, along) + Math.abs(o.y - cy) * 0.1; }
+    const s = along + side * 2.5;
+    if (s < bs){ bs = s; best = o.el; }
+  }
+  return best;
+}
+function pad25Move(dir){
+  const root = pad25Root() || document.body;
+  const cands = pad25Cands(root);
+  if (!cands.length) return;
+  const cur = PAD25.focus;
+  if (!cur || !cur.isConnected || !root.contains(cur) || !cands.some(o=> o.el === cur)){ pad25Focus(pad25Start(cands)); return; }
+  // a slider: left / right change its value
+  if ((dir === 'left' || dir === 'right') && cur.tagName === 'INPUT' && cur.type === 'range'){
+    const st = +cur.step || ((+cur.max - +cur.min) / 20) || 1;
+    cur.value = String(Math.max(+cur.min, Math.min(+cur.max, +cur.value + (dir === 'right' ? st : -st))));
+    cur.dispatchEvent(new Event('input', { bubbles: true })); cur.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+  const nx = pad25Pick(cands, cur, dir);
+  if (nx) pad25Focus(nx);
+}
+function pad25Press(){
+  const root = pad25Root() || document.body;
+  const cur = PAD25.focus;
+  if (!cur || !cur.isConnected || !root.contains(cur)){ const c = pad25Cands(root); if (c.length) pad25Focus(pad25Start(c)); return; }
+  if ((cur.tagName === 'INPUT' && !/^(checkbox|radio|range|button|submit|reset)$/i.test(cur.type)) || cur.tagName === 'TEXTAREA' || cur.tagName === 'SELECT'){ try { cur.focus(); } catch(e){} return; }
+  try { cur.click(); } catch(e){}
+  // the click may have opened / closed a screen: re-seat the ring on the next frame
+  setTimeout(()=>{ const f = PAD25.focus; if (f && (!f.isConnected || !f.getClientRects().length)) pad25Focus(null); }, 60);
+}
+function pad25Tab(step){
+  const root = pad25Root(); if (!root) return;
+  const tabs = Array.prototype.filter.call(root.querySelectorAll('[role=tab], .gTab, .s13Tab, .evTab, .s13Cats > *, .gTabs > *'), el=> el.getClientRects().length);
+  if (tabs.length < 2) return;
+  let i = tabs.findIndex(el=> /(^|\s)(on|sel|act|active)(\s|$)/.test(el.className) || el.getAttribute('aria-selected') === 'true');
+  if (i < 0) i = 0;
+  const nx = tabs[(i + step + tabs.length) % tabs.length];
+  try { nx.click(); } catch(e){}
+  pad25Focus(nx);
+}
+function pad25Scroll(dy){
+  let el = PAD25.focus || pad25Root();
+  while (el && el !== document.body){
+    const cs = getComputedStyle(el);
+    if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 4){ el.scrollTop += dy; return; }
+    el = el.parentElement;
+  }
+}
+function pad25Nav(now, dt){
+  const ax = PAD25.ax;
+  let dir = '';
+  if (pad25Btn(12) || ax[1] < -0.6) dir = 'up';
+  else if (pad25Btn(13) || ax[1] > 0.6) dir = 'down';
+  else if (pad25Btn(14) || ax[0] < -0.6) dir = 'left';
+  else if (pad25Btn(15) || ax[0] > 0.6) dir = 'right';
+  const N = PAD25.nav;
+  if (dir){
+    if (dir !== N.dir){ N.dir = dir; N.t0 = now; N.last = now; pad25Move(dir); }
+    else if (now - N.t0 > 380 && now - N.last > 120){ N.last = now; pad25Move(dir); }
+  } else N.dir = '';
+  if (pad25Edge(0)) pad25Press();
+  if (pad25Edge(1)){ pad25Key('Escape', 'Escape'); setTimeout(()=>{ const f = PAD25.focus; if (f && (!f.isConnected || !f.getClientRects().length)) pad25Focus(null); }, 60); }
+  if (pad25Edge(4)) pad25Tab(-1);
+  if (pad25Edge(5)) pad25Tab(1);
+  const ry = pad25Dz(ax[3] || 0, 0.25);
+  if (ry) pad25Scroll(ry * 900 * Math.min(0.05, dt || 0.016));
+}
+
+/* ---------------------------------------------------------------- riding / walking */
+function pad25Ride(dt, now){
+  const ax = PAD25.ax, b = PAD25.b;
+  const lx = pad25Dz(ax[0], 0.14), ly = pad25Dz(ax[1], 0.3);
+  const air = (typeof bike !== 'undefined') && bike.state === 'air';
+  pad25Set('up', b[7] > 0.3 || (air && ly < -0.45));
+  pad25Set('down', b[6] > 0.3 || (air && ly > 0.45));
+  pad25Set('crouch', b[0] > 0.5);
+  pad25Set('manual', b[4] > 0.5);
+  const tk = pad25TrickKeys();
+  pad25Set(tk[0], b[2] > 0.5);                      // X
+  pad25Set(tk[1], b[3] > 0.5);                      // Y
+  pad25Set(tk[2], b[1] > 0.5);                      // B
+  // a gentle curve: fine lines near the middle, full lock at the rim
+  PAD25.steer = lx ? Math.sign(lx) * Math.pow(Math.abs(lx), 1.35) : 0;
+  PAD25.spin = (b[5] > 0.5 && air) ? (lx ? Math.sign(lx) : 1) : 0;
+  pad25Set('drift', b[5] > 0.5 && !air);           // RB on the ground: drift / powerslide (X on a keyboard)
+  // right stick: look around (like dragging the mouse); R3 recentres
+  const rx = pad25Dz(ax[2] || 0, 0.18), ry = pad25Dz(ax[3] || 0, 0.18);
+  try {
+    if (rx || ry){
+      camCtl.yaw -= rx * 2.4 * dt; camCtl.pitch = clamp(camCtl.pitch + ry * 1.5 * dt, -0.45, 0.95);
+      if (camCtl.yaw > Math.PI) camCtl.yaw -= Math.PI * 2;
+      if (camCtl.yaw < -Math.PI) camCtl.yaw += Math.PI * 2;
+      camCtl.drag = true; camCtl.idle = 0; PAD25.look = true;
+    } else if (PAD25.look){ camCtl.drag = false; camCtl.idle = 0; PAD25.look = false; }
+    if (pad25Edge(11)){ camCtl.yaw = 0; camCtl.pitch = 0; camCtl.dist = 1; camCtl.hold = false; }
+  } catch(e){}
+  if (pad25Edge(10)) pad25Key('KeyT', 't');                         // L3: trick list
+  if (pad25Edge(12)){ try { cyclePov(1); } catch(e){} }             // d-pad up: camera view
+  if (pad25Edge(14)) pad25Key('Enter', 'Enter');                    // d-pad left: get off / on
+  if (pad25Edge(15)) pad25Key('KeyE', 'e');                         // d-pad right: use
+  // d-pad down: hold to respawn (like the touch button)
+  const h = PAD25.hold;
+  if (pad25Edge(13)){ h.k = 'reset'; h.t = now; h.done = false; }
+  if (h.k === 'reset'){
+    if (!pad25Btn(13)) h.k = '';
+    else if (!h.done && now - h.t > 420){ h.done = true; h.k = ''; try { bail('reset'); toast('Back on the bike', true); } catch(e){} pad25Rumble(0.35, 0.2, 90); }
+  }
+}
+/* readInput() (patched): the pad's analog steer on top of the keyboard / touch */
+function pad25Steer(){
+  if (!PAD25.on) return;
+  if (PAD25.spin){ In.steer = PAD25.spin; return; }
+  if (PAD25.steer) In.steer = Math.max(-1, Math.min(1, In.steer + PAD25.steer));
+}
+/* walking: the left stick walks in its own direction and speed, full tilt or LB runs */
+(function(){
+  if (typeof walkReadInput !== 'function' || typeof WIN === 'undefined') return;
+  const base = walkReadInput;
+  walkReadInput = function(){
+    base.apply(this, arguments);
+    if (!PAD25.on || PAD25.idx < 0) return;
+    const x = pad25Dz(PAD25.ax[0], 0.16), z = -pad25Dz(PAD25.ax[1], 0.16), m = Math.hypot(x, z);
+    if (m > 0){
+      WIN.x = x / Math.max(1, m); WIN.z = z / Math.max(1, m); WIN.mag = Math.min(1, m);
+      if (m > 0.92 || PAD25.b[4] > 0.5) WIN.run = 1;
+      WIN.any = true;
+    }
+  };
+})();
+
+/* ---------------------------------------------------------------- per frame */
+function pad25Tick(dt, now){
+  if (!PAD25.on) return;
+  const g = pad25Get();
+  if (!g){ return; }
+  const P = PAD25;
+  for (let i = 0; i < 17; i++){
+    P.pb[i] = P.b[i];
+    const bt = g.buttons[i];
+    P.b[i] = !bt ? 0 : (typeof bt === 'object' ? (bt.pressed ? Math.max(0.51, bt.value || 0) : (bt.value || 0)) : +bt);
+  }
+  for (let i = 0; i < 4; i++) P.ax[i] = g.axes[i] || 0;
+  let any = false;
+  for (let i = 0; i < 17; i++) if (P.b[i] > 0.5){ any = true; break; }
+  if (!any) for (let i = 0; i < 4; i++) if (Math.abs(P.ax[i]) > 0.35){ any = true; break; }
+  if (any && !P.used){ P.used = 1; document.documentElement.classList.add('padActive'); }
+  else if (any && !document.documentElement.classList.contains('padActive')) document.documentElement.classList.add('padActive');
+  const menu = pad25Menuish();
+  // Start: pause / resume (Drop In on the main menu); Select: the map
+  if (pad25Edge(9)){
+    if (GAME === 'play' && !menu) togglePause();
+    else if (GAME === 'pause'){ togglePause(); pad25Focus(null); }
+    else if (GAME === 'menu'){ const s = document.getElementById('startBtn'), r = pad25Root(); if (s && r && r.id === 'menu' && s.getClientRects().length) s.click(); else pad25Press(); }
+    P.pb[9] = 1;
+    return;
+  }
+  if (pad25Edge(8)){
+    try {
+      if (typeof RGMAP !== 'undefined' && RGMAP.open) rgMapClose();
+      else if (GAME === 'play' && !menu && typeof rgMapOpen === 'function' && (typeof RGX === 'undefined' || RGX.on)) rgMapOpen();
+    } catch(e){}
+    return;
+  }
+  if (menu){
+    pad25Release();
+    pad25Nav(now, dt);
+  } else {
+    if (P.focus) pad25Focus(null);
+    if (GAME === 'play') pad25Ride(dt, now);
+  }
+  // rumble: landings (by air time) and bails
+  try {
+    const st = bike.state;
+    if (st !== P.lastState){
+      if (P.lastState === 'air' && (st === 'ride' || st === 'grind')) pad25Rumble(Math.min(0.7, 0.12 + P.airPeak * 0.22), Math.min(0.5, 0.2 + P.airPeak * 0.1), 80 + Math.min(120, P.airPeak * 60));
+      if (st === 'bail') pad25Rumble(0.9, 0.6, 260);
+      if (st !== 'air') P.airPeak = 0;
+      P.lastState = st;
+    }
+    if (st === 'air') P.airPeak = Math.max(P.airPeak, bike.airTime || 0);
+  } catch(e){}
+}
+
+/* ---------------------------------------------------------------- the Controls page: the pad layout */
+function pad25Guide(){
+  if (PAD25.guideDone) return;
+  const c = document.getElementById('controls'); if (!c) return;
+  const card = c.querySelector('.card'); if (!card) return;
+  PAD25.guideDone = true;
+  const g = document.createElement('div');
+  g.className = 'padGuide';
+  const lab = (x, y, t, a)=> '<text x="' + x + '" y="' + y + '" text-anchor="' + (a || 'middle') + '">' + t + '</text>';
+  g.innerHTML = '<h4>Controller</h4>' +
+    '<svg class="padSvg" viewBox="0 0 360 170" role="img" aria-label="Controller layout">' +
+    '<path d="M70 52 Q180 38 290 52 Q338 60 350 128 Q356 162 326 164 Q300 166 280 132 Q262 108 180 108 Q98 108 80 132 Q60 166 34 164 Q4 162 10 128 Q22 60 70 52Z" class="pBody"/>' +
+    '<rect x="62" y="30" width="58" height="14" rx="7" class="pBump"/><rect x="240" y="30" width="58" height="14" rx="7" class="pBump"/>' +
+    lab(91, 22, 'LT brake · LB wheelie') + lab(269, 22, 'RT pedal · RB spin') +
+    '<circle cx="96" cy="78" r="17" class="pStick"/><circle cx="228" cy="112" r="15" class="pStick"/>' +
+    '<path d="M126 104h10v-10h10v10h10v10h-10v10h-10v-10h-10z" class="pDpad"/>' +
+    '<circle cx="270" cy="62" r="9" class="pY"/><circle cx="252" cy="80" r="9" class="pX"/><circle cx="288" cy="80" r="9" class="pB"/><circle cx="270" cy="98" r="9" class="pA"/>' +
+    lab(270, 66, 'Y') + lab(252, 84, 'X') + lab(288, 84, 'B') + lab(270, 102, 'A') +
+    '<rect x="160" y="70" width="14" height="8" rx="4" class="pMini"/><rect x="186" y="70" width="14" height="8" rx="4" class="pMini"/>' +
+    lab(167, 64, 'Map') + lab(193, 64, 'Pause') +
+    '</svg>' +
+    '<div class="tgRow"><b>Left stick</b><span>Steer · in the air: spin, up / down for a front / back flip</span></div>' +
+    '<div class="tgRow"><b>RT · LT</b><span>Pedal · brake</span></div>' +
+    '<div class="tgRow"><b>A</b><span>Hold to crouch, let go to hop</span></div>' +
+    '<div class="tgRow"><b>X · Y · B</b><span>Tricks (Settings: Controller X · Y · B)</span></div>' +
+    '<div class="tgRow"><b>LB · RB</b><span>Wheelie · spin (hold in the air)</span></div>' +
+    '<div class="tgRow"><b>Right stick</b><span>Look around · click it to recentre</span></div>' +
+    '<div class="tgRow"><b>D-pad</b><span>Up camera view · hold down respawn · left get off / on · right use</span></div>' +
+    '<div class="tgRow"><b>Start · View</b><span>Pause · map</span></div>' +
+    '<div class="tgRow"><b>Menus</b><span>D-pad / stick move · A select · B back · LB / RB tabs</span></div>';
+  const tg = card.querySelector('.touchGuide'), grid = card.querySelector('.ctrlGrid');
+  const after = tg || grid;
+  if (after && after.parentNode === card) card.insertBefore(g, after.nextSibling); else card.appendChild(g);
+}
+
+injectCSS(`
+.pad25F{ outline:3px solid #ffc46b !important; outline-offset:3px !important; box-shadow:0 0 0 7px rgba(255,196,107,.28) !important; position:relative; z-index:2; }
+html:not(.padUI) .pad25F{ outline:none !important; box-shadow:none !important; }
+.padGuide{ display:block; text-align:left; margin-top:16px; }
+.padGuide h4{ font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:var(--hot, #ff7a45); margin-bottom:8px; font-weight:600; }
+.padSvg{ display:block; width:min(360px,100%); height:auto; margin:4px auto 10px; }
+.padSvg text{ font:600 11px/1 var(--dl-cond, system-ui, sans-serif); fill:var(--paper, #f2ede4); letter-spacing:.04em; }
+.padSvg .pBody{ fill:rgba(255,255,255,.06); stroke:rgba(242,237,228,.5); stroke-width:2; }
+.padSvg .pBump{ fill:rgba(255,255,255,.12); stroke:rgba(242,237,228,.4); }
+.padSvg .pStick{ fill:rgba(10,13,18,.6); stroke:rgba(242,237,228,.55); stroke-width:2; }
+.padSvg .pDpad{ fill:rgba(242,237,228,.5); }
+.padSvg .pMini{ fill:rgba(242,237,228,.4); }
+.padSvg .pA{ fill:#3c9a4a; } .padSvg .pB{ fill:#c8463c; } .padSvg .pX{ fill:#3a6fd0; } .padSvg .pY{ fill:#d8a72c; }
+html[data-pad="ps"] .padSvg .pA, html[data-pad="ps"] .padSvg .pB, html[data-pad="ps"] .padSvg .pX, html[data-pad="ps"] .padSvg .pY{ fill:rgba(10,13,18,.7); stroke:rgba(242,237,228,.6); }
+/* a pad in a touch device's hands: the thumb buttons step back until the screen is touched again */
+html.padActive #touch .mb, html.padActive #touch .mStickRing{ opacity:0 !important; }
+`, 'pad25-css');
+
+/* ---------------------------------------------------------------- boot */
+(function pad25Boot(){
+  if (!('getGamepads' in navigator)) return;
+  addEventListener('gamepadconnected', pad25Connect);
+  addEventListener('gamepaddisconnected', pad25Disconnect);
+  // a mouse or a finger takes over again: the focus ring and the hidden touch buttons step back
+  addEventListener('pointerdown', e=>{
+    if (!PAD25.on) return;
+    if (PAD25.focus && e.isTrusted) pad25Focus(null);
+    if (e.pointerType === 'touch') document.documentElement.classList.remove('padActive');
+  }, true);
+  addFrameHook(pad25Tick);
+  try { pad25Guide(); } catch(e){}               // the Controls page shows the pad layout on every device
+  // a pad that was already connected before the page loaded (some browsers only report it on the first press)
+  try { const g = pad25Get(); if (g) pad25Connect({ gamepad: g }); } catch(e){}
+  window.__pad25 = PAD25;
 })();
 /*@@LATE@@*/
 /* =========================================================================
@@ -87643,5 +89078,108 @@ function evuWire(){
 }
 
 </script>
+<style id="mobile25css">
+/* =========================================================================
+   mobile25.css -- phones, tablets and touch laptops (Release 15.16, stream mobile25)
+   Loaded LAST (a style element at the end of the page body, after every head style and every injectCSS()), so it can fix any screen's
+   touch layout without editing the module that owns it. Everything is scoped to html.touchUI (a phone / tablet, or a
+   touch laptop once it was touched) or to a media query a computer window never matches with a mouse -- a desktop with
+   a mouse sees no change.
+   ========================================================================= */
+
+/* ---------- 1. readable type: nothing a player has to read below ~11-12 px on a touch screen ---------- */
+/* the HUD */
+html.touchUI .stat .lbl{ font-size:12px; letter-spacing:.16em; }
+html.touchUI #chargeWrap .lbl, html.touchUI #battWrap .lbl{ font-size:11.5px; }
+html.touchUI .toast{ font-size:13px; letter-spacing:.1em; }
+html.touchUI #mobHint{ font-size:13px; letter-spacing:.1em; }
+html.touchUI #hndWrap .lbl{ font-size:11.5px; }
+html.touchUI #physBal .pbHead{ font-size:11px; } html.touchUI #physBal .pbFoot{ font-size:10.5px; }
+html.touchUI #hudFriends .ncRailLv{ font-size:11.5px; } html.touchUI #hudFriends .ncRailHint{ font-size:12px; }
+html.touchUI #mnyHud .mhLv{ font-size:11.5px; }
+/* the garage (fleet_garage.js) */
+html.touchUI .gar .gTitle span{ font-size:11px; }
+html.touchUI .gar .gTab{ font-size:12.5px; }
+html.touchUI .gar .gBtn{ font-size:13px; }
+html.touchUI .gar .gCount{ font-size:11px; }
+html.touchUI .gar .gTx em{ font-size:12px; }
+html.touchUI .gar .gEq, html.touchUI .gar .gList.grid .gEq{ font-size:10.5px; }
+html.touchUI .gar .gList.grid .gTx b{ font-size:13px; }
+html.touchUI .gar .gList.grid .gTx em{ font-size:11.5px; }
+html.touchUI .gar .gEmpty button{ font-size:12px; }
+html.touchUI .gar .gTag span{ font-size:12px; }
+html.touchUI .gar .gTool{ font-size:12px; }
+html.touchUI .gar .gLoad{ font-size:11px; }
+html.touchUI .gar .gViews button{ font-size:12px; }
+html.touchUI .gar .gHint{ font-size:12px; }
+html.touchUI .gar .gPanes button{ font-size:12.5px; }
+html.touchUI .gar .gPower{ font-size:11px; }
+html.touchUI .gar .gCap{ font-size:11.5px; }
+html.touchUI .gar .gStat{ font-size:12px; }
+html.touchUI .gar .gNow{ font-size:12px; }
+html.touchUI .gar .gGo{ font-size:13px; }
+/* customise (fleet_cust.js) */
+html.touchUI .cuTitle b{ font-size:12.5px; } html.touchUI .cuTitle span{ font-size:12.5px; }
+html.touchUI .cuBtn{ font-size:12px; }
+html.touchUI .cuSec > summary b{ font-size:12.5px; } html.touchUI .cuSec > summary em{ font-size:12px; }
+html.touchUI .cuSub, html.touchUI .cuSlot{ font-size:11px; }
+html.touchUI .cuPal .cuCap, html.touchUI .cuMix label{ font-size:11.5px; }
+html.touchUI .cuPre button, html.touchUI .cuChip, html.touchUI .cuRow > span{ font-size:12px; }
+html.touchUI .cuDot em, html.touchUI .cuDec.none{ font-size:11px; }
+html.touchUI .cuNote{ font-size:12px; }
+html.touchUI .cuFoot button{ font-size:12px; }
+html.touchUI .cuTog .tx b{ font-size:13px; } html.touchUI .cuTog .tx em{ font-size:12px; }
+/* menus / multiplayer hub (menu.css) */
+html.touchUI .bdg{ font-size:11px; }
+html.touchUI .btn.sm, html.touchUI .segBtn, html.touchUI .linkBtn{ font-size:12px; }
+html.touchUI .subhead{ font-size:11px; }
+html.touchUI .hrow .meta, html.touchUI .roomMap{ font-size:12px; }
+html.touchUI .evTag{ font-size:12px; }
+html.touchUI .st13Head small{ font-size:12px; }
+
+/* ---------- 2. tap targets: 44 px or more ---------- */
+html.touchUI .kit{ min-height:44px; }
+html.touchUI .gar .gTab, html.touchUI .gar .gPanes button, html.touchUI .gar .gViews button{ min-height:40px; }
+html.touchUI .gar .gBtn{ min-height:46px; }
+
+/* ---------- 3. the garage on a touch screen: the view buttons were a two-row block over the bike; the hint spoke mouse ---------- */
+html.touchUI .gar .gHint{ display:none; }
+html.touchUI .gar .gViews{ bottom:8px; flex-wrap:nowrap; gap:4px; max-width:calc(100% - 16px); }
+html.touchUI .gar .gViews button{ padding:0 9px; min-height:36px; letter-spacing:.08em; -webkit-backdrop-filter:none; backdrop-filter:none; background:rgba(8,11,16,.78); }
+/* a small phone held sideways (667 x 375 ...) got the upright phone's one long column: the header scrolled away and Equip was
+   off screen. Sideways it gets three columns that all fit: the list | the bike | details with Equip at the bottom. */
+@media (max-width:700px) and (orientation:landscape){
+  html.touchUI .gar:not(.cust){ overflow:hidden; }
+  html.touchUI .gar .gHead{ flex-wrap:nowrap; padding:6px 10px; gap:8px; }
+  html.touchUI .gar .gTitle span{ display:none; }
+  html.touchUI .gar:not(.cust) .gTitle{ display:none; }           /* the ride tabs need the width (they ran under the title) */
+  html.touchUI .gar .gTabs{ order:0; flex:1 1 auto; min-width:0; }
+  html.touchUI .gar:not(.cust) .gBody{ display:grid; flex:1 1 auto; min-height:0; grid-template-columns:minmax(150px,29%) minmax(0,1fr) minmax(210px,35%); grid-template-rows:minmax(0,1fr); }
+  html.touchUI .gar:not(.cust) .gSide, html.touchUI .gar:not(.cust) .gStage, html.touchUI .gar:not(.cust) .gInfo{ order:0; }
+  html.touchUI .gar:not(.cust) .gStage{ height:auto; min-height:0; }
+  html.touchUI .gar:not(.cust) .gSide{ min-height:0; border-bottom:0; border-right:1px solid rgba(242,237,228,.09); }
+  html.touchUI .gar:not(.cust) .gList{ display:block; overflow-x:hidden; overflow-y:auto; flex:1 1 auto; min-height:0; }
+  html.touchUI .gar:not(.cust) .gList .gCard, html.touchUI .gar:not(.cust) .gList.grid .gCard{ flex:none; width:100%; margin:0 0 6px; }
+  html.touchUI .gar:not(.cust) .gInfo{ grid-column:auto; display:flex; flex-direction:column; min-height:0; max-height:none; border-top:0; border-left:1px solid rgba(242,237,228,.09); }
+  html.touchUI .gar:not(.cust) .gPaneBody{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:8px 10px; }
+  html.touchUI .gar:not(.cust) .gActs{ position:static; box-shadow:none; padding:6px 8px; }
+  html.touchUI .gar:not(.cust) .gViews{ display:none; }
+}
+
+/* ---------- 4. the FPS tab sat under the notch / status bar (top:0, left:6px) ---------- */
+html.touchUI #fpsBox{ top:var(--mob-t, 0px); left:calc(6px + var(--mob-l, 0px)); }
+
+/* ---------- 5. full-screen panels (pause, results, controls ...) blurred the live 3D view behind them every frame: a phone GPU
+   pays for a 6 px blur of the whole screen at DPR 3. A darker plain backdrop reads the same. ---------- */
+html.touchUI .screen{ -webkit-backdrop-filter:none; backdrop-filter:none; background:radial-gradient(120% 90% at 50% 26%, rgba(14,18,24,.66), rgba(6,8,12,.95)); }
+
+/* ---------- 6. typing on a phone: a text field under 16 px makes iOS zoom the whole page in when it gets the focus ---------- */
+html.touchUI input[type=search], html.touchUI input[type=text], html.touchUI input[type=email], html.touchUI input[type=password],
+html.touchUI input:not([type]), html.touchUI textarea{ font-size:16px !important; }
+
+/* ---------- 7. a keyboard on a tablet (or a pad: pad25.js) fades the thumb buttons; the next touch brings them back ---------- */
+html.kbdActive #touch .mb, html.kbdActive #touch .mStickRing{ opacity:0 !important; transition:opacity .25s; }
+
+</style>
 </body>
 </html>
