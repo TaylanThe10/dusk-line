@@ -22919,14 +22919,25 @@ function fwheel(o){
   if (o.motor) g.add(bkCylX(o.motor, 0.10, BM.motor, -0.005, 20));
   const st = [];
   if (o.disc){ const rg = m12rotorGeo(o.disc, o.discX || 0.050); st.push(rg[0], rg[1]); }                // steel rotor ring + spider
+  const dk = [];
   if (o.cassette){
+    /* R15.18 (look27): real cogs -- each a toothed ring (open in the middle on the big ones), dark spacers between them and a
+       dark carrier inside, so the cassette reads as a stack of gears instead of one silver plate */
     const n = o.cassette, c0 = o.cogMin || 0.030, c1 = o.cogMax || (n > 1 ? 0.066 : 0.032), pt = n > 11 ? 0.0039 : 0.0045;
+    const lathe = (r0, r1, w, x, segs)=>{ const g2 = new T.LatheGeometry([new T.Vector2(r0, -w/2), new T.Vector2(r1, -w/2), new T.Vector2(r1, w/2), new T.Vector2(r0, w/2), new T.Vector2(r0, -w/2)], segs); g2.rotateZ(Math.PI/2); g2.translate(x, 0, 0); return g2; };
     for (let i = 0; i < n; i++){                                                       // biggest cog inboard, smallest outboard (a stepped cone from the drive side)
       const r = n > 1 ? c0 + (c1 - c0)*Math.pow(i/(n - 1), 0.85) : c1, x = -0.024 - (n - 1 - i)*pt;
-      const c = new T.CylinderGeometry(r, r, 0.0028, n > 1 ? 20 : 18); c.rotateZ(Math.PI/2); c.translate(x, 0, 0); st.push(c);
+      const big = n > 1 && r > c0 + (c1 - c0)*0.45, ri = big ? r*0.70 : Math.max(0.016, r*0.55);
+      st.push(lathe(ri, r - 0.0028, 0.0022, x, 28));
+      const nt = Math.max(9, Math.round(r*2*Math.PI/0.0061)), tooth = new T.BoxGeometry(0.0022, 0.0042, 0.0030);
+      for (let k = 0; k < nt; k++){ const t1 = tooth.clone(); t1.translate(0, r - 0.0012, 0); t1.rotateX(k/nt*Math.PI*2); t1.translate(x, 0, 0); st.push(t1); }
+      if (big) for (let k = 0; k < 5; k++){ const a = new T.BoxGeometry(0.0020, r*0.34, 0.0075); a.translate(0, (ri + r*0.52)/2, 0); a.rotateX(k/5*Math.PI*2 + i*0.4); a.translate(x, 0, 0); st.push(a); }   // spider arms
+      if (i < n - 1) dk.push(lathe(Math.max(0.016, c0*0.62), Math.max(0.018, c0*0.80), pt - 0.0022, x - pt/2, 20));            // spacer
     }
+    dk.push(lathe(0.010, Math.max(0.017, c0*0.62), n*pt + 0.002, -0.024 - (n - 1)*pt/2, 20));                                   // carrier body
   }
   if (st.length) g.add(bkMesh(bkMerge(st), o.cassetteMat || M12.steel));
+  if (dk.length) g.add(bkMesh(bkMerge(dk), M12.anod));
   if (o.reflect){
     const r = new T.BoxGeometry(0.004, 0.05, 0.02); r.translate(0, rimR - 0.07, 0);
     g.add(bkMesh(bkMerge([r.clone().translate(0.03,0,0), r.clone().translate(-0.03,0,0)]), BK.orange, false));
@@ -77204,6 +77215,226 @@ const KN27 = {
 })();
 const KNEE27_TIP = { bmx:'bmxk_knock', mtb:'mtbk_knock', emtb:'emk_knock', road:'rdk_knock', scooter:'sck_knock',
                      escooter:'esk_knock', edirt:'edk_knock', moped:'mok_biker', ebike:'ebc_kneeknock' };
+/* =========================================================================
+   LOOK27 GARAGE -- "make the bikes look better" (integrator, Release 15.18): the showroom presents every ride like a product shot.
+     * a GLOSSY SHOWROOM FLOOR: the ride (and rider) is drawn a second time mirrored under the turntable (lights mirrored too),
+       then a dark radial fade + the turntable disc go over it, so the bike stands on a polished floor with a soft reflection
+     * brighter softbox strips in the showroom's reflection map, a second rim light: paint, chrome and carbon pick up long
+       highlights as the bike turns
+     * showroom paint: the garage copy of a factory / gloss finish gets a lower roughness + stronger reflections (clear-coat look);
+       matte / satin / effect finishes stay as chosen. Only the garage's private copies change -- nothing in the game world,
+       no new programs in the game's renderer (the garage has its own WebGL context).
+   ?look27=0 turns it off. API: LOOK27 (state), look27View(view)
+   ========================================================================= */
+const LOOK27 = { on: !/[?&]look27=0\b/.test(location.search), mirror:true, views:0, err:'' };
+function look27FadeTex(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 127);
+  gr.addColorStop(0.00, 'rgba(255,255,255,0.40)');
+  gr.addColorStop(0.30, 'rgba(255,255,255,0.58)');
+  gr.addColorStop(0.62, 'rgba(255,255,255,0.93)');
+  gr.addColorStop(0.86, 'rgba(255,255,255,0.97)');
+  gr.addColorStop(1.00, 'rgba(255,255,255,0.00)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const t = new T.CanvasTexture(cv); t.encoding = T.sRGBEncoding;
+  return t;
+}
+/* the showroom's reflection map: the original grey dome + more, brighter softboxes and two long strip lights */
+function look27Env(view){
+  try {
+    const es = new T.Scene(), geo = new T.SphereGeometry(10, 32, 16), pos = geo.attributes.position, col = [], c = new T.Color();
+    for (let i = 0; i < pos.count; i++){
+      const y = pos.getY(i)/10, up = Math.max(0, y), dn = Math.max(0, -y);
+      c.setRGB(0.05 + 0.42*up + 0.03*dn, 0.06 + 0.45*up + 0.03*dn, 0.08 + 0.55*up + 0.03*dn);
+      col.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+    es.add(new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors:true, side:T.BackSide })));
+    // softboxes [x, y, z, w, h, intensity] + strips (long thin bright bars that draw clean highlight lines along tubes)
+    [[-4, 5, 4, 5, 2.6, 9], [5, 4, -3, 3.5, 2.2, 6], [0, 8, -4, 6, 1.8, 7], [-6, 2, -2, 2, 3, 3.5], [3, 6, 5, 3, 1.4, 6],
+     [0, 7.5, 2, 9, 0.35, 14], [-7, 3.5, 0, 0.35, 6, 9], [7, 3.0, 2, 0.35, 5, 7]].forEach(a=>{
+      const m = new T.Mesh(new T.PlaneGeometry(a[3], a[4]), new T.MeshBasicMaterial({ color:new T.Color(a[5], a[5], a[5]*0.97), side:T.DoubleSide }));
+      m.position.set(a[0], a[1], a[2]); m.lookAt(0, 0.5, 0); es.add(m);
+    });
+    const pm = new T.PMREMGenerator(view.rnd), rt = pm.fromScene(es, 0.02);
+    const old = view.scene.environment;
+    view.scene.environment = rt.texture;
+    if (old && old !== rt.texture && old.dispose) old.dispose();
+    pm.dispose();
+  } catch(e){ LOOK27.err = 'env: ' + e.message; }
+}
+/* the garage copy's paint: a clear-coat look on factory + gloss finishes (the ghost's materials are private copies) */
+function look27Gloss(view){
+  const g = view && view.g;
+  if (!g || !g.mats || !g.preview) return;
+  const fin = (g.cust && g.cust.f) | 0;
+  const glossy = fin === 0 || fin === 1;
+  ['frame', 'fork', 'acc'].forEach(k=>{
+    const m = g.mats[k]; if (!m) return;
+    if (glossy){ m.roughness = Math.max(0.06, Math.min(m.roughness, 0.5)*0.5); m.envMapIntensity = 1.45; }
+    else m.envMapIntensity = 1.15;
+  });
+  ['rim', 'bars'].forEach(k=>{ const m = g.mats[k]; if (m) m.envMapIntensity = 1.3; });
+  const t = g.mats.tire; if (t){ t.envMapIntensity = 0.6; }
+}
+function look27View(view){
+  if (!LOOK27.on || !view || view._l27) return;
+  view._l27 = true; LOOK27.views++;
+  try {
+    look27Env(view);
+    // a second rim light from the other side + a top light: edge highlights on the tubes as the bike turns
+    const r2 = new T.DirectionalLight(0xdfe9ff, 1.25); r2.position.set(3.4, 2.6, -2.8); view.scene.add(r2);
+    const top = new T.DirectionalLight(0xffffff, 0.55); top.position.set(0.2, 6, 0.4); view.scene.add(top);
+    if (view.mini) return;                                          // small views (cards): lights + reflections only
+    // the polished floor: a mirrored pass, then a dark fade over it
+    const fade = new T.Mesh(new T.CircleGeometry(1, 64), new T.MeshBasicMaterial({ map:look27FadeTex(), color:0x0a0d12, transparent:true, depthWrite:false }));
+    fade.rotation.x = -Math.PI/2; fade.position.y = 0.0015; fade.visible = false; fade.renderOrder = -1;
+    view.scene.add(fade);
+    const rnd = view.rnd, base = rnd.render.bind(rnd), lights = [];
+    view.scene.traverse(o=>{ if (o.isLight && !o.isAmbientLight) lights.push(o); });
+    rnd.render = function(scene, cam){
+      if (scene !== view.scene || !view.g || !LOOK27.mirror){ return base(scene, cam); }
+      const ac = rnd.autoClear, root = view.root;
+      try {
+        rnd.autoClear = false; rnd.clear();
+        // 1. the reflection: everything in the root mirrored about the floor, lights mirrored with it
+        const hid = [view.shadow, view.disc, view.ring].filter(Boolean), vis = hid.map(o=> o.visible);
+        hid.forEach(o=> o.visible = false);
+        const y0 = view.bikeBox ? Math.max(-0.2, Math.min(0.2, view.bikeBox.min.y)) : 0;      // mirror about the tyres' contact plane
+        root.scale.y = -1; root.position.y = 2*y0; root.updateMatrixWorld(true);
+        lights.forEach(l=>{ l.position.y = -l.position.y; l.updateMatrixWorld(true); });
+        base(scene, cam);
+        lights.forEach(l=>{ l.position.y = -l.position.y; l.updateMatrixWorld(true); });
+        root.scale.y = 1; root.position.y = 0; root.updateMatrixWorld(true);
+        hid.forEach((o, i)=> o.visible = vis[i]);
+        rnd.clearDepth();
+        // 2. the floor fade (sized to the turntable, reaching toward the camera) + the real bike
+        const d = view.disc;
+        fade.position.z = d ? d.position.z : 0;
+        const s = (d ? d.scale.x : 1.2)*2.3; fade.scale.set(s, s, 1);
+        fade.visible = true;
+        base(scene, cam);
+      } catch(e){ if (!LOOK27.err) LOOK27.err = 'render: ' + e.message; LOOK27.mirror = false; }
+      fade.visible = false;
+      rnd.autoClear = ac;
+    };
+  } catch(e){ LOOK27.err = 'view: ' + e.message; }
+}
+(function look27Hooks(){
+  if (!LOOK27.on || typeof FleetView === 'undefined') return;
+  const P = FleetView.prototype, r0 = P.render, sv = P.setVehicle, sl = P.setLook;
+  P.render = function(dt){ if (!this._l27) look27View(this); return r0.apply(this, arguments); };
+  P.setVehicle = function(){ const r = sv.apply(this, arguments); try { look27Gloss(this); } catch(e){} return r; };
+  P.setLook = function(){ const r = sl.apply(this, arguments); try { look27Gloss(this); } catch(e){} return r; };
+})();
+
+/* =========================================================================
+   LOOK27 RIDE -- "make the bikes look better" while riding (integrator, Release 15.18)
+     * SPOKE BLUR: the wheels of the ride you are on get a translucent blur disc between the hub and the rim that fades in with the
+       wheel's spin (a wheel at speed reads as a spinning wheel, not a still picture); wire-spoked wheels only (mags / discs skip)
+     * TWO-TONE TYRES: a tyre whose sidewall follows the tread colour (most rides) gets a slightly lighter, satin sidewall, so the
+       tread and the wall read apart like real rubber (custom wall colours stay exactly as chosen)
+   One draw per wheel while the blur is visible, nothing per frame when standing still. ?look27=0 turns it off with the showroom.
+   API: LOOK27R (state)
+   ========================================================================= */
+const LOOK27R = { on: !/[?&]look27=0\b/.test(location.search), mat:null, geo:{}, discs:[], id:'', op:0, err:'' };
+function look27BlurTex(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d'), c = 128;
+  const gr = g.createRadialGradient(c, c, 0, c, c, 127);
+  gr.addColorStop(0.00, 'rgba(255,255,255,0)');
+  gr.addColorStop(0.16, 'rgba(255,255,255,0.10)');
+  gr.addColorStop(0.40, 'rgba(255,255,255,0.55)');
+  gr.addColorStop(0.80, 'rgba(255,255,255,0.75)');
+  gr.addColorStop(0.95, 'rgba(255,255,255,0.45)');
+  gr.addColorStop(1.00, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  // faint rings (the rim edge + the spoke crossings) so the blur is not a flat grey
+  g.globalCompositeOperation = 'destination-out';
+  [[0.58, 3, 0.35], [0.70, 2, 0.30], [0.86, 3, 0.25]].forEach(r=>{ g.lineWidth = r[1]; g.strokeStyle = 'rgba(0,0,0,' + r[2] + ')'; g.beginPath(); g.arc(c, c, 127*r[0], 0, Math.PI*2); g.stroke(); });
+  const t = new T.CanvasTexture(cv); t.encoding = T.sRGBEncoding;
+  return t;
+}
+/* the blur disc for a wheel group: radii from its spoke triangles (wheel axis = x) */
+function look27Disc(W){
+  if (!W) return null;
+  let rIn = 1e9, rOut = 0, found = false;
+  const sp = (typeof FLEET_XMATS !== 'undefined' && FLEET_XMATS.spoke) || null;
+  if (!sp) return null;
+  W.traverse(o=>{
+    if (!o.isMesh || o.material !== sp || !o.geometry || !o.geometry.attributes.position) return;
+    const p = o.geometry.attributes.position, oy = o.position.y, oz = o.position.z;
+    for (let i = 0; i < p.count; i++){ const r = Math.hypot(p.getY(i) + oy, p.getZ(i) + oz); if (r < rIn) rIn = r; if (r > rOut) rOut = r; }
+    found = true;
+  });
+  if (!found || !(rOut > 0.08) || !(rOut - rIn > 0.05)) return null;
+  const key = rIn.toFixed(3) + '|' + rOut.toFixed(3);
+  let geo = LOOK27R.geo[key];
+  if (!geo){
+    const a = new T.RingGeometry(Math.max(0.01, rIn*0.9), rOut, 48, 1);
+    // RingGeometry UVs map the outer square: rescale them so the texture's radius 1 = the outer radius
+    const uv = a.attributes.uv, pos = a.attributes.position;
+    for (let i = 0; i < uv.count; i++){ uv.setXY(i, 0.5 + pos.getX(i)/(2*rOut), 0.5 + pos.getY(i)/(2*rOut)); }
+    const b = a.clone(); b.rotateY(Math.PI);                                  // both faces (one front-sided material)
+    a.rotateY(Math.PI/2); b.rotateY(Math.PI/2);
+    a.translate(0.0015, 0, 0); b.translate(-0.0015, 0, 0);
+    geo = LOOK27R.geo[key] = (typeof bkMerge === 'function') ? bkMerge([a, b]) : a;
+  }
+  if (!LOOK27R.mat){
+    LOOK27R.mat = new T.MeshBasicMaterial({ map:look27BlurTex(), color:0xc8ccd4, transparent:true, opacity:0, depthWrite:false });
+  }
+  const m = new T.Mesh(geo, LOOK27R.mat);
+  m.name = 'look27Blur'; m.renderOrder = 2; m.visible = false; m.castShadow = false; m.receiveShadow = false;
+  W.add(m);
+  return m;
+}
+function look27Rebuild(){
+  LOOK27R.discs.forEach(d=>{ if (d && d.parent) d.parent.remove(d); });
+  LOOK27R.discs = [];
+  const lk = (typeof FLEET_LOOKS !== 'undefined') ? FLEET_LOOKS[FLEET_CUR] : null;
+  LOOK27R.id = FLEET_CUR;
+  if (!lk) return;
+  [lk.rear, lk.frontW].forEach(W=>{ const d = look27Disc(W); if (d) LOOK27R.discs.push(d); });
+  LOOK27R.R = lk.Rr || 0.33;
+}
+function look27Frame(dt){
+  if (!LOOK27R.on || typeof bike === 'undefined') return;
+  if (typeof FLEET_CUR === 'undefined' || !FLEET_CUR) return;
+  if (LOOK27R.id !== FLEET_CUR) look27Rebuild();
+  if (!LOOK27R.discs.length) return;
+  const play = typeof GAME !== 'undefined' && GAME === 'play';
+  const v = play ? Math.hypot(bike.vel.x, bike.vel.z) : 0, w = v/Math.max(0.15, LOOK27R.R || 0.33);   // rad / s
+  const target = Math.max(0, Math.min(1, (w - 9)/34))*0.62;
+  LOOK27R.op += (target - LOOK27R.op)*Math.min(1, (dt || 1/60)*8);
+  const on = LOOK27R.op > 0.02;
+  if (LOOK27R.mat){
+    LOOK27R.mat.opacity = LOOK27R.op;
+    try { const s = FLEET_XMATS.spoke.color; LOOK27R.mat.color.copy(s).lerp(new T.Color(0x9aa0aa), 0.35); } catch(e){}
+  }
+  for (let i = 0; i < LOOK27R.discs.length; i++) LOOK27R.discs[i].visible = on;
+}
+/* two-tone tyres: a sidewall that follows the tread colour comes out a little lighter */
+function look27Lift(hex){
+  const c = new T.Color(hex), hsl = {}; c.getHSL(hsl);
+  c.setHSL(hsl.h, hsl.s*0.85, Math.min(0.32, hsl.l + 0.075));
+  return c.getHex();
+}
+(function look27RideHooks(){
+  if (!LOOK27R.on) return;
+  if (typeof addFrameHook === 'function') addFrameHook(look27Frame);
+  if (typeof fleetLook === 'function'){
+    const fl = fleetLook;
+    fleetLook = function(id, ci, cust){
+      const L = fl.apply(this, arguments);
+      try {
+        const own = cust && cust.c && cust.c[FLEET_SLOT_KEY.wall] !== undefined;
+        if (L && !own && L.pbr && L.pbr.wall === null && L.wall === L.tire){ L.wall = look27Lift(L.tire); L.pbr.wall = [0.62, 0.0]; }
+      } catch(e){ if (!LOOK27R.err) LOOK27R.err = 'wall: ' + e.message; }
+      return L;
+    };
+  }
+})();
+
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
