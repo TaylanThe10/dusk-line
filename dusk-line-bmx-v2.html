@@ -3692,6 +3692,13 @@ html #loading .ldTip::before{ content:'TIP'; position:absolute; left:12px; top:5
 .ui43MapCard .tx b{ font-size:17px; letter-spacing:.04em; text-transform:uppercase; font-family:var(--dl-font-display, inherit); }
 .ui43MapCard .tx span{ font-size:12.5px; opacity:.75; }
 .ui43MapCard .go{ font-size:20px; opacity:.8; }
+/* 15.36: a smoother loading screen -- the bar glides between steps; the rider bobs on the compositor (keeps moving while the game
+   builds the city on the main thread); the stars twinkle on their own layer */
+html #loading #loadBar i{ transition:width .45s cubic-bezier(.2,.8,.2,1) !important; }
+html #loading::before{ will-change:opacity; }
+html #loading .ldBike{ will-change:transform; animation:ld43Ride .5s ease-in-out infinite alternate; }
+@keyframes ld43Ride{ from{ transform:translateY(0) rotate(0deg); } to{ transform:translateY(-1.6px) rotate(-1.5deg); } }
+html #loading .lt{ will-change:transform; }
 </style>
 </head>
 <body>
@@ -90212,6 +90219,17 @@ function ui43Minimap(){
     if (ok && typeof GAME !== 'undefined' && GAME === 'play' && typeof rgMapOpen === 'function' && !(typeof RGMAP !== 'undefined' && RGMAP.open)){ e.preventDefault(); rgMapOpen(); }
   }, true);
 }
+/* 15.36 ("when you hop in, for a split sec you can see the old menu"): menu28 re-lays the menu out in its first frame hook, one frame
+   AFTER the loading screen starts to fade -- the old layout showed through for that frame. Do it right when the menu is shown. */
+(function ui43MenuEarly(){
+  if (typeof show !== 'function') return;
+  const base = show;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  show = function(id){
+    if (id === 'menu' && typeof M28 !== 'undefined' && !M28.ready && typeof m28Boot === 'function'){ try { m28Boot(); } catch(e){ UI43.err = 'm28: ' + (e && e.message || e); } }
+    return base.apply(this, arguments);
+  };
+})();
 (function ui43Hooks(){
   if (!UI43.on) return;
   try {
