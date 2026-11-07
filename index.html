@@ -69793,6 +69793,127 @@ function* aerWorldGen(G){
   }
 }
 
+/* ---------------------------------------------------------------- 15.39 (lag): the world picture, kept in the browser
+   The world picture above (64 tiles of 2048 m + the ring's 20 of 4096 m, every pixel's land height, roads, towns, the city) is
+   seconds of work that ran in the background of EVERY session's first minutes (with the garbage it makes: the GC stutters).
+   Once painted it is saved in IndexedDB (PNG tiles, ~3 MB) and the next session loads it in a moment instead. The key is a
+   fingerprint of the world (land heights + water + forest at 81 points, the roads, the palette, AERC_V): a changed world paints
+   it again. Bump AERC_V when the painting itself changes. ?aerc=0 turns the cache off. */
+const AERC_V = 1;
+const AERC = { dbP:null, st:{}, fp:{}, err:'', hits:0, saves:0, ms:0 };
+function aercDb(){
+  if (AERC.dbP) return AERC.dbP;
+  AERC.dbP = new Promise(res=>{
+    try {
+      if (typeof indexedDB === 'undefined' || /[?&]aerc=0\b/.test(location.search)) return res(null);
+      const rq = indexedDB.open('dusk_line_cache', 1);
+      rq.onupgradeneeded = ()=>{ try { if (!rq.result.objectStoreNames.contains('tiles')) rq.result.createObjectStore('tiles'); } catch(e){} };
+      rq.onsuccess = ()=> res(rq.result);
+      rq.onerror = ()=>{ AERC.err = 'open: ' + (rq.error && rq.error.name); res(null); };
+      rq.onblocked = ()=>{ AERC.err = 'open: blocked'; res(null); };
+    } catch(e){ AERC.err = 'open: ' + (e && e.message); res(null); }
+  });
+  return AERC.dbP;
+}
+function aercFp(sty){
+  let h = 2166136261;
+  const mix = v=>{ const t = String(v); for (let i = 0; i < t.length; i++){ h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } };
+  mix(AERC_V); mix(sty);
+  try { mix(JSON.stringify(AER_GP)); } catch(e){}
+  for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++){
+    const x = -11500 + i*2875 + 41*j, z = -11500 + j*2875 + 29*i;
+    try { mix(landH(x, z).toFixed(1)); const w = waterLevelAt(x, z); mix(w === w ? w.toFixed(1) : 'n'); } catch(e){ mix('e'); }
+    try { if (typeof rgForestAt === 'function') mix(rgForestAt(x, z).toFixed(2)); } catch(e){}
+  }
+  try {
+    let q = 0;
+    for (const r of ROADS){ const P = r.pts; if (P && P.length) q += P[0][0] + 3*P[0][1] + 7*P[P.length - 1][0] + 11*P[P.length - 1][1] + P.length + (r.half || 0); }
+    mix(ROADS.length); mix(q.toFixed(0));
+  } catch(e){}
+  return (h >>> 0).toString(36);
+}
+const aercRange = sty=> IDBKeyRange.bound('t:' + sty + ':', 't:' + sty + ':￿');
+function aercBitmap(b){
+  if (typeof createImageBitmap === 'function') return createImageBitmap(b);
+  return new Promise((res, rej)=>{ const u = URL.createObjectURL(b), im = new Image(); im.onload = ()=>{ URL.revokeObjectURL(u); res(im); }; im.onerror = e=>{ URL.revokeObjectURL(u); rej(e); }; im.src = u; });
+}
+/* the ring's tile places, in aerWorldGen's order */
+function aercRingSlots(){ const o = []; for (let tj = -3; tj < 3; tj++) for (let ti = -3; ti < 3; ti++){ if (ti >= -2 && ti < 2 && tj >= -2 && tj < 2) continue; o.push([ti*4096, tj*4096]); } return o; }
+function aercLoad(sty){
+  const S = AERC.st[sty] = { phase:'loading', t0:performance.now() };
+  let fp = '';
+  try { fp = AERC.fp[sty] = aercFp(sty); } catch(e){ S.phase = 'miss'; return; }
+  const miss = why=>{ if (S.phase === 'loading'){ S.phase = 'miss'; S.why = why; } };
+  setTimeout(()=> miss('slow'), 20000);                      // a stuck open / read never holds the map back for long (a late answer still wins)
+  aercDb().then(db=>{
+    if (!db) return miss('no db');
+    let tx; try { tx = db.transaction('tiles', 'readonly'); } catch(e){ return miss('tx'); }
+    const os = tx.objectStore('tiles'), rq = os.get('m:' + sty);
+    rq.onerror = ()=> miss('read');
+    rq.onsuccess = ()=>{
+      const m = rq.result, slots = aercRingSlots();
+      if (!m || m.fp !== fp || m.n !== 64 + slots.length) return miss(m ? 'changed' : 'empty');
+      const r2 = os.getAll(aercRange(sty));
+      r2.onerror = ()=> miss('read');
+      r2.onsuccess = ()=>{
+        const B = r2.result;
+        if (!B || B.length !== m.n) return miss('count');
+        Promise.all(B.map(aercBitmap)).then(bm=>{
+          if (S.phase !== 'loading' && !(S.phase === 'miss' && S.why === 'slow')) return;
+          // (it gave up waiting and started painting: the cached picture still replaces the unfinished painting)
+          if (S.phase === 'miss' && RGMAP.gen && AER.sty === sty) RGMAP.gen = null;
+          const world = bm.slice(0, 64), ring = bm.slice(64).map((c, k)=> ({ c, x0:slots[k][0], z0:slots[k][1], S:4096 }));
+          if (sty === 'gta'){ AER.worldG = world; AER.ringG = ring; } else { AER.world = world; AER.ring = ring; }
+          if (AER.sty === sty){ RGMAP.base = world; RGMAP.ready = true; RGMAP.gen = null; }
+          AER.rev++; S.phase = 'hit'; AERC.hits++; AERC.ms = Math.round(performance.now() - S.t0);
+        }, ()=> miss('decode'));
+      };
+    };
+  }, ()=> miss('db'));
+}
+function aercSave(sty){
+  const fp = AERC.fp[sty]; if (!fp) return;
+  const world = sty === 'gta' ? AER.worldG : AER.world, ring = sty === 'gta' ? AER.ringG : AER.ring;
+  if (!world || world.length !== 64 || !ring || ring.length !== aercRingSlots().length) return;
+  const list = world.concat(ring.map(r=> r.c));
+  if (list.some(c=> !c || typeof c.toBlob !== 'function')) return;          // (pictures that came from the cache are not saved again)
+  aercDb().then(db=>{
+    if (!db) return;
+    const blobs = new Array(list.length);
+    let at = 0, left = 0, bad = false;
+    const next = ()=>{
+      if (bad) return;
+      if (at < list.length){
+        // four tiles at a time (the browser encodes them in its idle time), the next four a little later
+        const end = Math.min(list.length, at + 4);
+        for (; at < end; at++){
+          const k = at; left++;
+          try { list[k].toBlob(b=>{ left--; AERC.enc = (AERC.enc || 0) + 1; if (!b){ bad = true; AERC.err = 'save: blob'; return; } blobs[k] = b; if (!left) setTimeout(next, 60); }, 'image/png'); }
+          catch(e){ bad = true; AERC.err = 'save: ' + (e && e.message); return; }
+        }
+        return;
+      }
+      try {
+        const tx = db.transaction('tiles', 'readwrite'), os = tx.objectStore('tiles');
+        os.delete(aercRange(sty));                             // only this world's picture is kept
+        for (let k = 0; k < blobs.length; k++) os.put(blobs[k], 't:' + sty + ':' + String(k).padStart(3, '0'));
+        os.put({ fp, n:blobs.length, v:AERC_V, t:Date.now() }, 'm:' + sty);
+        tx.oncomplete = ()=>{ AERC.saves++; };
+        tx.onerror = ()=>{ AERC.err = 'save: ' + (tx.error && tx.error.name); };
+      } catch(e){ AERC.err = 'save: ' + (e && e.message); }
+    };
+    next();
+  });
+}
+/* the base picture's generator (rgMapPaint): from the cache when it has this world, painted (and then saved) when not */
+function* aercPaintGen(G){
+  const sty = G ? 'gta' : 'sat', S = AERC.st[sty];
+  if (!S){ aercLoad(sty); return; }                          // the region UI asks again next frame (an empty generator ends)
+  if (S.phase === 'loading' || S.phase === 'hit') return;
+  yield* aerWorldGen(G);
+  aercSave(sty);
+}
+
 /* ---------------------------------------------------------------- tiles: on demand, nearest first, LRU */
 const aerKey = (l, i, j, sty)=> (sty || AER.sty) + l + ':' + i + ':' + j;          // map37: one tile set per style
 function aerTileGet(l, i, j){ const t = AER.tiles.get(aerKey(l, i, j)); if (!t) return null; t.used = performance.now(); return t.c; }
@@ -69910,7 +70031,7 @@ function aerBikeIcon(g, x, y, yaw, size, fill){
 function aerStart(){
   AER.on = true;
   AER.max = (typeof isTouch !== 'undefined' && isTouch) ? 40 : 96;
-  rgMapPaint = function(){ return aerWorldGen(AER.sty === 'gta'); }; // the base image (of the current style), painted by the region UI's own driver
+  rgMapPaint = function(){ return aercPaintGen(AER.sty === 'gta'); }; // the base image (of the current style): 15.39 from the browser's cache, else painted by the region UI's own driver
   rgMapDraw = aerMapDraw;
   rgMapArrow = aerBikeIcon;
   if (!(AER.sty === 'gta' ? AER.worldG : AER.world)){ RGMAP.ready = false; RGMAP.gen = null; }   // (re)paint the base in the new style; the old image stays up meanwhile
@@ -90239,7 +90360,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.38';
+const DL_VER = '15.39';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
