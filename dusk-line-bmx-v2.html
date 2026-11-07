@@ -23362,7 +23362,7 @@ addFrameHook(function fpsHook(dt, now){
                 every 2nd frame on Low / Medium shadows, every frame above);
                 the shadow camera only moves on the frames it is redrawn, so the
                 shadows never slide against the world in between                 */
-const DETAIL_FX = { cull:[0.78, 0.9, 1.0], near:[0.84, 0.93, 1.0], shEvery:[2, 2, 1] };
+const DETAIL_FX = { cull:[0.78, 0.9, 1.0], near:[0.76, 0.82, 1.0], shEvery:[2, 2, 1] };     // R15.36 (lag41gpu): Low / Medium near 0.84 / 0.93 -> 0.76 / 0.82
 const FAR_NEAR = { base:430, off:360, medium:430, high:480 };     // base x GFXP.view = full-detail range (m) at detail High
 function camCullRange(){
   let show;
@@ -56051,6 +56051,7 @@ function* rgTerrainGen(ch, st){
     }
     if (performance.now() - t0 > 1.2){ yield; t0 = performance.now(); }
   }
+  yield;                                                    // lag41: the tail (skirts, index, geometry) is a step of its own
   // skirts: a copy of each edge, dropped below the surface (hides LOD cracks)
   const drop = 1.5 + st*0.45;
   const edges = [];
@@ -56058,10 +56059,12 @@ function* rgTerrainGen(ch, st){
   for (let j = 0; j < n; j++) edges.push(j*n + n - 1);              // x1 edge
   for (let i = n - 1; i >= 0; i--) edges.push((n - 1)*n + i);       // z1 edge
   for (let j = n - 1; j >= 0; j--) edges.push(j*n);                 // x0 edge
-  const idx = [];
+  // lag41: the index is typed from the start (the same triangles; was a JS array of ~25 k numbers converted afterwards)
+  const idx = tv > 65535 ? new Uint32Array((n - 1)*(n - 1)*6 + edges.length*6) : new Uint16Array((n - 1)*(n - 1)*6 + edges.length*6);
+  let iw = 0;
   for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++){
     const a = j*n + i, b = a + 1, c = a + n, d = c + 1;
-    idx.push(a, c, b, b, c, d);
+    idx[iw] = a; idx[iw + 1] = c; idx[iw + 2] = b; idx[iw + 3] = b; idx[iw + 4] = c; idx[iw + 5] = d; iw += 6;
   }
   let sk = nv;
   const skMap = new Map();
@@ -56079,7 +56082,7 @@ function* rgTerrainGen(ch, st){
     const a = edges[q], b = edges[(q + 1) % edges.length];
     if (a === b) continue;
     const as = skMap.get(a), bs = skMap.get(b);
-    idx.push(a, b, as, b, bs, as);
+    idx[iw] = a; idx[iw + 1] = b; idx[iw + 2] = as; idx[iw + 3] = b; idx[iw + 4] = bs; idx[iw + 5] = as; iw += 6;
   }
   const g = new T.BufferGeometry();
   g.setAttribute('position', new T.BufferAttribute(pos.subarray(0, sk*3), 3));
@@ -56087,7 +56090,7 @@ function* rgTerrainGen(ch, st){
   g.setAttribute('color', new T.BufferAttribute(col.subarray(0, sk*3), 3));
   g.setAttribute('uv', new T.BufferAttribute(uv.subarray(0, sk*2), 2));
   g.setAttribute('rgSurf', new T.BufferAttribute(sw.subarray(0, sk*3), 3));
-  g.setIndex(sk > 65535 ? new T.Uint32BufferAttribute(idx, 1) : new T.Uint16BufferAttribute(idx, 1));
+  g.setIndex(new T.BufferAttribute(iw === idx.length ? idx : idx.slice(0, iw), 1));
   g.computeBoundingSphere();
   const m = new T.Mesh(g, rgMaterials().terrain);
   m.receiveShadow = true; m.castShadow = false;
@@ -56139,7 +56142,7 @@ function* rgWaterGen(ch){
   // world23: lakes (a grid at the lake's level over the part of the chunk near / inside its shore)
   if (W23.lakes.length) for (const Lk of W23.lakes){
     if (ch.x1 < Lk.bx0 || ch.x0 > Lk.bx1 || ch.z1 < Lk.bz0 || ch.z0 > Lk.bz1) continue;
-    const g = w23LakeGeo(ch, Lk);
+    const g = yield* w23LakeGeoGen(ch, Lk);
     if (g) parts.push(g);
     if (performance.now() - t0 > 1.2){ yield; t0 = performance.now(); }
   }
@@ -56167,12 +56170,16 @@ function* rgWaterGen(ch){
   }
 }
 /* world23: a lake's water in one chunk: an 8 m grid at the lake's level, the cells near / inside its shore, depth colours */
-function w23LakeGeo(ch, Lk){
+function w23LakeGeo(ch, Lk){ const it = w23LakeGeoGen(ch, Lk); let s; while (!(s = it.next()).done); return s.value; }
+/* lag41: as steps (the shore distances, then the grid) */
+function* w23LakeGeoGen(ch, Lk){
   const n = 33, st = RG.chunk/(n - 1), lv = Lk.level;
   const SD = new Float32Array(n*n);
   let any = false;
+  const t0 = performance.now();
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++){ const sd = w23LakeSd(Lk, ch.x0 + i*st, ch.z0 + j*st); SD[j*n + i] = sd; if (sd < 14) any = true; }
   if (!any) return null;
+  if (performance.now() - t0 > 0.6) yield;
   const pos = [], col = [], uv = [], nrm = [], idx = [], map = new Int32Array(n*n).fill(-1);
   const vtx = (i, j)=>{
     const k = j*n + i; if (map[k] >= 0) return map[k];
@@ -57024,6 +57031,7 @@ function* rgChunkMergeGen(ch, slice){
   }
   const out = keep.slice();
   let t0 = performance.now();
+  if (ch.group.children.length > 150){ yield; t0 = performance.now(); }      // lag41: the sort pass is a step of its own on big chunks
   for (const list of by.values()){
     if (list.length === 1){ out.push(list[0]); continue; }
     // batches of <= ~24k vertices: every merge call stays short (a few ms at most), the GPU buffers stay moderate
@@ -57041,6 +57049,7 @@ function* rgChunkMergeGen(ch, slice){
       if (performance.now() - t0 > slice){ yield; t0 = performance.now(); }
     }
   }
+  if (performance.now() - t0 > slice*0.5) yield;                          // lag41: the re-parent tail after a fresh step
   ch.group.children.length = 0;
   for (const o of out){ o.parent = null; ch.group.add(o); if (o.matrixAutoUpdate !== false){ o.updateMatrix(); o.matrixAutoUpdate = false; } }
   ch.group.updateMatrixWorld(true);
@@ -57079,7 +57088,7 @@ function* rgChunkGen(ch){
     yield;
   }
   RGS.phase = 'merge'; yield* rgChunkMergeGen(ch, 1.2);
-  RGS.phase = 'final';
+  RGS.phase = 'final'; yield;                                    // lag41: going live (matrices, mask, tree cells) is a step of its own
   if (typeof BOXGEO_CACHE !== 'undefined') BOXGEO_CACHE.clear();
   ch.state = 'ready';
   regionGroup.add(ch.group);
@@ -57163,8 +57172,13 @@ function rgStreamTick(){
   // (hitch15: was 14 ms a frame for 4 s, riding included -- every frame of the first seconds after a hop was a long one)
   if (now < RGS.boostUntil) budget = GAME === 'play' ? Math.max(budget, 5) : 10;
   const t0 = now, deadline = t0 + budget;
+  // lag41: the step predictor -- per phase, a decaying max of its step time (RGS.pc); a step that would overrun this frame's
+  // budget waits for the next frame, unless it is the frame's first step (progress never stalls: one step a frame at least);
+  // only while riding (behind the fast-travel fade / in the menu nothing is on screen to stutter: the full budget is used)
+  const PC = RGS.pc || (RGS.pc = {}), riding = GAME === 'play';
   let guard = 0;
   while (performance.now() < deadline && guard++ < 400){
+    if (riding && guard > 1 && RGS.task){ const pc = PC[RGS.phase]; if (pc !== undefined && performance.now() + pc > deadline + 0.6) break; }
     if (!RGS.task){
       // terrain LOD upgrades near the camera first, then new chunks
       let next = null, lodCh = null;
@@ -57188,6 +57202,7 @@ function rgStreamTick(){
       if (fc){ RGS.failed.set(fc.key, (RGS.failed.get(fc.key) || 0) + 1); fc._lodBusy = false; if (fc.state === 'building'){ RGS.task = null; RGS.taskChunk = null; rgChunkUnload(fc); } }
     }
     const tsd = performance.now() - ts0;
+    { const p = PC[RGS.phase]; PC[RGS.phase] = p === undefined ? tsd : Math.max(tsd, p*0.85); }
     if (tsd > RGS.slow.ms && now >= RGS.boostUntil){ RGS.slow.ms = tsd; RGS.slow.phase = RGS.phase; }
     if (tsd > 3){ const sb = RGS.slowBy || (RGS.slowBy = {}); if (!(sb[RGS.phase] >= tsd)) sb[RGS.phase] = +tsd.toFixed(1); }
     if (st.done){ RGS.task = null; RGS.taskChunk = null; }
@@ -58454,6 +58469,7 @@ function* rgSignsBuilder(ch){
   rgSignMats();
   for (const sg of RG_SIGNS){
     if (sg.x < ch.x0 || sg.x >= ch.x1 || sg.z < ch.z0 || sg.z >= ch.z1) continue;
+    if (!RG_SIGN_CACHE.has(sg.id)){ rgSignMat(sg); yield; }          // lag41: the face's canvas painting is a step of its own
     const gy = sg.y !== undefined ? sg.y : landY(sg.x, sg.z);
     const yaw = sg.yaw, c = Math.cos(yaw), s = Math.sin(yaw);
     const rx = c, rz = -s;                                   // the panel's right-hand axis (local +x)
@@ -71365,7 +71381,7 @@ var M16 = {
   zq: [], zIn: 0, zWait: [], w: undefined, wjobs: new Map(), wid: 0, zMode: '', wEnc: null, wOk: false, encBatches: new Map(), encPending: 0, encId: 0, wq: 0,
   // travel / ahead / travelCap: behind the fast-travel fade (the screen is covered): ms of unpacking a frame, cells whose
   // inflates go out at once, and how long the fade may wait for a city destination's cells (region14 keeps 4 s elsewhere)
-  cfg: { pre: 130, rel: 250, chunkV: 16384, play: 1.5, menu: 6, fade: 10, boost: 14, zFlight: 24, recSlice: 64, travel: 60, ahead: 64, travelCap: 12000 },
+  cfg: { pre: 130, rel: 250, chunkV: 16384, play: 1.5, menu: 6, fade: 10, boost: 14, boostPlay: 5, zFlight: 24, recSlice: 64, travel: 60, ahead: 64, travelCap: 12000 },
   st: { drains: 0, drainMs: 0, src: 0, data: 0, recipes: 0, snaps: 0, generic: 0, dataVerts: 0, chunks: 0, blobs: 0, rawB: 0, zB: 0,
         zFail: 0, recB: 0, farV: 0, finalMs: 0, zWaitMs: 0, loads: 0, releases: 0, loadMs: 0, decMs: 0, maxStep: 0, preloadMs: 0, preCells: 0,
         removed: 0, merged: 0, groups: 0, singles: 0, maxUnit: 0, maxUnitWhat: '', wqMax: 0 }
@@ -72346,7 +72362,9 @@ addFrameHook(function m16Frame(dt, now){
   if (M16.warming.length){ var W = M16.warming.splice(0); for (var i = 0; i < W.length; i++) m16WarmEnd(W[i]); }
   var g = (typeof GAME !== 'undefined') ? GAME : 'play', tnow = performance.now(), travel = m16Travel();
   var ms = g === 'play' ? M16.cfg.play : g === 'menu' ? M16.cfg.menu : M16.cfg.fade;
-  if (tnow < M16.boostUntil) ms = Math.max(ms, M16.cfg.boost);
+  // 15.37: while riding the boost after a respawn / arrival is small (14 ms a frame for 3 s was a 3 s stutter right after a teleport);
+  // the menu / the fast-travel fade keep the big one
+  if (tnow < M16.boostUntil) ms = Math.max(ms, g === 'play' ? M16.cfg.boostPlay : M16.cfg.boost);
   if (travel) ms = Math.max(ms, M16.cfg.travel);         // behind the fast-travel fade: nothing on screen to keep smooth
   if (M16.queue.length || M16.job || M16.next){
     m16Pump(ms);
@@ -90243,6 +90261,166 @@ function ui43Minimap(){
   } catch(e){ UI43.err = 'hooks: ' + (e && e.message || e); }
 })();
 
+/* =========================================================================
+   LAG41 GPU -- Release 15.36 (helper lag41gpu): "make the game not lag at all" (Radeon 840M laptop: Auto = Medium; he plays Low)
+   Less GPU work per frame on Low / Medium without a softer picture, without resolution changes and without anything going
+   missing up close. Everything here is decided per DRAW (renderer.renderBufferDirect, like toaster19.js does), so no object,
+   merge key, material or program changes and every mode switch is instant:
+   1. SUN SHADOW PASS (Medium; High only drops sub-texel casters): a caster whose shadow cannot show is not drawn into the map --
+      parts smaller than about one shadow-map texel (bolts, cables, small trims of the bike, people's small gear) anywhere, and
+      small separate objects (props, people, cars' small parts) once they are far from the rider; the city's merged cells,
+      buildings, trees and everything big still cast exactly as before. The shadow box is ~80 x 130 m around the rider, so
+      "far" here is 24-52 m from the camera by size (the camera rides ~6 m behind the rider).
+      Instanced pools (people, cars) on Medium: parts whose shadow hides inside a bigger one or is a texel or two wide are left
+      out of the map -- people's hair styles / hats / hoods / packs / hands / necks (the head and body shadows stay), cars'
+      wheels (under the body's shadow), cyclists' thin wheels: up to ~20 fewer shadow draws in a busy street.
+   2. MAIN PASS (Low / Medium): a separate small object whose whole bounding sphere covers less than ~2.5 pixels of a 1080p-class
+      screen (a cone, a bollard or a small sign hundreds of metres away) is not drawn: it could only ever be a speck that FXAA
+      blurs away; anything bigger, anything instanced and anything never frustum-culled (sky, far land) draws as before.
+   3. (cam_perf.js) the full-detail range of the city on Medium / Low ends a little closer (DETAIL_FX.near) -- past it the
+      cells' far skyline stands in, as before; Medium 340 -> 300 m, Low 199 -> 180 m (High unchanged).
+   ?lag41g=0 turns 1 + 2 off (A/B checks). LAG41G.st = counters (skipped draws per pass).
+   ========================================================================= */
+var LAG41G = {
+  on: !(typeof location !== 'undefined' && /[?&]lag41g=0\b/.test(location.search || '')),
+  sh: 0,                 // this frame's shadow rule set: 0 = none, 1 = sub-texel only (High+), 2 = Medium's distance rules
+  tiny: 0.045,           // m: a caster with a bounding radius below this (0.85 shadow texel: 1536 px / 80 m -> 4.4 cm) never shows
+  // [radius below (m), skipped beyond (m from the camera, minus the radius)] -- Medium
+  shRules: [[0.35, 24], [0.9, 32], [2.0, 42], [3.5, 52]],
+  instTiny: 0.1,         // m: an instanced part (per-instance geometry radius) below this casts no shadow on Medium
+  mn: 0,                 // main-pass rule: 0 = off, 1 = on (Low / Medium)
+  px: 2.5,               // main pass: skipped below this many pixels (bounding-sphere diameter) ...
+  refH: 900,             // ... measured on a screen at least this many pixels tall (a small window does not cull more)
+  st: { shSkip: 0, mnSkip: 0 },
+  _k: 0,
+  sun: false,
+  noSh: new WeakSet(), _ns: 0
+};
+window.LAG41G = LAG41G;
+const _l41v = new T.Vector3();
+/* the radius (m, world) of one draw's object, and its centre's distance (m, ground plane) from the camera (it follows the rider
+   on the bike and on foot; the sun's shadow box is centred just ahead of it) */
+function lag41Size(obj, geo){
+  let bs = geo.boundingSphere;
+  if (!bs){ if (geo.attributes && geo.attributes.position && geo.attributes.position.count < 200000){ try { geo.computeBoundingSphere(); } catch(e){} } bs = geo.boundingSphere; }
+  if (!bs) return -1;
+  const e = obj.matrixWorld.elements;
+  const sx = e[0]*e[0] + e[1]*e[1] + e[2]*e[2], sy = e[4]*e[4] + e[5]*e[5] + e[6]*e[6], sz = e[8]*e[8] + e[9]*e[9] + e[10]*e[10];
+  return bs.radius * Math.sqrt(Math.max(sx, sy, sz));
+}
+function lag41Dist(obj, geo, r){
+  const bs = geo.boundingSphere;
+  _l41v.copy(bs.center).applyMatrix4(obj.matrixWorld);
+  const p = camera.position, dx = _l41v.x - p.x, dz = _l41v.z - p.z;
+  return Math.sqrt(dx*dx + dz*dz) - r;
+}
+/* true = this shadow-pass draw is skipped */
+function lag41ShadowSkip(obj, geo){
+  const lv = LAG41G.sh;
+  // never a skinned mesh (the riders / walkers: their bind-pose bounds do not follow the bones -- the rider's body shadow is kept)
+  if (!lv || !obj || !obj.isMesh || obj.isSkinnedMesh || !geo) return false;
+  if (obj.isInstancedMesh){ if (lv < 2) return false; if (LAG41G.noSh.has(obj)) return true; const b = geo.boundingSphere; return !!b && b.radius < LAG41G.instTiny; }
+  const r = lag41Size(obj, geo);
+  if (r < 0) return false;
+  if (r < LAG41G.tiny) return true;
+  if (lv < 2 || r >= 3.5) return false;
+  const d = lag41Dist(obj, geo, r), R = LAG41G.shRules;
+  for (let i = 0; i < R.length; i++) if (r < R[i][0]) return d > R[i][1];
+  return false;
+}
+/* true = this main-pass draw is a speck: a separate (not instanced) mesh under LAG41G.px pixels across */
+function lag41MainSkip(obj, geo, cam, mat){
+  // plain meshes only: no points / lines / sprites, no shader materials (they may size or move their vertices themselves)
+  if (!obj || !obj.isMesh || obj.isInstancedMesh || obj.isSkinnedMesh || !geo || obj.frustumCulled === false || !cam || !cam.isPerspectiveCamera || (mat && mat.isShaderMaterial)) return false;
+  const r = lag41Size(obj, geo);
+  if (r < 0 || r > 6) return false;
+  const bs = geo.boundingSphere;
+  _l41v.copy(bs.center).applyMatrix4(obj.matrixWorld);
+  const d = _l41v.distanceTo(cam.position) - r;
+  if (d < 40) return false;
+  return 2*r*LAG41G._k < d*LAG41G.px;       // diameter in pixels = 2r / d * (H/2) / tan(fov/2)
+}
+(function lag41Hook(){
+  if (typeof renderer === 'undefined' || !renderer) return;
+  const R = renderer, rbd = R.renderBufferDirect;
+  R.renderBufferDirect = function(cam, sc, geo, mat, obj, grp){
+    // the sun's shadow pass draws with scene === null (three r128 WebGLShadowMap); every other pass has a scene
+    if (sc === null){ if (LAG41G.sh && LAG41G.sun && lag41ShadowSkip(obj, geo)){ LAG41G.st.shSkip++; return; } }
+    else if (LAG41G.mn && sc === scene && lag41MainSkip(obj, geo, cam, mat)){ LAG41G.st.mnSkip++; return; }
+    return rbd.call(this, cam, sc, geo, mat, obj, grp);
+  };
+  // only the world's own shadow pass (the garage / other scenes keep every caster)
+  const SM = R.shadowMap, smr = SM.render;
+  SM.render = function(lights, sc){ LAG41G.sun = sc === scene; try { return smr.apply(this, arguments); } finally { LAG41G.sun = false; } };
+})();
+/* the instanced parts that cast no sun shadow on Medium (crowd.js CROWD_MESH, traffic.js VR: built on first use) */
+const LAG41_NOSH_CROWD = /^(h[A-Z][A-Za-z]*|tail|cap|beanie|pcap|hood|pack|xbag|hand|neck)$/;      // hCrop, hQuiff ... hBun = hair
+function lag41NoShadowParts(){
+  const S = LAG41G.noSh;
+  try { if (typeof CROWD_MESH !== 'undefined' && CROWD_MESH) for (const k in CROWD_MESH) if (LAG41_NOSH_CROWD.test(k) && CROWD_MESH[k]) S.add(CROWD_MESH[k]); } catch(e){}
+  try { if (typeof VR !== 'undefined' && VR){ if (VR.wheel) S.add(VR.wheel); if (VR.bikeWheel) S.add(VR.bikeWheel); } } catch(e){}
+}
+/* the rule set for the mode (read once a frame: GFXP can change at any time) */
+function lag41Mode(){
+  if (!LAG41G.on || typeof GFXP === 'undefined' || typeof GFX14 === 'undefined' || !GFX14.booted || GAME === 'loading'){ LAG41G.sh = 0; LAG41G.mn = 0; return; }
+  const s = GFXP.shadows, d = GFXP.detail;
+  LAG41G.sh = (s === 'low' || s === 'medium') ? 2 : (s === 'off' ? 0 : 1);
+  const hm = +GFXP.shadowHalf || 40, ms = +GFXP.shadowMap || 1536;
+  LAG41G.tiny = Math.min(0.06, 0.85*2*hm/ms);              // Ultra 3.3 cm, Extreme 2.2 cm: a finer map keeps finer casters
+  LAG41G.mn = (d === 0 || d === 1) ? 1 : 0;
+  // pixels per metre at 1 m for the main camera: (H/2) / tan(fov/2), H = the drawing buffer's height (at least refH)
+  const H = Math.max(LAG41G.refH, renderer.domElement.height || 0);
+  LAG41G._k = (H/2) / Math.tan((camera.fov || 64)*Math.PI/360);
+}
+addFrameHook(function lag41Frame(dt, now){
+  lag41Mode();
+  if (LAG41G.sh >= 2 && now - LAG41G._ns > 2000){ LAG41G._ns = now; lag41NoShadowParts(); }
+});
+
+/* =========================================================================
+   LAG41 CPU (Release 15.36, helper `lag41cpu`): "make the game not lag at all" -- the CPU side (hitches)
+   Measured with test/t_perf25_tour.js (downtown / park / route14, Low + Medium, POST.render stubbed while riding).
+   Most long frames there are garbage-collector pauses; the real single-step hitches fixed in this release:
+   - region14_core.js rgStreamTick: a per-phase step-cost predictor -- a step that would overrun the frame's streaming budget waits for
+     the next frame (the frame's first step always runs); the terrain tail, the merge's sort + re-parent passes, a lake's grid and the
+     chunk's going-live step are steps of their own; the terrain index is typed from the start (less garbage per chunk / LOD build).
+   - region14_signs.js: a new sign's canvas painting is a step of its own.
+   - forest14_world.js frHubGen: the car park grid in slices, every canvas painting (sign atlas cells, a park's trail-map board:
+     56 x 56 terrain cells x 3 landH, ~100+ ms in one step) in ~1.2 ms steps.
+   - this file: the parks' lift plans (below).
+   ========================================================================= */
+var LAG41 = window.LAG41 = { li:0, ui:0, ms:0, steps:0, done:false };
+/* parks26Frame registered the lifts' interactables the frame the bike-park plan finished, computing every lift's plan at once:
+   pk26LiftPlan samples landY along each lift line, so ~70-90 ms of terrain tiles were built in that one frame while riding.
+   Now (parks26_play.js waits for this, see patches/..._lag41cpu.py): the tiles under each lift line in ~1.5 ms slices, then that
+   lift's plan (cached in L.plan: the same plan, computed after the park plan as before) -> true once every lift has its plan. */
+function lag41LiftsWarm(){
+  const W = LAG41;
+  if (W.done) return true;
+  if (typeof PK26 === 'undefined' || !PK26.lifts || typeof pk26LiftPlan !== 'function' || typeof landY !== 'function'){ W.done = true; return true; }
+  const t0 = performance.now();
+  while (W.li < PK26.lifts.length){
+    const L = PK26.lifts[W.li];
+    if (!L || L.plan || !L.bot || !L.top){ W.li++; W.ui = 0; continue; }
+    const ax = L.bot[0], az = L.bot[1], bx = L.top[0], bz = L.top[1];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (!(len > 0)){ W.li++; W.ui = 0; continue; }
+    const dx = (bx - ax)/len, dz = (bz - az)/len, rx = dz, rz = -dx, n = Math.ceil(len/4);
+    while (W.ui <= n){
+      const u = Math.min(len, W.ui*4);
+      landY(ax + dx*u, az + dz*u); landY(ax + dx*u + rx*2.2, az + dz*u + rz*2.2); landY(ax + dx*u - rx*2.2, az + dz*u - rz*2.2);
+      W.ui++;
+      if (performance.now() - t0 > 1.5){ W.ms += performance.now() - t0; W.steps++; return false; }
+    }
+    try { pk26LiftPlan(L); } catch(e){}                     // (a failing plan fails again in pk26Interactables, reported there as before)
+    W.li++; W.ui = 0;
+    if (performance.now() - t0 > 1.5){ W.ms += performance.now() - t0; W.steps++; return false; }
+  }
+  W.ms += performance.now() - t0; W.steps++;
+  W.done = true;
+  return true;
+}
+
 /*@@LATE@@*/
 /* =========================================================================
    HIGHWAY14 -- ROUTE 14 (stream `highway`, Release 14 wave 2): the plan.
@@ -93797,20 +93975,45 @@ function frParkTrails(P){
   if (!P || P.id === 'ironwood') return FR.trails.filter(t=> !t.park || t.park === 'ironwood').concat(FR.skills ? [FR.skills] : []);
   return P.trails.concat(P.skills ? [P.skills] : [], P.pumps || []);
 }
+/* lag41: the map's terrain cells (hill shading + contour tint; 56 x 56 cells x 3 landH + a water lookup = the slowest single
+   step of a park's hub build, ~100+ ms): as a generator yielding every `slice` ms (frMapDraw drains it at once) */
+function* frMapTerrainGen(g, W, H, opt, slice){
+  const PK = (opt && opt.park) || FR.parks[0] || null;
+  const V = (PK && PK.mapV) || FR_MAPV, k = Math.min(W/(V.x1 - V.x0), H/(V.z1 - V.z0)), ox = (W - (V.x1 - V.x0)*k)/2, oy = (H - (V.z1 - V.z0)*k)/2;
+  const N = opt && opt.fine ? 128 : opt && opt.coarse ? 56 : 80, cw = W/N, chh = H/N;
+  let t0 = performance.now();
+  for (let j = 0; j < N; j++){
+    for (let i = 0; i < N; i++){
+      const x = V.x0 + (i + 0.5)/k*cw - ox/k, z = V.z0 + (j + 0.5)/k*chh - oy/k;
+      const h = landH(x, z), hx = landH(x + 25, z) - h, hz = landH(x, z + 25) - h, wl = waterLevelAt(x, z);
+      const sh = Math.max(0.6, Math.min(1.3, 1 + (-hx - hz)*0.035)), a = Math.min(1, h/900);
+      let r = (72 + 95*a)*sh, gg = (104 + 70*a)*sh, b = (62 + 70*a)*sh;
+      if (wl === wl){ r = 70; gg = 128; b = 170; }
+      g.fillStyle = 'rgb(' + (r | 0) + ',' + (gg | 0) + ',' + (b | 0) + ')'; g.fillRect(i*cw, j*chh, cw + 1, chh + 1);
+    }
+    if (performance.now() - t0 > slice){ yield; t0 = performance.now(); }
+  }
+}
+/* lag41: a new park's board texture (frBoardTex's parks23 branch) as steps: the terrain cells in slices, then the rest at once */
+function* frBoardTexGen(P){
+  const c = frCanvas(768, 512), g = c.getContext('2d'), b = P.hub && P.hub.board;
+  const opt = { park:P, you:b ? [b.x, b.z] : null, coarse:true };
+  g.fillStyle = '#2b2118'; g.fillRect(0, 0, 768, 512);
+  g.save(); g.translate(14, 70);
+  yield* frMapTerrainGen(g, 740, 428, opt, 1.2);
+  yield;
+  opt.noTerrain = true; frMapDraw(g, 740, 428, opt); g.restore();
+  g.fillStyle = '#f2eadb'; g.font = frFont(42, 900); g.textBaseline = 'middle'; g.fillText(String(P.name).toUpperCase(), 20, 36);
+  g.font = frFont(20, 700); g.fillStyle = '#e8c88f'; g.textAlign = 'right'; g.fillText('TRAIL MAP  ·  E TO READ', 748, 36); g.textAlign = 'left';
+  const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4;
+  return t;
+}
 function frMapDraw(g, W, H, opt){
   const PK = (opt && opt.park) || FR.parks[0] || null, iron = !PK || PK.id === 'ironwood', LOT = (PK && PK.lot) || FR_LOT;
   const V = (PK && PK.mapV) || FR_MAPV, k = Math.min(W/(V.x1 - V.x0), H/(V.z1 - V.z0)), ox = (W - (V.x1 - V.x0)*k)/2, oy = (H - (V.z1 - V.z0)*k)/2;
   const X = x=> ox + (x - V.x0)*k, Y = z=> oy + (z - V.z0)*k;
-  // terrain: hill shading + contour tint
-  const N = opt && opt.fine ? 128 : opt && opt.coarse ? 56 : 80, cw = W/N, chh = H/N;
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++){
-    const x = V.x0 + (i + 0.5)/k*cw - ox/k, z = V.z0 + (j + 0.5)/k*chh - oy/k;
-    const h = landH(x, z), hx = landH(x + 25, z) - h, hz = landH(x, z + 25) - h, wl = waterLevelAt(x, z);
-    const sh = Math.max(0.6, Math.min(1.3, 1 + (-hx - hz)*0.035)), a = Math.min(1, h/900);
-    let r = (72 + 95*a)*sh, gg = (104 + 70*a)*sh, b = (62 + 70*a)*sh;
-    if (wl === wl){ r = 70; gg = 128; b = 170; }
-    g.fillStyle = 'rgb(' + (r | 0) + ',' + (gg | 0) + ',' + (b | 0) + ')'; g.fillRect(i*cw, j*chh, cw + 1, chh + 1);
-  }
+  // terrain: hill shading + contour tint (lag41: opt.noTerrain = already painted by frMapTerrainGen in slices)
+  if (!(opt && opt.noTerrain)){ const it = frMapTerrainGen(g, W, H, opt, Infinity); while (!it.next().done); }
   // roads
   g.lineCap = 'round'; g.lineJoin = 'round';
   for (const r of ROADS){
@@ -93914,11 +94117,15 @@ function frVanTex(){
 function frTexQuad(S0, x, y, z, yaw, w, h, two){ frSignQuad(S0, { u0:0, v0:0, u1:1, v1:1 }, x, y, z, yaw, w, h, two); }
 /* the car park: packed gravel over the region's gravel ribbon (lighter, with tyre-worn lanes), timber wheel stops, parked cars */
 const FR_CAR_COL = [[0.55, 0.06, 0.05], [0.06, 0.12, 0.28], [0.75, 0.75, 0.72], [0.04, 0.04, 0.05], [0.20, 0.33, 0.22], [0.62, 0.48, 0.20], [0.35, 0.37, 0.40]];
-function frLotBuild(ch, P){
+function frLotBuild(ch, P){ const it = frLotGen(ch, P); while (!it.next().done); }
+/* lag41: the lot as steps (its 1 m grid rows in ~1.2 ms slices, then the bays + cars): the same mesh, the same random draws */
+function* frLotGen(ch, P){
   const M = frMats(), L = (P && P.lot) || FR_LOT, R = frRng(P && P.id !== 'ironwood' ? 'lot:' + P.id : 'lot'), S0 = frSoup(), hw = L.w/2 - 0.3, st = 1.0;
   const bz = P && P.hub && P.hub.board ? P.hub.board.z : 5043;
   const nx = Math.round(hw*2/st) + 1, nz = Math.round((L.z1 - L.z0 - 1)/st) + 1, base = 0;
+  let t0 = performance.now();
   for (let j = 0; j < nz; j++){
+    if (performance.now() - t0 > 1.2){ yield; t0 = performance.now(); }
     const z = L.z0 + 0.5 + j*st;
     for (let i = 0; i < nx; i++){
       const lx = -hw + i*st, x = L.x + lx, y = landY(x, z) + 0.04;
@@ -93930,7 +94137,9 @@ function frLotBuild(ch, P){
       if (i && j){ const a = base + (j - 1)*nx + (i - 1); S0.i.push(a, a + nx, a + 1, a + 1, a + nx, a + nx + 1); }
     }
   }
+  yield;
   frMesh(ch, S0, M.dirt, false, true);
+  yield;
   // wheel stops (half logs) along both sides, parked cars in some bays
   const logs = frSoup(), body = frSoup(), dark = frSoup(), glass = frSoup();
   const bays = [];
@@ -94114,10 +94323,15 @@ function* frHubGen(ch){
     const L = P.lot; if (!L || !P.hub) continue;
     if (frChunkKeyOf(L.x, (L.z0 + L.z1)/2) !== key) continue;
     const iron = P.id === 'ironwood';
-    frLotBuild(ch, P); yield;
-    if (iron){ frShopBuild(ch); yield; }
+    yield* frLotGen(ch, P); yield;
+    // lag41: each canvas painting (sign atlas cells, the park's board) is a step of its own, in the same order as before
+    // (frCell / P.boardTex cache them: the builders below find them done)
+    if (iron){ frBanCell('hut', 'IRONWOOD BIKE HUT', 'BIKES · PARTS · REPAIRS', '#3a2a1c'); yield; frShopBuild(ch); yield; }
     frVanBuild(ch, P); yield;
+    { const M = frMats(); if (!iron && !P.boardTex && M.boards && M.boards[P.id]){ const m = M.boards[P.id], t = yield* frBoardTexGen(P); if (!P.boardTex){ P.boardTex = t; m.map = t; m.emissiveMap = t; } else t.dispose(); yield; } }
     frBoardBuild(ch, P); yield;
+    if (iron){ frBanCell('arch', 'IRONWOOD BIKE PARK', 'TRAILHEAD · SHUTTLE · DIRT JUMPS', '#1d3326'); yield; }
+    else if (P.hub.arch){ frArchCell(P); yield; }
     frHubProps(ch, P); yield;
     if (iron){ FR.hubBuilt = performance.now(); FR.hubChunk = ch; }
     P.hubBuilt = performance.now(); P.hubChunk = ch;
@@ -95719,7 +95933,7 @@ function pk26AddRaces(defs){
 if (typeof addFrameHook === 'function') addFrameHook(function parks26Frame(dt){
   if (typeof PK26 === 'undefined' || !PK26.on) return;
   PK26P.fr++;
-  if (!PK26P.reg && typeof RGX !== 'undefined' && RGX.started && FR.planned){ PK26P.reg = true; try { pk26Interactables(); } catch(e){ PK26.err.push('inter: ' + (e && e.message)); } }
+  if (!PK26P.reg && typeof RGX !== 'undefined' && RGX.started && FR.planned && (typeof lag41LiftsWarm !== 'function' || lag41LiftsWarm())){ PK26P.reg = true; try { pk26Interactables(); } catch(e){ PK26.err.push('inter: ' + (e && e.message)); } }
   try { pk26CarrierTick(Math.min(0.1, dt || 0.016)); } catch(e){ if (!PK26P.cErr){ PK26P.cErr = true; PK26.err.push('carriers: ' + (e && e.message)); } }
   if (PK26P.ride && PK26P.hud){ const t = PK26P.ride.left; if (t !== undefined){ const s = Math.ceil(t); PK26P.hud.querySelector('.t').textContent = Math.floor(s/60) + ':' + String(s % 60).padStart(2, '0'); } }
   if ((PK26P.fr & 15) === 5){ try { pk26HangTick(); } catch(e){ if (!PK26P.hErr){ PK26P.hErr = true; PK26.err.push('hang: ' + (e && e.message)); } } }
