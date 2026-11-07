@@ -3699,6 +3699,8 @@ html #loading::before{ will-change:opacity; }
 html #loading .ldBike{ will-change:transform; animation:ld43Ride .5s ease-in-out infinite alternate; }
 @keyframes ld43Ride{ from{ transform:translateY(0) rotate(0deg); } to{ transform:translateY(-1.6px) rotate(-1.5deg); } }
 html #loading .lt{ will-change:transform; }
+/* 15.37: the version label next to the menu logo */
+#menu .mBrand .ui43Ver{ margin-left:12px; flex:0 0 auto; font:700 11px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing:.06em; color:rgba(244,241,234,.78); background:rgba(0,0,0,.38); border:1px solid rgba(255,255,255,.16); padding:4px 8px; border-radius:999px; white-space:nowrap; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -46665,6 +46667,14 @@ if (isTouch){
     options:[ { v:'smooth', label:'Smooth', hint:'Fine control near the middle, full lock at the edge of the ring' },
               { v:'normal', label:'Normal', hint:'The usual' },
               { v:'quick',  label:'Quick',  hint:'Full lock with a short flick of the thumb' } ] });
+  /* 15.38 ("on mobile stuff is still going on its own"): auto-pedal was ON before 15.32 -- a phone that still has it saved as
+     on gets it switched off once (the player can turn it back on in the touch settings and it stays on) */
+  try {
+    if (!localStorage.getItem('dusk_line_mauto_off_1538')){
+      if (XSTORE.m_auto === true){ delete XSTORE.m_auto; localStorage.setItem(XSET_KEY, JSON.stringify(XSTORE)); }
+      localStorage.setItem('dusk_line_mauto_off_1538', '1');
+    }
+  } catch(e){}
   registerSetting({ id:'m_auto', label:'Auto-pedal', group:'touch', type:'toggle', def:false,   // 15.32: off unless you turn it on ("on mobile it auto pedals")
     hintOn:'You pedal by yourself; pull the stick down to brake', hintOff:'Push the stick up (GO) to pedal',
     onChange(){ mobRebuild(); } });
@@ -90134,7 +90144,7 @@ setTimeout(ro42Init, 0);
               ride there, set a waypoint) -- close it and you ride from where you are.
      MAP TAPS the minimap opens the map on pointerup / touch too (the click could be eaten by the touch controls); the Tab map takes a
               tap that wobbled up to 12 px (was 7) as a tap.
-   API: UI43 { on, n, err }, pz43Layout(), ui43OpenMap()
+   API: UI43 { on, n, err }, pz43Layout(), ui43OpenMap(), DL_VER (the version label next to the menu logo)
    ========================================================================= */
 const UI43 = { on: !/[?&]ui43=0\b/.test(location.search), n:0, err:'' };
 const UI43_ICO = {
@@ -90227,6 +90237,16 @@ function ui43MenuCard(){
   const mp = document.getElementById('mpBtn');
   if (mp && mp.parentNode === left) left.insertBefore(b, mp); else left.appendChild(b);
 }
+/* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
+   one it is. Bump DL_VER with every release. */
+const DL_VER = '15.38';
+function ui43Ver(){
+  if (document.getElementById('ui43Ver')) return;
+  const b = document.querySelector('#menu .mBrand'); if (!b) return;
+  const s = document.createElement('span');
+  s.id = 'ui43Ver'; s.className = 'ui43Ver'; s.textContent = 'v' + DL_VER; s.title = 'Dusk Line version ' + DL_VER;
+  b.appendChild(s);
+}
 /* the minimap: a tap opens the map even when the touch controls eat the click */
 function ui43Minimap(){
   const cv = document.getElementById('minimap'); if (!cv || cv._ui43) return;
@@ -90259,8 +90279,8 @@ function ui43Minimap(){
       let shown = false;
       new MutationObserver(()=>{ const vis = !P.classList.contains('hide'); if (vis && !shown) pz43Layout(); shown = vis; }).observe(P, { attributes:true, attributeFilter:['class'] });
     }
-    ui43MenuCard(); ui43Minimap();
-    setTimeout(()=>{ try { ui43MenuCard(); ui43Minimap(); } catch(e){} }, 1500);
+    ui43MenuCard(); ui43Minimap(); ui43Ver();
+    setTimeout(()=>{ try { ui43MenuCard(); ui43Minimap(); ui43Ver(); } catch(e){} }, 1500);
   } catch(e){ UI43.err = 'hooks: ' + (e && e.message || e); }
 })();
 
