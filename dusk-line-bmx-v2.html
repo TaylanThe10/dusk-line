@@ -3694,7 +3694,7 @@ html #loading .ldTip::before{ content:'TIP'; position:absolute; left:12px; top:5
 .ui43MapCard .go{ font-size:20px; opacity:.8; }
 /* 15.36: a smoother loading screen -- the bar glides between steps; the rider bobs on the compositor (keeps moving while the game
    builds the city on the main thread); the stars twinkle on their own layer */
-html #loading #loadBar i{ transition:width .45s cubic-bezier(.2,.8,.2,1) !important; }
+/* (15.41: the bar's fill moves by transform now: mods/load44.css / load44.js) */
 html #loading::before{ will-change:opacity; }
 html #loading .ldBike{ will-change:transform; animation:ld43Ride .5s ease-in-out infinite alternate; }
 @keyframes ld43Ride{ from{ transform:translateY(0) rotate(0deg); } to{ transform:translateY(-1.6px) rotate(-1.5deg); } }
@@ -3712,6 +3712,27 @@ html.touchUI #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo):not(.act):not
 html.touchUI.mobTab #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo):not(.act):not(.tkLock):not(.tkNone){ opacity:.62; }
 html.touchUI.mobTab #touch .mGhost{ opacity:.55; }
 html.touchUI #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo).act{ opacity:1; }
+/* 15.41 (load44, "make the loading screen bar less laggy"): the bar's fill and the rider are moved with transforms on their own
+   layers -- the compositor animates them on its own thread, so they keep gliding while a loading step holds the main thread
+   (the old fill's width only changed between steps: still for seconds, then a jump). mods/load44.js drives them. */
+html #loading #loadBar .ld44Clip{ position:absolute; left:0; bottom:4px; width:100%; height:100%; overflow:hidden; border-radius:999px; pointer-events:none; }
+html #loading #loadBar .ld44Clip i{ position:absolute !important; left:0 !important; top:0 !important; bottom:auto !important; width:100% !important; height:100% !important;
+  transition:none; will-change:transform; transform:translateX(-100%); animation:ld44PreF 12s cubic-bezier(.1,.7,.3,1) forwards; }
+html #loading #loadBar .ld44Track{ position:absolute; left:0; bottom:4px; width:100%; height:100%; pointer-events:none;
+  will-change:transform; transform:translateX(0); animation:ld44PreT 12s cubic-bezier(.1,.7,.3,1) forwards; }
+@keyframes ld44PreF{ to{ transform:translateX(-87%); } }
+@keyframes ld44PreT{ to{ transform:translateX(13%); } }
+html #loading #loadBar .ld44Bike{ position:absolute; left:-23px; bottom:1px; width:44px; height:33px; will-change:transform;
+  animation:ld43Ride .5s ease-in-out infinite alternate; }
+html #loading #loadBar .ld44Bike .ldBike{ position:absolute; left:0; top:0; right:auto; bottom:auto; width:100%; height:100%; animation:none; will-change:auto; }
+html #loading #loadBar .ld44Bike .ldW{ display:none; }
+html #loading #loadBar .ld44W{ position:absolute; top:17.3px; width:16px; height:16px; will-change:transform; animation:ld44Spin .55s linear infinite; }
+html #loading #loadBar .ld44W1{ left:.8px; } html #loading #loadBar .ld44W2{ left:26.1px; }
+html #loading #loadBar .ld44W svg{ display:block; width:100%; height:100%; overflow:visible; }
+html #loading #loadBar .ld44W circle, html #loading #loadBar .ld44W path{ fill:none; stroke:var(--paper, #f3ede1); stroke-width:1.85; stroke-linecap:round; }
+@keyframes ld44Spin{ to{ transform:rotate(360deg); } }
+html #loading .loadPct{ display:none !important; }           /* the bar says it: a number that jumped step by step looked laggier than the bar */
+@media (prefers-reduced-motion: reduce){ html #loading #loadBar .ld44W, html #loading #loadBar .ld44Bike{ animation:none; } }
 </style>
 </head>
 <body>
@@ -3722,7 +3743,7 @@ html.touchUI #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo).act{ opacity:
   </svg>
   <div class="lt">Dusk <b>Line</b></div>
   <div class="loadProgress">
-    <div id="loadBar"><i><svg class="ldBike" viewBox="0 0 40 30" aria-hidden="true"><g transform="translate(8 23)"><g class="ldW ldSp"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></g></g><g transform="translate(31 23)"><g class="ldW ldSp"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></g></g><path class="ldF" d="M8 23H16L14 15ZM14 15L26 13.6M16 23L27.5 16.5M26 13.6L31 23M26 13.6L25.2 8.4M23.2 8.4H27.4"/><g class="ldR"><circle cx="23.4" cy="2.9" r="2.4"/><path d="M16.5 23.4L20 17.2L15 11.6L21.2 6.2L25.2 8.6"/></g></svg></i></div>
+    <div id="loadBar"><span class="ld44Clip"><i></i></span><div class="ld44Track"><div class="ld44Bike"><svg class="ldBike" viewBox="0 0 40 30" aria-hidden="true"><g transform="translate(8 23)"><g class="ldW ldSp"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></g></g><g transform="translate(31 23)"><g class="ldW ldSp"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></g></g><path class="ldF" d="M8 23H16L14 15ZM14 15L26 13.6M16 23L27.5 16.5M26 13.6L31 23M26 13.6L25.2 8.4M23.2 8.4H27.4"/><g class="ldR"><circle cx="23.4" cy="2.9" r="2.4"/><path d="M16.5 23.4L20 17.2L15 11.6L21.2 6.2L25.2 8.6"/></g></svg><b class="ld44W ld44W1" aria-hidden="true"><svg viewBox="-8 -8 16 16"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></svg></b><b class="ld44W ld44W2" aria-hidden="true"><svg viewBox="-8 -8 16 16"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></svg></b></div></div></div>
     <div class="loadPct" id="loadPct">0%</div>
   </div>
   <div class="ls" id="loadMsg">Pumping up the tyres</div>
@@ -90383,7 +90404,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.40';
+const DL_VER = '15.41';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -90840,6 +90861,87 @@ function m44Input(){
   readInput = function(){
     const r = base.apply(this, arguments);
     try { m44Input(); } catch(e){ M44.err = 'input: ' + (e && e.message || e); }
+    return r;
+  };
+})();
+
+/* =========================================================================
+   LOAD44 -- Release 15.41: "make the loading screen bar less laggy". The bar's fill and the rider move with transforms on their
+   own compositor layers (load44.css): each loading step starts them gliding toward the next step's mark over the time that step
+   took last time (remembered in the browser), easing out as they get close -- so they keep moving while a step holds the main
+   thread (building the city, compiling the shaders) instead of sitting still and then jumping. The bar never goes back: the
+   city build's own progress (it reported 45..99 inside the 45..60 step, then the bar fell back to 60) is folded into that step.
+   API: LD44 { marks, est, t, i }, ld44Pos(); tests: test/t_load44.js
+   ========================================================================= */
+const LD44 = { marks:[15, 30, 45, 60, 78, 92, 100], def:[700, 1000, 5500, 500, 3200, 900, 200], est:null, i:-1, t:[], t0:0, tgt:0, floor:0, n:0 };
+const LD44_KEY = 'dusk_line_boot44_v1';
+function ld44El(){ return { f: document.querySelector('#loadBar .ld44Clip i'), t: document.querySelector('#loadBar .ld44Track') }; }
+function ld44Est(){
+  if (LD44.est) return LD44.est;
+  let e = null; try { e = JSON.parse(localStorage.getItem(LD44_KEY) || 'null'); } catch(x){}
+  LD44.est = (Array.isArray(e) && e.length === LD44.marks.length && e.every(v=> typeof v === 'number' && v >= 0 && v < 180000)) ? e.slice() : LD44.def.slice();
+  return LD44.est;
+}
+/* where the bar is right now (0..1), mid-glide included (the rider's track: translateX(p x its width)) */
+function ld44Pos(){
+  const E = ld44El(); if (!E.t) return 0;
+  try {
+    const m = getComputedStyle(E.t).transform, w = E.t.offsetWidth;
+    if (!m || m === 'none' || !w) return 0;
+    const v = /matrix\(([^)]+)\)/.exec(m); if (!v) return 0;
+    return Math.max(0, Math.min(1, (+v[1].split(',')[4]) / w));
+  } catch(e){ return 0; }
+}
+function ld44Go(to, ms, ease){
+  const E = ld44El(); if (!E.f || !E.t) return;
+  to = Math.max(0, Math.min(1, to));
+  const from = ld44Pos();
+  // pin the spot it has reached (so dropping the opening glide / the old transition does not jump), then glide on from there
+  E.f.style.animation = 'none'; E.t.style.animation = 'none';
+  E.f.style.transition = 'none'; E.t.style.transition = 'none';
+  E.f.style.transform = 'translateX(' + ((from - 1)*100).toFixed(3) + '%)'; E.t.style.transform = 'translateX(' + (from*100).toFixed(3) + '%)';
+  void E.t.offsetWidth;
+  const tr = 'transform ' + Math.round(Math.max(60, ms)) + 'ms ' + (ease || 'cubic-bezier(.2,.55,.4,1)');
+  E.f.style.transition = tr; E.t.style.transition = tr;
+  E.f.style.transform = 'translateX(' + ((to - 1)*100).toFixed(3) + '%)'; E.t.style.transform = 'translateX(' + (to*100).toFixed(3) + '%)';
+  LD44.tgt = to; LD44.n++;
+}
+function ld44Save(){
+  const est = ld44Est().slice();
+  for (let k = 0; k < LD44.t.length; k++) if (LD44.t[k] > 0) est[k] = Math.round(est[k] === LD44.def[k] ? LD44.t[k] : est[k]*0.4 + LD44.t[k]*0.6);
+  try { localStorage.setItem(LD44_KEY, JSON.stringify(est)); } catch(e){}
+}
+function ld44Set(pct, msg){
+  const M = LD44.marks, est = ld44Est(), now = performance.now();
+  const mi = M.indexOf(pct);
+  if (mi >= 0 && mi > LD44.i && msg.indexOf(' — ') < 0){
+    // a boot step begins (boot15Run: the step's own words); the one that ended took now - t0
+    if (LD44.i >= 0) LD44.t[LD44.i] = now - LD44.t0;
+    LD44.i = mi; LD44.t0 = now; LD44.floor = Math.max(LD44.floor, pct/100);
+    if (mi === M.length - 1){ ld44Save(); ld44Go(1, 280, 'cubic-bezier(.3,.7,.4,1)'); return; }
+    ld44Go(Math.max(LD44.tgt, (M[mi + 1] - 1.5)/100), est[mi]);
+    return;
+  }
+  // progress from inside a step: folded into this step's stretch, only ever forward; when the bar is behind it, it glides on
+  // from where it is over what is left of the step (from the progress so far once the step has gone past its usual time)
+  if (LD44.i < 0 || LD44.i >= M.length - 1) return;
+  const a = M[LD44.i], b = M[LD44.i + 1];
+  let f = LD44.i === 2 ? a + (Math.max(45, Math.min(99, pct)) - 45)/54*(b - 1.5 - a) : Math.max(a, Math.min(b - 1.5, pct));
+  f /= 100;
+  if (f <= LD44.floor + 0.004) return;
+  LD44.floor = f;
+  if (ld44Pos() >= f) return;
+  const el = now - LD44.t0, q = (f*100 - a)/(b - a);
+  const left = Math.max(300, Math.min(30000, (el > (est[LD44.i] || 0) && q > 0.05) ? el*(1 - q)/q : (est[LD44.i] || 1000) - el));
+  ld44Go((b - 1.5)/100, left);
+}
+(function ld44Wrap(){
+  if (typeof setLoad !== 'function') return;
+  const base = setLoad;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  setLoad = function(pct, msg){
+    const r = base.apply(this, arguments);
+    try { ld44Set(+pct || 0, String(msg || '')); } catch(e){}
     return r;
   };
 })();
