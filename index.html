@@ -3701,6 +3701,17 @@ html #loading .ldBike{ will-change:transform; animation:ld43Ride .5s ease-in-out
 html #loading .lt{ will-change:transform; }
 /* 15.37: the version label next to the menu logo */
 #menu .mBrand .ui43Ver{ margin-left:12px; flex:0 0 auto; font:700 11px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing:.06em; color:rgba(244,241,234,.78); background:rgba(0,0,0,.38); border:1px solid rgba(255,255,255,.16); padding:4px 8px; border-radius:999px; white-space:nowrap; }
+/* 15.40 (mobile44): the GO pedal button, and see-through thumb buttons (solid while pressed) -- the road stays visible */
+:is(html.touchUI #touch, #m26Ed) .mbGo{ flex-direction:column-reverse; gap:0; border-width:3px; border-color:rgba(132,230,160,.8);
+  background:radial-gradient(circle at 50% 30%, rgba(150,255,190,.20), rgba(10,22,14,.52) 70%); }
+:is(html.touchUI #touch, #m26Ed) .mbGo span{ font-size:1.2em; letter-spacing:.1em; }
+:is(html.touchUI #touch, #m26Ed) .mbGo .mbI{ width:34%; height:30%; color:#8ef0ad; margin-bottom:-2px; }
+html.touchUI #touch .mbGo.act{ background:radial-gradient(circle at 50% 38%, rgba(150,255,190,.85), rgba(46,190,104,.6) 72%); border-color:#c8ffd9;
+  box-shadow:0 0 24px rgba(70,220,130,.6), inset 0 1px 0 rgba(255,255,255,.3); }
+html.touchUI #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo):not(.act):not(.tkLock):not(.tkNone){ opacity:.8; transition:opacity .18s; }
+html.touchUI.mobTab #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo):not(.act):not(.tkLock):not(.tkNone){ opacity:.62; }
+html.touchUI.mobTab #touch .mGhost{ opacity:.55; }
+html.touchUI #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo).act{ opacity:1; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -48538,6 +48549,14 @@ function gfxPhoneScale(){
   const s = Math.max(0.8, Math.min(Math.sqrt(550000/a), dpr, 1.5));
   return (gfxPhoneScale.v = Math.round(s*20)/20);
 }
+/* Release 15.40 (mobile44): a tablet's fixed resolution -- about px pixels whatever the screen, between lo and hi device px per CSS px */
+function gfxTabletScale(px, lo, hi){
+  const dpr = window.devicePixelRatio || 1;
+  let a = 0; try { a = (screen.width || 0)*(screen.height || 0); } catch(e){}
+  if (!(a > 0)) a = (innerWidth || 1024)*(innerHeight || 768);
+  const s = Math.max(lo, Math.min(Math.sqrt(px/a), hi, Math.max(1, dpr)));
+  return Math.round(s*20)/20;
+}
 /* Release 15.5 (potato, "looks too ugly / blurry"): Potato / Low draw the 3D at their own resolution (scale) and their one final
    pass brings it up to a sharp canvas (out: device px per CSS px) with edge smoothing, a contrast-adaptive sharpen and the post
    modes' grade (mods/light12_post.js); fog = the fog distance (x the map's), apart from view (full-detail range, streaming) so
@@ -48560,6 +48579,13 @@ function gfxPresetRaw(id){
     if (id === 'potato') return { scale:Math.round(Math.max(0.7, ps*0.85)*20)/20, shadows:'off', view:0.45, fog:0.6, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:1 };
     if (id === 'low')    return { scale:ps, shadows:'off', view:0.55, fog:0.7, detail:0, crowd:0.35, traffic:0.45, lamps:2, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
     return { scale:ps, shadows:'low', view:0.7, fog:0.85, detail:1, crowd:0.6, traffic:0.6, lamps:4, post:true, ao:0, bloom:true, fxaa:true, sharpen:false, aniso:4 };
+  }
+  // Release 15.40 (mobile44, "it looks blurry" on his iPad): a TABLET draws a fixed number of pixels too, picked once from its
+  // screen -- Low ~1.0 Mpx, Medium ~1.3 Mpx (they drew 0.75 / 0.9 x the CSS size: ~0.5 / ~0.8 Mpx on an iPad, stretched 2.2x by
+  // the Retina screen). Medium pays for the sharper picture with the extras a tablet barely shows: no bloom, low shadows.
+  if (tch && !ph && (id === 'low' || id === 'medium')){
+    if (id === 'low'){ const s = gfxTabletScale(1.0e6, 0.9, 1.25); return { scale:s, out:Math.max(1, s), shadows:'off', view:0.55, fog:0.7, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 }; }
+    return { scale:gfxTabletScale(1.3e6, 0.95, 1.3), shadows:'low', view:0.8, detail:1, crowd:0.7, traffic:0.7, lamps:6, post:true, ao:0, bloom:false, fxaa:true, sharpen:false, aniso:8 };
   }
   switch (id){
     // Release 15.7 ("make it so you can play even with an insanely weak laptop"): Toaster -- cheap per-vertex lighting instead of the
@@ -90360,7 +90386,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.39';
+const DL_VER = '15.40';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -90564,6 +90590,262 @@ function lag41LiftsWarm(){
   W.done = true;
   return true;
 }
+
+/* =========================================================================
+   MOBILE44 -- Release 15.40: "make mobile way better" (he plays on an iPad: it lags, the picture is blurry, pedaling is awkward,
+   steering feels bad, tricks are hard, the buttons cover the screen). Builds on mobile.js / mobile26 / mobile27 (owned there:
+   the stick, the buttons, the editor, the swipe tricks); this file wraps a few of their functions at load time.
+
+     GO BUTTON     Touch settings -> Pedal: "GO button" (new default) -- hold GO, in the corner under the right thumb, to pedal;
+                   the stick only steers (pull it well down to brake). "Stick up" = the old way. In the air the stick still
+                   flips (up / down) and GO does nothing (no surprise front flips from a thumb left on GO).
+     LAYOUT        with GO the right thumb's cluster is two rows from the corner: GO, HOP, WHEELIE along the bottom, the three
+                   trick buttons above them (motor bikes: SLIDE / STOPPIE above those). On a tablet both clusters sit low in
+                   the corners (they were lifted a fifth of the screen up, over the road) and idle buttons are see-through.
+     STEERING      on a tablet the stick's ring is a quarter bigger (more thumb travel for the same lock: finer lines), and on
+                   every touch screen the steering eases toward the thumb in ~60 ms (a shaky thumb no longer twitches the bike).
+     EASY TRICKS   Touch settings -> Easy tricks (on): tap a trick button in the air and the whole trick is done for you
+                   (held as long as it needs -- only when the air left fits it, else MORE AIR); tap it on the ground and the
+                   bike hops first, then does it. A quick tap of HOP pops a real hop (a medium one, not a tiny one).
+   API: M44 { on, err, n }, m44GoMode(), m44EasyOn(); tests: test/t_mobile44*.js
+   ========================================================================= */
+const M44 = { on: false, err: '', sv: 0, st: 0, hopReq: false, queued: null, crPrev: false, crT0: 0, n: { easy: 0, more: 0, hop: 0, tap: 0 } };
+function m44GoMode(){ try { return !!MOB.on && mobSetting('m_stick', 'stick') !== 'pad' && mobSetting('m_pedal', 'go') === 'go'; } catch(e){ return false; } }
+function m44EasyOn(){ try { return mobSetting('m_easy', true) !== false; } catch(e){ return true; } }
+function m44OnFoot(){ try { return typeof onFoot === 'function' && !!onFoot(); } catch(e){ return false; } }
+const M44_ICO_GO = '<i class="mbI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+  '<circle cx="9.6" cy="11.6" r="5.4"/><circle cx="9.6" cy="11.6" r="1.4"/><path d="M10.6 12.6l5.4 5.2"/><path d="M13.4 19.4h6"/></svg></i>';   // a crank + pedal
+
+if (typeof isTouch !== 'undefined' && isTouch && typeof registerSetting === 'function'){
+  registerSetting({ id:'m_pedal', label:'Pedal', group:'touch', type:'choice', def:'go',
+    options:[ { v:'go', label:'GO button', hint:'Hold GO (bottom corner, right thumb) to pedal; the stick only steers -- pull it down to brake' },
+              { v:'stick', label:'Stick up', hint:'Push the stick up to pedal (the old way)' } ],
+    onChange(v, init){ if (!init && typeof mobRebuild === 'function') mobRebuild(); try { mobGuideSide(); } catch(e){} } });
+  registerSetting({ id:'m_easy', label:'Easy tricks', group:'touch', type:'toggle', def:true,
+    hintOn:'Tap a trick button: it is done for you (on the ground you hop first). A quick tap of HOP is a real hop',
+    hintOff:'Hold the trick buttons yourself' });
+}
+
+/* ---------------------------------------------------------------- the GO button */
+function m44AddGo(){
+  const wrap = MOB.root; if (!wrap || !MOB.built) return;
+  const old = MOB.els.go; if (old && old.parentNode) old.parentNode.removeChild(old);
+  delete MOB.els.go;
+  if (!m44GoMode()) return;
+  const b = document.createElement('div');
+  b.className = 'mb mbGo'; b.dataset.k = 'go'; b.innerHTML = M44_ICO_GO + '<span>GO</span>';
+  wrap.appendChild(b); MOB.els.go = b;
+}
+(function m44Wrap(){
+  if (typeof mobRebuild !== 'function' || typeof mobLayoutCompute !== 'function') return;
+  M44.on = true;
+  const baseRebuild = mobRebuild;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobRebuild = function(){
+    const r = baseRebuild.apply(this, arguments);
+    try { m44AddGo(); if (MOB.els.go) mobLayout(); } catch(e){ M44.err = 'go: ' + (e && e.message || e); }
+    return r;
+  };
+  const baseCompute = mobLayoutCompute;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobLayoutCompute = function(W, H, safe, o){
+    const L = baseCompute.apply(this, arguments);
+    try { m44Relayout(L, W, H, safe, o); } catch(e){ M44.err = 'layout: ' + (e && e.message || e); }
+    return L;
+  };
+  const baseLayout = mobLayout;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobLayout = function(){
+    const r = baseLayout.apply(this, arguments);
+    try {
+      // a tablet's stick: a quarter more ring (more travel for the same lock)
+      if (MOB.L && MOB.L.tablet && MOB.stick){
+        MOB.stick.R = Math.round(MOB.stick.R * 1.25);
+        if (MOB.els.live) MOB.els.live.style.width = MOB.els.live.style.height = (2 * MOB.stick.R) + 'px';
+      }
+      document.documentElement.classList.toggle('m44Go', m44GoMode());
+    } catch(e){ M44.err = 'stick: ' + (e && e.message || e); }
+    return r;
+  };
+  const baseOut = mobStickOut;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobStickOut = function(){
+    const s = MOB.stick, wasDown = !!s.down;
+    const r = baseOut.apply(this, arguments);
+    // GO mode on the ground: the stick steers; braking needs a clear pull down (no brake from a thumb that sags while steering)
+    try { if (m44GoMode() && typeof bike !== 'undefined' && bike.state !== 'air'){ s.down = s.ny > (wasDown ? 0.4 : 0.62); touch.down = s.down ? 1 : 0; } } catch(e){}
+    return r;
+  };
+  const baseRelease = mobReleaseAll;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobReleaseAll = function(){ const r = baseRelease.apply(this, arguments); touch.go = 0; return r; };
+  const baseSteer = mobSteer;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobSteer = function(base){
+    if (!MOB.on) return baseSteer.apply(this, arguments);
+    const tgt = MOB.steer + (MOB.tiltOn ? MOB.tilt : 0);
+    const now = performance.now(), dt = Math.min(0.05, Math.max(0.004, (now - (M44.st || now - 16)) / 1000)); M44.st = now;
+    M44.sv += (tgt - M44.sv) * (1 - Math.exp(-dt / 0.06));
+    if (Math.abs(tgt - M44.sv) < 0.01) M44.sv = tgt;
+    const s = M44.sv;
+    return s ? Math.max(-1, Math.min(1, base + s)) : base;
+  };
+  const baseDown = mobDown;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  mobDown = function(e){
+    const r = baseDown.apply(this, arguments);
+    try {
+      const p = MOB.ptr.get(e.pointerId);
+      if (p && p.kind === 'btn' && (p.el === MOB.els.t1 || p.el === MOB.els.t2 || p.el === MOB.els.t3)) m44EasyPress(p.k);
+      if (p && p.kind === 'btn' && p.k === 'crouch'){ M44.crPend = true; M44.crDownT = performance.now(); }       // (a tap shorter than a frame still hops)
+    } catch(err){ M44.err = 'down: ' + (err && err.message || err); }
+    return r;
+  };
+  // the controls editor moves GO too
+  try { if (typeof M26_ED_KEYS !== 'undefined' && M26_ED_KEYS.indexOf('go') < 0) M26_ED_KEYS.push('go'); } catch(e){}
+  // the first-ride tutorial and the controls guide speak GO
+  try {
+    if (typeof M27_TUT !== 'undefined' && M27_TUT[0]){
+      const t0 = M27_TUT[0].tx;
+      Object.defineProperty(M27_TUT[0], 'tx', { configurable:true, get(){ return m44GoMode() ? 'Hold GO to pedal · drag your {side} thumb to steer' : t0; } });
+    }
+  } catch(e){}
+  if (typeof mobGuideSide === 'function'){
+    const baseSide = mobGuideSide;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    mobGuideSide = function(){
+      const r = baseSide.apply(this, arguments);
+      try {
+        const side = mobSetting('m_hand', 'right') === 'left' ? 'right' : 'left', t = document.querySelector('.tgThumbTx');
+        if (t) t.textContent = 'Drag anywhere on the ' + side + ' to steer. Pull down to brake. ' +
+          (m44GoMode() ? 'Hold GO (the other bottom corner) to pedal.' : (mobSetting('m_auto', false) ? 'You pedal by yourself.' : 'Push up to pedal.'));
+      } catch(e){}
+      return r;
+    };
+  }
+})();
+
+/* the right thumb's cluster with GO, and tablets' clusters low in the corners */
+function m44Relayout(L, W, H, safe, o){
+  const R = L.rects, land = L.land, dir = o && o.hand === 'left' ? -1 : 1;
+  // 1. tablets: the clusters drop to the corners (mobile.js lifts them H x 0.2 / 0.12 for a tablet held by its sides)
+  if (L.tablet){
+    const dy = Math.round(H * (land ? 0.2 : 0.12)) - Math.round(H * (land ? 0.07 : 0.05));
+    for (const k of ['crouch', 't1', 't2', 't3', 'manual', 'drift', 'stoppie', 'ghost', 'left', 'right', 'up', 'down']){
+      const r = R[k]; if (r && !r.custom) r.y += dy;
+    }
+  }
+  if (!m44GoMode()) return;
+  // 2. GO in the corner (where mobile.js puts HOP), HOP beside it, WHEELIE beyond; the tricks in a row above. Buttons the player
+  //    placed himself (Pause -> Edit controls) stay where he put them.
+  const u = L.u, tablet = L.tablet, sf = safe || { t:0, r:0, b:0, l:0 };
+  const goD = Math.round(u * 1.95), hopD = Math.round(goD * 0.86);
+  const edgeX = 14 + (dir > 0 ? sf.r : sf.l) + (tablet ? 10 : 0), edgeY = 10 + sf.b + (tablet ? Math.round(H * (land ? 0.07 : 0.05)) : 0);
+  const ax = dir > 0 ? W - edgeX - goD / 2 : edgeX + goD / 2, ay = H - edgeY - goD / 2;
+  const tD = R.t1 ? R.t1.d : Math.max(48, Math.round(u * 1.24)), mD = R.manual ? R.manual.d : tD, sD = R.drift ? R.drift.d : Math.max(46, Math.round(u * 1.04));
+  const put = (k, x, y, d)=>{ if (R[k] && R[k].custom) return; R[k] = { x: Math.round(x - d / 2), y: Math.round(y - d / 2), d: d }; };
+  // GO's own spot from the editor (mobile.js applies the custom spots only to its own buttons)
+  const cg = o && o.custom && o.custom.go;
+  if (cg && cg.x >= 0 && cg.x <= 1 && cg.y >= 0 && cg.y <= 1){
+    const d = Math.round(Math.max(44, Math.min(170, goD * (cg.s > 0.5 && cg.s < 2 ? cg.s : 1))));
+    const cx = Math.max(sf.l + d / 2 + 2, Math.min(W - sf.r - d / 2 - 2, cg.x * W)), cy = Math.max(sf.t + d / 2 + 2, Math.min(H - sf.b - d / 2 - 2, cg.y * H));
+    R.go = { x: Math.round(cx - d / 2), y: Math.round(cy - d / 2), d: d, custom: true };
+  } else put('go', ax, ay, goD);
+  const keep = !!(R.go && R.go.custom);
+  if (land){
+    const hx = ax - dir * (goD / 2 + hopD / 2 + 12), hy = ay + (goD - hopD) / 2;
+    put('crouch', hx, hy, hopD);
+    put('manual', hx - dir * (hopD / 2 + mD / 2 + 12), ay + (goD - mD) / 2, mD);
+    const ty = ay - goD / 2 - tD / 2 - 14, step = tD + 14;
+    put('t3', ax, ty, tD); put('t1', ax - dir * step, ty, tD); put('t2', ax - dir * step * 2, ty, tD);
+    const sy = ty - tD / 2 - sD / 2 - 10;
+    put('drift', ax - dir * step * 0.5, sy, sD); put('stoppie', ax - dir * step * 1.5, sy, sD);
+  } else {
+    // upright: GO in the corner, HOP above it, the tricks in a column to their left
+    const hx = ax, hy = ay - goD / 2 - hopD / 2 - 12;
+    put('crouch', hx, hy, hopD);
+    const tx = ax - dir * (goD / 2 + tD / 2 + 12);
+    put('t2', tx, ay, tD); put('t1', tx, hy, tD);
+    put('t3', ax, hy - hopD / 2 - tD / 2 - 12, tD);
+    put('manual', tx, hy - hopD / 2 - mD / 2 - 12 - Math.max(0, (tD - hopD) / 2), mD);
+    put('drift', tx - dir * (tD / 2 + sD / 2 + 10), ay, sD); put('stoppie', tx - dir * (tD / 2 + sD / 2 + 10), hy, sD);
+  }
+  if (keep) return;
+  // the free strip between the thumbs (toasts / hints) and where the portrait HUD stops
+  if (land){
+    const act = ['go', 'crouch', 'manual', 't1', 't2', 't3'].map(k=> R[k]).filter(Boolean);
+    let lo, hi;
+    if (dir > 0){ lo = R.ghost ? R.ghost.x + R.ghost.d + 10 : W * 0.3; hi = Math.min.apply(null, act.map(r=> r.x)) - 10; }
+    else { lo = Math.max.apply(null, act.map(r=> r.x + r.d)) + 10; hi = R.ghost ? R.ghost.x - 10 : W * 0.7; }
+    if (hi - lo > 120){ L.vars.midX = Math.round((lo + hi) / 2); L.vars.midW = Math.round(hi - lo); }
+  } else {
+    const top = Math.min.apply(null, ['go', 'crouch', 't1', 't2', 't3', 'manual'].map(k=> R[k] ? R[k].y : H));
+    L.vars.toastB = Math.round(H - Math.min(top, R.ghost ? R.ghost.y : H) + 10);
+  }
+}
+
+/* ---------------------------------------------------------------- input: GO, easy tricks, a real hop from a tap */
+function m44EasyPress(slot){
+  if (!m44EasyOn() || typeof GAME === 'undefined' || GAME !== 'play' || typeof bike === 'undefined') return;
+  const t = (typeof m27SlotTrick === 'function') ? m27SlotTrick(slot) : null;
+  if (!t) return;                                                  // a ground trick (or none on this ride): the button does it as before
+  if (bike.state === 'air'){ m44AirTrick(slot, t); return; }
+  if (bike.state === 'ride' && !m44OnFoot()){ M44.hopReq = true; M44.queued = { slot: slot, t0: performance.now() }; }
+}
+/* the whole trick, held for exactly as long as it needs (mobile27's swipe machinery feeds it into the input every frame) */
+function m44AirTrick(slot, t){
+  if (typeof M27 === 'undefined' || typeof m27AirLeft !== 'function' || typeof m27SlotTime !== 'function') return false;
+  const G = M27.g, left = m27AirLeft();
+  if (G.pose || G.slotF) return false;                             // one at a time
+  if (m27SlotTime(t) > left){
+    M44.n.more++;
+    try { const r = MOB.rects && (MOB.rects.t3 || MOB.rects.crouch); m27SwipeFx('u', r ? r.x + r.d / 2 : innerWidth * 0.75, r ? r.y - 20 : innerHeight * 0.5, 'MORE AIR', false); } catch(e){}
+    return false;
+  }
+  if (t.spin){ G.slot = slot; G.slotF = 2; }                       // a spin: a press starts it, the release finishes the rotation
+  else G.pose = { slot: slot, a0: bike.airTime, hold: ((t.kind === 'ground' && t.air) ? (t.air.hold || 0.25) : (t.hold || 0.25)) + 0.08 };
+  M44.n.easy++;
+  try { m26Haptic('tap'); } catch(e){}
+  return true;
+}
+function m44Input(){
+  if (!MOB.on || typeof GAME === 'undefined' || GAME !== 'play' || typeof bike === 'undefined') { M44.crPrev = !!touch.crouch; return; }
+  const foot = m44OnFoot();
+  // GO: pedal on the ground with GO, not with the stick; in the air the stick flips as before and GO does nothing
+  if (m44GoMode() && !foot && bike.state !== 'air') In.up = (keys.up || touch.go || mobAutoGo()) ? 1 : 0;
+  // a quick tap of HOP: a real (medium) hop -- also when the finger was down and up again between two frames (no frame saw it)
+  const cr = !!touch.crouch;
+  if (M44.crPend){
+    M44.crPend = false;
+    if (!cr && !M44.crPrev && !foot && bike.state === 'ride'){ In.crouch = 0; bike.charge = Math.max(bike.charge || 0, m44EasyOn() ? 0.55 : 0.05); M44.n.tap++; }
+    else if (cr && !M44.crPrev) M44.crT0 = M44.crDownT;
+  }
+  if (cr && !M44.crPrev && !M44.crT0) M44.crT0 = performance.now();
+  if (!cr && M44.crPrev && !keys.crouch && !foot && m44EasyOn() && bike.state === 'ride' && performance.now() - M44.crT0 < 200){ bike.charge = Math.max(bike.charge || 0, 0.55); M44.n.tap++; }
+  if (!cr) M44.crT0 = 0;
+  M44.crPrev = cr;
+  // easy trick from the ground: hop now (a good pop), the trick once the bike is up
+  if (M44.hopReq){
+    M44.hopReq = false;
+    if (bike.state === 'ride' && !foot){ In.crouch = 0; bike.charge = Math.max(bike.charge || 0, 0.8); M44.n.hop++; }
+    else M44.queued = null;
+  }
+  const Q = M44.queued;
+  if (Q){
+    if (performance.now() - Q.t0 > 1400) M44.queued = null;
+    else if (bike.state === 'air' && bike.airTime > 0.06){ M44.queued = null; const t = m27SlotTrick(Q.slot); if (t) m44AirTrick(Q.slot, t); }
+  }
+}
+(function m44WrapInput(){
+  if (typeof readInput !== 'function') return;
+  const base = readInput;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  readInput = function(){
+    const r = base.apply(this, arguments);
+    try { m44Input(); } catch(e){ M44.err = 'input: ' + (e && e.message || e); }
+    return r;
+  };
+})();
 
 /*@@LATE@@*/
 /* =========================================================================
