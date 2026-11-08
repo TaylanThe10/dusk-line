@@ -3717,11 +3717,11 @@ html.touchUI #touch :is(.mbHop, .mbTrick, .mbMed, .mbSmall, .mbGo).act{ opacity:
    (the old fill's width only changed between steps: still for seconds, then a jump). mods/load44.js drives them. */
 html #loading #loadBar .ld44Clip{ position:absolute; left:0; bottom:4px; width:100%; height:100%; overflow:hidden; border-radius:999px; pointer-events:none; }
 html #loading #loadBar .ld44Clip i{ position:absolute !important; left:0 !important; top:0 !important; bottom:auto !important; width:100% !important; height:100% !important;
-  transition:none; will-change:transform; transform:translateX(-100%); animation:ld44PreF 12s cubic-bezier(.1,.7,.3,1) forwards; }
+  transition:none; will-change:transform; transform:translateX(-100%); animation:ld44PreF 9s linear forwards; }
 html #loading #loadBar .ld44Track{ position:absolute; left:0; bottom:4px; width:100%; height:100%; pointer-events:none;
-  will-change:transform; transform:translateX(0); animation:ld44PreT 12s cubic-bezier(.1,.7,.3,1) forwards; }
-@keyframes ld44PreF{ to{ transform:translateX(-87%); } }
-@keyframes ld44PreT{ to{ transform:translateX(13%); } }
+  will-change:transform; transform:translateX(0); animation:ld44PreT 9s linear forwards; }
+@keyframes ld44PreF{ to{ transform:translateX(-90%); } }
+@keyframes ld44PreT{ to{ transform:translateX(10%); } }
 html #loading #loadBar .ld44Bike{ position:absolute; left:-23px; bottom:1px; width:44px; height:33px; will-change:transform;
   animation:ld43Ride .5s ease-in-out infinite alternate; }
 html #loading #loadBar .ld44Bike .ldBike{ position:absolute; left:0; top:0; right:auto; bottom:auto; width:100%; height:100%; animation:none; will-change:auto; }
@@ -3733,6 +3733,77 @@ html #loading #loadBar .ld44W circle, html #loading #loadBar .ld44W path{ fill:n
 @keyframes ld44Spin{ to{ transform:rotate(360deg); } }
 html #loading .loadPct{ display:none !important; }           /* the bar says it: a number that jumped step by step looked laggier than the bar */
 @media (prefers-reduced-motion: reduce){ html #loading #loadBar .ld44W, html #loading #loadBar .ld44Bike{ animation:none; } }
+/* 15.42 (ride45): the Drop In question + the host's weather & time sheet; (15.42: sheets opened from the pause screen sit above
+   the pause panel, z-index 60: the Graphics and Touch settings sheets opened BEHIND it -- "I can't change my graphics") */
+.gfxSheet{ z-index:75 !important; }
+#mobSet{ z-index:75 !important; }
+.r45Ov{ position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center; padding:16px;
+  background:radial-gradient(ellipse 70% 60% at 50% 45%, rgba(20,16,32,.72), rgba(5,6,10,.9)); }
+.r45Ov.on{ display:flex; }
+.r45Card{ width:min(520px, 100%); max-height:100%; overflow-y:auto; border-radius:18px; padding:16px 16px 14px; color:#f4efe6;
+  background:linear-gradient(180deg, rgba(24,22,34,.97), rgba(12,12,18,.97)); box-shadow:0 30px 80px -20px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.08); }
+.r45Head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 2px 12px; }
+.r45Head b{ font:800 22px/1.1 var(--dl-font-display, 'Barlow Condensed', sans-serif); letter-spacing:.02em; text-transform:uppercase; }
+.r45X{ min-width:40px; height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#f4efe6;
+  font:700 14px/1 var(--dl-font-display, 'Barlow Condensed', sans-serif); cursor:pointer; }
+.r45Opt{ display:flex; align-items:center; gap:14px; width:100%; margin:0 0 8px; padding:12px 14px; border-radius:14px; text-align:left; cursor:pointer;
+  border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.045); color:#f4efe6; transition:transform .1s, background .12s, border-color .12s; }
+.r45Opt:hover, .r45Opt:focus-visible{ border-color:rgba(255,170,90,.65); background:rgba(255,140,60,.10); outline:none; }
+.r45Opt:active{ transform:scale(.985); }
+.r45Opt i{ flex:none; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:rgba(255,160,80,.13); color:#ffb35c; }
+.r45Opt i svg{ width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.r45Opt span{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.r45Opt b{ font:800 18px/1.1 var(--dl-font-display, 'Barlow Condensed', sans-serif); letter-spacing:.03em; text-transform:uppercase; }
+.r45Opt em{ font-style:normal; font-size:13px; line-height:1.3; opacity:.72; }
+.r45Main{ background:linear-gradient(90deg, #ff5a1f, #ff8a3d); border-color:transparent; color:#1a0d06; }
+.r45Main i{ background:rgba(26,13,6,.16); color:#1a0d06; }
+.r45Main em{ opacity:.8; }
+.r45Main:hover, .r45Main:focus-visible{ background:linear-gradient(90deg, #ff6a2f, #ff9a4d); }
+.r45Ask{ display:flex; align-items:center; gap:8px; margin:6px 4px 0; font-size:12.5px; opacity:.72; cursor:pointer; }
+.r45Ask input{ width:18px; height:18px; accent-color:#ff7a33; }
+.r45Sub{ margin:-6px 4px 10px; font-size:13px; opacity:.7; }
+.r45Card h4{ margin:12px 4px 6px; font:800 13px/1 var(--dl-font-display, 'Barlow Condensed', sans-serif); letter-spacing:.12em; text-transform:uppercase; opacity:.7; }
+.r45Seg{ display:flex; flex-wrap:wrap; gap:6px; }
+.r45Seg button{ min-height:38px; padding:6px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:#f4efe6;
+  font:700 14px/1 var(--dl-font-display, 'Barlow Condensed', sans-serif); letter-spacing:.04em; text-transform:uppercase; cursor:pointer; }
+.r45Seg button.sel{ background:#ffd34d; color:#1a1206; border-color:#ffd34d; }
+@media (max-width:420px){ .r45Opt{ padding:10px 12px; gap:10px; } .r45Opt b{ font-size:16px; } .r45Opt em{ font-size:12px; } .r45Opt i{ width:38px; height:38px; } }
+/* 15.42 ("keep the tricks, just make the font and stuff in the trick list small"): the same trick menu, tighter -- smaller type,
+   icons, keys and cards, more cards a row. (tricks30.css loads at the end of the page: these win by specificity.) */
+html body #sheet.tm .tmHead{ padding:12px 18px 6px; }
+html body #sheet.tm .tmHead h2{ font-size:22px; }
+html body #sheet.tm .tmHead .tmVeh{ margin-top:2px; font-size:12px; }
+html body #sheet.tm .tmClose{ min-height:34px; padding:5px 11px; font-size:12px; }
+html body #sheet.tm .tmTab{ min-height:34px; padding:4px 10px; font-size:12px; gap:6px; }
+html body #sheet.tm .tmTab kbd{ min-width:18px; height:18px; font-size:9px; padding:0 4px; }
+html body #sheet.tm .tmTab .tkCount{ font-size:10px; padding:1px 6px; }
+html body #sheet.tm .tmBody{ padding:10px 14px 8px; }
+html body #sheet.tm .tmGrid{ gap:7px; }
+html body #sheet.tm .tkLegend{ font-size:11px; margin:0 0 8px; gap:4px 14px; }
+html body #sheet.tm .tkCards, html body #sheet.tm .tkCombos{ grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); }
+html body #sheet.tm .tkCard{ grid-template-columns:32px 44px minmax(0,1fr) auto; gap:4px 9px; padding:8px 10px 8px 8px; border-radius:10px; }
+html body #sheet.tm .tkIco{ width:32px; height:32px; border-radius:9px; }
+html body #sheet.tm .tkIco svg{ width:23px; height:23px; }
+html body #sheet.tm .tkKey{ gap:3px; }
+html body #sheet.tm .tkKey kbd{ min-width:30px; height:30px; font-size:12px; border-radius:7px; }
+html body #sheet.tm .tkKey kbd.wide{ min-width:40px; font-size:10px; }
+html body #sheet.tm .tkKeys2 kbd{ min-width:26px; height:26px; font-size:10px; }
+html body #sheet.tm .tkKeys2 .sep{ font-size:9.5px; }
+html body #sheet.tm kbd.tkBtn{ font-size:9.5px; padding:0 7px; min-width:40px; height:26px; border-radius:16px; }
+html body #sheet.tm .tkPress{ font-size:8.5px; }
+html body #sheet.tm .tkCard .tmNm{ font-size:13.5px; gap:3px 6px; }
+html body #sheet.tm .tkCard .tmNm .chip{ font-size:9px; padding:1px 5px; }
+html body #sheet.tm .tkCard .tmDs{ margin-top:2px; font-size:10.5px; line-height:1.35; }
+html body #sheet.tm .tkHow{ margin-top:3px; font-size:10.5px; line-height:1.35; }
+html body #sheet.tm .tkBuy{ margin-top:5px; padding:5px 10px; min-height:30px; font-size:12px; }
+html body #sheet.tm .tkPts .tkBig{ font-size:15px; }
+html body #sheet.tm .tkPts .tkSub{ font-size:9.5px; }
+html body #sheet.tm .tmSub{ margin:14px 0 6px; padding-top:10px; font-size:15px; }
+html body #sheet.tm .tmSub .tkSubN{ font-size:10.5px; }
+html body #sheet.tm .tmBody:not(.tkSet) .tmRow{ padding:8px 10px; gap:4px 10px; border-radius:10px; }
+html body #sheet.tm .tmNote{ font-size:11px; }
+html body #sheet.tm .tmFoot{ padding:6px 14px 10px; font-size:10.5px; }
+html body #sheet.tm .tmFoot kbd{ min-width:18px; height:18px; font-size:9px; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -13249,6 +13320,7 @@ function w3ShopMat(ck){ const L = W3_SHOPMATS.length; return W3_SHOPMATS[((ck % 
    hidden by a neighbour per face), gf ('shop' | 'lobby' | 'res' | 'none'), tint [3], shops [3 shop
    material ids], dens, ramp (side) / noRamp, plus the old roof / setback / spire / steps / graffiti opts.
    ========================================================================= */
+var BLDG_ROOF_RAMPS = false;            // 15.42: no rideable roof ramps on the city's buildings (true brings them back)
 function building(x, z, w, d, h, facade, opts){
   opts = opts || {};
   if (!facade || !facade.mat) facade = w3Fac('brk-red');
@@ -13264,10 +13336,11 @@ function building(x, z, w, d, h, facade, opts){
   finally { W3_SESS--; if (own) w2Flush(); }
   W3_STATS.bld++;
 
-  // a rideable ramp up to the roof (single flight, so it stays on the pavement), as before
+  // a rideable ramp up to the roof -- 15.42: gone ("remove the things you use to get on the top of the buildings": grey concrete
+  // wedges bolted onto the walls, out over the pavement). The dice are still thrown so the rest of the city stays the same.
   if (!opts.__tier && !opts.noRamp && h <= 22){
     const side = opts.ramp || (opts.ramp === undefined && drand() < 0.4 ? dpick(['n','e','s','w']) : null);
-    if (side) roofAccessRamp(x, z, w, d, 0, h, side);
+    if (side && BLDG_ROOF_RAMPS) roofAccessRamp(x, z, w, d, 0, h, side);
   }
   // setback tier: a taller, smaller box standing on this roof
   if (willRecurse){
@@ -36807,7 +36880,8 @@ function mo31Engine(E){
   );
   /* ---- into FLEET: the street bikes before the gas dirt bikes, the trials rides after the e-dirt bikes ---- */
   const firstOf = f=> FLEET.findIndex(f), lastOf = f=>{ let at = -1; FLEET.forEach((v, i)=>{ if (f(v)) at = i; }); return at; };
-  rows.filter(Boolean).forEach(r=>{
+  // 15.42 ("remove the trials bike category"): the four trials rides and their garage / shop section are gone
+  rows.filter(Boolean).filter(r=> r.tab !== 'trials' && r.cls !== 'trialsbike' && r.cls !== 'trialsmoto').forEach(r=>{
     if (has(r.id)) return;
     let at;
     if (r.tab === 'street'){ const l = lastOf(v=> v.tab === 'street'); at = l >= 0 ? l + 1 : firstOf(v=> v.tab === 'gasdirt'); }
@@ -36821,10 +36895,7 @@ function mo31Engine(E){
     const gi = FLEET_CATS.findIndex(c=> c.id === 'gasdirt');
     FLEET_CATS.splice(gi < 0 ? FLEET_CATS.length : gi, 0, { id:'street', name:'Street Bikes', sub:'Superbikes, streetfighters and supermotos: 17-inch slicks, big brakes and serious speed' });
   }
-  if (!FLEET_CATS.some(c=> c.id === 'trials')){
-    const ei = FLEET_CATS.findIndex(c=> c.id === 'edirt');
-    FLEET_CATS.splice(ei < 0 ? FLEET_CATS.length : ei + 1, 0, { id:'trials', name:'Trials', sub:'Trials motorbikes and stand-up trials bicycles: no seat, huge hops, perfect balance' });
-  }
+  // (15.42: no 'trials' section any more)
 })();
 
 /* =========================================================================
@@ -69846,7 +69917,7 @@ function* aerWorldGen(G){
    Once painted it is saved in IndexedDB (PNG tiles, ~3 MB) and the next session loads it in a moment instead. The key is a
    fingerprint of the world (land heights + water + forest at 81 points, the roads, the palette, AERC_V): a changed world paints
    it again. Bump AERC_V when the painting itself changes. ?aerc=0 turns the cache off. */
-const AERC_V = 1;
+const AERC_V = 2;
 const AERC = { dbP:null, st:{}, fp:{}, err:'', hits:0, saves:0, ms:0 };
 function aercDb(){
   if (AERC.dbP) return AERC.dbP;
@@ -84742,17 +84813,46 @@ isl33Register();
    API  W33 (state) · w33Set(pick) · w33Force(state, instant) · w33Strike(near) · w33Info() · w33GripK(surface, tyre)
    ========================================================================= */
 var W33_READY = false;                     // var: hndSurfRow may ask for the grip factor before this module has run
-const W33_PICKS = ['auto', 'clear', 'rain', 'storm', 'fog', 'snow'];
+const W33_PICKS = ['auto', 'clear', 'cloudy', 'rain', 'storm', 'fog', 'snow'];
 const W33_NAMES = { auto:'Auto', clear:'Clear', rain:'Rain', storm:'Thunderstorm', fog:'Fog', snow:'Snowstorm',
-  drizzle:'Drizzle', flurry:'Light snow' };
+  drizzle:'Drizzle', flurry:'Light snow', fair:'Sunny spells', cloudy:'Cloudy', mist:'Morning mist', sunshower:'Sun shower' };
+/* 15.42 ("make the weather cycle better": too much rain / snow, changes too fast and too sudden, more kinds): a cloud channel
+   (cloud cover in the sky + a dimmer sun, no rain) and four new kinds -- sunny spells, cloudy, morning mist, a sun shower */
 const W33_ST = {
-  clear:  { rain:0,    storm:0, fog:0,    snow:0 },
-  drizzle:{ rain:0.45, storm:0, fog:0.12, snow:0 },
-  rain:   { rain:1,    storm:0, fog:0.18, snow:0 },
-  storm:  { rain:1,    storm:1, fog:0.25, snow:0 },
-  fog:    { rain:0,    storm:0, fog:1,    snow:0 },
-  flurry: { rain:0,    storm:0, fog:0.1,  snow:0.4 },
-  snow:   { rain:0,    storm:0, fog:0.3,  snow:1 }
+  clear:    { rain:0,    storm:0, fog:0,    snow:0,   cloud:0 },
+  fair:     { rain:0,    storm:0, fog:0,    snow:0,   cloud:0.38 },
+  cloudy:   { rain:0,    storm:0, fog:0.06, snow:0,   cloud:0.85 },
+  mist:     { rain:0,    storm:0, fog:0.34, snow:0,   cloud:0.25 },
+  sunshower:{ rain:0.32, storm:0, fog:0.04, snow:0,   cloud:0.2 },
+  drizzle:  { rain:0.45, storm:0, fog:0.12, snow:0,   cloud:0.9 },
+  rain:     { rain:1,    storm:0, fog:0.18, snow:0,   cloud:1 },
+  storm:    { rain:1,    storm:1, fog:0.25, snow:0,   cloud:1 },
+  fog:      { rain:0,    storm:0, fog:1,    snow:0,   cloud:0.5 },
+  flurry:   { rain:0,    storm:0, fog:0.1,  snow:0.4, cloud:0.85 },
+  snow:     { rain:0,    storm:0, fog:0.3,  snow:1,   cloud:1 }
+};
+/* the Auto weather is a chain of kinds that lead into each other (clear -> sunny spells -> cloudy -> drizzle -> rain -> storm and
+   back the same way), each lasting minutes, so it never jumps from sunshine into a storm. dur = [min, max] seconds;
+   next = [kind, weight]. Over a long ride: ~3/4 of the time dry (clear, sunny spells, cloudy, mist), a few showers, rare snow. */
+const W33_FLOW = {
+  clear:    { dur:[260, 460], next:[['fair', 5], ['mist', 0.7], ['sunshower', 0.35]] },
+  fair:     { dur:[220, 380], next:[['clear', 3], ['cloudy', 2.6], ['sunshower', 0.5]] },
+  cloudy:   { dur:[170, 300], next:[['fair', 3], ['drizzle', 1.8], ['fog', 0.45], ['flurry', 0.2]] },
+  mist:     { dur:[130, 220], next:[['clear', 2], ['fair', 2], ['fog', 0.4]] },
+  sunshower:{ dur:[70, 120],  next:[['fair', 2], ['clear', 1]] },
+  drizzle:  { dur:[100, 170], next:[['cloudy', 2], ['rain', 1.6]] },
+  rain:     { dur:[130, 230], next:[['drizzle', 2], ['storm', 0.9], ['cloudy', 1]] },
+  storm:    { dur:[90, 150],  next:[['rain', 1]] },
+  fog:      { dur:[110, 190], next:[['mist', 2], ['cloudy', 1]] },
+  flurry:   { dur:[110, 170], next:[['cloudy', 2], ['snow', 0.5]] },
+  snow:     { dur:[100, 160], next:[['flurry', 1]] }
+};
+/* a map's own leaning: [kinds, factor] on the chain's weights (the harbour is rainy, the beach is sunny) */
+const W33_MAPK = {
+  neon: { drizzle:2.2, rain:2.2, storm:1.6, fog:1.4, clear:0.6 },
+  palm: { clear:1.6, fair:1.3, drizzle:0.5, rain:0.5, storm:0.6, flurry:0, snow:0 },
+  jump: { clear:1.4, storm:1.3 },
+  frost:{ flurry:3, snow:2, sunshower:0, drizzle:0.3, rain:0.3 }
 };
 const W33_AUTO = {
   dusk: [['clear', 3], ['drizzle', 1], ['rain', 2], ['storm', 1.6], ['fog', 1], ['snow', 0.6]],
@@ -84767,7 +84867,7 @@ const W33_FOGC = { dusk:[0xc8b6a4, 0x2a2531], palm:[0xd8cbb8, 0x252a38], neon:[0
   jump:[0xd5c2a0, 0x2c2a2e], def:[0xb8c2cc, 0x222a36] };
 const W33 = {
   on:true, pick:'auto', state:'clear', stateT:0, stateDur:60, frost:false, n:0, capT:0,
-  tgt:{ rain:0, storm:0, fog:0, snow:0 }, cur:{ rain:0, storm:0, fog:0, snow:0 },
+  tgt:{ rain:0, storm:0, fog:0, snow:0, cloud:0 }, cur:{ rain:0, storm:0, fog:0, snow:0, cloud:0 },
   wet:0, cover:0, gust:1, grip:1, gripApplied:1, flash:0, boltT:9, boltD:400, nextBolt:5,
   thunder:[{ t:-1, loud:0 }, { t:-1, loud:0 }, { t:-1, loud:0 }],
   obj:null, snowObj:null, bolt:null, uni:null, uniS:null, uniB:null, geo:null, boltGeo:null,
@@ -84916,31 +85016,38 @@ function w33Pick(v, init){
 }
 function w33Set(v){ if (typeof xsetSet === 'function' && typeof XSET !== 'undefined' && 'weather33' in XSET) xsetSet('weather33', v); else w33Pick(v); }
 function w33Next(first){
-  const list = W33_AUTO[w33MapKey()] || W33_AUTO.def;
-  let tot = 0;
-  for (let i = 0; i < list.length; i++) if (list[i][0] !== W33.state || first) tot += list[i][1];
-  let r = Math.random()*tot, pick = list[0][0];
-  for (let i = 0; i < list.length; i++){
-    if (list[i][0] === W33.state && !first) continue;
-    r -= list[i][1]; if (r <= 0){ pick = list[i][0]; break; }
+  const k = w33MapKey(), mk = W33_MAPK[k] || {};
+  const prev = W33.state;
+  let pick;
+  if (first){                                                // a map's own weather first: drizzle in the harbour, snow on Frostline
+    pick = k === 'neon' ? 'drizzle' : (k === 'frost' ? 'flurry' : (Math.random() < 0.6 ? 'clear' : 'fair'));
+  } else {
+    const F = W33_FLOW[prev] || W33_FLOW.clear, list = F.next.map(o=> [o[0], o[1]*(mk[o[0]] !== undefined ? mk[o[0]] : 1)]).filter(o=> o[1] > 0);
+    let tot = 0; for (const o of list) tot += o[1];
+    let r = Math.random()*tot; pick = list.length ? list[0][0] : 'clear';
+    for (const o of list){ r -= o[1]; if (r <= 0){ pick = o[0]; break; } }
   }
-  if (first){                                                // a map's own weather first: rain in the harbour, snow on Frostline
-    const k = w33MapKey();
-    if (k === 'neon') pick = 'rain'; else if (k === 'frost') pick = 'snow';
+  const D = (W33_FLOW[pick] || W33_FLOW.clear).dur;
+  W33.state = pick; W33.stateT = 0; W33.stateDur = D[0] + Math.random()*(D[1] - D[0]);
+  if (!first && typeof toast === 'function' && typeof GAME !== 'undefined' && GAME === 'play'){
+    const wet = s=> s === 'drizzle' || s === 'rain' || s === 'storm' || s === 'sunshower' || s === 'flurry' || s === 'snow' || s === 'fog';
+    const say = { cloudy:'Clouds are rolling in', drizzle:'A light rain is starting', rain:'Rain is coming', storm:'A thunderstorm is coming',
+      fog:'Fog is rolling in', mist:'A morning mist', sunshower:'A sun shower', flurry:'It is starting to snow', snow:'A snowstorm is coming' }[pick];
+    if (say) toast(say, true);
+    else if ((pick === 'clear' || pick === 'fair') && wet(prev)) toast('The sun is coming out', true);
   }
-  W33.state = pick; W33.stateT = 0; W33.stateDur = 70 + Math.random()*90;
-  if (!first && typeof toast === 'function' && typeof GAME !== 'undefined' && GAME === 'play' && pick !== 'clear') toast(W33_NAMES[pick] + ' is coming', true);
 }
 function w33Force(state, instant){
   W33.pick = W33_PICKS.indexOf(state) >= 0 ? state : W33.pick;
   W33.state = W33_ST[state] ? state : 'clear'; W33.stateT = 0; W33.stateDur = 1e9;
-  if (instant){ w33Targets(); const c = W33.cur, t = W33.tgt; c.rain = t.rain; c.storm = t.storm; c.fog = t.fog; c.snow = t.snow; W33.wet = c.rain; W33.cover = W33.frost ? 0 : c.snow; w33GripSync(true); }
+  if (instant){ w33Targets(); const c = W33.cur, t = W33.tgt; c.rain = t.rain; c.storm = t.storm; c.fog = t.fog; c.snow = t.snow; c.cloud = t.cloud; W33.wet = c.rain; W33.cover = W33.frost ? 0 : c.snow; w33GripSync(true); }
 }
 function w33Targets(){
   const st = W33_ST[W33.state] || W33_ST.clear, t = W33.tgt;
-  t.rain = st.rain; t.storm = st.storm; t.fog = st.fog; t.snow = st.snow;
+  t.rain = st.rain; t.storm = st.storm; t.fog = st.fog; t.snow = st.snow; t.cloud = st.cloud !== undefined ? st.cloud : Math.max(st.rain, st.fog*0.6, st.snow);
   if (W33.frost){ t.snow = Math.max(t.snow, t.rain, 0.35); t.rain = 0; }       // Frostline always snows; its storms are thundersnow
-  if (!w33Allowed()){ t.rain = t.storm = t.fog = t.snow = 0; }
+  if (W33.frost) t.cloud = Math.max(t.cloud, 0.55);
+  if (!w33Allowed()){ t.rain = t.storm = t.fog = t.snow = t.cloud = 0; }
 }
 function w33Approach(c, t, k){ return c + (t - c)*k; }
 
@@ -85138,11 +85245,13 @@ function w33Grey(c, amt, dim){
 function w33Look(fl){
   const c = W33.cur, nf = (typeof W2_F === 'number') ? W2_F : 0;
   const over = Math.max(c.rain*0.9, c.storm, c.fog*0.7, c.snow*0.85);
-  if (over < 0.002 && fl < 0.002) return;
+  const cl = Math.max(0, (c.cloud || 0) - over);                   // 15.42: clouds without rain: a covered sky, a softer sun
+  if (over < 0.002 && fl < 0.002 && cl < 0.002) return;
   const blizz = c.snow*W33.gust;
   if (typeof skyUni !== 'undefined'){
     const U = skyUni;
-    U.uCover.value += (1 - U.uCover.value)*over;
+    U.uCover.value += (1 - U.uCover.value)*Math.min(1, over + cl*0.8);
+    U.uCloudLum.value *= 1 - 0.18*cl;
     U.uCloudLum.value *= 1 - 0.42*over - 0.22*c.storm;
     U.uSunI.value *= 1 - over; U.uStar.value *= 1 - over; U.uMoonI.value *= 1 - 0.9*over; U.uGlow.value *= 1 - over;
     w33Grey(U.cZenith.value, over*0.85, 0.9 - 0.35*c.storm);
@@ -85174,7 +85283,7 @@ function w33Look(fl){
     }
   }
   // overcast light: no sun, a flat grey sky light
-  if (typeof sun !== 'undefined') sun.intensity *= 1 - 0.78*over;
+  if (typeof sun !== 'undefined') sun.intensity *= (1 - 0.78*over)*(1 - 0.42*cl);
   if (typeof rim !== 'undefined') rim.intensity *= 1 - 0.5*over;
   if (typeof bounce !== 'undefined') bounce.intensity *= 1 - 0.5*over;
   if (typeof hemi !== 'undefined'){ hemi.intensity *= 1 + 0.18*over*(1 - nf); w33Grey(hemi.color, over*0.55, 1.0); }
@@ -85204,9 +85313,11 @@ function w33Frame(dt, now){
   if (S.pick === 'auto' && !S.frozen){ S.stateT += dt; if (S.stateT > S.stateDur) w33Next(false); }
   w33Targets();
   if (!S.frozen){
-    const k1 = 1 - Math.exp(-dt/9), k2 = 1 - Math.exp(-dt/13);
+    // 15.42: slower, softer changes (rain / storm ~22 s, fog / snow ~28 s, clouds ~40 s to most of the way; was 9 / 13 s)
+    const k1 = 1 - Math.exp(-dt/22), k2 = 1 - Math.exp(-dt/28), k3 = 1 - Math.exp(-dt/40);
     c.rain = w33Approach(c.rain, t.rain, k1); c.storm = w33Approach(c.storm, t.storm, k1);
     c.fog = w33Approach(c.fog, t.fog, k2); c.snow = w33Approach(c.snow, t.snow, k2);
+    c.cloud = w33Approach(c.cloud || 0, t.cloud || 0, k3);
     // the ground: wet comes fast with the rain and dries slowly (puddles stay a while); snow settles, then melts
     S.wet = w33Approach(S.wet, c.rain, 1 - Math.exp(-dt/(c.rain > S.wet ? 16 : 70)));
     const cv = S.frost ? 0 : c.snow;
@@ -85304,8 +85415,9 @@ function w33Frame(dt, now){
   if (typeof ptkWeather === 'function'){ const _pw = ptkWeather; ptkWeather = function(){ return W33_READY && W33.on ? kind() : _pw(); }; }
   if (typeof registerSetting === 'function'){
     registerSetting({ id:'weather33', label:'Weather', group:'game', type:'choice', def:'auto',
-      options:[ { v:'auto',  label:'Auto',  hint:'The weather changes by itself every few minutes' },
+      options:[ { v:'auto',  label:'Auto',  hint:'The weather changes slowly by itself: mostly sunny, sometimes clouds, mist, a shower or a storm' },
                 { v:'clear', label:'Clear', hint:'No rain or snow (Frostline still has light snow)' },
+                { v:'cloudy', label:'Cloudy', hint:'A cloudy sky, no rain' },
                 { v:'rain',  label:'Rain',  hint:'Rain, wet shiny roads, puddles, less grip' },
                 { v:'storm', label:'Storm', hint:'A thunderstorm: rain, lightning and thunder' },
                 { v:'fog',   label:'Fog',   hint:'Thick fog, a short view' },
@@ -90407,7 +90519,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.41';
+const DL_VER = '15.42';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -90914,29 +91026,44 @@ function ld44Save(){
   for (let k = 0; k < LD44.t.length; k++) if (LD44.t[k] > 0) est[k] = Math.round(est[k] === LD44.def[k] ? LD44.t[k] : est[k]*0.4 + LD44.t[k]*0.6);
   try { localStorage.setItem(LD44_KEY, JSON.stringify(est)); } catch(e){}
 }
+/* the time the boot still needs from step i on (this step: from its own progress q once it has some) */
+function ld44Left(i, el, q){
+  const M = LD44.marks, est = ld44Est();
+  let step = (q > 0.08 && el > 250) ? el*(1 - q)/q : Math.max(0, (est[i] || 0) - el);
+  if (el > (est[i] || 0) && !(q > 0.08)) step = Math.max(step, 600);       // running long with no progress to go by
+  let rest = 0; for (let k = i + 1; k < M.length - 1; k++) rest += est[k] || 0;
+  return Math.max(300, Math.min(60000, step + rest));
+}
+/* 15.42 ("make the loading screen bar feel more smooth"): ONE steady glide over the whole load at an even speed (linear), aimed at
+   98.5 % for the time the load still needs (the step times of the last boot; this step's own progress once it reports some); a
+   new estimate only bends the speed a little (it re-aims from where the bar is) -- no more slowing down and speeding up at
+   every step */
 function ld44Set(pct, msg){
-  const M = LD44.marks, est = ld44Est(), now = performance.now();
+  const M = LD44.marks, now = performance.now();
   const mi = M.indexOf(pct);
-  if (mi >= 0 && mi > LD44.i && msg.indexOf(' — ') < 0){
+  if (mi >= 0 && mi > LD44.i && msg.indexOf(' \u2014 ') < 0){
     // a boot step begins (boot15Run: the step's own words); the one that ended took now - t0
     if (LD44.i >= 0) LD44.t[LD44.i] = now - LD44.t0;
-    LD44.i = mi; LD44.t0 = now; LD44.floor = Math.max(LD44.floor, pct/100);
-    if (mi === M.length - 1){ ld44Save(); ld44Go(1, 280, 'cubic-bezier(.3,.7,.4,1)'); return; }
-    ld44Go(Math.max(LD44.tgt, (M[mi + 1] - 1.5)/100), est[mi]);
+    LD44.i = mi; LD44.t0 = now; LD44.q = 0;
+    if (mi === M.length - 1){ ld44Save(); ld44Go(1, 260, 'cubic-bezier(.3,.7,.4,1)'); return; }
+    ld44Aim(ld44Left(mi, 0, 0), now);
     return;
   }
-  // progress from inside a step: folded into this step's stretch, only ever forward; when the bar is behind it, it glides on
-  // from where it is over what is left of the step (from the progress so far once the step has gone past its usual time)
   if (LD44.i < 0 || LD44.i >= M.length - 1) return;
+  // progress from inside a step (the city build reports 45..99 inside the 45..60 step, the shaders 78..88): this step's share done
   const a = M[LD44.i], b = M[LD44.i + 1];
-  let f = LD44.i === 2 ? a + (Math.max(45, Math.min(99, pct)) - 45)/54*(b - 1.5 - a) : Math.max(a, Math.min(b - 1.5, pct));
-  f /= 100;
-  if (f <= LD44.floor + 0.004) return;
-  LD44.floor = f;
-  if (ld44Pos() >= f) return;
-  const el = now - LD44.t0, q = (f*100 - a)/(b - a);
-  const left = Math.max(300, Math.min(30000, (el > (est[LD44.i] || 0) && q > 0.05) ? el*(1 - q)/q : (est[LD44.i] || 1000) - el));
-  ld44Go((b - 1.5)/100, left);
+  const q = LD44.i === 2 ? (Math.max(45, Math.min(99, pct)) - 45)/54 : Math.max(0, Math.min(1, (pct - a)/(b - a)));
+  if (q <= (LD44.q || 0) + 0.02) return;
+  LD44.q = q;
+  if (now - (LD44.lastAim || 0) < 450) return;
+  ld44Aim(ld44Left(LD44.i, now - LD44.t0, q), now);
+}
+/* glide on to 98.5 % so it gets there in `left` ms -- unless the glide under way is already within a fifth of that */
+function ld44Aim(left, now){
+  const planned = (LD44.endAt || 0) - now;
+  if (LD44.endAt && planned > 0 && Math.abs(planned - left) < Math.max(400, left*0.2)) return;
+  LD44.lastAim = now; LD44.endAt = now + left;
+  ld44Go(0.985, left, 'linear');
 }
 (function ld44Wrap(){
   if (typeof setLoad !== 'function') return;
@@ -90947,6 +91074,145 @@ function ld44Set(pct, msg){
     try { ld44Set(+pct || 0, String(msg || '')); } catch(e){}
     return r;
   };
+})();
+
+/* =========================================================================
+   RIDE45 -- Release 15.42: "when you just click Drop In make it ask you questions: want to host a public server or private etc."
+   and "make it so you can edit the weather in your own server".
+     DROP IN       asks how you want to ride: Ride solo (as before) / Host a private server / Host a public server / Join a server.
+                   "Don't ask again" (or Settings -> Ask how to ride) makes Drop In ride solo at once.
+     YOUR SERVER   the host of a public or private server gets "Weather & time" on the pause screen: every rider in the room
+                   gets the change at once (servers42's room rules, sv42SetRule). Private servers keep it in Creative tools too.
+   API: R45 { open }, r45PickOpen(on), r45WorldOpen(on); tests: test/t_ride45.js
+   ========================================================================= */
+const R45 = { skip:false, pick:null, world:null, wbtn:null, err:'' };
+const R45_ICO = {
+  solo:'<svg viewBox="0 0 24 24"><circle cx="6" cy="16.5" r="3.6"/><circle cx="18" cy="16.5" r="3.6"/><path d="M6 16.5l4-7h5.2l2.8 7M10 9.5l3.2 7M8.6 6.6h3"/></svg>',
+  private:'<svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7M12 14.6v2.4"/></svg>',
+  public:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.6 5.2 3.6 8.5s-1 6.1-3.6 8.5c-2.6-2.4-3.6-5.2-3.6-8.5s1-6.1 3.6-8.5z"/></svg>',
+  join:'<svg viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h10"/><path d="M17.5 15l3 2.5-3 2.5"/></svg>'
+};
+function r45AskOn(){ try { return typeof xset !== 'function' || xset('r45ask') !== false; } catch(e){ return true; } }
+if (typeof registerSetting === 'function'){
+  registerSetting({ id:'r45ask', label:'Ask how to ride', group:'game', type:'toggle', def:true,
+    hintOn:'Drop In asks: ride solo, host a private or public server, or join one', hintOff:'Drop In rides solo at once' });
+}
+/* ---------------------------------------------------------------- Drop In: the question */
+function r45PickBuild(){
+  if (R45.pick) return R45.pick;
+  const d = document.createElement('div');
+  d.id = 'r45Pick'; d.className = 'r45Ov'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'How do you want to ride?');
+  const opt = (a, t, s, main)=> '<button type="button" class="r45Opt' + (main ? ' r45Main' : '') + '" data-a="' + a + '"><i aria-hidden="true">' + R45_ICO[a] + '</i><span><b>' + t + '</b><em>' + s + '</em></span></button>';
+  d.innerHTML = '<div class="r45Card"><div class="r45Head"><b>How do you want to ride?</b><button type="button" class="r45X" data-a="x" aria-label="Close">✕</button></div>' +
+    opt('solo', 'Ride solo', 'Just you, right now', true) +
+    opt('private', 'Host a private server', 'You + friends with a code · creative tools · you pick the weather and time') +
+    opt('public', 'Host a public server', 'Anyone can join · you pick the weather, the time and where everyone starts') +
+    opt('join', 'Join a server', 'Ride with other players right now') +
+    '<label class="r45Ask"><input type="checkbox" id="r45AskOff"> Don’t ask again (Settings → Ask how to ride)</label></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click', e=>{
+    if (e.target === d){ r45PickOpen(false); return; }
+    const b = e.target.closest('button[data-a]'); if (!b) return;
+    r45Choose(b.getAttribute('data-a'));
+  });
+  R45.pick = d;
+  return d;
+}
+function r45PickOpen(on){
+  const d = r45PickBuild();
+  d.classList.toggle('on', !!on);
+  if (on){ const cb = d.querySelector('#r45AskOff'); if (cb) cb.checked = false; try { d.querySelector('.r45Main').focus({ preventScroll:true }); } catch(e){} }
+}
+function r45Choose(a){
+  const d = R45.pick, off = d && d.querySelector('#r45AskOff');
+  if (off && off.checked && a !== 'x'){ try { xsetSet('r45ask', false); } catch(e){} }
+  r45PickOpen(false);
+  if (a === 'x') return;
+  if (a === 'solo'){ const sb = document.getElementById('startBtn'); R45.skip = true; try { if (sb) sb.click(); else if (typeof startRun === 'function') startRun(); } finally { R45.skip = false; } return; }
+  try {
+    if (typeof hubOpen !== 'function') return;
+    hubOpen('servers');
+    if (a === 'private' || a === 'public'){
+      setTimeout(()=>{ try { if (typeof srvShowHost === 'function') srvShowHost(true); if (typeof srv42FormKindSet === 'function') srv42FormKindSet(a); } catch(e){ R45.err = 'host: ' + e.message; } }, 60);
+    }
+  } catch(e){ R45.err = 'hub: ' + (e && e.message || e); }
+}
+(function r45Hook(){
+  const sb = document.getElementById('startBtn');
+  if (!sb) return;
+  // (a capture listener on the button itself runs before its onclick = startRun)
+  sb.addEventListener('click', e=>{
+    if (R45.skip || !r45AskOn()) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    r45PickOpen(true);
+  }, true);
+  addEventListener('keydown', e=>{
+    if (e.code !== 'Escape') return;
+    if (R45.pick && R45.pick.classList.contains('on')){ r45PickOpen(false); e.stopImmediatePropagation(); e.preventDefault(); }
+    else if (R45.world && R45.world.classList.contains('on')){ r45WorldOpen(false); e.stopImmediatePropagation(); e.preventDefault(); }
+  }, true);
+})();
+
+/* ---------------------------------------------------------------- your server: weather & time */
+function r45Host(){ try { return typeof SV42 !== 'undefined' && !!SV42.room && !!SV42.own && (SV42.kind === 'public' || SV42.kind === 'private'); } catch(e){ return false; } }
+(function r45MoreWeathers(){
+  // the room picks follow weather33's kinds (15.42: sunny spells, morning mist)
+  try {
+    if (typeof SV42_WEATHERS !== 'undefined'){
+      for (const w of ['fair', 'mist']) if (SV42_WEATHERS.indexOf(w) < 0) SV42_WEATHERS.splice(SV42_WEATHERS.indexOf('cloudy') + (w === 'fair' ? 0 : 1), 0, w);
+      if (typeof SV42_WNAMES !== 'undefined'){ SV42_WNAMES.fair = 'Sunny spells'; SV42_WNAMES.mist = 'Mist'; }
+    }
+  } catch(e){}
+})();
+function r45WorldBuild(){
+  if (R45.world) return R45.world;
+  const d = document.createElement('div');
+  d.id = 'r45World'; d.className = 'r45Ov'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'Server weather and time');
+  d.innerHTML = '<div class="r45Card"><div class="r45Head"><b>Your server: weather &amp; time</b><button type="button" class="r45X" data-a="x" aria-label="Close">Done</button></div>' +
+    '<p class="r45Sub">Everyone in your server gets it at once.</p>' +
+    '<h4>Weather</h4><div class="r45Seg" data-r="weather"></div><h4>Time of day</h4><div class="r45Seg" data-r="hour"></div></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click', e=>{
+    if (e.target === d){ r45WorldOpen(false); return; }
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.getAttribute('data-a') === 'x'){ r45WorldOpen(false); return; }
+    const sg = b.closest('.r45Seg'); if (!sg || !r45Host()) return;
+    const r = sg.getAttribute('data-r'), v = b.getAttribute('data-v');
+    try { sv42SetRule(r, r === 'hour' ? +v : v); } catch(err){ R45.err = 'rule: ' + err.message; }
+    r45WorldRender();
+  });
+  R45.world = d;
+  return d;
+}
+function r45WorldRender(){
+  const d = R45.world; if (!d) return;
+  const R = (typeof SV42 !== 'undefined' && SV42.rules) || {};
+  const W = (typeof SV42_WEATHERS !== 'undefined' ? SV42_WEATHERS : ['live']).map(w=> [w, (typeof SV42_WNAMES !== 'undefined' && SV42_WNAMES[w]) || w]);
+  const H = (typeof SV42_HOURS !== 'undefined' ? SV42_HOURS : [[-1, 'Live']]).map(h=> [String(h[0]), h[1]]);
+  const fill = (r, list, cur)=>{
+    const sg = d.querySelector('.r45Seg[data-r="' + r + '"]');
+    sg.innerHTML = list.map(o=> '<button type="button" data-v="' + o[0] + '" class="' + (String(o[0]) === String(cur) ? 'sel' : '') + '">' + o[1] + '</button>').join('');
+  };
+  fill('weather', W, R.weather || 'live');
+  fill('hour', H, R.hour >= 0 ? R.hour : -1);
+}
+function r45WorldOpen(on){
+  const d = r45WorldBuild();
+  if (on) r45WorldRender();
+  d.classList.toggle('on', !!on);
+}
+/* the pause-screen button (ui43 files it into the pause grid with the others) -- shown to the host of a public / private server */
+(function r45PauseBtn(){
+  const pz = document.getElementById('pause'); if (!pz) return;
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'btn ghost hide'; b.id = 'r45WBtn'; b.textContent = 'Weather & time';
+  b.onclick = ()=> r45WorldOpen(true);
+  pz.appendChild(b); R45.wbtn = b;
+  if (typeof addFrameHook === 'function') addFrameHook(function r45Frame(){
+    const show = r45Host();
+    if (show === b.classList.contains('hide')) b.classList.toggle('hide', !show);
+    if (!show && R45.world && R45.world.classList.contains('on')) r45WorldOpen(false);
+  });
 })();
 
 /*@@LATE@@*/
