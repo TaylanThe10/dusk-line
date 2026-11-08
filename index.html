@@ -92709,7 +92709,15 @@ function wsCloudMerge(v){
   if (n){ d.builds.sort((a, b)=> b.t1 - a.t1); wsSave(true); try { if (typeof wuCloudChanged === 'function') wuCloudChanged(); } catch(e){} }
   return n;
 }
-(function wsCloud(){
+/* registered on the first frame: the cloud module (backend15) is declared AFTER the late modules, so at load time its
+   constants are not initialised yet (calling cloudRegister here threw "Cannot access 'BK15_REG_RX' before initialization") */
+let _wsCloudReg = false;
+addFrameHook(function wsCloudFrame(){
+  if (_wsCloudReg) return;
+  _wsCloudReg = true;
+  try { wsCloudRegister(); } catch(e){ WS48.err = 'cloud: ' + e.message; }
+});
+function wsCloudRegister(){
   if (typeof cloudRegister !== 'function') return;
   cloudRegister('ws', {
     own:()=>{ const o = {}; Object.keys(wsD().own).forEach(k=>{ o[k] = 1; }); return o; },
@@ -92720,7 +92728,7 @@ function wsCloudMerge(v){
       if (x.pref !== undefined) wsCloudMerge(x.pref);
     }
   });
-})();
+}
 
 /* =========================================================================
    WS48 UI -- Release 15.45: THE WORKSHOP (Garage -> Workshop, the menu, the pause screen).
