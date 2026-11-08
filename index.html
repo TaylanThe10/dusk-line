@@ -87779,16 +87779,26 @@ function ind39Try(name, fn){ try { return fn(); } catch(e){ IND39.err.push(name 
    frame has u along the hall (-30..30) and v across (-22..22), the main door on +v (u -27..-17), the back door on -v (u -27..-19):
    both open onto the run-in end, where every line starts (the lines run east, so no door leads into a feature) */
 const IND39_SPECS = [
-  { id:'ware', name:'Dusk City Warehouse', where:'Dusk City', theme:'ware', x:2772, z:-332, dir:'N',
-    sub:'Wooden ramps · street ledges + rails · mini ramp · bowl', wall:0x8a8f96, trim:0xf2c230, roof:0x4a4f57, accent:0xc63f2e },
-  { id:'hangar', name:'Harbor Point Hangar', where:'Harbor Point', theme:'hangar', x:5338, z:-5464, dir:'S',
-    sub:'Big foam pit · resi air bag · long dirt-jump line', wall:0x3f6fb5, trim:0xf2f2ec, roof:0x5b6470, accent:0xff6a1e },
-  { id:'barn', name:'Ironwood Barn', where:'Ironwood', theme:'barn', x:-2261, z:4846, dir:'S',
-    sub:'Pump track · north-shore skinnies · wall ride', wall:0xc4493f, trim:0xf2f2ec, roof:0x3d3a38, accent:0x58b46e }
+  // halls52: the 200 x 120 m halls moved to free land near their towns (a probe: no road corridor, no water, flat, a road 100-170 m away)
+  { id:'ware', name:'Dusk City Warehouse', where:'Dusk City', theme:'ware', x:3299, z:-214, dir:'N',
+    sub:'Wooden ramps · street ledges + rails · mini ramps · bowls · dirt + foam', wall:0x8a8f96, trim:0xf2c230, roof:0x4a4f57, accent:0xc63f2e },
+  { id:'hangar', name:'Harbor Point Hangar', where:'Harbor Point', theme:'hangar', x:5352, z:-5583, dir:'S',
+    sub:'Big foam pits · resi air bags · long dirt-jump lines', wall:0x3f6fb5, trim:0xf2f2ec, roof:0x5b6470, accent:0xff6a1e },
+  { id:'barn', name:'Ironwood Barn', where:'Ironwood', theme:'barn', x:-2086, z:5010, dir:'S',
+    sub:'Pump tracks · north-shore skinnies · wall rides', wall:0xc4493f, trim:0xf2f2ec, roof:0x3d3a38, accent:0x58b46e }
 ];
-const IND39_HW = 30, IND39_HD = 22, IND39_WH = 9, IND39_BLEACH = [[-4, 4.5], [20, 7]];      // bleachers: [u, half length] by the south wall
+// halls52 (Release 15.49): "make all the indoor bike parks same size as the mega one" -- 200 x 120 m inside, 34 m walls (was 60 x 44, 9 m)
+const IND39_HW = 100, IND39_HD = 60, IND39_WH = 34, IND39_BLEACH = [[-62, 7], [0, 7], [62, 7]];      // bleachers: [u, half length] by the south wall
+/* halls52: the doors (u from the west end) and the copies of the feature layout that fill the hall: [du, dv, theme] -- each hall
+   gets four of its own and one of each other hall's, a 3 x 2 grid with an open boulevard down the middle */
+const IND39_DOOR = { main:[-IND39_HW + 4, -IND39_HW + 20], back:[-IND39_HW + 4, -IND39_HW + 16] };
+const IND39_COPIES = { ware:[[-66, -28, 'ware'], [0, -28, 'ware'], [66, -28, 'hangar'], [-66, 28, 'barn'], [0, 28, 'ware'], [66, 28, 'ware']],
+  hangar:[[-66, -28, 'hangar'], [0, -28, 'hangar'], [66, -28, 'barn'], [-66, 28, 'ware'], [0, 28, 'hangar'], [66, 28, 'hangar']],
+  barn:[[-66, -28, 'barn'], [0, -28, 'barn'], [66, -28, 'ware'], [-66, 28, 'hangar'], [0, 28, 'barn'], [66, 28, 'barn']] };
 const IND39_DIRS = { S:0, E:Math.PI/2, N:Math.PI, W:-Math.PI/2 };
 
+/* halls52: the ceiling light grid of a big hall (props + warm47's lamps) */
+function ind39LampUV(){ const L = []; for (let u = -84; u <= 84; u += 24) for (const v of [-44, -15, 15, 44]) L.push([u, v]); return L; }
 /* canonical (u, v) -> world */
 function ind39W(H, u, v){ return [H.x + u*H.c + v*H.s, H.z - u*H.s + v*H.c]; }
 function ind39Mat(theme, what){
@@ -87815,14 +87825,15 @@ function ind39PlanHall(H){
   H.F = F; H.top = F + WH + 0.6; H.land = [+mn.toFixed(2), +mx.toFixed(2)];
   const wood = ind39Mat(H.theme, 'wood'), dirt = ind39Mat(H.theme, 'dirt'), M = PK_MAT;
   const put = (p)=>{ const q = ind39W(H, p.u, p.v); p.x = q[0]; p.z = q[1]; p.rot = (p.rot || 0) + H.th; if (p.base === undefined) p.base = F; delete p.u; delete p.v; p.ind39 = H.id; P.push(p); return p; };
-  const Kf = (u0, v0, yaw)=>{ const sy = Math.sin(yaw), cy = Math.cos(yaw); return { u0, v0, yaw, dx:sy, dz:cy, W:(a, s)=> [u0 + sy*a + cy*(s || 0), v0 + cy*a - sy*(s || 0)] }; };
+  let OU = 0, OV = 0, CI = 0;                                              // halls52: the copy being laid out (offset + index)
+  const Kf = (u0, v0, yaw)=>{ u0 += OU; v0 += OV; const sy = Math.sin(yaw), cy = Math.cos(yaw); return { u0, v0, yaw, dx:sy, dz:cy, W:(a, s)=> [u0 + sy*a + cy*(s || 0), v0 + cy*a - sy*(s || 0)] }; };
   const bank = (K, a, s, w, len, h, mat, o)=>{ const q = K.W(a, s); return put(Object.assign({ type:'bank', u:q[0], v:q[1], rot:K.yaw, w, len, h, mat }, o || {})); };
   const down = (K, a, s, w, len, h, mat, o)=>{ const q = K.W(a + len, s); return put(Object.assign({ type:'bank', u:q[0], v:q[1], rot:K.yaw + Math.PI, w, len, h, mat }, o || {})); };
   const flat = (K, a0, a1, s, w, h, mat, o)=>{ const q = K.W((a0 + a1)/2, s); return put(Object.assign({ type:'flat', u:q[0], v:q[1], rot:K.yaw, w, d:(a1 - a0)/2, h, mat }, o || {})); };
   const zone = (K, a0, a1, hw, v, name)=>{ const o = ind39W(H, K.u0, K.v0), y = K.yaw + H.th; IND39.zones.push({ ox:o[0], oz:o[1], dx:Math.sin(y), dz:Math.cos(y), a0, a1, hw, v, name, hall:H.id }); };
-  const feat = (id, name, K, a, extra)=>{ const q = K.W(a, 0), w = ind39W(H, q[0], q[1]); IND39.feats.push(Object.assign({ id:H.id + '-' + id, name, hall:H.id, x:w[0], z:w[1], yaw:K.yaw + H.th }, extra || {})); };
+  const feat = (id, name, K, a, extra)=>{ const q = K.W(a, 0), w = ind39W(H, q[0], q[1]); IND39.feats.push(Object.assign({ id:H.id + '-' + id + (CI ? '-' + CI : ''), name, hall:H.id, x:w[0], z:w[1], yaw:K.yaw + H.th }, extra || {})); };
   const bagHill = (K, a, w, l1, h, top, l2, mat, kind)=>{ const b1 = bank(K, a, 0, w, l1, h, mat, { deck:top }), b2 = down(K, a + l1 + top, 0, w, l2, h, mat); b1.bag = b2.bag = true; b1.isl33bag = b2.isl33bag = kind; return [b1, b2]; };
-  H.deco = { pit:null, copings:[], rails:[], skinnies:[], bowls:[], lanes:[] };
+  H.deco = { pits:[], copings:[], rails:[], skinnies:[], bowls:[], lanes:[] };
   // foundation (solid down into the ground: no gap under any wall) + the floor on top of it
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:F - 0.12 - B0, base:B0, mat:M.pad, ind39found:1 });
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:0.12, base:F - 0.12, mat:ind39Mat(H.theme, 'floor'), surf:'park', hallFloor:1 });
@@ -87830,10 +87841,11 @@ function ind39PlanHall(H){
   const wallM = ind39Mat(H.theme, 'wall'), wb = F - 0.12, wh = WH + 0.12;
   const wallU = (u0, u1, v)=> put({ type:'flat', u:(u0 + u1)/2, v, w:(u1 - u0)/2, d:t, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
   const wallV = (v0, v1, u)=> put({ type:'flat', u, v:(v0 + v1)/2, w:t, d:(v1 - v0)/2, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
-  wallU(-HW - t, -27, HD); wallU(-17, HW + t, HD);
-  wallU(-HW - t, -27, -HD); wallU(-19, HW + t, -HD);
+  const DM = IND39_DOOR.main, DB = IND39_DOOR.back;                       // halls52: the doors at the west end of the big hall
+  wallU(-HW - t, DM[0], HD); wallU(DM[1], HW + t, HD);
+  wallU(-HW - t, DB[0], -HD); wallU(DB[1], HW + t, -HD);
   wallV(-HD + t, HD - t, -HW); wallV(-HD + t, HD - t, HW);
-  H.doors = [{ side:'S', a0:-27, a1:-17, main:true }, { side:'N', a0:-27, a1:-19 }];
+  H.doors = [{ side:'S', a0:DM[0], a1:DM[1], main:true }, { side:'N', a0:DB[0], a1:DB[1] }];
   // a ramp from the ground up to the floor outside every door
   for (const D of H.doors){
     const nv = D.side === 'S' ? 1 : -1, ac = (D.a0 + D.a1)/2, wv = HD + 0.3;
@@ -87843,8 +87855,10 @@ function ind39PlanHall(H){
     put({ type:'bank', u:ac, v:nv*(wv + len), rot:yawIn, w:(D.a1 - D.a0)/2, len, h:F - gf, base:gf, mat:M.pad, ind39ramp:1 });
     D.len = len; D.foot = gf;
   }
-  // ---- the features (canonical lanes run east: yaw E, from u = -28)
-  if (H.theme === 'ware'){
+  // ---- the features (canonical lanes run east: yaw E, from u = -28); halls52: six copies of a layout fill the big hall
+  for (const CP of (IND39_COPIES[H.theme] || [[0, 0, H.theme]])){
+  OU = CP[0]; OV = CP[1]; const TH = CP[2];
+  if (TH === 'ware'){
     { const K = Kf(-28, -15, E);                                           // kicker + funbox line (wood)
       zone(K, 2, 9.5, 1.9, 7.6, 'KICKER LINE');
       bank(K, 10, 0, 1.8, 3, 1.0, wood, { deck:4 }); down(K, 17, 0, 1.8, 3.5, 1.0, wood);
@@ -87859,17 +87873,17 @@ function ind39PlanHall(H){
       H.deco.copings.push({ K, a:10.2, s:0, w:1.6, y:F + 0.35, along:true, a1:15.2 }, { K, a:24.6, s:0, w:1.6, y:F + 0.55, along:true, a1:30.6 });
       H.deco.lanes.push({ K, a0:1, a1:37, hw:2.8 });
       feat('street', 'Street Section', K, 2); }
-    { const c = [1, 12];                                                   // the wooden mini ramp
+    { const c = [1 + OU, 12 + OV];                                         // the wooden mini ramp
       const q1 = put({ type:'quarter', u:c[0] + 4, v:c[1], rot:E, w:4, R:3.2, maxDeg:78, deck:2, mat:wood });
       const q2 = put({ type:'quarter', u:c[0] - 4, v:c[1], rot:-E, w:4, R:3.2, maxDeg:78, deck:2, mat:wood });
-      H.deco.copings.push({ K:Kf(c[0] + 4, c[1], E), a:3.2*Math.sin(78*Math.PI/180), s:0, w:4, y:F + 3.2*(1 - Math.cos(78*Math.PI/180)) },
-                          { K:Kf(c[0] - 4, c[1], -E), a:3.2*Math.sin(78*Math.PI/180), s:0, w:4, y:F + 3.2*(1 - Math.cos(78*Math.PI/180)) });
-      const w = ind39W(H, c[0], c[1]); IND39.feats.push({ id:H.id + '-mini', name:'Mini Ramp', hall:H.id, x:w[0], z:w[1], yaw:E + H.th, noRide:true }); }
-    { const c = [20, 9];                                                   // the wooden bowl
+      H.deco.copings.push({ K:Kf(c[0] + 4 - OU, c[1] - OV, E), a:3.2*Math.sin(78*Math.PI/180), s:0, w:4, y:F + 3.2*(1 - Math.cos(78*Math.PI/180)) },
+                          { K:Kf(c[0] - 4 - OU, c[1] - OV, -E), a:3.2*Math.sin(78*Math.PI/180), s:0, w:4, y:F + 3.2*(1 - Math.cos(78*Math.PI/180)) });
+      const w = ind39W(H, c[0], c[1]); IND39.feats.push({ id:H.id + '-mini' + (CI ? '-' + CI : ''), name:'Mini Ramp', hall:H.id, x:w[0], z:w[1], yaw:E + H.th, noRide:true }); }
+    { const c = [20 + OU, 9 + OV];                                         // the wooden bowl
       put({ type:'bowl', u:c[0], v:c[1], rot:0, r0:3.5, R:3, maxDeg:72, deck:1.4, mat:wood });
       H.deco.bowls.push({ u:c[0], v:c[1], r:3.5 + 3*Math.sin(72*Math.PI/180), y:F + 3*(1 - Math.cos(72*Math.PI/180)) });
-      const w = ind39W(H, c[0], c[1]); IND39.feats.push({ id:H.id + '-bowl', name:'Bowl', hall:H.id, x:w[0], z:w[1], yaw:H.th, noRide:true }); }
-  } else if (H.theme === 'hangar'){
+      const w = ind39W(H, c[0], c[1]); IND39.feats.push({ id:H.id + '-bowl' + (CI ? '-' + CI : ''), name:'Bowl', hall:H.id, x:w[0], z:w[1], yaw:H.th, noRide:true }); }
+  } else if (TH === 'hangar'){
     { const K = Kf(-29, -15, E);                                           // the long dirt-jump line: 4 tables
       zone(K, 2, 8, 1.8, 8, 'DIRT LINE');
       for (let k = 0; k < 4; k++){ const a = 8 + k*11.5; bank(K, a, 0, 1.6, 3, 1.1, dirt, { deck:3 }); down(K, a + 6, 0, 1.6, 3.5, 1.1, dirt); }
@@ -87880,7 +87894,7 @@ function ind39PlanHall(H){
       bank(K, 14, 0, 2.2, 3.5, 1.4, wood);
       H.deco.copings.push({ K, a:17.5, s:0, w:2.2, y:F + 1.4 });
       const pit = flat(K, 19, 35, 0, 5.5, 0.8, M.pink, { novis:true }); pit.bag = true; pit.isl33bag = 'foam';
-      H.deco.pit = { K, a0:19, a1:35, hw:5.5, top:F + 0.8 };
+      H.deco.pits.push({ K, a0:19, a1:35, hw:5.5, top:F + 0.8 });
       H.deco.lanes.push({ K, a0:1, a1:17.5, hw:2.6 });
       feat('foam', 'Foam Pit', K, 2, { foam:true }); }
     { const K = Kf(-28, 14.5, E);                                          // the resi air bag
@@ -87903,13 +87917,16 @@ function ind39PlanHall(H){
       feat('skinny', 'North-Shore Skinnies', K, 2); }
     { const K = Kf(-28, 13, E);                                            // the wall ride (a near-vertical quarter)
       zone(K, 2, 44, 4, 7, 'WALL RIDE');
-      put({ type:'quarter', u:-28 + 48, v:13, rot:E, w:4, R:3.6, maxDeg:84, deck:1.2, mat:wood });
+      put({ type:'quarter', u:-28 + 48 + OU, v:13 + OV, rot:E, w:4, R:3.6, maxDeg:84, deck:1.2, mat:wood });
       H.deco.copings.push({ K:Kf(20, 13, E), a:3.6*Math.sin(84*Math.PI/180), s:0, w:4, y:F + 3.6*(1 - Math.cos(84*Math.PI/180)) });
       H.deco.lanes.push({ K, a0:1, a1:47, hw:4.4 });
       feat('wall', 'Wall Ride', K, 2, { wall:true }); }
   }
+  CI++;
+  }
+  OU = OV = 0;
   // bleachers in the south-west corner (solid: you can't ride through the crowd)
-  for (const B of IND39_BLEACH) put({ type:'flat', u:B[0], v:19.6, w:B[1], d:1.6, h:1.3, mat:M.pad, novis:true, bld:true, bleach:1 });
+  for (const B of IND39_BLEACH) put({ type:'flat', u:B[0], v:HD - 2.4, w:B[1], d:1.6, h:1.3, mat:M.pad, novis:true, bld:true, bleach:1 });
   H.P = P;
   return P;
 }
@@ -87929,7 +87946,7 @@ function ind39Props(H){
         bx(u, inner - vs*0.07, F, 2.9, 2.0, 0.14, 0, PAD[(Math.round(u/3) & 1)]);
       }
       if (!doorGap(side, u) || true){
-        bx(u, inner - vs*0.05, F + 5.2, 2.5, 2.2, 0.05, 0, 0xa9d3f0); bx(u, outer + vs*0.05, F + 5.2, 2.5, 2.2, 0.05, 0, 0x8fbcdd);
+        for (const wy of [5.2, 15.5, 25.8]){ bx(u, inner - vs*0.05, F + wy, 2.5, 2.2, 0.05, 0, 0xa9d3f0); bx(u, outer + vs*0.05, F + wy, 2.5, 2.2, 0.05, 0, 0x8fbcdd); }
       }
     }
   }
@@ -87937,7 +87954,7 @@ function ind39Props(H){
     for (const side of ['W', 'E']){
       const us = side === 'E' ? 1 : -1, inner = us*(HW - 0.25), outer = us*(HW + 0.25);
       bx(inner - us*0.07, v, F, 0.14, 2.0, 2.9, 0, PAD[(Math.round(v/3) & 1)]);
-      bx(inner - us*0.05, v, F + 5.2, 0.05, 2.2, 2.5, 0, 0xa9d3f0); bx(outer + us*0.05, v, F + 5.2, 0.05, 2.2, 2.5, 0, 0x8fbcdd);
+      for (const wy of [5.2, 15.5, 25.8]){ bx(inner - us*0.05, v, F + wy, 0.05, 2.2, 2.5, 0, 0xa9d3f0); bx(outer + us*0.05, v, F + wy, 0.05, 2.2, 2.5, 0, 0x8fbcdd); }
     }
   }
   // trim bands (outside: at the foot and the top of the walls)
@@ -87956,8 +87973,8 @@ function ind39Props(H){
       bx(ac + s*(hw + 2.7), vs*(HD + 0.5), F + 2.0, 4.6, 0.25, 0.05, 0, 0xffffff); } }
   }
   // light panels + roof beams
-  for (let u = -24; u <= 24; u += 12) for (const v of [-13, 0, 13]) bx(u, v, F + WH - 0.55, 5, 0.16, 1.2, 0, 0xfffbe8);
-  for (let u = -27; u <= 27; u += 9) bx(u, 0, F + WH - 0.4, 0.35, 0.4, HD*2 - 0.6, 0, 0x3a3f46);
+  for (const [u, v] of ind39LampUV()) bx(u, v, F + WH - 0.55, 7, 0.2, 1.6, 0, 0xfffbe8);
+  for (let u = -96; u <= 96; u += 12) bx(u, 0, F + WH - 0.4, 0.45, 0.6, HD*2 - 0.6, 0, 0x3a3f46);
   // floor markings: lane edges (dashed) + start lines
   const paint = H.theme === 'hangar' ? 0xe8c23a : 0xf4f1e6;
   for (const L of H.deco.lanes){
@@ -87982,8 +87999,8 @@ function ind39Props(H){
     for (let a = k.a0 + 0.6; a < k.a1; a += 3) for (const s of [-k.w - 0.06, k.w + 0.06]){ const p = KW(k.K, a, s); bx(p[0], p[1], F, 0.14, k.y - F, 0.14, k.K.yaw, 0x6d5236); }
   }
   // the foam pit: rim + foam blocks
-  if (H.deco.pit){
-    const p = H.deco.pit, K = p.K, FO = [0xff5e9c, 0x4fc3f7, 0xffd54f, 0x81c784, 0xff8a65, 0xba68c8, 0xffffff];
+  for (const p of H.deco.pits){
+    const K = p.K, FO = [0xff5e9c, 0x4fc3f7, 0xffd54f, 0x81c784, 0xff8a65, 0xba68c8, 0xffffff];
     for (const s of [-p.hw - 0.2, p.hw + 0.2]){ const q = KW(K, (p.a0 + p.a1)/2, s); bx(q[0], q[1], F, 0.4, 0.95, p.a1 - p.a0 + 0.8, K.yaw, 0x8a6a48); }
     { const q = KW(K, p.a1 + 0.2, 0); bx(q[0], q[1], F, p.hw*2, 0.95, 0.4, K.yaw, 0x8a6a48); }
     for (let a = p.a0 + 0.3; a < p.a1; a += 0.56) for (let s = -p.hw + 0.3; s < p.hw; s += 0.56){
@@ -87993,23 +88010,23 @@ function ind39Props(H){
   }
   // the bleachers + people watching
   for (const B of IND39_BLEACH){
-    for (let r = 0; r < 3; r++){ bx(B[0], 18.4 + r*1.05, F, B[1]*2, 0.45 + r*0.42, 1.05, 0, r % 2 ? 0x9aa3ad : 0x7f8a96);
-      for (let k = -B[1] + 0.7; k < B[1] - 0.4; k += 1.0 + R()*0.5) if (R() < 0.7){ const q = ind39W(H, B[0] + k, 18.4 + r*1.05); isl33Person(S, q[0], F + 0.45 + r*0.42, q[1], th + Math.PI, R); } }
+    for (let r = 0; r < 3; r++){ bx(B[0], HD - 3.6 + r*1.05, F, B[1]*2, 0.45 + r*0.42, 1.05, 0, r % 2 ? 0x9aa3ad : 0x7f8a96);
+      for (let k = -B[1] + 0.7; k < B[1] - 0.4; k += 1.0 + R()*0.5) if (R() < 0.7){ const q = ind39W(H, B[0] + k, HD - 3.6 + r*1.05); isl33Person(S, q[0], F + 0.45 + r*0.42, q[1], th + Math.PI, R); } }
   }
   // hanging banners (inner walls, over the pads) + pennant strings across the hall
   const BAN = [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71, 0xff6fb5, 0xe67e22];
-  for (let k = 0; k < 6; k++){ const u = -25 + k*10; if (!doorGap('N', u)) bx(u, -HD + 0.36, F + 2.5, 2.2, 2.3, 0.06, 0, BAN[(k + H.seed) % BAN.length]); }
-  for (let k = 0; k < 4; k++){ const v = -15 + k*10; bx(-HW + 0.36, v, F + 2.5, 0.06, 2.3, 2.2, 0, BAN[(k + 2 + H.seed) % BAN.length]); bx(HW - 0.36, v, F + 2.5, 0.06, 2.3, 2.2, 0, BAN[(k + 4 + H.seed) % BAN.length]); }
-  for (const v of [-8, 8]) for (let u = -28; u < 28; u += 1.6) bx(u, v, F + WH - 1.6 - Math.abs(Math.sin(u*0.11))*0.6, 0.5, 0.5, 0.03, 0, BAN[Math.floor(u/1.6 + 40) % BAN.length]);
+  for (let k = 0; k < 13; k++){ const u = -90 + k*15; if (!doorGap('N', u)) bx(u, -HD + 0.36, F + 2.5, 2.2, 2.3, 0.06, 0, BAN[(k + H.seed) % BAN.length]); }
+  for (let k = 0; k < 6; k++){ const v = -50 + k*20; bx(-HW + 0.36, v, F + 2.5, 0.06, 2.3, 2.2, 0, BAN[(k + 2 + H.seed) % BAN.length]); bx(HW - 0.36, v, F + 2.5, 0.06, 2.3, 2.2, 0, BAN[(k + 4 + H.seed) % BAN.length]); }
+  for (const v of [-8, 8]) for (let u = -96; u < 96; u += 1.6) bx(u, v, F + WH - 1.6 - Math.abs(Math.sin(u*0.11))*0.6, 0.5, 0.5, 0.03, 0, BAN[Math.floor(u/1.6 + 40) % BAN.length]);
   // outside: flags by the main door, a few people heading in
-  const mc = -22;
+  const mc = (IND39_DOOR.main[0] + IND39_DOOR.main[1])/2;
   for (const s of [-1, 1]) for (let k = 0; k < 3; k++){ const q = ind39W(H, mc + s*(9 + k*5), HD + 3.5); isl33Flag(S, q[0], landY(q[0], q[1]) - 0.1, q[1], 6.5, BAN[(k*2 + (s > 0 ? 1 : 0) + H.seed) % BAN.length]); }
   for (let k = 0; k < 6; k++){ const u = mc - 14 + k*5.6 + R()*1.5, v = HD + 3 + R()*5; if (Math.abs(u - mc) < 6.5 || u < -HW - 1) continue; const q = ind39W(H, u, v); isl33Person(S, q[0], landY(q[0], q[1]), q[1], th + R()*6.28, R); }
   // theme bits
   if (H.theme === 'barn'){
     for (const c of [[27, -20], [27, 2]]) for (let k = 0; k < 3; k++) bx(c[0] + (k - 1)*0.0, c[1] + k*1.25, F, 1.1, 0.55 + (k === 1 ? 0.55 : 0), 1.2, 0, 0xe0c060);
   }
-  if (H.theme === 'ware'){ for (let u = -26; u <= 26; u += 13) bx(u, -HD + 0.6, F + WH - 1.3, 0.25, 1.3, 0.25, 0, 0x2b3038); }
+  if (H.theme === 'ware'){ for (let u = -91; u <= 91; u += 13) bx(u, -HD + 0.6, F + WH - 1.3, 0.25, 1.3, 0.25, 0, 0x2b3038); }
   return S;
 }
 function ind39Roof(H){
@@ -88032,7 +88049,7 @@ function ind39NoTrees(){
     if (typeof FR === 'undefined' || !FR.planned || typeof FR_NOTREE === 'undefined') return;
     const box = (H, L)=>{ const b = [1e9, 1e9, -1e9, -1e9]; for (const p of L){ const q = ind39W(H, p[0], p[1]); b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); } return b; };
     const hw = IND39_HW + 12, hd = IND39_HD + 12;
-    for (const H of IND39.halls) FR_NOTREE.push(box(H, [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]]), box(H, [[-34, 0], [-10, 0], [-10, IND39_HD + 24], [-34, IND39_HD + 24]]));
+    for (const H of IND39.halls) FR_NOTREE.push(box(H, [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]]), box(H, [[IND39_DOOR.main[0] - 8, 0], [IND39_DOOR.main[1] + 8, 0], [IND39_DOOR.main[1] + 8, IND39_HD + 26], [IND39_DOOR.main[0] - 8, IND39_HD + 26]]));
     IND39.noTree = true;
   } catch(e){}
 }
@@ -88129,12 +88146,12 @@ function ind39Register(){
     IND39.halls.push(H);
   }
   const B = [1e9, 1e9, -1e9, -1e9];
-  for (const H of IND39.halls){ B[0] = Math.min(B[0], H.x - 60); B[1] = Math.min(B[1], H.z - 60); B[2] = Math.max(B[2], H.x + 60); B[3] = Math.max(B[3], H.z + 60); }
+  for (const H of IND39.halls){ B[0] = Math.min(B[0], H.x - 140); B[1] = Math.min(B[1], H.z - 140); B[2] = Math.max(B[2], H.x + 140); B[3] = Math.max(B[3], H.z + 140); }
   IND39.box = B;
   // fast travel + the big sign arch at every main door
   ind39Try('travel', ()=>{
     for (const H of IND39.halls){
-      const q = ind39W(H, -22, IND39_HD + 18);
+      const q = ind39W(H, (IND39_DOOR.main[0] + IND39_DOOR.main[1])/2, IND39_HD + 20);
       const t = { id:'ind39-' + H.id, name:'Indoor Bike Park: ' + H.name, sub:H.where + ' · ' + H.sub, kind:'indoor', x:q[0], z:q[1], yaw:H.th + Math.PI };
       IND39.travel.push(t); regionFastTravelAdd(t);
     }
@@ -88142,7 +88159,7 @@ function ind39Register(){
   ind39Try('signs', ()=>{
     if (typeof regionAddSign !== 'function') return;
     for (const H of IND39.halls){
-      const q = ind39W(H, -22, IND39_HD + 11.5);
+      const q = ind39W(H, (IND39_DOOR.main[0] + IND39_DOOR.main[1])/2, IND39_HD + 13);
       regionAddSign({ id:'ind39-arch-' + H.id, x:q[0], z:q[1], yaw:H.th, style:'brown', w:9.2, h:2.6, clear:4.4, title:'INDOOR BIKE PARK', lines:[H.name] });
     }
   });
@@ -91150,7 +91167,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.48b';
+const DL_VER = '15.49';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -92084,9 +92101,13 @@ function w47Defs(){
     let d = WARM47.halls[H.id];
     if (!d || d.F !== H.F){
       const lamps = [], WH = typeof IND39_WH === 'number' ? IND39_WH : 9;
-      for (let u = -24; u <= 24; u += 12) for (const v of [-13, 0, 13]){ const q = ind39W(H, u, v); lamps.push([q[0], H.F + WH - 0.62, q[1]]); }
+      // halls52: the big halls' ceiling grid (ind39LampUV) 33 m up: longer reach, brighter, festoon strings at 16 m
+      const UV = typeof ind39LampUV === 'function' ? ind39LampUV() : []; if (!UV.length) for (let u = -24; u <= 24; u += 12) for (const v of [-13, 0, 13]) UV.push([u, v]);
+      for (const [u, v] of UV){ const q = ind39W(H, u, v); lamps.push([q[0], H.F + WH - 0.62, q[1]]); }
+      const big = WH > 20;
       d = WARM47.halls[H.id] = { id:H.id, kind:'ind39', H, F:H.F, lamps, rot:H.th || 0,
-        P:(u, v)=> ind39W(H, u, v), uLen:28, vs:[-17.5, -6.5, 6.5, 17.5], sy:H.F + 7.45, sag:0.6,
+        P:(u, v)=> ind39W(H, u, v), uLen:big ? 92 : 28, vs:big ? [-38, -16, 16, 38] : [-17.5, -6.5, 6.5, 17.5], sy:H.F + (big ? 16 : 7.45), sag:big ? 1.4 : 0.6,
+        range:big ? 40 : undefined, inten:big ? 7.2 : undefined, cone:big ? 0.3 : undefined,
         inside:(x, y, z)=> Math.abs(x - H.x) < H.ax && Math.abs(z - H.z) < H.az && y < H.F + WH + 0.3 && y > H.F - 3 };
     }
     out.push(d);
