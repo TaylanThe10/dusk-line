@@ -87821,7 +87821,8 @@ function ind39PlanHall(H){
   let mx = -1e9, mn = 1e9;
   for (let u = -HW - 4; u <= HW + 4; u += 4) for (let v = -HD - 4; v <= HD + 4; v += 4){
     const q = ind39W(H, u, v), y = landY(q[0], q[1]); if (y > mx) mx = y; if (Math.abs(u) <= HW + 1 && Math.abs(v) <= HD + 1 && y < mn) mn = y; }
-  const F = mx + 0.22, B0 = mn - 0.8;
+  let F = mx + 0.22, B0 = mn - 0.8;
+  if (H.open && typeof H.getF === 'function'){ F = H.getF(); B0 = F - 1; }   // halls52: an open block stands on the giga hall's floor
   H.F = F; H.top = F + WH + 0.6; H.land = [+mn.toFixed(2), +mx.toFixed(2)];
   const wood = ind39Mat(H.theme, 'wood'), dirt = ind39Mat(H.theme, 'dirt'), M = PK_MAT;
   const put = (p)=>{ const q = ind39W(H, p.u, p.v); p.x = q[0]; p.z = q[1]; p.rot = (p.rot || 0) + H.th; if (p.base === undefined) p.base = F; delete p.u; delete p.v; p.ind39 = H.id; P.push(p); return p; };
@@ -87835,17 +87836,21 @@ function ind39PlanHall(H){
   const bagHill = (K, a, w, l1, h, top, l2, mat, kind)=>{ const b1 = bank(K, a, 0, w, l1, h, mat, { deck:top }), b2 = down(K, a + l1 + top, 0, w, l2, h, mat); b1.bag = b2.bag = true; b1.isl33bag = b2.isl33bag = kind; return [b1, b2]; };
   H.deco = { pits:[], copings:[], rails:[], skinnies:[], bowls:[], lanes:[] };
   // foundation (solid down into the ground: no gap under any wall) + the floor on top of it
+  if (!H.open){
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:F - 0.12 - B0, base:B0, mat:M.pad, ind39found:1 });
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:0.12, base:F - 0.12, mat:ind39Mat(H.theme, 'floor'), surf:'park', hallFloor:1 });
+  } else put({ type:'flat', u:0, v:0, w:HW, d:HD, h:0.12, base:F - 0.07, mat:ind39Mat(H.theme, 'floor'), surf:'park', hallFloor:1 });   // an open block's own floor (5 cm up)
   // walls (bld: they block the bike + the camera); the doors are gaps: main door +v u -5..5, back door -v u 16..24
   const wallM = ind39Mat(H.theme, 'wall'), wb = F - 0.12, wh = WH + 0.12;
   const wallU = (u0, u1, v)=> put({ type:'flat', u:(u0 + u1)/2, v, w:(u1 - u0)/2, d:t, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
   const wallV = (v0, v1, u)=> put({ type:'flat', u, v:(v0 + v1)/2, w:t, d:(v1 - v0)/2, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
   const DM = IND39_DOOR.main, DB = IND39_DOOR.back;                       // halls52: the doors at the west end of the big hall
+  if (!H.open){
   wallU(-HW - t, DM[0], HD); wallU(DM[1], HW + t, HD);
   wallU(-HW - t, DB[0], -HD); wallU(DB[1], HW + t, -HD);
   wallV(-HD + t, HD - t, -HW); wallV(-HD + t, HD - t, HW);
-  H.doors = [{ side:'S', a0:DM[0], a1:DM[1], main:true }, { side:'N', a0:DB[0], a1:DB[1] }];
+  }
+  H.doors = H.open ? [] : [{ side:'S', a0:DM[0], a1:DM[1], main:true }, { side:'N', a0:DB[0], a1:DB[1] }];
   // a ramp from the ground up to the floor outside every door
   for (const D of H.doors){
     const nv = D.side === 'S' ? 1 : -1, ac = (D.a0 + D.a1)/2, wv = HD + 0.3;
@@ -87926,7 +87931,7 @@ function ind39PlanHall(H){
   }
   OU = OV = 0;
   // bleachers in the south-west corner (solid: you can't ride through the crowd)
-  for (const B of IND39_BLEACH) put({ type:'flat', u:B[0], v:HD - 2.4, w:B[1], d:1.6, h:1.3, mat:M.pad, novis:true, bld:true, bleach:1 });
+  if (!H.open) for (const B of IND39_BLEACH) put({ type:'flat', u:B[0], v:HD - 2.4, w:B[1], d:1.6, h:1.3, mat:M.pad, novis:true, bld:true, bleach:1 });
   H.P = P;
   return P;
 }
@@ -87939,6 +87944,7 @@ function ind39Props(H){
   const PAD = H.theme === 'barn' ? [0xd9b73c, 0xc9a42c] : H.theme === 'hangar' ? [0xff6a1e, 0x2b3038] : [0x3e6aa8, 0xc63f2e];
   const doorGap = (side, a)=> H.doors.some(D=> D.side === side && a > D.a0 - 0.6 && a < D.a1 + 0.6);
   // padded walls (2 m), banners above them, window bands (both faces), trim at the top
+  if (!H.open){
   for (let u = -HW + 1.5; u < HW; u += 3){
     for (const side of ['S', 'N']){
       const vs = side === 'S' ? 1 : -1, inner = vs*(HD - 0.25), outer = vs*(HD + 0.25);
@@ -87975,6 +87981,7 @@ function ind39Props(H){
   // light panels + roof beams
   for (const [u, v] of ind39LampUV()) bx(u, v, F + WH - 0.55, 7, 0.2, 1.6, 0, 0xfffbe8);
   for (let u = -96; u <= 96; u += 12) bx(u, 0, F + WH - 0.4, 0.45, 0.6, HD*2 - 0.6, 0, 0x3a3f46);
+  }
   // floor markings: lane edges (dashed) + start lines
   const paint = H.theme === 'hangar' ? 0xe8c23a : 0xf4f1e6;
   for (const L of H.deco.lanes){
@@ -88009,12 +88016,13 @@ function ind39Props(H){
     }
   }
   // the bleachers + people watching
-  for (const B of IND39_BLEACH){
+  if (!H.open) for (const B of IND39_BLEACH){
     for (let r = 0; r < 3; r++){ bx(B[0], HD - 3.6 + r*1.05, F, B[1]*2, 0.45 + r*0.42, 1.05, 0, r % 2 ? 0x9aa3ad : 0x7f8a96);
       for (let k = -B[1] + 0.7; k < B[1] - 0.4; k += 1.0 + R()*0.5) if (R() < 0.7){ const q = ind39W(H, B[0] + k, HD - 3.6 + r*1.05); isl33Person(S, q[0], F + 0.45 + r*0.42, q[1], th + Math.PI, R); } }
   }
   // hanging banners (inner walls, over the pads) + pennant strings across the hall
   const BAN = [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71, 0xff6fb5, 0xe67e22];
+  if (!H.open){
   for (let k = 0; k < 13; k++){ const u = -90 + k*15; if (!doorGap('N', u)) bx(u, -HD + 0.36, F + 2.5, 2.2, 2.3, 0.06, 0, BAN[(k + H.seed) % BAN.length]); }
   for (let k = 0; k < 6; k++){ const v = -50 + k*20; bx(-HW + 0.36, v, F + 2.5, 0.06, 2.3, 2.2, 0, BAN[(k + 2 + H.seed) % BAN.length]); bx(HW - 0.36, v, F + 2.5, 0.06, 2.3, 2.2, 0, BAN[(k + 4 + H.seed) % BAN.length]); }
   for (const v of [-8, 8]) for (let u = -96; u < 96; u += 1.6) bx(u, v, F + WH - 1.6 - Math.abs(Math.sin(u*0.11))*0.6, 0.5, 0.5, 0.03, 0, BAN[Math.floor(u/1.6 + 40) % BAN.length]);
@@ -88022,14 +88030,16 @@ function ind39Props(H){
   const mc = (IND39_DOOR.main[0] + IND39_DOOR.main[1])/2;
   for (const s of [-1, 1]) for (let k = 0; k < 3; k++){ const q = ind39W(H, mc + s*(9 + k*5), HD + 3.5); isl33Flag(S, q[0], landY(q[0], q[1]) - 0.1, q[1], 6.5, BAN[(k*2 + (s > 0 ? 1 : 0) + H.seed) % BAN.length]); }
   for (let k = 0; k < 6; k++){ const u = mc - 14 + k*5.6 + R()*1.5, v = HD + 3 + R()*5; if (Math.abs(u - mc) < 6.5 || u < -HW - 1) continue; const q = ind39W(H, u, v); isl33Person(S, q[0], landY(q[0], q[1]), q[1], th + R()*6.28, R); }
+  }
   // theme bits
   if (H.theme === 'barn'){
     for (const c of [[27, -20], [27, 2]]) for (let k = 0; k < 3; k++) bx(c[0] + (k - 1)*0.0, c[1] + k*1.25, F, 1.1, 0.55 + (k === 1 ? 0.55 : 0), 1.2, 0, 0xe0c060);
   }
-  if (H.theme === 'ware'){ for (let u = -91; u <= 91; u += 13) bx(u, -HD + 0.6, F + WH - 1.3, 0.25, 1.3, 0.25, 0, 0x2b3038); }
+  if (H.theme === 'ware' && !H.open){ for (let u = -91; u <= 91; u += 13) bx(u, -HD + 0.6, F + WH - 1.3, 0.25, 1.3, 0.25, 0, 0x2b3038); }
   return S;
 }
 function ind39Roof(H){
+  if (H.open) return null;
   const S = isl33Soup(), F = H.F, HW = IND39_HW, HD = IND39_HD, WH = IND39_WH;
   const bx = (u, v, y, w, h, d, hex)=>{ const q = ind39W(H, u, v); isl33Box(S, q[0], y, q[1], w, h, d, H.th, hex); };
   bx(0, 0, F + WH + 0.02, HW*2 + 1.2, 0.5, HD*2 + 1.2, H.roof);
@@ -88078,6 +88088,7 @@ function* ind39Gen(ch){
 function ind39InHall(x, y, z){
   const L = IND39.halls;
   for (let i = 0; i < L.length; i++){ const H = L[i]; if (H.F === undefined) continue;
+    if (H.open) continue;
     if (Math.abs(x - H.x) < H.ax && Math.abs(z - H.z) < H.az && y < H.F + IND39_WH + 0.3 && y > H.F - 3) return H; }
   return null;
 }
@@ -88134,6 +88145,18 @@ function ind39MapHooks(){
   }
 }
 
+/* halls52: an OPEN block -- a hall's six feature layouts with no walls, roof, doors, travel or sign of its own, standing on another
+   hall's floor (the giga Mega Dome: giga52.js). spec { id, x, z, theme, getF() } */
+function ind39AddOpen(spec){
+  if (typeof RG === 'undefined') return null;
+  const H = { id:spec.id, name:'Mega Dome', where:'Mega Dome', theme:spec.theme || 'ware', x:spec.x, z:spec.z, dir:'S', th:0, c:1, s:0,
+    ax:IND39_HW + 0.3, az:IND39_HD + 0.3, seed:IND39.halls.length + 7, ci:Math.floor(spec.x/RG.chunk), cj:Math.floor(spec.z/RG.chunk), P:null, open:true, getF:spec.getF,
+    wall:0x8a8f96, trim:0xf2c230, roof:0x4a4f57, accent:0xc63f2e };
+  IND39.halls.push(H);
+  const B = IND39.box || (IND39.box = [1e9, 1e9, -1e9, -1e9]);
+  B[0] = Math.min(B[0], H.x - 140); B[1] = Math.min(B[1], H.z - 140); B[2] = Math.max(B[2], H.x + 140); B[3] = Math.max(B[3], H.z + 140);
+  return H;
+}
 /* ---------------------------------------------------------------- registration (load time, Dusk City only) */
 function ind39Register(){
   if (IND39.on || typeof RG === 'undefined' || !RG.on || typeof streamAddBuilder !== 'function' || typeof isl33Box !== 'function') return;
@@ -91167,7 +91190,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.49';
+const DL_VER = '15.50';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -92097,7 +92120,7 @@ const W47_COL = C(0xffb469), W47_SKY = C(0xffd3a1), W47_GND = C(0x8c5a34);
 function w47Defs(){
   const out = [];
   if (typeof IND39 !== 'undefined' && IND39.halls) for (const H of IND39.halls){
-    if (H.F === undefined) continue;
+    if (H.F === undefined || H.open) continue;                              // halls52: open blocks are lit by the hall they stand in
     let d = WARM47.halls[H.id];
     if (!d || d.F !== H.F){
       const lamps = [], WH = typeof IND39_WH === 'number' ? IND39_WH : 9;
@@ -94393,6 +94416,247 @@ addFrameHook(function wt48Frame(dt){
 });
 
 /* =========================================================================
+   GIGA52 -- Release 15.50: "make the current mega one be 30x bigger". THE MEGA DOME, 30 TIMES THE FLOOR: 1100 x 660 m inside
+   (was 200 x 120), 100 m walls and an arched roof 140 m up at the ridge, on free flat land east of Dusk City (centre 3750, 1000:
+   the old site had no room). The old dome's whole park -- mega ramp + elevator, giant bowl, vert, foam pits, resi, dirt line,
+   street plaza, mezzanine -- is the CORE at the west end, right inside the main door (mega49_hall.js builds it without its own
+   walls / roof in this mode); the rest of the hall:
+     - eight indoor blocks of the indoor parks' feature layouts (indoor39's open blocks: 48 lines of kickers, funboxes, street,
+       mini ramps, bowls, dirt, foam, resi, pump tracks, skinnies, wall rides) in two rows north + south
+     - down the middle: the GIGA BOWL (a 76 m bowl on a raised deck with access banks), GIGA KICKERS into a 60 m foam pit (the
+       jump assist meters the run-in), a 70-roller pump line, and three 12 m GIGA QUARTERS on the east wall
+   The shell (floor, foundation, walls with the doors, the arched roof + gables, window bands, pads, the light rig) is a few pieces
+   + soups on shared materials (PK_MAT.cloth / the dome's paint: no new shader programs); far away it's a silhouette.
+   ?giga52=0 = the old 200 x 120 m Mega Dome (at the new site). API: G52, g52Plan(), g52InHall(x, y, z), g52W47Def()
+   Loaded right BEFORE mega49_hall.js (it reads G52 at load time).
+   ========================================================================= */
+var G52 = { on: !(typeof location !== 'undefined' && /[?&]giga52=0\b/.test(location.search || '')), H:null, F:undefined, B0:undefined,
+  center:[3750, 1000], core:[3300, 1000], err:[], built:false, roof:null, ch:null, w47:null, zonesIn:false, stats:{ builds:0, pieces:0, soup:0, roof:0 } };
+const G52_HW = 550, G52_HD = 330, G52_WH = 100, G52_ARCH = 40, G52_T = 0.4;
+const G52_DOORS = { W:[-12, 4, 11], E:[-10, 10, 14] };          // [v0, v1, height]
+function g52Try(name, fn){ try { return fn(); } catch(e){ G52.err.push(name + ': ' + (e && e.message || e)); if (G52.err.length < 5) try { console.error('[giga52] ' + name, e); } catch(e2){} } }
+function g52W(u, v){ const H = G52.H; return [H.x + u, H.z + v]; }
+/* the floor: over the highest ground of the footprint (+ an 8 m ring), the foundation down to the lowest */
+function g52Plan(){
+  const H = G52.H; if (!H) return G52;
+  if (G52.F !== undefined) return G52;
+  let mx = -1e9, mn = 1e9;
+  for (let u = -G52_HW - 8; u <= G52_HW + 8; u += 10) for (let v = -G52_HD - 8; v <= G52_HD + 8; v += 10){
+    const q = g52W(u, v), y = landY(q[0], q[1]); if (y > mx) mx = y; if (y < mn) mn = y; }
+  G52.F = mx + 0.22; G52.B0 = mn - 0.8; G52.land = [+mn.toFixed(2), +mx.toFixed(2)];
+  return G52;
+}
+function g52InHall(x, y, z){
+  const H = G52.H; if (!H || G52.F === undefined) return false;
+  return Math.abs(x - H.x) < G52_HW + 0.4 && Math.abs(z - H.z) < G52_HD + 0.4 && y > G52.F - 3 && y < G52.F + G52_WH + G52_ARCH;
+}
+function g52Near(x, z){ const H = G52.H; return !!H && Math.abs(x - H.x) < G52_HW + 40 && Math.abs(z - H.z) < G52_HD + 40; }
+/* set up at load (mega49's registration calls it with the core's centre) */
+function g52Setup(){
+  if (!G52.on || G52.H || typeof RG === 'undefined') return;
+  const cx = G52.center[0], cz = G52.center[1];
+  G52.H = { id:'giga', x:cx, z:cz, ci:Math.floor(cx/RG.chunk), cj:Math.floor(cz/RG.chunk), ax:G52_HW + 0.4, az:G52_HD + 0.4 };
+  if (typeof streamAddBuilder === 'function') streamAddBuilder('giga52', g52Gen, { order:15 });
+  if (typeof streamAddUnloader === 'function') streamAddUnloader('giga52', ch=>{ if (ch === G52.ch){ G52.built = false; G52.ch = null; G52.roof = null; } });
+  g52Try('far', ()=>{
+    if (typeof regionAddFarBoxes !== 'function') return;
+    const B = [{ x:cx, z:cz, w:G52_HW, d:G52_HD, h:G52_WH, c:[0.24, 0.40, 0.68] }];
+    for (let k = 1; k <= 4; k++){ const f = k/5; B.push({ x:cx, z:cz, w:G52_HW, d:G52_HD*Math.sqrt(1 - f), h:G52_WH + G52_ARCH*f, c:[0.74, 0.77, 0.80] }); }
+    regionAddFarBoxes(B);
+    if (typeof regionAddFarLights === 'function'){ const L = []; for (const [u, v] of [[-G52_HW, -G52_HD], [G52_HW, -G52_HD], [-G52_HW, G52_HD], [G52_HW, G52_HD], [0, -G52_HD], [0, G52_HD], [-G52_HW, 0], [G52_HW, 0]]){ const q = g52W(u, v); L.push({ x:q[0], z:q[1], c:0, s:2.2 }); } regionAddFarLights(L); }
+  });
+  // the indoor blocks: indoor39 builds them (open: no walls / roof / doors of their own) on this floor
+  g52Try('blocks', ()=>{
+    if (typeof ind39AddOpen !== 'function') return;
+    const T = [['ware', 'hangar', 'barn', 'ware'], ['barn', 'ware', 'hangar', 'barn']];
+    [-215, 215].forEach((v, r)=> [-215, 0, 215, 430].forEach((u, k)=>{ const q = g52W(u, v); ind39AddOpen({ id:'giga' + r + k, x:q[0], z:q[1], theme:T[r][k], getF:()=> g52Plan().F }); }));
+  });
+  if (typeof addFrameHook === 'function') addFrameHook(()=>{ try { g52Frame(); } catch(e){} });
+}
+/* the giant features down the middle + the jump-assist zones they need (pushed into the dome's own list: one meter for both) */
+function g52Pieces(P, Z, D){
+  const F = G52.F, M = PK_MAT, E = Math.PI/2, Wd = -Math.PI/2, conc = MAT.concrete || M.pad, bowlM = MAT.bowl || conc, dirt = MAT.dirt || M.orange;
+  const put = (p)=>{ const q = g52W(p.u, p.v); p.x = q[0]; p.z = q[1]; p.rot = p.rot || 0; if (p.base === undefined) p.base = F; delete p.u; delete p.v; p.g52 = 1; P.push(p); return p; };
+  const zone = (u0, v0, yaw, a0, a1, hw, v, name, o)=>{ const q = g52W(u0, v0); Z.push(Object.assign({ ox:q[0], oz:q[1], dx:Math.sin(yaw), dz:Math.cos(yaw), a0, a1, a2:a1, hw, v, need:0, name }, o || {})); };
+  // ---- the GIGA BOWL: a raised 96 x 96 m deck (6 m up) with a 76 m bowl in it, banks up to the deck from the west + the east
+  { const cu = 60, cv = 0, R = 8, deg = 75, r0 = 24, U = R*Math.sin(deg*Math.PI/180), Hd = R*(1 - Math.cos(deg*Math.PI/180)), outer = 48;
+    put({ type:'bowl', u:cu, v:cv, rot:0, r0, R, maxDeg:deg, deck:outer - r0 - U, mat:bowlM, giga:1 });                 // the bowl + its round deck (r 48)
+    put({ type:'bank', u:cu - outer - 18, v:cv, rot:E, w:10, len:18.2, h:Hd, mat:conc, giga:1 });                        // access banks up to the deck
+    put({ type:'bank', u:cu + outer + 18, v:cv, rot:Wd, w:10, len:18.2, h:Hd, mat:conc, giga:1 });
+    D.bowl = { u:cu, v:cv, r:r0 + U, y:F + Hd, outer, Hd };
+  }
+  // ---- GIGA KICKERS: three lanes (west -> east) into one 60 m foam pit
+  for (const v of [-88, -64, -40]){
+    const u0 = -300, k0 = -232;
+    put({ type:'bank', u:k0, v, rot:E, w:3.2, len:9, h:3.4, mat:M.orange, kicker:'giga', giga:1 });                     // the 3.4 m kicker
+    zone(u0, v, E, 8, (k0 + 9 - u0) - 0.05, 3.8, 13.4, 'GIGA KICKER', { a2:(k0 + 9 - u0) + 1.5, need:15.2 });          // metered to the lip
+    D.lanes.push({ u0:u0 + 2, u1:k0 - 2, v, hw:3.6 });
+  }
+  { const p = put({ type:'flat', u:-191.2, v:-64, w:32.2, d:34, h:1.0, mat:M.pink, novis:true, bag:true, isl33bag:'foam', giga:1 }); p.megaPit = 1;   // from just under the lips
+    D.pit = { u0:-223.4, u1:-159, v0:-98, v1:-30, top:F + 1.0 }; }
+  // ---- the PUMP LINE: 70 rollers along the south side of the middle (east to west and back by the boulevard)
+  for (let k = 0; k < 70; k++){ const u = -300 + k*11.5, v = 70;
+    put({ type:'bank', u, v, rot:E, w:2.4, len:3, h:1.1, mat:dirt, deck:0.8, giga:1 }); put({ type:'bank', u:u + 6.8, v, rot:Wd, w:2.4, len:3, h:1.1, mat:dirt, giga:1 }); }
+  D.lanes.push({ u0:-302, u1:508, v:70, hw:3.0 });
+  // ---- three GIGA QUARTERS on the east wall (12 m), the run-up marked
+  for (const v of [-80, 0, 80]){ put({ type:'quarter', u:G52_HW - 16.2, v, rot:E, w:14, R:12, maxDeg:84, deck:4, mat:conc, giga:1 }); D.cop.push({ u:G52_HW - 16.2 + 12*Math.sin(84*Math.PI/180), v, w:14, y:F + 12*(1 - Math.cos(84*Math.PI/180)) }); }
+}
+/* ---------------------------------------------------------------- the chunk builder (the giga centre's chunk; the radius covers the hall) */
+function* g52Gen(ch){
+  const H = G52.H;
+  if (!H || ch.i !== H.ci || ch.j !== H.cj) return;
+  g52Plan();
+  if (typeof m49Plan === 'function') g52Try('core plan', ()=> m49Plan());
+  const F = G52.F, B0 = G52.B0, HW = G52_HW, HD = G52_HD, WH = G52_WH, t = G52_T, M = PK_MAT;
+  G52.ch = ch; G52.built = false;
+  const P = [], Z = [], D = { lanes:[], cop:[], pit:null, bowl:null };
+  const flat = (u, v, w, d, h, base, mat, o)=>{ const q = g52W(u, v); P.push(Object.assign({ type:'flat', x:q[0], z:q[1], rot:0, w, d, h, base, mat, g52:1 }, o || {})); };
+  // floor + foundation, the walls with the doors (+ the lintels over them)
+  flat(0, 0, HW + t, HD + t, F - 0.12 - B0, B0, M.pad, { found:1 });
+  flat(0, 0, HW + t, HD + t, 0.12, F - 0.12, MAT.plaza || MAT.concrete || M.pad, { surf:'park', hallFloor:1 });
+  const wallM = M.blue, wb = F - 0.12, wh = WH + 0.12;
+  flat(0, -HD, HW + t, t, wh, wb, wallM, { bld:true, wall:1 }); flat(0, HD, HW + t, t, wh, wb, wallM, { bld:true, wall:1 });
+  for (const [side, us] of [['W', -1], ['E', 1]]){
+    const Dd = G52_DOORS[side], v0 = Dd[0], v1 = Dd[1], dh = Dd[2];
+    flat(us*HW, (-HD + v0)/2, t, (v0 + HD)/2, wh, wb, wallM, { bld:true, wall:1 });
+    flat(us*HW, (v1 + HD)/2, t, (HD - v1)/2, wh, wb, wallM, { bld:true, wall:1 });
+    const lt = side === 'W' && typeof M49_WH === 'number' ? M49_WH : dh;    // over the west door the core draws its own lintel up to 34 m
+    flat(us*HW, (v0 + v1)/2, t, (v1 - v0)/2, WH - lt, F + lt, wallM, { bld:true, wall:1 });
+  }
+  // the east door's ramp (the west door's is the core's)
+  { const ac = (G52_DOORS.E[0] + G52_DOORS.E[1])/2, hw = (G52_DOORS.E[1] - G52_DOORS.E[0])/2 + 1, edge = HW + t;
+    let len = 3; for (let k = 0; k < 3; k++){ const q = g52W(edge + len, ac), g = landY(q[0], q[1]); len = Math.max(2.5, Math.min(14, (F - g)*7)); }
+    const qf = g52W(edge + len, ac), gf = Math.min(landY(qf[0], qf[1]), F - 0.05) - 0.04, q = g52W(edge + len, ac);
+    P.push({ type:'bank', x:q[0], z:q[1], rot:-Math.PI/2, w:hw, len, h:F - gf, base:gf, mat:M.pad, g52:1, g52ramp:1 }); }
+  g52Try('features', ()=> g52Pieces(P, Z, D));
+  let k = 0;
+  for (const p0 of P){
+    const p = Object.assign({}, p0), n0 = ch.group.children.length;
+    g52Try('piece', ()=> ch.addPiece(p));
+    if (p.wall || p.found) for (let i = n0; i < ch.group.children.length; i++) ch.group.children[i].castShadow = false;
+    if (++k % 4 === 0) yield;
+  }
+  G52.stats.pieces = k;
+  // the jump-assist zones join the dome's (mega49 meters them while you're in the hall)
+  if (typeof M49 !== 'undefined' && !G52.zonesIn){ for (const z of Z) M49.zones.push(z); G52.zonesIn = true; }
+  yield;
+  // props: one soup (pads, window bands, trims, door frames, signs, lane paint, copings, foam, the light rig) + the roof apart
+  const S = m49Soup(), Gw = m49Soup(512), GT = m49QSoup(4096);
+  g52Try('props', ()=> g52Props(S, Gw, GT, D));
+  yield;
+  const gm = (typeof w47Mat === 'function') ? w47Mat() : PK_MAT.cloth, wm = (typeof W2M !== 'undefined' && W2M.glow) ? W2M.glow : PK_MAT.cloth;
+  for (const [So, mat, sh, nm] of [[S, m49PaintMat(), true, false], [Gw, wm, false, true], [GT, gm, false, true]]){
+    m49Seal(So);
+    for (const Pp of So.parts){ if (!Pp.n) continue; const m = So.quad ? m49QPartMesh(Pp, mat) : m49PartMesh(Pp, mat, sh); if (nm) m.userData.noMerge = true; ch.addMesh(m); }
+    So.parts.length = 0; So.cur = null;
+    yield;
+  }
+  const R = g52Try('roof', ()=> g52Roof());
+  if (R){ R.userData.noMerge = true; R.userData.g52Roof = 1; R.receiveShadow = false; R.castShadow = false; ch.addMesh(R); G52.roof = R; }
+  G52.built = true; G52.stats.builds++;
+}
+function g52Props(S, Gw, GT, D){
+  const F = G52.F, HW = G52_HW, HD = G52_HD, WH = G52_WH;
+  const bx = (Sx, u, v, y, w, h, d, hex)=>{ const q = g52W(u, v); m49Box(Sx, q[0], y, q[1], w, h, d, 0, hex); };
+  const PAD = [0x1f6fd6, 0xff3b30, 0xffcc00, 0x1f6fd6, 0x34c759, 0xff9500];
+  const doorW = (side, v, pad)=>{ const Dd = G52_DOORS[side]; return Dd && v > Dd[0] - pad && v < Dd[1] + pad; };
+  // padded wall bottoms + window bands (inside + out) on all four walls
+  for (let u = -HW + 3; u < HW; u += 6) for (const vs of [-1, 1]){
+    const inner = vs*(HD - G52_T);
+    bx(S, u, inner - vs*0.1, F, 5.9, 3.0, 0.2, PAD[(Math.round(u/6) + 600) % PAD.length]);
+    for (const wy of [24, 50, 76]){ bx(S, u, inner - vs*0.06, F + wy, 5.2, 6, 0.06, 0xbfe3f7); bx(Gw, u, vs*(HD + G52_T) + vs*0.06, F + wy, 5.2, 6, 0.06, 0xcfe2f2); }
+  }
+  for (let v = -HD + 3; v < HD; v += 6) for (const [side, us] of [['W', -1], ['E', 1]]){
+    const inner = us*(HW - G52_T), dw = doorW(side, v, 1.5);
+    if (!dw) bx(S, inner - us*0.1, v, F, 0.2, 3.0, 5.9, PAD[(Math.round(v/6) + 600) % PAD.length]);
+    for (const wy of [24, 50, 76]){ if (dw && wy < 30) continue; bx(S, inner - us*0.06, v, F + wy, 0.06, 6, 5.2, 0xbfe3f7); bx(Gw, us*(HW + G52_T) + us*0.06, v, F + wy, 0.06, 6, 5.2, 0xcfe2f2); }
+  }
+  // trims at the top of the walls, door frames + a huge band over each door
+  bx(S, 0, HD + G52_T + 0.05, F + WH - 1, HW*2 + 1, 1.0, 0.1, 0xf2f2ec); bx(S, 0, -HD - G52_T - 0.05, F + WH - 1, HW*2 + 1, 1.0, 0.1, 0xf2f2ec);
+  bx(S, HW + G52_T + 0.05, 0, F + WH - 1, 0.1, 1.0, HD*2 + 1, 0xf2f2ec); bx(S, -HW - G52_T - 0.05, 0, F + WH - 1, 0.1, 1.0, HD*2 + 1, 0xf2f2ec);
+  for (const [side, us] of [['E', 1]]){                                         // (the west door is the core's, dressed by mega49)
+    const Dd = G52_DOORS[side], vc = (Dd[0] + Dd[1])/2, hw = (Dd[1] - Dd[0])/2, dh = Dd[2];
+    for (const s of [-1, 1]) bx(S, us*(HW + G52_T + 0.25), vc + s*(hw + 0.3), F - 0.1, 0.5, dh + 0.3, 0.6, 0xffcc00);
+    bx(S, us*(HW + G52_T + 0.25), vc, F + dh, 0.5, 0.6, hw*2 + 1.2, 0xffcc00);
+    bx(S, us*(HW + G52_T + 0.3), vc, F + dh + 3, 0.2, 9, 70, 0xff3b30);
+    m49Sign({ x:G52.H.x, z:G52.H.z, th:0, c:1, s:0 }, GT, 'MEGA DOME', us*(HW + G52_T + 0.45), vc, F + dh + 10.6, us, 0, 0.85, 0xffffff, 0.08);
+    m49Sign({ x:G52.H.x, z:G52.H.z, th:0, c:1, s:0 }, GT, 'MEGA DOME', us*(HW - G52_T - 0.3), vc, F + dh + 30, -us, 0, 1.6, 0xffd60a, 0.1);
+  }
+  // giant letters on the long walls inside + out
+  for (const vs of [-1, 1]){
+    m49Sign({ x:G52.H.x, z:G52.H.z, th:0, c:1, s:0 }, GT, 'MEGA DOME', 0, vs*(HD - G52_T - 0.3), F + 58, 0, -vs, 2.6, vs > 0 ? 0x5ac8fa : 0xff9500, 0.12);
+    m49Sign({ x:G52.H.x, z:G52.H.z, th:0, c:1, s:0 }, GT, 'MEGA DOME', 0, vs*(HD + G52_T + 0.4), F + 58, 0, vs, 2.6, 0xffffff, 0.12);
+  }
+  // lane paint, copings, the giga bowl's rim + deck paint, the foam blocks
+  for (const L of D.lanes){
+    for (let u = L.u0; u < L.u1; u += 3) for (const s of [-L.hw, L.hw]) bx(S, u + 0.8, L.v + s, F + 0.006, 1.4, 0.012, 0.16, 0xf4f1e6);
+    bx(S, L.u0 + 0.3, L.v, F + 0.007, 0.5, 0.012, L.hw*2, 0xd8483c);
+  }
+  for (const c of D.cop) bx(S, c.u, c.v, c.y - 0.06, 0.16, 0.16, c.w*2, 0xd8dde3);
+  if (D.bowl){ const b = D.bowl;
+    for (let k = 0; k < 96; k++){ const a = k/96*Math.PI*2, w = g52W(b.u + Math.sin(a)*b.r, b.v + Math.cos(a)*b.r); m49Box(S, w[0], b.y - 0.06, w[1], b.r*0.068, 0.14, 0.16, a, 0xd8dde3); }   // the coping
+    for (let k = 0; k < 120; k++){ const a = k/120*Math.PI*2, w = g52W(b.u + Math.sin(a)*(b.outer - 0.15), b.v + Math.cos(a)*(b.outer - 0.15));                        // the deck's skirt down to the floor
+      m49Box(S, w[0], F, w[1], b.outer*0.0545, b.Hd - 0.02, 0.3, a, k % 2 ? 0x1f6fd6 : 0x2a7be8); }
+    for (let k = 0; k < 120; k++){ const a = k/120*Math.PI*2, w = g52W(b.u + Math.sin(a)*(b.outer - 1.2), b.v + Math.cos(a)*(b.outer - 1.2)); m49Box(S, w[0], b.y + 0.005, w[1], b.outer*0.05, 0.01, 0.35, a, 0x5ac8fa); } }
+  if (D.pit){
+    const p = D.pit, FO = [0xff5e9c, 0x4fc3f7, 0xffd54f, 0x81c784, 0xff8a65, 0xba68c8, 0xffffff], R = isl33Rnd(5252);
+    for (const v of [p.v0 - 0.3, p.v1 + 0.3]) bx(S, (p.u0 + p.u1)/2, v, F, p.u1 - p.u0 + 0.6, 1.1, 0.6, 0x1f6fd6);
+    bx(S, p.u1 + 0.3, (p.v0 + p.v1)/2, F, 0.6, 1.1, p.v1 - p.v0, 0x1f6fd6);
+    for (let u = p.u0 + 0.6; u < p.u1; u += 1.3) for (let v = p.v0 + 0.6; v < p.v1; v += 1.3){ const w = g52W(u + (R() - 0.5)*0.25, v + (R() - 0.5)*0.25); m49Box(S, w[0], p.top - 0.55 + R()*0.2, w[1], 1.15, 0.65, 1.15, R()*1.5, FO[Math.floor(R()*FO.length)]); }
+  }
+  // the light rig: long trusses across the hall at 64 m with lamp housings; cables down to the core's own pendant lamps
+  for (let u = -HW + 60; u < HW; u += 120){ bx(S, u, 0, F + 64, 1.2, 1.2, HD*2 - 4, 0x5b6470); for (const v of [-HD + 10, HD - 10]) bx(S, u, v, F + 64, 0.6, WH - 64, 0.6, 0x5b6470); }
+  for (const p of g52Lamps()) m49Box(S, p[0], p[1] + 0.2, p[2], 4.0, 0.7, 4.0, 0, 0x1c1f24);
+  if (typeof m49Lamps === 'function' && typeof M49 !== 'undefined' && M49.H && M49.H.F !== undefined) for (const p of m49Lamps(M49.H)) m49Box(S, p[0], p[1] + 0.8, p[2], 0.06, F + 64 - p[1] - 0.8, 0.06, 0, 0x16181c);
+  G52.stats.soup = S.boxes;
+}
+/* the lamp grid: hung from the trusses at 30 m (warm47 lights the 7 nearest) */
+function g52Lamps(){
+  const out = [], F = G52.F;
+  for (let u = -HW_G52() + 60; u < HW_G52(); u += 120) for (let v = -270; v <= 270; v += 90){ const q = g52W(u, v); out.push([q[0], F + 30, q[1]]); }
+  return out;
+}
+function HW_G52(){ return G52_HW; }
+/* the arched roof + its gable ends: one mesh (vertex colours on PK_MAT.cloth, both sides lit) */
+function g52Roof(){
+  const F = G52.F, HW = G52_HW + G52_T, HD = G52_HD + G52_T, y0 = F + G52_WH, N = 40;
+  const pos = [], col = [], idx = [], c1 = new T.Color(0xc3cad3), c2 = new T.Color(0xa9d8f5), cg = new T.Color(0xb7bec7);
+  const yAt = v=> y0 + G52_ARCH*(1 - (v/HD)*(v/HD));
+  const H = G52.H, push = (x, y, z, c)=>{ pos.push(x, y, z); col.push(c.r, c.g, c.b); return pos.length/3 - 1; };
+  for (let i = 0; i <= N; i++){
+    const v = -HD + 2*HD*i/N, y = yAt(v), c = (i % 8 === 3 || i % 8 === 4) ? c2 : c1;
+    push(H.x - HW, y, H.z + v, c); push(H.x + HW, y, H.z + v, c);
+    if (i){ const a = (i - 1)*2, b = i*2; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  }
+  for (const us of [-1, 1]){                                     // the gables: a fan from the middle of the wall top
+    const base = pos.length/3, cx = H.x + us*HW;
+    push(cx, y0, H.z, cg);
+    for (let i = 0; i <= N; i++){ const v = -HD + 2*HD*i/N; push(cx, yAt(v), H.z + v, cg); if (i) idx.push(base, base + i, base + i + 1); }
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new T.Mesh(g, PK_MAT.cloth);
+  G52.stats.roof = idx.length/3;
+  return m;
+}
+/* the roof hides while the camera is above the walls inside the footprint */
+function g52Frame(){
+  const m = G52.roof, H = G52.H; if (!m || !H || typeof camera === 'undefined') return;
+  const cp = camera.position, inside = Math.abs(cp.x - H.x) < G52_HW && Math.abs(cp.z - H.z) < G52_HD && cp.y > G52.F + G52_WH - 0.5;
+  if (m.visible === inside) m.visible = !inside;
+}
+/* warm47: the whole giga hall as its lights see it (the core's pendants + the truss grid) */
+function g52W47Def(){
+  if (!G52.H || G52.F === undefined) return null;
+  let d = G52.w47; if (d && d.F === G52.F) return d;
+  let lamps = g52Lamps();
+  if (typeof m49Lamps === 'function' && typeof M49 !== 'undefined' && M49.H && M49.H.F !== undefined) lamps = m49Lamps(M49.H).concat(lamps);
+  d = G52.w47 = { id:'giga52', kind:'mega49', H:G52.H, F:G52.F, lamps, rot:0, P:(u, v)=> g52W(u, v), uLen:520, vs:[-300, -120, 120, 300], sy:G52.F + 44, sag:3.0,
+    range:44, inten:8.0, cone:0.32, fixW:5.6, fixD:2.2, inside:(x, y, z)=> g52InHall(x, y, z) };
+  return d;
+}
+
+/* =========================================================================
    MEGA49 (Release 15.46, helper `mega49`) -- THE MEGA DOME: a HUGE indoor bike + scooter park.
    "add an huge mega indoor bike/scooter park make it huge make the celling very high and add insane stuff work on it an lot"
    One hall in the Dusk Greenbelt, south-east of the city (centre 2780, 2780): 200 x 120 m inside, 34 m walls + an arched roof
@@ -94420,6 +94684,9 @@ addFrameHook(function wt48Frame(dt){
 const M49 = { on:false, err:[], H:null, zones:[], feats:[], rails:[], railsIn:false, ch:null, built:false, near:false, liftCool:0, w47:null, travel:null,
   stats:{ builds:0, pieces:0, meshes:0, boxes:0, glow:0, win:0, roof:0, decals:0, railMeshes:0, metered:0, lifted:0, lifts:0, roofHide:0, planMs:0, buildMs:0, maxStep:0 } };
 const M49_HW = 100, M49_HD = 60, M49_WH = 34, M49_T = 0.25, M49_D2R = Math.PI/180;
+/* mega52 (Release 15.50): the GIGA mode -- this park is the core at the west end of the 30x hall (giga52.js): no walls / roof / floor
+   of its own, the floor at the giga hall's level, the main door + its ramp kept (the giga hall's west wall runs on its west wall) */
+const M49G = typeof G52 !== 'undefined' && !!G52.on;
 /* the jump-assist design speeds (horizontal m/s at the lip), tuned with real rides (test/t_mega49.js) */
 const M49_TUNE = { mega:16.5, qp:19.5, foam:11.0, resi:10.5, dirt:[6.86, 7.59, 8.62, 9.25, 9.55, 10.26], drop:7.2, wall:11.5, wallCap:13, vert:16 };
 /* doors: side, span along the wall (v on the W / E walls, u on the N / S walls), opening height */
@@ -94449,6 +94716,7 @@ function* m49PlanGen(H){
     if (++n % 3 === 0) yield;
   }
   H.F = mx + 0.22; H.B0 = mn - 0.8; H.land = [+mn.toFixed(2), +mx.toFixed(2)];
+  if (M49G && typeof g52Plan === 'function'){ const g = g52Plan(); if (g.F !== undefined){ H.F = g.F; H.B0 = g.B0; } }   // mega52: the giga floor
   H.top = H.F + M49_WH + 11;
   m49Try('plan', ()=> m49PlanHall(H));
   M49.stats.planMs = +(performance.now() - t0).toFixed(1);
@@ -94482,16 +94750,20 @@ function m49PlanHall(H){
   const bagHill = (K, a, w, l1, h, top, l2, mat, kind)=>{ const b1 = bank(K, a, 0, w, l1, h, mat, { deck:top }), b2 = down(K, a + l1 + top, 0, w, l2, h, mat); b1.bag = b2.bag = true; b1.isl33bag = b2.isl33bag = kind; return [b1, b2]; };
 
   // ---- foundation (solid down into the ground) + the floor; walls (bld: they block the bike + the camera) with the door gaps
+  if (!M49G){
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:F - 0.12 - B0, base:B0, mat:M.pad, found:1 });
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:0.12, base:F - 0.12, mat:MAT.plaza || conc, surf:'park', hallFloor:1 });
+  } else put({ type:'flat', u:0, v:0, w:HW, d:HD, h:0.12, base:F - 0.09, mat:MAT.plaza || conc, surf:'park', hallFloor:1 });   // mega52: the core's own floor (3 cm up) so it never stands on bare land
   const wallM = M.blue, wb = F - 0.12, wh = WH + 0.12;
   const wallU = (u0, u1, v)=> put({ type:'flat', u:(u0 + u1)/2, v, w:(u1 - u0)/2, d:t, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
   const wallV = (v0, v1, u)=> put({ type:'flat', u, v:(v0 + v1)/2, w:t, d:(v1 - v0)/2, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
+  if (!M49G){
   wallU(-HW - t, HW + t, -HD);
   wallU(-HW - t, -97, HD); wallU(-85, HW + t, HD);
   wallV(-HD + t, -12, -HW); wallV(4, HD - t, -HW);
   wallV(-HD + t, HD - t, HW);
-  H.doors = M49_DOORS.map(D=> Object.assign({}, D));
+  }
+  H.doors = M49_DOORS.filter(D=> !M49G || D.main).map(D=> Object.assign({}, D));
   // a ramp from the ground up to the floor outside every door
   for (const D of H.doors){
     const ac = (D.a0 + D.a1)/2, hw = (D.a1 - D.a0)/2 + 1, edge = (D.side === 'W' ? HW : HD) + 0.3;
@@ -94847,7 +95119,7 @@ function* m49PropsGen(H, S, G, Wn, GT){
   const PAD = [0x1f6fd6, 0xff3b30, 0xffcc00, 0x1f6fd6, 0x34c759, 0xff9500];
   const WIN_IN = 0xbfe3f7, WIN_OUT = 0xcfe2f2;          // outside: blue-grey glass by day, lit at night (the city's window material)
   // ---- padded wall bottoms (2.4 m, alternating colours), two window bands (glass inside; outside on the night-window material)
-  for (let u = -HW + 1.5; u < HW; u += 3){
+  if (!M49G) for (let u = -HW + 1.5; u < HW; u += 3){
     for (const vs of [-1, 1]){
       const side = vs > 0 ? 'S' : 'N', inner = vs*(HD - M49_T);
       if (!doorAt(side, u)) bx(S, u, inner - vs*0.08, F, 2.92, 2.4, 0.16, 0, PAD[(Math.round(u/3) + 60) % PAD.length]);
@@ -94907,16 +95179,17 @@ function* m49PropsGen(H, S, G, Wn, GT){
     for (const sd of [-1, 1]) for (let k = 0; k < 4; k++){ const q3 = m49W(H, -HW - 8 - k*7, ac + sd*13), g = landY(q3[0], q3[1]);
       m49Box(S, q3[0], g - 0.1, q3[1], 0.14, 9.5, 0.14, 0, 0xd0d4d8); m49Box(S, q3[0], g + 7.6, q3[1] + 0.9, 0.05, 1.6, 1.8, 0, BAN[(k*2 + (sd > 0 ? 1 : 0)) % BAN.length]); }
     for (let k = 0; k < 14; k++){ const u = -HW - 6 - R()*30, v = ac + (R() - 0.5)*32; if (Math.abs(v - ac) < 4.5) continue; const q4 = m49W(H, u, v); m49Person(S, q4[0], landY(q4[0], q4[1]), q4[1], th + R()*6.28, R); yield* tick(); }
-    const D2 = H.doors[1], a2 = (D2.a0 + D2.a1)/2;
+    const D2 = H.doors[1];
+    if (D2){ const a2 = (D2.a0 + D2.a1)/2;                                   // (mega52: the giga hall has no south door here)
     bx(S, a2, HD + 0.42, F + D2.h + 1.0, 18, 3.4, 0.1, 0, 0x1f6fd6);
-    m49Sign(H, GT, 'MEGA DOME', a2, HD + 0.5, F + D2.h + 3.85, 0, 1, 0.36, 0xffffff, 0.06); }
+    m49Sign(H, GT, 'MEGA DOME', a2, HD + 0.5, F + D2.h + 3.85, 0, 1, 0.36, 0xffffff, 0.06); } }
   yield* tick();
   // ---- huge banners hanging from the roof along the long walls, pennant strings across the hall
-  for (let k = 0; k < 14; k++){ const u = -84 + k*13; for (const vs of [-1, 1]){
+  if (!M49G) for (let k = 0; k < 14; k++){ const u = -84 + k*13; for (const vs of [-1, 1]){
     const v = vs*(HD - 3.2), col = BAN[(k + (vs > 0 ? 3 : 0)) % BAN.length];
     bx(S, u, v, F + 19, 6, 12.5, 0.08, 0, col); bx(S, u, v - vs*0.06, F + 24, 6.02, 1.4, 0.06, 0, 0xffffff); bx(S, u, v - vs*0.06, F + 19, 6.02, 0.8, 0.06, 0, 0x16181c);
     bx(S, u, v, F + 31.4, 6.6, 0.25, 0.25, 0, 0x2b3038); bx(S, u, v, F + 31.6, 0.05, 1.0, 0.05, 0, 0x16181c); } }
-  for (const v of [-24, 6, 30]) for (let u = -96; u < 96; u += 1.7) bx(S, u, v, F + 24.5 - Math.abs(Math.sin(u*0.0655))*2.2, 0.7, 0.7, 0.03, 0, BAN[Math.floor(u/1.7 + 80) % BAN.length]);
+  if (!M49G) for (const v of [-24, 6, 30]) for (let u = -96; u < 96; u += 1.7) bx(S, u, v, F + 24.5 - Math.abs(Math.sin(u*0.0655))*2.2, 0.7, 0.7, 0.03, 0, BAN[Math.floor(u/1.7 + 80) % BAN.length]);
   yield* tick();
   // ---- the giant screens (dark panels in frames, glowing letters, LED edges) + the centre-hung scoreboard cube
   const screen = function*(u, v, y, w, h, nu, nv, lines, cols, px){
@@ -94928,10 +95201,12 @@ function* m49PropsGen(H, S, G, Wn, GT){
     for (const sy of [y - 0.3, y + h + 0.12]){ if (across) bx(G, u + nu*0.22, v + nv*0.22, sy, w + 0.5, 0.14, 0.05, 0, cols[0]); else bx(G, u + nu*0.22, v + nv*0.22, sy, 0.05, 0.14, w + 0.5, 0, cols[0]); }
   };
   yield* screen(-HW + 0.6, -4, F + 13.2, 21, 11.5, 1, 0, ['MEGA', 'DOME'], [0xffd60a, 0xff3b30], 0.62);     // west wall, over the main door
+  if (!M49G){
   yield* screen(HW - 0.6, 6, F + 13.5, 26, 6.5, -1, 0, ['SEND IT!'], [0x5ac8fa], 0.5);                     // east wall, over the wall ride
   yield* screen(51, -HD + 0.6, F + 12.5, 24, 6.5, 0, 1, ['BIG AIR'], [0xff9500], 0.52);                   // north wall, over the bleachers
   yield* screen(-9, HD - 0.6, F + 12.5, 28, 6.5, 0, -1, ['MEGA DOME'], [0x34c759], 0.46);                // south wall, over the mezzanine
-  { const cu = 8, cv = 0, y0 = F + 23, hh = 6, half = 5.5;
+  }
+  if (!M49G){ const cu = 8, cv = 0, y0 = F + 23, hh = 6, half = 5.5;
     bx(S, cu, cv, y0, half*2, hh, half*2, 0, 0x16181c); bx(S, cu, cv, y0 + hh, half*2 + 0.6, 0.5, half*2 + 0.6, 0, 0x2b3038); bx(S, cu, cv, y0 - 0.5, half*2 + 0.6, 0.5, half*2 + 0.6, 0, 0x2b3038);
     for (const sd of [-1, 1]) for (const sd2 of [-1, 1]) bx(S, cu + sd*4, cv + sd2*4, y0 + hh + 0.5, 0.06, WH - 23 - hh + 6, 0.06, 0, 0x16181c);
     [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach((f, i)=>{ const nu = f[0], nv = f[1];
@@ -95192,6 +95467,8 @@ function m49NoTrees(){
 function m49ClearRects(){
   const H = M49.H, out = [];
   const box = (u0, v0, u1, v1)=>{ const a = m49W(H, u0, v0), b = m49W(H, u1, v1); out.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])]); };
+  if (M49G){                                                         // mega52: the whole giga hall (+ a ring), its west + east ways in
+    const e = -M49_HW + 2*G52_HW; box(-M49_HW - 14, -G52_HD - 14, e + 14, G52_HD + 14); box(-M49_HW - 46, -24, -M49_HW, 16); box(e, -26, e + 40, 26); return out; }
   box(-M49_HW - 14, -M49_HD - 14, M49_HW + 14, M49_HD + 14);       // the hall + a ring
   box(-M49_HW - 46, -24, -M49_HW, 16);                                // the way in: the main door, the sign arch, the fast-travel spot
   box(-106, M49_HD, -76, M49_HD + 26);                                // the south door's apron
@@ -95238,7 +95515,7 @@ function* m49Gen(ch){
   // the roof, apart (it hides while the camera is above the walls inside the footprint)
   tl = performance.now(); ph = 'roof';
   const Rs = m49Soup(1200);
-  const roofOk = m49Try('roof', ()=>{ m49RoofGen(H, Rs, lamps); return true; });
+  const roofOk = !M49G && m49Try('roof', ()=>{ m49RoofGen(H, Rs, lamps); return true; });
   step(); yield; tl = performance.now(); ph = 'roof mesh';
   if (roofOk){
     H.roofMeshes = m49SoupMeshes(Rs, m49PaintMat(), false);
@@ -95270,9 +95547,10 @@ function m49RailsSync(){
 /* ---------------------------------------------------------------- runtime */
 function mega49InHall(x, y, z){
   const H = M49.H; if (!H || H.F === undefined) return null;
+  if (M49G && typeof g52InHall === 'function') return g52InHall(x, y, z) ? H : null;     // mega52
   return (Math.abs(x - H.x) < H.ax && Math.abs(z - H.z) < H.az && y < H.F + M49_WH + 11 && y > H.F - 3) ? H : null;
 }
-function m49Near(x, z){ const H = M49.H; return !!H && Math.abs(x - H.x) < H.ax + 30 && Math.abs(z - H.z) < H.az + 30; }
+function m49Near(x, z){ const H = M49.H; if (M49G && typeof g52Near === 'function') return g52Near(x, z); return !!H && Math.abs(x - H.x) < H.ax + 30 && Math.abs(z - H.z) < H.az + 30; }
 const _m49Q = { z:null, a:0 };
 function m49ZoneAt(x, z){
   const Z = M49.zones;
@@ -95351,6 +95629,7 @@ function m49Frame(){
 function m49Feats(){ return M49.feats; }
 /* warm47: the hall as its lights see it (pendant clusters 16.5 m up: a longer reach, bigger diffusers) */
 function mega49W47Def(){
+  if (M49G && typeof g52W47Def === 'function') return g52W47Def();             // mega52: the whole giga hall
   const H = M49.H; if (!H || H.F === undefined) return null;
   let d = M49.w47; if (d && d.F === H.F) return d;
   d = M49.w47 = { id:'mega49', kind:'mega49', H, F:H.F, lamps:m49Lamps(H), rot:H.th, P:(u, v)=> m49W(H, u, v), uLen:84, vs:[-30, 0, 30], sy:H.F + 28.5, sag:1.2,
@@ -95362,7 +95641,7 @@ function mega49W47Def(){
 function m49Register(){
   if (M49.on || typeof RG === 'undefined' || !RG.on || typeof streamAddBuilder !== 'function' || typeof isl33Rnd !== 'function') return;
   M49.on = true;
-  const th = 0, cx = 2780, cz = 2780;
+  const th = 0, cx = M49G ? G52.core[0] : 2780, cz = M49G ? G52.core[1] : 2780;      // mega52: the dome moved to the giga site
   M49.H = { id:'mega', name:'Mega Dome', x:cx, z:cz, th, c:Math.cos(th), s:Math.sin(th), ax:M49_HW + 0.3, az:M49_HD + 0.3, ci:Math.floor(cx/RG.chunk), cj:Math.floor(cz/RG.chunk), P:null };
   const H = M49.H;
   // fast travel (outside the main door on open ground, facing in) + the big sign arch over the way in
@@ -95371,7 +95650,8 @@ function m49Register(){
     regionFastTravelAdd(M49.travel); });
   m49Try('sign', ()=>{ if (typeof regionAddSign !== 'function') return; const q = m49W(H, -M49_HW - 15, -4);
     regionAddSign({ id:'mega49-arch', x:q[0], z:q[1], yaw:-Math.PI/2 + th, style:'brown', w:15, h:3.2, clear:5.6, title:'MEGA INDOOR BIKE PARK', lines:['MEGA DOME · mega ramp · giant bowl · foam pits'] }); });
-  m49Try('far', ()=>{
+  if (M49G) m49Try('giga', ()=> g52Setup());
+  if (!M49G) m49Try('far', ()=>{
     if (typeof regionAddFarBoxes === 'function') regionAddFarBoxes([{ x:H.x, z:H.z, w:H.ax, d:H.az, h:M49_WH + 0.6, c:[0.25, 0.42, 0.7] },
       { x:H.x, z:H.z, w:H.ax, d:40, h:M49_WH + 6, c:[0.74, 0.77, 0.8] }, { x:H.x, z:H.z, w:H.ax, d:20, h:M49_WH + 10, c:[0.78, 0.8, 0.83] }]);
     if (typeof regionAddFarLights === 'function'){ const L = []; for (const [u, v] of [[-M49_HW, -M49_HD], [M49_HW, -M49_HD], [-M49_HW, M49_HD], [M49_HW, M49_HD], [-M49_HW - 2, -4], [0, -M49_HD - 1], [0, M49_HD + 1]]){ const q = m49W(H, u, v); L.push({ x:q[0], z:q[1], c:0, s:1.5 }); } regionAddFarLights(L); }
@@ -96583,6 +96863,46 @@ function snd53Sync(){
     if (SND53.fab){ const show = typeof GAME !== 'undefined' && GAME === 'menu'; if (SND53.fab.classList.contains('on') !== show) SND53.fab.classList.toggle('on', show); }
     if (SND53.btn && SND53.btn.querySelector('.pz43Ico') && !SND53.btn.__ico){ SND53.btn.__ico = true; snd53Sync(); }
   });
+})();
+
+/* =========================================================================
+   CAM53 -- Release 15.50: "make the camera better". A new default camera, STREET: a filmer rolling low and close behind you, the
+   way BMX videos (and BMX Streets) are shot --
+     closer (4.3 m, was 5.4) and lower (a 7 deg look-down, was 11), aimed a little above the rider so more of the line ahead is in
+     frame; a wider lens (70 deg, widening to 82 with speed); a tighter follow (0.09 s spring) with the lag fed forward, so the
+     rider stays put on the screen at speed instead of drifting off; more look-ahead into corners; half the lean roll and much less
+     speed shake (calmer, no seasick tilts); it can tuck in closer to walls before it slides.
+   Every other view is unchanged and still one tap of E / Q away (Chase is the old default). Players on the old default camera are
+   moved to Street once (dusk_line_cam53); a camera you picked yourself is kept. ?cam53=0 = the old list and default.
+   API: CAM53
+   ========================================================================= */
+const CAM53 = { on: !/[?&]cam53=0\b/.test(location.search), err:'', moved:false };
+(function cam53Init(){
+  if (!CAM53.on) return;
+  try {
+    CH_PRESET.street = { dist:4.3, speedK:0.11, speedMax:1.8, hgtK:0.36, hgtMax:2.6, el:0.12, elMax:1.0, elHgtK:0.02, elHgtMax:0.20,
+      pivotY:0.92, lookY:1.12, lookDrop:0.45, lead:1.25, leadMix:0.5, fov:70, fovK:0.42, fovMax:82, minClear:1.0, ground:0.9,
+      spring:0.09, roll:0.55, tremor:0.6, lagComp:0.6 };
+    CH_TARGET.street = Object.assign({}, CH_BASE, CH_PRESET.street);
+    const P = { id:'street', name:'Street', desc:'Low and close behind you like a filmer: smooth, wide, the line ahead in view' };
+    if (!CAM_POV_BY_ID.street){ CAM_POVS.unshift(P); CAM_POV_BY_ID.street = P; }
+    const d = typeof XSET_DEFS !== 'undefined' ? XSET_DEFS.find(x=> x.id === 'pov') : null;
+    if (d){ if (!d.options.some(o=> o.v === 'street')) d.options.unshift({ v:'street', label:P.name, hint:P.desc }); d.def = 'street'; }
+  } catch(e){ CAM53.err = String(e && e.message || e); }
+  // the one-time move to Street (on the first frame: the settings UI is up by then)
+  if (typeof addFrameHook === 'function'){
+    let done = false;
+    addFrameHook(function cam53Move(){
+      if (done) return; done = true;
+      try {
+        let moved = false; try { moved = localStorage.getItem('dusk_line_cam53') === '1'; } catch(e){}
+        if (moved) return;
+        try { localStorage.setItem('dusk_line_cam53', '1'); } catch(e){}
+        const cur = typeof XSET !== 'undefined' ? XSET.pov : null;
+        if (!cur || cur === 'chase'){ if (typeof xsetSet === 'function') xsetSet('pov', 'street'); else if (typeof povApply === 'function') povApply('street', false); CAM53.moved = true; }
+      } catch(e){ CAM53.err = 'move: ' + (e && e.message || e); }
+    });
+  }
 })();
 
 /*@@LATE@@*/
