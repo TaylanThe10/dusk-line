@@ -4186,6 +4186,16 @@ html.touchUI .wt48Tip{ display:none; }
 html.touchUI #ws48 .ws49Like{ min-height:40px; padding:8px 14px 8px 11px; }
 html.touchUI #ws48 .ws49Kinds .wsChip{ padding:8px 13px; font-size:13px; }
 @media (prefers-reduced-motion: reduce){ .ws49Like.pop svg, .ws49Skel .th, .ws49Skel i, .ws49Bar .wsBtn.spin svg{ animation:none; } #ws48 .ws49Like, #ws48 .ws49Seg button{ transition:none; } }
+/* ---- SND53: sound on / off (pause tile + the menu's speaker button) ---- */
+.snd53Fab{ position:fixed; left:max(14px, env(safe-area-inset-left)); bottom:max(14px, env(safe-area-inset-bottom)); z-index:90; display:none; align-items:center; gap:8px;
+  min-height:44px; padding:0 16px 0 12px; border-radius:22px; border:1px solid rgba(255,255,255,.22); background:rgba(14,16,22,.72); color:#fff;
+  font:700 14px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing:.02em; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); transition:transform .08s ease, background .15s ease; }
+.snd53Fab.on{ display:inline-flex; }
+.snd53Fab:active{ transform:scale(.94); }
+.snd53Fab svg{ width:22px; height:22px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.snd53Fab.snd53Off{ background:rgba(150,30,36,.82); border-color:rgba(255,140,140,.45); }
+#pause .snd53PauseBtn.snd53Off{ border-color:rgba(255,120,120,.55); color:#ffb4b4; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -91140,7 +91150,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.48';
+const DL_VER = '15.48b';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -96468,6 +96478,90 @@ function look52Graf(on){ LOOK52G.mats.forEach(m=>{ const u = m.userData.l52g; if
 (function look52Init(){
   if (/[?&]look52=0\b/.test(location.search)) return;
   look52Set(true);
+})();
+
+/* =========================================================================
+   SND53 -- Release 15.48b (urgent): "make it so you can turn off sounds".
+   Sound On / Off that you can always find and that STAYS the way you set it (saved: before, M muted only until the page reloaded,
+   and the only other switch hid in the touch-settings sheet):
+     - a SOUND ON / OFF tile on the pause screen (with a speaker icon), a speaker button in the corner of the main menu,
+       the M key, the touch-settings switch: all one setting, saved in localStorage ('dusk_line_sound_v1')
+     - off = the game's master volume at 0 AND the spoken chat lines (speech synthesis) silenced
+   API: SND53, snd53Set(off), snd53Toggle()
+   ========================================================================= */
+const SND53 = { off:false, vol:1, err:'', btn:null, fab:null, n:0 };
+const SND53_KEY = 'dusk_line_sound_v1';
+try {
+  const o = JSON.parse(localStorage.getItem(SND53_KEY) || 'null');
+  if (o && typeof o === 'object'){ SND53.off = !!o.off; const v = +o.vol; if (v === v && v >= 0 && v <= 1) SND53.vol = v; }
+} catch(e){}
+function snd53Save(){ try { localStorage.setItem(SND53_KEY, JSON.stringify({ off:SND53.off, vol:SND53.vol })); } catch(e){} }
+function snd53Apply(){
+  try { muted = SND53.off; } catch(e){}
+  try { if (typeof master !== 'undefined' && master && typeof AC !== 'undefined' && AC) master.gain.setTargetAtTime(SND53.off ? 0 : 0.9*SND53.vol, AC.currentTime, 0.03); } catch(e){ SND53.err = 'gain: ' + e.message; }
+  try { if (SND53.off && typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e){}
+  snd53Sync();
+}
+function snd53Set(off){ SND53.off = !!off; SND53.n++; snd53Save(); snd53Apply(); return SND53.off; }
+function snd53Toggle(){ return snd53Set(!SND53.off); }
+/* the labels + icons on every switch */
+const SND53_ON = '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>';
+const SND53_OFF = '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>';
+function snd53Sync(){
+  const lab = SND53.off ? 'Sound: Off' : 'Sound: On';
+  const b = SND53.btn;
+  if (b){
+    const s = b.querySelector('.snd53L'); if (s) s.textContent = lab;
+    const ic = b.querySelector('.pz43Ico'); if (ic) ic.innerHTML = SND53.off ? SND53_OFF : SND53_ON;
+    b.classList.toggle('snd53Off', SND53.off); b.setAttribute('aria-pressed', SND53.off ? 'true' : 'false');
+  }
+  const f = SND53.fab;
+  if (f){ f.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + (SND53.off ? SND53_OFF : SND53_ON) + '</svg><span>' + (SND53.off ? 'Sound off' : 'Sound on') + '</span>';
+    f.classList.toggle('snd53Off', SND53.off); f.setAttribute('aria-label', lab); }
+}
+(function snd53Init(){
+  // the M key + the touch-settings switch go through toggleMute: one saved setting
+  if (typeof toggleMute === 'function'){
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    toggleMute = function(){ return snd53Toggle(); };
+  }
+  // the audio graph is built on the first tap: put the saved volume on it at once
+  if (typeof initAudio === 'function'){
+    const ia = initAudio;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    initAudio = function(){ const r = ia.apply(this, arguments); try { snd53Apply(); } catch(e){} return r; };
+  }
+  // spoken chat lines: silent while the sound is off
+  try {
+    const S = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    if (S && typeof S.speak === 'function'){ const sp = S.speak.bind(S); S.speak = function(u){ if (SND53.off) return; return sp(u); }; }
+  } catch(e){ SND53.err = 'speech: ' + e.message; }
+  try { muted = SND53.off; } catch(e){}
+  try { if (typeof UI43_ICO !== 'undefined') UI43_ICO.snd53PauseBtn = SND53_ON; } catch(e){}
+  if (typeof addFrameHook === 'function') addFrameHook(function snd53Frame(){
+    // the pause tile (the pause grid files it with an icon), next to Weather & time
+    if (!SND53.btn){
+      const pz = document.getElementById('pause'), rs = document.getElementById('resumeBtn');
+      if (pz && rs){
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn ghost snd53PauseBtn'; b.id = 'snd53PauseBtn';
+        b.innerHTML = '<span class="snd53L">Sound: On</span>';
+        b.onclick = ()=>{ snd53Toggle(); try { if (typeof toast === 'function') toast(SND53.off ? 'Sound off' : 'Sound on', true); } catch(e){} };
+        const w = document.getElementById('wt48PauseBtn');
+        if (w && w.parentNode) w.parentNode.insertBefore(b, w); else pz.appendChild(b);
+        SND53.btn = b; snd53Sync();
+      }
+    }
+    // the speaker button in the corner of the main menu (shown on the menu only)
+    if (!SND53.fab && document.body){
+      const f = document.createElement('button');
+      f.type = 'button'; f.id = 'snd53Fab'; f.className = 'snd53Fab';
+      f.onclick = (e)=>{ e.stopPropagation(); snd53Toggle(); };
+      document.body.appendChild(f); SND53.fab = f; snd53Sync();
+    }
+    if (SND53.fab){ const show = typeof GAME !== 'undefined' && GAME === 'menu'; if (SND53.fab.classList.contains('on') !== show) SND53.fab.classList.toggle('on', show); }
+    if (SND53.btn && SND53.btn.querySelector('.pz43Ico') && !SND53.btn.__ico){ SND53.btn.__ico = true; snd53Sync(); }
+  });
 })();
 
 /*@@LATE@@*/
