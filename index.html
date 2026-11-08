@@ -91140,7 +91140,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.47';
+const DL_VER = '15.48';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -96232,6 +96232,243 @@ function ride51Apply(){
     RIDE51.n++;
   }
 }
+
+/* =========================================================================
+   LOOK52 -- Release 15.48: "i want the game to look like this (BMX Streets) keep the same map just better graphics but still
+   getting the same fps". Same map, same features, same FPS: every change here is a NUMBER the renderer already uses every frame
+   (light levels + colours, sky + haze, the photographic grade, the strength of the concrete's own weathering), so no draw call,
+   no texture, no shader program and no per-pixel work is added on any preset.
+     LIGHT     a stronger, cleaner (less orange) sun against a weaker, bluer sky fill: crisp sun / shade with real depth in the shade
+     SKY       a deeper blue zenith, a paler hazy horizon, a little more aerial haze, a few more (brighter) clouds
+     GRADE     filmic: more contrast in the mid-tones with a soft matte black, natural (less candy) colour, warm highlights + cool
+               shade, a wider vignette, a touch more glow and grain -- day, golden hour and night; the other maps get the same
+               direction, gentler
+     CONCRETE  the shaders' existing weathering turned up where it is already on: stains, water marks, cracks, joints, skid + tyre
+               marks, grime, wear in the ramps' transitions and on the copings (a term that is off on a material stays off)
+   look52Set(false) / ?look52=0 restores the old numbers (A/B). API: LOOK52, look52Set(on)
+   ========================================================================= */
+const LOOK52 = { on:false, err:'', saved:null, n:0 };
+function look52Set(on){
+  on = !!on;
+  try {
+    if (!LOOK52.saved) LOOK52.saved = look52Snap();
+    look52Restore(LOOK52.saved);
+    if (on) look52Apply();
+    LOOK52.on = on; LOOK52.n++;
+    if (typeof look52Graf === 'function' && typeof LOOK52G !== 'undefined') look52Graf(on);
+  } catch(e){ LOOK52.err = String(e && e.message || e); }
+  return LOOK52.on;
+}
+/* every number this module touches, as it was */
+function look52Snap(){
+  const S = { light:Object.assign({}, PARKS[0].light), sky:Object.assign({}, PARKS[0].sky), dayc:{}, grades:JSON.parse(JSON.stringify(W2_GRADES)), mats:[] };
+  Object.keys(DAYC).forEach(k=>{ S.dayc[k] = DAYC[k].clone(); });
+  look52Mats().forEach(([m])=>{ if (m && m.userData && m.userData.worldOpts) S.mats.push([m, Object.assign({}, m.userData.worldOpts)]); });
+  return S;
+}
+function look52Restore(S){
+  Object.assign(PARKS[0].light, S.light); Object.assign(PARKS[0].sky, S.sky);
+  Object.keys(S.dayc).forEach(k=> DAYC[k].copy(S.dayc[k]));
+  Object.keys(S.grades).forEach(map=> Object.keys(S.grades[map]).forEach(t=> Object.assign(W2_GRADES[map][t], S.grades[map][t])));
+  S.mats.forEach(([m, o])=>{ Object.assign(m.userData.worldOpts, o); m.needsUpdate = true; });
+}
+/* the world's own materials and how much more weathering each gets (only terms that are already on) */
+function look52Mats(){
+  const out = [], M = typeof MAT !== 'undefined' ? MAT : {}, P = typeof PK_MAT !== 'undefined' ? PK_MAT : {};
+  const add = (m, k)=>{ if (m) out.push([m, k]); };
+  add(M.ground,   { stain:1.6, crack:1.5, vary:1.5, skid:1.4 });
+  add(M.concrete, { grime:1.45, vary:1.6, stain:2.6, crack:1.9 });
+  add(M.ramp,     { grime:1.6, scuff:1.45, vary:1.55, joint:1.2, crack:2.0 });
+  add(M.bowl,     { scuff:1.45, vary:1.5, stain:2.3, joint:1.4 });
+  add(M.curb,     { grime:1.45, vary:1.5 });
+  add(M.sidewalk, { stain:1.55, crack:1.45, vary:1.4, skid:1.5 });
+  add(M.plaza,    { stain:1.55, crack:1.45, vary:1.4, skid:1.4 });
+  add(M.road,     { stain:1.55, skid:1.45, vary:1.3 });
+  add(M.wood,     { scuff:1.45, grime:1.7, vary:1.6 });
+  add(M.coping,   { rust:2.0 });
+  add(M.metal,    { rust:1.35 });
+  ['green', 'yellow', 'orange', 'red', 'blue', 'teal', 'pink', 'pad'].forEach(k=> add(P[k], { stain:1.7, vary:1.4 }));
+  add(P.asphalt,  { stain:1.5, skid:1.5, crack:1.6, vary:1.3 });
+  add(P.deckWood, { vary:1.5 });
+  return out;
+}
+function look52Apply(){
+  const key = (typeof MAP !== 'undefined' && MAP.key) || 'dusk';
+  /* ---- light + sky (Dusk City's day side; the golden-hour key and the night are tuned already) */
+  if (key === 'dusk'){
+    Object.assign(PARKS[0].light, { sun:4.8, hemi:0.60, rim:0.18, bounce:0.30, exposure:0.86 });
+    DAYC.sunCol.setHex(0xffe1b8); DAYC.skyCol.setHex(0x8aaced); DAYC.gndCol.setHex(0x86765f); DAYC.rimCol.setHex(0x9ab8ee);
+    DAYC.zenith.setHex(0x1b57c8); DAYC.horizon.setHex(0xc6d8ec); DAYC.fog.setHex(0xbccfe2);
+    // DAYC holds linear colours (C() converts): convert the hexes the same way
+    ['sunCol', 'skyCol', 'gndCol', 'rimCol', 'zenith', 'horizon', 'fog'].forEach(k=> look52Lin(DAYC[k]));
+    Object.assign(PARKS[0].sky, { haze:1.0, cover:0.565 });
+  }
+  /* ---- the grade */
+  const G = W2_GRADES;
+  if (G.dusk){
+    Object.assign(G.dusk.day,   { wb:[1.02, 1.00, 0.97], con:1.32, punch:1.04, sat:1.04, lo:[0.90, 0.96, 1.12], hi:[1.08, 1.02, 0.90], black:0.024, bloom:0.30, bt:[1.06, 1.00, 0.92], vig:0.36, grain:0.022 });
+    Object.assign(G.dusk.dusk,  { wb:[1.03, 1.00, 0.955], con:1.28, punch:1.05, sat:1.08, lo:[0.88, 0.95, 1.15], hi:[1.12, 1.00, 0.85], black:0.022, bloom:0.52, bt:[1.10, 0.95, 0.80], vig:0.36, grain:0.022 });
+    Object.assign(G.dusk.night, { wb:[0.98, 1.00, 1.03],  con:1.22, punch:1.05, sat:1.02, lo:[0.94, 0.99, 1.09], hi:[1.06, 1.00, 0.93], black:0.022, bloom:0.60, bt:[1.04, 0.98, 0.94], vig:0.36, grain:0.024 });
+  }
+  Object.keys(G).forEach(map=>{
+    if (map === 'dusk') return;
+    Object.keys(G[map]).forEach(t=>{
+      const g = G[map][t];
+      g.sat = 1 + (g.sat - 1)*0.55; g.con += 0.08; g.black += 0.010; g.vig += 0.12; g.grain += 0.006;
+    });
+  });
+  /* ---- concrete, asphalt, wood, steel: more of their own weathering (never switches a term on) */
+  look52Mats().forEach(([m, k])=>{
+    const o = m.userData && m.userData.worldOpts; if (!o) return;
+    let ch = false;
+    Object.keys(k).forEach(t=>{ if (o[t] > 0){ o[t] = +(o[t]*k[t]).toFixed(3); ch = true; } });
+    if (ch) m.needsUpdate = true;
+  });
+}
+/* sRGB hex -> the linear value C() would have made (the colour tables hold linear colours) */
+function look52Lin(c){ if (c && typeof c.convertSRGBToLinear === 'function') c.convertSRGBToLinear(); }
+/* ---------------------------------------------------------------- GRAFFITI (look52)
+   BMX Streets' concrete is covered in paint. One canvas atlas (2048 x 512: eight ORIGINAL pieces -- bubble letters, a chrome
+   piece, throw-ups, marker tags, two cartoon characters; invented words only) is painted by the concrete's OWN shader onto its
+   vertical faces (ramp sides, walls, ledges, bowl walls): the wall is cut into 3.4 x 1.75 m cells along its own direction and about
+   a third of them get a piece (a hash of the cell, the wall's offset and its direction: the same wall always shows the same art).
+   No geometry, no draw call: one texture read on those pixels, on the materials MAT.ramp / bowl / concrete (one shared program
+   variant); off with the lite shading (Low) like every other weathering term. */
+const LOOK52G = { tex:null, mats:[], err:'' };
+function look52GrafRng(seed){ let a = seed >>> 0; return ()=>{ a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0)/4294967296; }; }
+function look52GrafAtlas(){
+  if (LOOK52G.tex) return LOOK52G.tex;
+  const W = 2048, H = 512, TW = 512, TH = 256;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const FONT = px=> '900 ' + px + 'px "Arial Black", "Arial Rounded MT Bold", Impact, "Helvetica Neue", Arial, sans-serif';
+  const haze = (cx, cy, rx, ry, col, a)=>{ g.save(); g.globalAlpha = a; const gr = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry)); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.translate(cx, cy); g.scale(rx/Math.max(rx, ry), ry/Math.max(rx, ry)); g.beginPath(); g.arc(0, 0, Math.max(rx, ry), 0, Math.PI*2); g.fill(); g.restore(); };
+  const spray = (R, x0, y0, w, h, col, n)=>{ g.save(); g.fillStyle = col; for (let i = 0; i < n; i++){ const x = x0 + R()*w, y = y0 + R()*h, r = 0.6 + R()*1.6; g.globalAlpha = 0.25 + R()*0.45; g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); } g.restore(); };
+  /* bubble letters: 3D extrusion, a fat outline, a gradient fill, a highlight, drips */
+  const piece = (R, txt, cx, cy, px, o)=>{
+    g.save(); g.translate(cx, cy); g.rotate(o.rot || 0); g.transform(1, 0, o.skew || -0.12, 1, 0, 0);
+    g.font = FONT(px); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineCap = 'round';
+    const w = g.measureText(txt).width;
+    if (w > (o.maxW || 440)){ const k = (o.maxW || 440)/w; g.scale(k, k); }
+    for (let i = (o.depth || 9); i >= 1; i--){ g.fillStyle = o.ext; g.strokeStyle = o.ext; g.lineWidth = px*0.22; g.strokeText(txt, i*0.9, i*0.9); g.fillText(txt, i*0.9, i*0.9); }
+    g.strokeStyle = o.line; g.lineWidth = px*0.24; g.strokeText(txt, 0, 0);
+    const gr = g.createLinearGradient(0, -px*0.5, 0, px*0.5); o.fill.forEach((c, i)=> gr.addColorStop(i/(o.fill.length - 1), c));
+    g.fillStyle = gr; g.fillText(txt, 0, 0);
+    if (o.inner){ g.strokeStyle = o.inner; g.lineWidth = Math.max(2, px*0.035); g.strokeText(txt, 0, 0); }
+    g.globalAlpha = 0.75; g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = Math.max(2, px*0.03); g.strokeText(txt, -px*0.035, -px*0.04); g.globalAlpha = 1;
+    g.fillStyle = o.fill[o.fill.length - 1];
+    const nd = o.drips === undefined ? 5 : o.drips;
+    for (let i = 0; i < nd; i++){ const x = (R() - 0.5)*w*0.85, l = px*(0.15 + R()*0.45), r = px*(0.035 + R()*0.03);
+      g.fillRect(x - r, px*0.30, r*2, l); g.beginPath(); g.arc(x, px*0.30 + l, r*1.25, 0, Math.PI*2); g.fill(); }
+    g.restore();
+    return w;
+  };
+  const star = (x, y, r, col)=>{ g.save(); g.fillStyle = col; g.beginPath(); for (let i = 0; i < 8; i++){ const a = i*Math.PI/4, rr = i % 2 ? r*0.28 : r; g.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr); } g.closePath(); g.fill(); g.restore(); };
+  const tiles = [
+    (R, x, y)=>{ haze(x + 256, y + 128, 250, 110, 'rgba(255,240,250,0.9)', 0.30); piece(R, 'SEND IT', x + 256, y + 124, 118, { fill:['#ff4fb3', '#ff9a3c', '#ffd23f'], line:'#2b0f3a', ext:'#1fb6b0', inner:'#7a1d5c', rot:-0.05 }); spray(R, x, y, TW, TH, '#2b0f3a', 160); },
+    (R, x, y)=>{ haze(x + 256, y + 130, 240, 115, 'rgba(255,255,220,0.9)', 0.28); piece(R, 'DUSK', x + 250, y + 126, 176, { fill:['#fff36b', '#ffb21f', '#ff5a1f'], line:'#101014', ext:'#2d5bd8', inner:'#a02a00', rot:0.04, skew:-0.2 });
+      g.save(); g.strokeStyle = '#101014'; g.fillStyle = '#ff5a1f'; g.lineWidth = 8; g.beginPath(); g.moveTo(x + 40, y + 210); g.quadraticCurveTo(x + 120, y + 250, x + 200, y + 212); g.lineTo(x + 190, y + 196); g.lineTo(x + 228, y + 206); g.lineTo(x + 205, y + 236); g.stroke(); g.restore();
+      star(x + 452, y + 44, 26, '#ffffff'); star(x + 60, y + 52, 18, '#fff36b'); },
+    (R, x, y)=>{ // a crowned teal blob monster with one big eye
+      haze(x + 256, y + 132, 170, 120, 'rgba(220,255,250,0.9)', 0.30);
+      g.save(); g.translate(x + 256, y + 140);
+      g.fillStyle = '#121218'; g.beginPath(); g.ellipse(6, 8, 112, 98, 0, 0, Math.PI*2); g.fill();
+      const bg = g.createRadialGradient(-30, -40, 10, 0, 0, 110); bg.addColorStop(0, '#9ff5e2'); bg.addColorStop(0.6, '#2fc7b0'); bg.addColorStop(1, '#13806f');
+      g.fillStyle = bg; g.beginPath(); g.ellipse(0, 0, 100, 88, 0, 0, Math.PI*2); g.fill();
+      for (let i = 0; i < 5; i++){ g.beginPath(); g.ellipse(-70 + i*35, 78, 16, 26, 0, 0, Math.PI*2); g.fill(); }
+      g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(-8, -14, 42, 40, 0, 0, Math.PI*2); g.fill();
+      g.fillStyle = '#121218'; g.beginPath(); g.ellipse(2, -10, 18, 20, 0, 0, Math.PI*2); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(-4, -18, 6, 0, Math.PI*2); g.fill();
+      g.fillStyle = '#121218'; g.beginPath(); g.moveTo(-50, 40); g.quadraticCurveTo(0, 74, 54, 36); g.quadraticCurveTo(0, 52, -50, 40); g.fill();
+      g.fillStyle = '#ffffff'; for (let i = 0; i < 4; i++){ g.beginPath(); g.moveTo(-34 + i*22, 44 + i*1.5); g.lineTo(-24 + i*22, 58); g.lineTo(-14 + i*22, 45 + i*1.5); g.fill(); }
+      g.fillStyle = '#ffd23f'; g.strokeStyle = '#121218'; g.lineWidth = 6; g.beginPath(); g.moveTo(-46, -78); g.lineTo(-38, -122); g.lineTo(-16, -94); g.lineTo(0, -132); g.lineTo(16, -94); g.lineTo(38, -122); g.lineTo(46, -78); g.closePath(); g.fill(); g.stroke();
+      g.restore(); spray(R, x + 100, y + 20, 312, 220, '#13806f', 120); },
+    (R, x, y)=>{ haze(x + 256, y + 128, 245, 105, 'rgba(230,240,255,0.9)', 0.28); piece(R, 'RIDE', x + 256, y + 126, 172, { fill:['#ffffff', '#b9c3cf', '#eef2f6', '#8c96a3'], line:'#0c0c10', ext:'#d8232a', inner:'#3a3f48', rot:-0.03, skew:-0.16 });
+      star(x + 70, y + 60, 24, '#ffffff'); star(x + 440, y + 190, 20, '#ffffff'); spray(R, x, y, TW, TH, '#d8232a', 90); },
+    (R, x, y)=>{ haze(x + 256, y + 128, 240, 110, 'rgba(255,245,200,0.9)', 0.25); piece(R, 'BMX', x + 256, y + 128, 180, { fill:['#ff3b30', '#c4161c'], line:'#ffd23f', ext:'#111114', inner:'#5c0a0c', rot:0.06, skew:-0.08, drips:7 });
+      [[60, 50], [452, 60], [80, 210], [440, 200]].forEach(([a, b])=> star(x + a, y + b, 16, '#ffd23f')); },
+    (R, x, y)=>{ // marker + spray tags
+      const tag = (t, cx, cy, px, col, rot)=>{ g.save(); g.translate(cx, cy); g.rotate(rot); g.transform(1, 0, -0.35, 1, 0, 0); g.font = 'italic 700 ' + px + 'px "Brush Script MT", "Segoe Script", "Comic Sans MS", cursive, sans-serif';
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.strokeStyle = col; g.lineWidth = px*0.10; g.strokeText(t, 0, 0); g.fillStyle = col; g.fillText(t, 0, 0);
+        const w = g.measureText(t).width; g.lineWidth = px*0.07; g.lineCap = 'round'; g.beginPath(); g.moveTo(-w*0.5, px*0.45); g.quadraticCurveTo(0, px*0.7, w*0.6, px*0.30); g.stroke(); g.restore(); };
+      tag('KAI', x + 120, y + 70, 70, '#111116', -0.10); tag('ZEPH', x + 350, y + 64, 64, '#1d4fd8', 0.06); tag('MOX', x + 150, y + 180, 72, '#c4161c', 0.04);
+      tag('R2', x + 380, y + 176, 80, '#111116', -0.08); spray(R, x, y, TW, TH, '#111116', 120); },
+    (R, x, y)=>{ haze(x + 256, y + 128, 240, 110, 'rgba(255,255,255,0.9)', 0.22); piece(R, 'WOW', x + 256, y + 126, 184, { fill:['#ffffff', '#e9edf2'], line:'#111116', ext:'#7a3fe0', inner:'#7a3fe0', rot:-0.07, skew:-0.05, drips:8 }); spray(R, x, y, TW, TH, '#7a3fe0', 140); },
+    (R, x, y)=>{ // a purple drippy eyeball + a speech bubble
+      haze(x + 256, y + 128, 220, 120, 'rgba(240,225,255,0.9)', 0.28);
+      g.save(); g.translate(x + 200, y + 140);
+      g.fillStyle = '#111116'; g.beginPath(); g.arc(5, 6, 92, 0, Math.PI*2); g.fill();
+      const pg = g.createRadialGradient(-25, -30, 8, 0, 0, 92); pg.addColorStop(0, '#d7b4ff'); pg.addColorStop(0.65, '#8a4ae8'); pg.addColorStop(1, '#4f1fa0');
+      g.fillStyle = pg; g.beginPath(); g.arc(0, 0, 84, 0, Math.PI*2); g.fill();
+      for (let i = 0; i < 6; i++){ const dx = -60 + i*24, l = 20 + (i*37 % 40); g.fillRect(dx - 6, 50, 12, l + 20); g.beginPath(); g.arc(dx, 70 + l, 8, 0, Math.PI*2); g.fill(); }
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(-4, -6, 46, 0, Math.PI*2); g.fill(); g.fillStyle = '#1fb6b0'; g.beginPath(); g.arc(6, -2, 24, 0, Math.PI*2); g.fill();
+      g.fillStyle = '#111116'; g.beginPath(); g.arc(8, -2, 12, 0, Math.PI*2); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(1, -10, 6, 0, Math.PI*2); g.fill();
+      g.restore();
+      g.save(); g.fillStyle = '#ffffff'; g.strokeStyle = '#111116'; g.lineWidth = 6; g.beginPath(); g.ellipse(x + 390, y + 70, 80, 48, 0, 0, Math.PI*2); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(x + 330, y + 100); g.lineTo(x + 300, y + 130); g.lineTo(x + 350, y + 108); g.fill(); g.stroke();
+      g.font = FONT(54); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#111116'; g.fillText('HI!', x + 390, y + 72); g.restore();
+      spray(R, x + 80, y + 20, 360, 220, '#4f1fa0', 110); }
+  ];
+  tiles.forEach((fn, i)=>{
+    const x = (i % 4)*TW, y = Math.floor(i/4)*TH;
+    g.save(); g.beginPath(); g.rect(x + 2, y + 2, TW - 4, TH - 4); g.clip();
+    try { fn(look52GrafRng(0x51ed + i*977), x, y); } catch(e){ LOOK52G.err = 'tile ' + i + ': ' + e.message; }
+    g.restore();
+  });
+  const t = new T.CanvasTexture(cv);
+  t.anisotropy = 4; t.wrapS = t.wrapT = T.ClampToEdgeWrapping; t.generateMipmaps = true; t.minFilter = T.LinearMipmapLinearFilter;
+  LOOK52G.tex = t; LOOK52G.canvas = cv;
+  return t;
+}
+const LOOK52G_FRAG = `
+          // look52: graffiti on the vertical faces (an atlas of 8 original pieces; about a third of the 3.4 x 1.75 m cells of a wall)
+          if (uWGraf*uWLite > 0.0 && abs(vWNrm.y) < 0.28){
+            vec2 nH = normalize(vWNrm.xz + vec2(1e-5));
+            float gu = dot(vWPos.xz, vec2(nH.y, -nH.x));
+            float gv = (vWPos.y - 0.10) / 1.75;
+            float gd = floor(dot(vWPos.xz, nH)*0.5);
+            float ga0 = floor((atan(nH.y, nH.x) + 3.1416)*1.2732);
+            vec2 gc = vec2(floor(gu/3.4), floor(gv));
+            float gh = wHash(gc*vec2(1.0, 7.0) + vec2(gd*3.17 + ga0*11.3, gd*1.71 - ga0*5.9));
+            if (gh < 0.34 && gv > 0.0 && gv < 2.0){
+              float tile = floor(fract(gh*13.7)*8.0);
+              vec2 q = (vec2(fract(gu/3.4), fract(gv)) - 0.5)*1.08 + 0.5;
+              if (q.x > 0.0 && q.x < 1.0 && q.y > 0.0 && q.y < 1.0){
+                vec4 gt = texture2D(tWGraf, vec2((mod(tile, 4.0) + q.x)*0.25, (floor(tile*0.25) + q.y)*0.5));
+                float ga = gt.a * uWGraf * (0.80 + 0.20*wNoise(vWPos.xz*2.7 + vWPos.y*3.3));
+                diffuseColor.rgb = mix(diffuseColor.rgb, pow(gt.rgb, vec3(2.2)), ga);
+                wWear = max(wWear, ga*0.30);
+              }
+            }
+          }
+`;
+function look52GrafHook(m, k){
+  if (!m || !m.onBeforeCompile || m.userData.l52g) return;
+  const base = m.onBeforeCompile, u = m.userData.l52g = { value:k, k };
+  m.onBeforeCompile = function(sh, r){
+    base.call(this, sh, r);
+    if (sh.fragmentShader.indexOf('// rust blooms on steel') < 0) return;
+    sh.uniforms.tWGraf = { value:look52GrafAtlas() };
+    sh.uniforms.uWGraf = this.userData.l52g || u;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D tWGraf; uniform float uWGraf;')
+      .replace('// rust blooms on steel', LOOK52G_FRAG + '\n          // rust blooms on steel');
+  };
+  m.needsUpdate = true;
+  LOOK52G.mats.push(m);
+}
+function look52Graf(on){ LOOK52G.mats.forEach(m=>{ const u = m.userData.l52g; if (u) u.value = on ? u.k : 0; }); }
+(function look52GrafInit(){
+  try {
+    if (typeof MAT === 'undefined') return;
+    look52GrafHook(MAT.ramp, 0.92); look52GrafHook(MAT.bowl, 0.85); look52GrafHook(MAT.concrete, 0.95);
+    if (/[?&]look52=0\b/.test(location.search)) look52Graf(false);
+  } catch(e){ LOOK52G.err = String(e && e.message || e); }
+})();
+(function look52Init(){
+  if (/[?&]look52=0\b/.test(location.search)) return;
+  look52Set(true);
+})();
 
 /*@@LATE@@*/
 /* =========================================================================
