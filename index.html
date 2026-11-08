@@ -34335,17 +34335,45 @@ FLEET_EXTRA_BUILD.pd15road = pd15road;
       tapeArt ('stripe'|'logo'|'split'), ink, cups, plug, clampMat, lean leg (rider)
    Rig: the deck + head tube + rear wheel are the "frame" (tailwhip), the fork + bars + front wheel are the "front" (barspin).
    ========================================================================= */
+/* 15.43 (look46, "make the push scooters look way better"): tape art -- flat shapes printed on the grip tape (a lightning bolt, stars,
+   flames, chevrons). Designed in units of the tape's half width W (v across, u along the deck, same scale), centred on zc. */
+const PD46_ART = {
+  bolt:[ [[-3.5, -0.58], [-3.5, 0.70], [-0.7, 0.16], [-0.7, 0.86], [3.5, -0.58], [0.35, -0.16], [0.35, -0.90]] ],
+  chevron:[-2.6, -1.1, 0.4, 1.9].map(c=> [[c - 0.55, 0.82], [c + 0.05, 0.82], [c + 0.75, 0], [c + 0.05, -0.82], [c - 0.55, -0.82], [c + 0.15, 0]]),
+  stars:[[-2.3, 0.05, 0.80], [0.2, 0.42, 0.46], [1.55, -0.30, 0.50], [2.9, 0.30, 0.34]].map(([cu, cv, r])=>{ const p = []; for (let i = 0; i < 10; i++){ const a = i/10*Math.PI*2 + Math.PI/2, rr = i % 2 ? r*0.42 : r; p.push([cu + Math.sin(a)*rr, cv + Math.cos(a)*rr]); } return p; }),
+  flames:(()=>{ const out = [], N = 4;
+    for (let k = 0; k < N; k++){ const v0 = -0.80 + k*0.40 + 0.20, L = 3.2 + 1.4*Math.sin(k*2.1 + 0.6), p = [];
+      p.push([-3.8, v0 - 0.20]);
+      for (let i = 0; i <= 8; i++){ const t = i/8; p.push([-3.8 + L*t, v0 - 0.20*(1 - t) + 0.16*Math.sin(t*Math.PI*2.2 + k)*(1 - t)]); }
+      for (let i = 8; i >= 0; i--){ const t = i/8; p.push([-3.8 + L*t*0.82, v0 + 0.20*(1 - t) + 0.16*Math.sin(t*Math.PI*2.2 + k + 0.8)*(1 - t)]); }
+      out.push(p); }
+    return out; })()
+};
+function pd15TapeArt(B, mat, kind, zc, W, y, uMax){
+  const list = PD46_ART[kind]; if (!list) return;
+  list.forEach(pts=>{
+    const sh = new T.Shape(); sh.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) sh.lineTo(pts[i][0], pts[i][1]); sh.closePath();
+    const g = new T.ShapeGeometry(sh, 6), p = g.attributes.position, k = Math.min(1, uMax/4);
+    for (let i = 0; i < p.count; i++){ const u = p.getX(i)*k, v = p.getY(i); p.setXYZ(i, v*W, y, zc + u*W); }
+    g.deleteAttribute('uv'); g.deleteAttribute('normal');
+    const n = new Float32Array(p.count*3); for (let i = 0; i < p.count; i++) n[i*3 + 1] = 1;
+    g.setAttribute('normal', new T.BufferAttribute(n, 3));
+    pd15Put(B, mat, g);
+  });
+}
 /* pro scooter wheel: a thick rounded PU tyre on a machined metal core (n spokes, or a hollow core with a ring of cut-outs), sealed bearings,
    a spacer and the axle bolt. o: w (PU half width), pu (core radius / R), holes */
 function pd15ScootWheel(R, n, o){
   o = o || {};
-  const g = new T.Group(), B = pd15Bk(), w = o.w || Math.max(0.0125, R*0.235), core = R*(o.pu || 0.62);
+  const g = new T.Group(), B = pd15Bk(), w = o.w || Math.max(0.0125, R*0.235), core = R*(o.pu || 0.64);
   // urethane: rounded profile, a little crown, wrapping a lip over the core
   const pr = []; for (let i = 0; i <= 12; i++){ const a = -Math.PI/2*0.98 + Math.PI*0.98*i/12, c = Math.cos(a), s = Math.sin(a);
     pr.push([core + (R - core)*Math.pow(Math.max(0, c), 0.50), w*Math.sign(s)*Math.pow(Math.abs(s), 0.75)]); }
   pd15Put(B, BM.tire, pd15Lathe(pr, 36));
   // core: outer ring with a lip, then spokes or a hollow-core disc with cut-outs
   pd15Put(B, BM.rim, pd15Lathe([[core + 0.0015, w*0.96], [core - 0.0080, w*0.93], [core - 0.0092, w*0.58], [core - 0.0092, -w*0.58], [core - 0.0080, -w*0.93], [core + 0.0015, -w*0.96]], 32));
+  // 15.43: a bright machined chamfer round both faces of the core (the shine a CNC core has where the colour is cut away)
+  [-1, 1].forEach(s=> pd15Put(B, PD15.silver, pd15Lathe([[core + 0.0012, s*w*0.975], [core - 0.0030, s*w*0.985]], 32)));
   const hubR = 0.0175, rin = core - 0.0088;
   if (n){
     for (let i = 0; i < n; i++){
@@ -34374,14 +34402,17 @@ function pd15scoot(P){
   const ha = fdeg(P.ha || 82), d = [-Math.cos(ha), Math.sin(ha)], nn = [Math.sin(ha), Math.cos(ha)];
   const Ax = [fz, R], crownL = 0.112, C = fup(Ax, d, crownL), H1 = fup(C, d, P.ht || 0.15), hz = (C[0] + H1[0])/2;
   const X3 = (p, x)=> [x || 0, p[1], p[0]];
-  const pegs = !!P.pegs, pw = Math.max(0.0130, R*0.245);                       // PU half width
+  const pegs = !!P.pegs, pw = Math.max(0.0145, R*0.268);                       // PU half width (15.43: fatter 29-32 mm urethane)
 
   /* ---------------- deck: a boxed extrusion with rounded edges, grip tape + graphic on top, wordmark on the sides, rails underneath */
-  const dzD = rz + R + 0.010, dz1 = C[0] - 0.040, dL = dz1 - dzD, hd = (P.deckH || 0.044)/2, dyc = dyT - hd;
+  const dzD = rz + R + 0.010, dz1 = C[0] - 0.040, dL = dz1 - dzD, hd = (P.deckH || 0.050)/2*1.06, dyc = dyT - hd;                                  // 15.43: a deeper boxed deck
   const shape = P.deck || 'flat';
   const wf = t=> shape === 'taper' ? (t < 0.55 ? 1 : 1 - (t - 0.55)*0.30) : shape === 'flare' ? (t < 0.18 ? 1.12 - t*0.66 : 1) : shape === 'box' ? 1 : (t < 0.04 ? 0.96 + t : 1);
   const deck = pd15Sweep([[0, dyc, dzD], [0, dyc, dz1]], t=> [dw/2*wf(t), hd, 5.5], { r:24, n:14, cap:true, ref:_pdX });
   pd15Put(B, M, deck.geo);
+  // 15.43: a dark machined chamfer along the bottom edge of both sides (the deck reads as a thick boxed CNC deck, not a plank)
+  [-1, 1].forEach(s=>{ const pts = []; for (let i = 0; i <= 12; i++){ const t = 0.03 + 0.94*i/12; pts.push([s*(dw/2*wf(t) - 0.0010), dyc - hd*0.62, dzD + dL*t]); }
+    pd15Put(B, K, pd15Sweep(pts, [0.0016, hd*0.20, 4], { r:8, n:12, cap:true }).geo); });
   [-1, 1].forEach(s=> pd15Put(B, M, pd15Sweep([[s*dw*0.26, dyc - hd + 0.002, dzD + 0.02], [s*dw*0.26, dyc - hd + 0.002, dz1 - 0.03]], [0.0065, 0.0055, 3], { r:10, n:2, cap:true }).geo));
   // grip tape (inset from the edges) + its printed graphic
   const tapeY = dyT + 0.0007, tz0 = dzD + 0.012, tz1 = dz1 - 0.020;
@@ -34395,7 +34426,11 @@ function pd15scoot(P){
     };
     if (art === 'stripe' || art === 'split'){ [-1, 1].forEach(s=> pd15Put(B, tapeMat, pd15Box(0.006, 0.0006, (tz1 - tz0)*0.86, [s*(dw/2 - 0.012), tapeY + 0.0004, (tz0 + tz1)/2]))); }
     if (art === 'split') pd15Put(B, tapeMat, pd15Box(dw*0.62, 0.0006, 0.010, [0, tapeY + 0.0004, tz0 + (tz1 - tz0)*0.70]));
-    if (P.logo) flat(0.14, 0.62, dw*0.32, P.logo);
+    if (P.art && PD46_ART[P.art]){                                                   // 15.43: printed tape art, the brand small at the tail
+      const W = dw/2*0.92 - 0.0045 - 0.0045, zc = tz0 + (tz1 - tz0)*(P.logo ? 0.60 : 0.5), uMax = (tz1 - tz0)*(P.logo ? 0.38 : 0.46)/W;
+      pd15TapeArt(B, tapeMat, P.art, zc, W, tapeY + 0.0004, uMax);
+      if (P.logo) flat(0.02, 0.19, dw*0.24, P.logo);
+    } else if (P.logo) flat(0.14, 0.62, dw*0.32, P.logo);
   }
   if (P.logo) pd15TubeWord(B, P.ink ? pd15Ink(P.ink) : A, deck, P.logo, P.logoStyle || 'heavy', 0.48, hd*1.15, dL*0.52, { at:0.0 });
 
@@ -34406,7 +34441,7 @@ function pd15scoot(P){
   const nh = P.neck === undefined ? 1 : P.neck, holes = [];
   for (let i = 0; i < nh; i++){ const t = (i + 0.7)/(nh + 0.4); holes.push({ c:[dz1 - 0.070 + t*0.064, dyc + 0.012 + t*0.036], r:0.0118 - nh*0.0014 }); }
   pd15Put(B, M, pd15Plate(gp, 0, 0.030, holes, 0.003, 8));
-  const htR = P.htR || 0.0285;
+  const htR = P.htR || 0.0315;                                                  // 15.43: a fatter integrated head tube
   const HT = pd15Sweep([fup(C, d, -0.002), fup(H1, d, 0.001)], [[0, htR*1.03, htR*1.03], [0.12, htR, htR], [0.88, htR, htR], [1, htR*1.03, htR*1.03]], { r:22, n:4, cap:true });
   pd15Put(B, M, HT.geo);
   const cupM = P.cups ? pd15Ink(P.cups) : K;
@@ -34436,7 +34471,7 @@ function pd15scoot(P){
   if (pegs) [-1, 1].forEach(s=> pegGeo(s*(hw + 0.006), [rz, R]).forEach(q=> pd15Put(B, K, q)));
 
   /* ---------------- front: box-section fork, steerer, compression clamp + top cap, bars, grips, bar ends */
-  const fkR = P.forkW || 0.0128, fxw = pw + 0.0095, FK = FX.fork, cT = crownL - 0.016, cH = 0.024;
+  const fkR = (P.forkW || 0.0128)*1.10, fxw = pw + 0.0095, FK = FX.fork, cT = crownL - 0.016, cH = 0.024;
   [-1, 1].forEach(sd=>{
     pd15Put(F, FK, pd15Sweep([X3(fup(Ax, d, 0.002), sd*fxw), X3(fup(Ax, d, cT*0.55), sd*fxw), X3(fup(Ax, d, cT - cH*0.4), sd*fxw)], [[0, fkR*0.72, fkR*1.12, 2.8], [0.55, fkR*0.78, fkR*1.32, 2.8], [1, fkR*0.86, fkR*1.46, 2.8]], { r:14, n:6, cap:'a' }).geo);
     pd15Put(F, FK, pd15Disc(fkR*1.08, fkR*1.5, sd*fxw, 14).translate(0, Ax[1], Ax[0]));                                     // rounded dropout
@@ -34446,23 +34481,23 @@ function pd15scoot(P){
   pd15Put(F, K, pd15Disc(0.0064, fxw*2 + fkR*1.5, 0, 8).translate(0, Ax[1], Ax[0]));
   if (pegs) [-1, 1].forEach(s=> pegGeo(s*(fxw + fkR*0.75 + 0.006), Ax).forEach(q=> pd15Put(F, K, q)));
   const barTop = fup(C, d, ((P.bar || 0.98) - C[1])/d[1]), os = P.bars === 'oversize' || P.clamp === 'scs' || P.clamp === 'hic';
-  const bR = os ? 0.0175 : 0.0160, xR = os ? 0.0150 : 0.0138;                   // down tube (34.9 / 31.8 mm) + crossbar
+  const bR = os ? 0.0192 : 0.0178, xR = os ? 0.0166 : 0.0154;                   // down tube + crossbar (15.43: oversized 38 / 35 mm)
   pd15Put(F, K, pd15Sweep([X3(fup(C, d, 0.002), 0), X3(fup(H1, d, 0.020), 0)], 0.0142, { r:12, n:2 }).geo);              // steerer
   pd15Put(F, N, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(barTop, d, -0.004), 0)], bR, { r:16, n:2 }).geo);           // bar down tube
   const cl = P.clamp || 'scs', CM = P.clampMat ? pd15Ink(P.clampMat) : A, bolt = (p, x, back)=> pd15Put(F, PD15.silver, pd15Disc(0.0046, 0.010, 0, 6).rotateY(Math.PI/2).translate(x, p[1], p[0] - back));
   let capT;
   if (cl === 'scs'){                                                           // big one-piece clamp block round the bars: a slot + 4 bolts at the back
-    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.096), 0)], [[0, 0.0322, 0.0322, 2.4], [0.5, 0.0310, 0.0310, 2.4], [1, 0.0322, 0.0322, 2.4]], { r:22, n:4, cap:true }).geo);
-    [0.034, 0.074].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> bolt(p, sd*0.0115, 0.0335)); });
-    pd15Put(F, K, pd15Box(0.006, 0.070, 0.006, [0, fup(H1, d, 0.054)[1], fup(H1, d, 0.054)[0] - 0.0325], Math.atan2(d[0], d[1])));
+    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.096), 0)], [[0, 0.0352, 0.0352, 2.4], [0.5, 0.0338, 0.0338, 2.4], [1, 0.0352, 0.0352, 2.4]], { r:22, n:4, cap:true }).geo);
+    [0.034, 0.074].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> bolt(p, sd*0.0125, 0.0365)); });
+    pd15Put(F, K, pd15Box(0.006, 0.070, 0.006, [0, fup(H1, d, 0.054)[1], fup(H1, d, 0.054)[0] - 0.0355], Math.atan2(d[0], d[1])));
     capT = 0.096;
   } else if (cl === '4bolt'){                                                  // double clamp, two bolt rows each side
-    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.078), 0)], [[0, 0.0275, 0.0275, 2.4], [1, 0.0268, 0.0268, 2.4]], { r:20, n:2, cap:true }).geo);
-    [0.028, 0.062].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> bolt(p, sd*0.0125, 0.0285)); });
+    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.078), 0)], [[0, 0.0298, 0.0298, 2.4], [1, 0.0290, 0.0290, 2.4]], { r:20, n:2, cap:true }).geo);
+    [0.028, 0.062].forEach(s=>{ const p = fup(H1, d, s); [-1, 1].forEach(sd=> bolt(p, sd*0.0135, 0.0308)); });
     capT = 0.078;
   } else {                                                                     // IHC / HIC: a slimmer double-bolt clamp ring (+ a shim for oversized bars)
-    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.058), 0)], cl === 'hic' ? 0.0238 : 0.0226, { r:20, n:2, cap:true }).geo);
-    [0.024, 0.044].forEach(s=> bolt(fup(H1, d, s), 0, 0.024));
+    pd15Put(F, CM, pd15Sweep([X3(fup(H1, d, 0.012), 0), X3(fup(H1, d, 0.058), 0)], cl === 'hic' ? 0.0258 : 0.0246, { r:20, n:2, cap:true }).geo);
+    [0.024, 0.044].forEach(s=> bolt(fup(H1, d, s), 0, 0.026));
     if (cl === 'hic') pd15Put(F, K, pd15Sweep([X3(fup(H1, d, 0.058), 0), X3(fup(H1, d, 0.070), 0)], bR + 0.0022, { r:16, n:2, cap:true }).geo);
     capT = cl === 'hic' ? 0.070 : 0.058;
   }
@@ -34475,15 +34510,15 @@ function pd15scoot(P){
     pd15Put(F, N, pd15Sweep([[-gIn - 0.004, gy, gz], [-gIn*0.48, by + up*0.45, bz - back*0.30], [0, by, bz], [gIn*0.48, by + up*0.45, bz - back*0.30], [gIn + 0.004, gy, gz]], xR, { r:14, n:20, ref:_pdY }).geo);
     [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[sd*gIn, gy, gz], [sd*(bw + 0.004), gy, gz]], xR, { r:14, n:2, ref:_pdY }).geo));
   } else pd15Put(F, N, pd15Sweep([[-(bw + 0.004), by, bz], [bw + 0.004, by, bz]], xR, { r:14, n:2, ref:_pdY }).geo);
-  if (P.bars === 'y') [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.20, bz + 0.016], [sd*0.035, by - 0.075, bz + 0.004], [sd*bw*0.40, by + up*0.6, bz]], 0.0128, { r:12, n:12 }).geo));
-  else [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.092, bz + 0.010], [sd*0.082, by - 0.002, bz - 0.001]], [0.0085, 0.0100], { r:10, n:2 }).geo));          // T gussets
+  if (P.bars === 'y') [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.20, bz + 0.016], [sd*0.035, by - 0.075, bz + 0.004], [sd*bw*0.40, by + up*0.6, bz]], 0.0140, { r:12, n:12 }).geo));
+  else [-1, 1].forEach(sd=> pd15Put(F, N, pd15Sweep([[0, by - 0.100, bz + 0.010], [sd*0.090, by - 0.002, bz - 0.001]], [0.0098, 0.0114], { r:10, n:2 }).geo));          // T gussets
   pd15Put(F, N, pd15Sweep([[0, by - 0.006, bz], [0, by + 0.010, bz]], bR*1.04, { r:16, n:1, cap:true }).geo);                                                         // T junction weld
   const gx = bw - 0.075;
   [-1, 1].forEach(sd=>{
     const a = [sd*(bw - 0.155), gy, gz], b = [sd*(bw + 0.004), gy, gz];
-    pd15Put(F, FX.grip, pd15Sweep([a, b], t=>{ const r = 0.0186 + 0.0010*Math.cos(t*Math.PI*2*9); return [r, r]; }, { r:14, n:18, ref:_pdY, cap:'b' }).geo);   // long pro grips
-    pd15Put(F, FX.grip, pd15Sweep([[a[0] - sd*0.004, a[1], a[2]], [a[0] + sd*0.005, a[1], a[2]]], 0.0250, { r:16, n:2, cap:true, ref:_pdY }).geo);              // flange
-    pd15Put(F, P.plug ? pd15Ink(P.plug) : A, pd15Sweep([[sd*(bw + 0.004), gy, gz], [sd*(bw + 0.014), gy, gz]], 0.0176, { r:14, n:2, cap:true, ref:_pdY }).geo); // bar-end plugs
+    pd15Put(F, FX.grip, pd15Sweep([a, b], t=>{ const r = 0.0200 + 0.0011*Math.cos(t*Math.PI*2*9); return [r, r]; }, { r:14, n:18, ref:_pdY, cap:'b' }).geo);   // long pro grips
+    pd15Put(F, FX.grip, pd15Sweep([[a[0] - sd*0.004, a[1], a[2]], [a[0] + sd*0.005, a[1], a[2]]], 0.0272, { r:16, n:2, cap:true, ref:_pdY }).geo);              // flange
+    pd15Put(F, P.plug ? pd15Ink(P.plug) : A, pd15Sweep([[sd*(bw + 0.004), gy, gz], [sd*(bw + 0.014), gy, gz]], 0.0190, { r:14, n:2, cap:true, ref:_pdY }).geo); // bar-end plugs
   });
 
   /* ---------------- wheels */
@@ -34609,17 +34644,17 @@ FLEET_EXTRA_BUILD.pd15scoot = pd15scoot;
 
   /* ---------------- pro push scooters (Kickform / Deckhand): per-row decks, necks, clamps, bars and wheel cores */
   const SC = { logo:true, ht:0.15, ha:82 };
-  R('erawan', 'pd15scoot', Object.assign({}, SC, { dl:0.54, dw:0.122, bar:1.00, bw:0.58, wr:0.055, ha:82, ht:0.15, spokes:6, clamp:'scs', bars:'tbar', brake:'flex', deck:'flat', neck:2, tape:'acc', tapeArt:'logo', ink:'acc', cups:'acc' }),
+  R('erawan', 'pd15scoot', Object.assign({}, SC, { dl:0.54, dw:0.122, bar:1.00, bw:0.58, wr:0.055, ha:82, ht:0.15, spokes:6, clamp:'scs', bars:'tbar', brake:'flex', deck:'flat', neck:2, tape:'acc', tapeArt:'logo', art:'bolt', ink:'acc', cups:'acc' }),
     { col:0x7b3fe4, acc:0xffffff, liv:{ fork:0x1a1c20, rim:0x7b3fe4, tire:0xf2f3f5, grip:0xffffff, bars:0x1a1c20 } });
-  R('prospect', 'pd15scoot', Object.assign({}, SC, { dl:0.50, dw:0.128, bar:1.02, bw:0.60, wr:0.0575, ha:81, ht:0.17, spokes:0, clamp:'hic', bars:'oversize', brake:'flex', deck:'flare', neck:1, pegs:true, tape:'acc', tapeArt:'split', ink:'acc', logoStyle:'stencil', cups:'black' }),
+  R('prospect', 'pd15scoot', Object.assign({}, SC, { dl:0.50, dw:0.128, bar:1.02, bw:0.60, wr:0.0575, ha:81, ht:0.17, spokes:0, clamp:'hic', bars:'oversize', brake:'flex', deck:'flare', neck:1, pegs:true, tape:'acc', tapeArt:'split', art:'chevron', ink:'acc', logoStyle:'stencil', cups:'black' }),
     { col:0x25262a, acc:0xf2c200, liv:{ fork:0xf2c200, rim:0x1a1b1e, tire:0xf2c200, grip:0x1a1b1e, bars:0xf2c200 } });
-  R('invictus', 'pd15scoot', Object.assign({}, SC, { dl:0.55, dw:0.120, bar:1.03, bw:0.60, wr:0.060, ha:83, ht:0.19, spokes:5, clamp:'ihc', bars:'tbar', brake:'alloy', deck:'taper', forkW:0.0135, neck:3, tape:'white', tapeArt:'stripe', ink:'acc', logoStyle:'cond', cups:'acc', clampMat:'black' }),
+  R('invictus', 'pd15scoot', Object.assign({}, SC, { dl:0.55, dw:0.120, bar:1.03, bw:0.60, wr:0.060, ha:83, ht:0.19, spokes:5, clamp:'ihc', bars:'tbar', brake:'alloy', deck:'taper', forkW:0.0135, neck:3, tape:'white', tapeArt:'stripe', art:'stars', ink:'acc', logoStyle:'cond', cups:'acc', clampMat:'black' }),
     { col:0xcdd2d8, acc:0xe8412c, liv:{ fork:0xe8412c, rim:0xcdd2d8, tire:0x17181b, grip:0xe8412c, bars:0xcdd2d8 } });
-  R('prodigyx', 'pd15scoot', Object.assign({}, SC, { dl:0.485, dw:0.118, bar:0.97, bw:0.52, wr:0.050, ha:81, ht:0.13, spokes:3, clamp:'scs', bars:'y', brake:'none', deck:'box', neck:2, tape:'white', tapeArt:'logo', ink:'white', logoStyle:'cond', cups:'white', clampMat:'white' }),
+  R('prodigyx', 'pd15scoot', Object.assign({}, SC, { dl:0.485, dw:0.118, bar:0.97, bw:0.52, wr:0.050, ha:81, ht:0.13, spokes:3, clamp:'scs', bars:'y', brake:'none', deck:'box', neck:2, tape:'white', tapeArt:'logo', art:'bolt', ink:'white', logoStyle:'cond', cups:'white', clampMat:'white' }),
     { col:0x0f5ac8, acc:0xffffff, liv:{ fork:0xffffff, rim:0xffffff, tire:0x101114, grip:0xffffff, bars:0x0f5ac8 } });
-  R('vx9', 'pd15scoot', Object.assign({}, SC, { dl:0.57, dw:0.130, bar:1.00, bw:0.62, wr:0.055, ha:80, ht:0.16, spokes:0, clamp:'4bolt', bars:'oversize', brake:'flex', deck:'flat', deckH:0.044, neck:0, pegs:true, tape:'acc', tapeArt:'stripe', ink:'black', logoStyle:'heavy', cups:'black', clampMat:'black', plug:'black' }),
+  R('vx9', 'pd15scoot', Object.assign({}, SC, { dl:0.57, dw:0.130, bar:1.00, bw:0.62, wr:0.055, ha:80, ht:0.16, spokes:0, clamp:'4bolt', bars:'oversize', brake:'flex', deck:'flat', deckH:0.044, neck:0, pegs:true, tape:'acc', tapeArt:'stripe', art:'flames', ink:'black', logoStyle:'heavy', cups:'black', clampMat:'black', plug:'black' }),
     { col:0xc41f2a, acc:0x15161a, liv:{ fork:0x15161a, rim:0x15161a, tire:0x15161a, grip:0x15161a, bars:0xc41f2a } });
-  R('maven', 'pd15scoot', Object.assign({}, SC, { dl:0.505, dw:0.125, bar:1.00, bw:0.55, wr:0.0525, ha:82, ht:0.15, spokes:8, clamp:'ihc', bars:'swept', brake:'alloy', deck:'flare', forkW:0.0125, neck:1, tape:'white', tapeArt:'split', ink:'white', logoStyle:'wide', cups:'white' }),
+  R('maven', 'pd15scoot', Object.assign({}, SC, { dl:0.505, dw:0.125, bar:1.00, bw:0.55, wr:0.0525, ha:82, ht:0.15, spokes:8, clamp:'ihc', bars:'swept', brake:'alloy', deck:'flare', forkW:0.0125, neck:1, tape:'white', tapeArt:'split', art:'stars', ink:'white', logoStyle:'wide', cups:'white' }),
     { col:0x1b8f6a, acc:0xf2f3f5, liv:{ fork:0xf2f3f5, rim:0xf2f3f5, tire:0x17181b, grip:0xf2f3f5, bars:0x17181b } });
 })();
 
@@ -90519,7 +90554,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.42';
+const DL_VER = '15.43';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -91213,6 +91248,218 @@ function r45WorldOpen(on){
     if (show === b.classList.contains('hide')) b.classList.toggle('hide', !show);
     if (!show && R45.world && R45.world.classList.contains('on')) r45WorldOpen(false);
   });
+})();
+
+/* =========================================================================
+   LOOK46 -- Release 15.43: "make the bikes look way better and the push scooters".
+     FACTORY PAINT JOBS   every sport bicycle and pro scooter leaves the factory with a real paint job instead of one flat colour:
+                          fades, two-tones with a pinstripe, racing stripes, raw carbon weave, and finishes to match (pearl, candy,
+                          metallic, chrome, oil slick, raw brushed alloy, satin, matte). Built on the customiser's own pattern /
+                          finish shader (fleet_cust.js), so it costs nothing new. It is the bike's "Factory" look: a quick paint or
+                          your own frame colour gives a plain coat, and any pattern / finish you pick in Customise wins.
+   (The scooter models themselves were rebuilt in place: pedal15_scoot.js -- fatter bars, clamp, head tube and grips, a deeper
+    boxed deck with a machined chamfer, fatter urethane with machined cores, printed tape art: bolt / stars / flames / chevrons.)
+   ?look46=0 turns the paint jobs off. API: LOOK46, L46_FAC
+   ========================================================================= */
+const LOOK46 = { on: !/[?&]look46=0\b/.test(location.search), n:0, err:'' };
+/* id -> [pattern (CUST_PATTERNS index, 0 none), pattern colour (null = the accent), scale x10, finish (FLEET_FINISH index), bar finish, rim finish]
+   patterns: 2 racing, 4 fade (bottom up), 12 carbon weave, 13 fade back (tail forward), 14 two-tone + pinstripe
+   finishes: 1 gloss, 2 satin, 3 matte, 4 metallic, 5 chrome, 6 raw, 7 glitter, 8 oil slick, 9 pearl, 10 candy */
+const L46_FAC = {
+  // downhill / freeride / enduro / trail
+  v10:[12, 0x2a2d33, 4, 2],        demo:[2, 0xd6212c, 20, 1],       tues:[4, 0x0d1424, 10, 4],       sender:[12, 0x33373e, 4, 3],
+  spindrift:[13, 0xd0207a, 10, 9], clash:[14, 0x0b2e36, 10, 1],     slash:[4, 0x0e141c, 10, 4],      meta:[14, 0x121418, 10, 1],
+  megatower:[13, 0x0f2f3a, 10, 9], capra:[0, 0, 0, 6],              stumpy:[0, 0, 0, 2],             bronson:[14, 0x14224d, 10, 1],
+  yeti:[4, 0x23272e, 10, 4],
+  // e-MTB
+  levo:[13, 0x1a1e24, 10, 4],      vala:[14, 0x1f6f6c, 10, 2],      rail:[0, 0, 0, 4],               kenevo:[0, 0, 0, 10],
+  rise:[4, 0x2a6e5c, 10, 9],       moterra:[14, 0x15171a, 10, 1],   trancex:[0, 0, 0, 4],            allmtn:[2, 0xff7a00, 20, 1],
+  // hardtails
+  scale:[4, 0xc8e81a, 10, 1],      ticket:[0, 0, 0, 6],             mukluk:[0, 0, 0, 4],             ehtmtb:[13, 0x14171b, 10, 2],
+  // BMX
+  soundwave:[0, 0, 0, 4],          gateway:[0, 0, 0, 1, 5],         envy:[0, 0, 0, 10],              williams:[0, 0, 0, 3],
+  malum:[0, 0, 0, 8],              legion:[14, 0x111111, 10, 1],    bigripper:[2, 0x111111, 20, 1],  flightpro:[4, 0x15171a, 10, 1],
+  performer:[0, 0, 0, 5],          conquest24:[0, 0, 0, 9],         flatland:[4, 0x5b1e8c, 10, 9],   streetsweeper:[0, 0, 0, 3],
+  p3:[13, 0x0b3f8c, 10, 4],        californian:[2, 0xf2c200, 20, 1], haromaster:[0, 0, 0, 5],       fittrl:[0, 0, 0, 2],
+  typeo:[0, 0, 0, 4],              lacey:[0, 0, 0, 4],              atf:[0, 0, 0, 9],                quadangle:[0, 0, 0, 5],
+  killabee:[2, 0xffcc1a, 20, 1],   speedseries:[0, 0, 0, 1],        horizon18:[0, 0, 0, 9],
+  // road
+  tarmac:[4, 0x1a0508, 10, 10],    v4rs:[2, 0x0aa99f, 20, 1],       aeroad:[12, 0x2a2d33, 4, 2],     s5:[12, 0x2c2f36, 4, 1],
+  madone:[13, 0x3a0a14, 10, 9],    dogma:[13, 0x6a1050, 10, 4],     oltre:[0, 0, 0, 10],
+  // pro push scooters (deck / neck / head tube take the paint; bars + rims keep their colours, some get chrome bars)
+  erawan:[0, 0, 0, 9],             prospect:[0, 0, 0, 3],           invictus:[0, 0, 0, 6, 5],        prodigyx:[0, 0, 0, 8],
+  vx9:[0, 0, 0, 10],               maven:[0, 0, 0, 9]
+};
+/* the row's factory paint job onto a look (fleetLook's result), unless the player chose their own paint, pattern or finish */
+function l46Factory(L, ci, cust){
+  if (!LOOK46.on || !L) return L;
+  const d = L46_FAC[L.id]; if (!d) return L;
+  if ((ci | 0) > 0) return L;                                         // a quick paint is a plain new coat
+  const c = (cust && cust.c) || {};
+  if (c.fr !== undefined) return L;                                   // your own frame colour: your own paint
+  if (d[0] && !(cust && cust.p)) L.pat = { id:d[0], col:d[1] === null || d[1] === undefined ? L.acc : d[1], sc:(d[2] || 10)/10 };
+  if (d[3] && !(cust && cust.f)) L.fin = d[3];
+  if (d[4] && !(cust && cust.fb)) L.fb = d[4];
+  if (d[5] && !(cust && cust.fm)) L.fm = d[5];
+  LOOK46.n++;
+  return L;
+}
+(function look46Hooks(){
+  if (!LOOK46.on || typeof fleetLook !== 'function') return;
+  const fl0 = fleetLook;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  fleetLook = function(id, ci, cust){
+    const L = fl0.apply(this, arguments);
+    try { l46Factory(L, ci, cust); } catch(e){ if (!LOOK46.err) LOOK46.err = 'fac: ' + e.message; }
+    return L;
+  };
+  // the ride on the rig was painted before this module loaded: paint it again with its factory job
+  try { if (typeof FLEET_CUR !== 'undefined' && FLEET_CUR && typeof fleetPaint === 'function' && typeof kitIndex !== 'undefined') fleetPaint(FLEET_CUR, kitIndex); }
+  catch(e){ if (!LOOK46.err) LOOK46.err = 'repaint: ' + e.message; }
+})();
+
+/* =========================================================================
+   PARK46 -- Release 15.43: "make the bike parks so much better". Every bike park's jump areas get the look of a real one, built
+   with the chunk they stream in with (forest14's soups + materials: no new shader programs, no per-frame work):
+     START DECKS   each dirt-jump line and slopestyle start hill gets a plank deck with fascia boards and side rails, a start gate
+                   (two tall posts, a crossbar, the line's own banner across it) and two tall flags in the line's colour
+     LINE FLAGS    a pair of flags in the line's colour beside every lip (green / blue / black / red: you see which line is which)
+     HAY BALES     along both sides of each line's run-out
+     PUMP TRACKS   red / yellow course flags round both sides of every berm
+   (+ forest14_world.js: the dirt of every jump, berm, start hill and line is a lighter, warmer packed dirt -- the faces in the
+    shade no longer go black.)
+   ?park46=0 turns it off. API: PARK46 (counts)
+   ========================================================================= */
+const PARK46 = { on: !/[?&]park46=0\b/.test(location.search), starts:0, lips:0, bales:0, pumps:0, err:'' };
+/* '#rrggbb' -> linear rgb (vertex colours multiply the material's linear colour) */
+function p46Col(hex, k){
+  const s = String(hex || '#2a6fd6').replace('#', ''), n = parseInt(s.length === 3 ? s.replace(/(.)/g, '$1$1') : s, 16) || 0x2a6fd6;
+  const f = v=> Math.pow(((n >> v) & 255)/255, 2.2)*(k || 1);
+  return [f(16), f(8), f(0)];
+}
+const P46_STRAW = [0.66, 0.50, 0.21], P46_POLE = [0.86, 0.86, 0.84];
+function p46Dj(f){ if (typeof FR === 'undefined' || !FR.dj) return null; for (const d of FR.dj) if (d.id === f.t && d.line === f.line) return d; return null; }
+/* a flag on a pole: base (x, gy, z), pole height h, flag w x hh streaming back along yaw */
+function p46Flag(pole, cloth, x, gy, z, yaw, h, w, hh, col){
+  frCyl(pole, x, gy - 0.25, z, x, gy + h, z, 0.035, 6, P46_POLE);
+  const bx = Math.sin(yaw), bz = Math.cos(yaw);
+  frBox(cloth, x - bx*(w/2 + 0.03), gy + h - hh - 0.04, z - bz*(w/2 + 0.03), yaw, 0.018, hh, w, col);
+}
+/* the start hill of a dirt-jump / slopestyle line: deck, fascia, rails, gate + banner, flags */
+function p46Start(ch, f){
+  const d = p46Dj(f); if (!d) return;
+  const M = frMats(), D = d.D, O = d.O, rx = D[1], rz = -D[0];
+  const P = (u, v)=> [O[0] + D[0]*u + rx*v, O[1] + D[1]*u + rz*v];
+  const hs = (d.def && d.def.hs) || f.hs || 3, l0 = P(-9, 0), top = landY(l0[0], l0[1]) + hs, yaw = Math.atan2(D[0], D[1]);
+  const big = !!(d.def && d.def.slope), col = p46Col(d.col || (d.def && d.def.col), 1);
+  const wood = frSoup(), dark = frSoup(), paint = frSoup(), signs = frSoup(), signs3 = frSoup();
+  // the plank deck (its top 4 cm over the dirt deck it covers), fascia boards round it
+  const uA = -9.25, uB = -4.45, um = (uA + uB)/2, L = uB - uA, c0 = P(um, 0);
+  frBox(wood, c0[0], top - 0.03, c0[1], yaw, 4.1, 0.075, L);
+  for (const sg of [-1, 1]){ const q = P(um, sg*2.07); frBox(dark, q[0], top - 0.55, q[1], yaw, 0.05, 0.6, L + 0.1); }
+  { const q = P(uB + 0.03, 0); frBox(dark, q[0], top - 0.42, q[1], yaw, 4.2, 0.46, 0.05); }
+  // side rails: posts + two rails each side (the back stays open: the access ramp comes up from behind)
+  for (const sg of [-1, 1]){
+    for (const u of [uA + 0.1, um, uB - 0.35]){ const q = P(u, sg*1.98); frBox(dark, q[0], top - 0.05, q[1], yaw, 0.09, 1.1, 0.09); }
+    for (const y of [0.52, 1.0]){ const q = P(um - 0.12, sg*1.98); frBox(wood, q[0], top + y, q[1], yaw, 0.07, 0.07, L - 0.4); }
+  }
+  // the start gate: two tall posts at the edge of the roll-in, a crossbar, the line's banner
+  const gh = big ? 4.4 : 3.5, gw = 2.45;
+  for (const sg of [-1, 1]){ const q = P(uB + 0.15, sg*gw); frBox(dark, q[0], landY(q[0], q[1]) - 0.3, q[1], yaw, 0.17, top + gh - landY(q[0], q[1]) + 0.3, 0.17); }
+  { const q = P(uB + 0.15, 0); frBox(dark, q[0], top + gh - 0.16, q[1], yaw, gw*2 + 0.3, 0.16, 0.16);
+    try { const cell = frDJCell(d); frSignQuad(cell.atl === 3 ? signs3 : signs, cell, q[0], top + gh - 0.62, q[1], yaw, big ? 3.6 : 3.0, big ? 0.9 : 0.75, true); } catch(e){} }
+  // two tall flags at the back corners of the deck, in the line's colour (seen from across the park)
+  for (const sg of [-1, 1]){ const q = P(uA + 0.15, sg*2.2); p46Flag(dark, paint, q[0], top, q[1], yaw, big ? 6.2 : 5.0, 1.0, 0.62, col); }
+  frMesh(ch, wood, M.wood, true, true); frMesh(ch, dark, M.woodDark, true, true); frMesh(ch, paint, M.white, true, true);
+  frMesh(ch, signs, M.signs2, false, false); frMesh(ch, signs3, M.signs3 || M.signs2, false, false);
+  PARK46.starts++;
+}
+/* flags beside the lip of a dirt-jump / slopestyle jump, in its line's colour */
+function p46Lip(ch, f){
+  const d = f.dj; if (!d || !f.O || !f.D) return;
+  const M = frMats(), col = p46Col(d.col || (d.def && d.def.col), 1), pole = frSoup(), cloth = frSoup();
+  const D = f.D, rx = D[1], rz = -D[0], u = f.uLip, yaw = Math.atan2(D[0], D[1]), off = (f.wt || 1.5) + 1.1;
+  for (const sg of [-1, 1]){
+    const x = f.O[0] + D[0]*u + rx*sg*off, z = f.O[1] + D[1]*u + rz*sg*off;
+    let gy = landY(x, z); try { if (f.abs){ const lx = sg*off, lz = u - (f.u0 + f.J.uB)/2; gy = Math.max(gy, f.abs(x, z, lx, lz)); } } catch(e){}
+    p46Flag(pole, cloth, x, gy, z, yaw, 1.85, 0.52, 0.34, col);
+  }
+  frMesh(ch, pole, M.woodDark, true, true); frMesh(ch, cloth, M.white, true, true);
+  PARK46.lips++;
+}
+/* hay bales along both sides of a line's run-out (the band feature of the line) */
+function p46Bales(ch, f){
+  const d = p46Dj(f); if (!d || !d.endP) return;
+  const M = frMats(), S0 = frSoup(), D = d.D, rx = D[1], rz = -D[0], yaw = Math.atan2(D[0], D[1]), R = frRng('p46bale' + d.key);
+  for (const sg of [-1, 1]) for (let k = 0; k < 3; k++){
+    const u = d.uEnd - 4 + k*1.25, v = sg*(3.3 + R()*0.15), x = d.O[0] + D[0]*u + rx*v, z = d.O[1] + D[1]*u + rz*v, k2 = 0.9 + R()*0.18;
+    frBox(S0, x, landY(x, z) - 0.03, z, yaw + (R() - 0.5)*0.12, 0.55, 0.46, 1.15, [P46_STRAW[0]*k2, P46_STRAW[1]*k2, P46_STRAW[2]*k2]);
+  }
+  frMesh(ch, S0, M.white, true, true);
+  PARK46.bales++;
+}
+/* pump tracks: course flags round both sides of the berms (where the loop bends) */
+function p46Pump(ch, f){
+  if (typeof FR === 'undefined' || !FR.pumps) return;
+  let t = null; for (const p of FR.pumps) if (p.id === f.t){ t = p; break; }
+  if (!t || f.s0 === undefined) return;
+  const M = frMats(), pole = frSoup(), cloth = frSoup(), hw = t.hw || 1.3;
+  const RED = p46Col('#d63a2a'), YEL = p46Col('#f2c21b');
+  let n = 0;
+  for (let s = f.s0 + 2; s < Math.min(f.s1, t.len - 1); s += 6.5){
+    const q = frAt(t, s), k = Math.abs(t.k[q.i] || 0);
+    if (k < 1/24) continue;
+    const r0 = q.tz, r1 = -q.tx;                                       // across the heading (both sides get a flag)
+    for (const sg of [-1, 1]){
+      const off = hw + 2.6, x = q.x + r0*sg*off, z = q.z + r1*sg*off, gy = typeof frSurfY === 'function' ? frSurfY(x, z) : landY(x, z);
+      p46Flag(pole, cloth, x, gy, z, q.yaw + Math.PI, 1.6, 0.48, 0.32, (n++ % 2) ? RED : YEL);
+    }
+  }
+  frMesh(ch, pole, M.woodDark, true, true); frMesh(ch, cloth, M.white, true, true);
+  PARK46.pumps++;
+}
+/* the bike parks' dirt (jumps, start hills, pump tracks, the lines and their pads): lighter + warmer than the trails' while it builds */
+const P46_DIRT_K = [1.30, 1.25, 1.14];
+let P46_DIRT0 = null;
+function p46Bright(on){
+  if (typeof FR_DIRT_COL === 'undefined') return;
+  if (!P46_DIRT0) P46_DIRT0 = FR_DIRT_COL.map(c=> c.slice());
+  FR_DIRT_COL.forEach((c, i)=>{ for (let k = 0; k < 3; k++) c[k] = P46_DIRT0[i][k]*(on ? P46_DIRT_K[k] : 1); });
+  window.P46K = on ? P46_DIRT_K : null;
+}
+/* the Big and Pro dirt-jump lines of the bike parks get wooden lips (the kicker face built in planks + plywood sides, the same
+   shape: the physics is untouched) -- the hardest lines read as pro lines from across the park. Set when a park's lines are
+   planned (PK23_DJ is a const further down the file: touching it from here at load time would throw) */
+(function park46Lips(){
+  if (!PARK46.on || typeof frPlanDJLinesG !== 'function') return;
+  const g0 = frPlanDJLinesG;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  frPlanDJLinesG = function*(spec){
+    try {
+      if (spec && /^pk23dj-/.test(spec.id || '')) for (const L of spec.lines || []){
+        if (L && (L.name === 'Big' || L.name === 'Pro') && Array.isArray(L.jumps)) L.jumps.forEach(j=>{ if (Array.isArray(j) && !j[4]) j[4] = 'wkick'; });
+      }
+    } catch(e){ if (!PARK46.err) PARK46.err = 'lips: ' + e.message; }
+    return yield* g0.apply(this, arguments);
+  };
+})();
+(function park46Hooks(){
+  if (!PARK46.on || typeof frBuildFeat !== 'function') return;
+  const b0 = frBuildFeat;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  frBuildFeat = function(ch, f){
+    const park = f && (f.kind === 'start' || (f.kind === 'jump' && f.dj) || f.kind === 'pump' || (f.kind === 'band' && (f.pad || f.line !== undefined)));
+    let r;
+    if (park) p46Bright(true);
+    try { r = b0.apply(this, arguments); } finally { if (park) p46Bright(false); }
+    try {
+      if (f.kind === 'start') p46Start(ch, f);
+      else if (f.kind === 'jump' && f.dj) p46Lip(ch, f);
+      else if (f.kind === 'band' && !f.pad && f.line !== undefined && f.t) p46Bales(ch, f);
+      else if (f.kind === 'pump') p46Pump(ch, f);
+    } catch(e){ if (!PARK46.err) PARK46.err = (f && f.kind) + ': ' + e.message; }
+    return r;
+  };
 })();
 
 /*@@LATE@@*/
@@ -94430,7 +94677,7 @@ function frBuildFeat(ch, f){
         const lx = -f.bw + i*2*f.bw/na, x = f.x + lx*c + lz*s, z = f.z - lx*s + lz*c;
         S0.p.push(x, landY(x, z) + lift, z); S0.n.push(0, 1, 0); S0.u.push(x*0.21, z*0.21);
         const edge = f.pad ? Math.min(1, Math.min(i, na - i, j, n - j)/2) : (i === 0 || i === na ? 0 : 1);
-        const k = (0.82 + 0.18*edge)*(0.9 + R()*0.2)*(f.pad ? 1.12 : 1); S0.c.push(0.26*k, 0.18*k, 0.11*k);
+        const k = (0.82 + 0.18*edge)*(0.9 + R()*0.2)*(f.pad ? 1.12 : 1), bk = window.P46K || null; S0.c.push(0.26*k*(bk ? bk[0] : 1), 0.18*k*(bk ? bk[1] : 1), 0.11*k*(bk ? bk[2] : 1));   // park46: lighter park dirt
         if (i && j){ const a = (j - 1)*(na + 1) + (i - 1); S0.i.push(a, a + na + 1, a + 1, a + 1, a + na + 1, a + na + 2); }
       }
     }
