@@ -37623,6 +37623,69 @@ function rm37Detail(C){
 }
 
 /* =========================================================================
+   SCOOT47 rows -- Release 15.44: "add more pre built push scooters". Eight more pro stunt scooters, each its own build on the
+   pd15scoot builder (deck shape / width / length, neck, clamp, bar style / height / width, wheel size + core, brake, pegs, tape
+   art, inks) with a factory paint job (look46.js L46_FAC). Fixed prices outside the shop's ranking (registered with cool60's
+   price list, like moto31's rows), so no old price moves. The wordmark is DUSK LINE (no real logos). Right before the fleet core.
+   ========================================================================= */
+const SCOOT47 = { ids:{}, rows:[] };
+(function scoot47Rows(){
+  const has = id=> FLEET.some(v=> v.id === id);
+  const SC = { logo:'DUSK LINE', ht:0.15, ha:82 };
+  const row = (id, no, name, brand, model, m, p, col, acc, liv, desc, price)=> ({ id, no, name, brand, model, cat:'scooter', kind:'Push scooter', cls:'pscooter',
+    b:'pd15scoot', p:Object.assign({}, SC, p), col, acc, liv, m, desc, price });
+  const rows = [
+    row('tilttheory', 'A31', 'Tilt Theory', 'Tilt', 'Theory', [1.00, 1.01, 1.00, 1.03],
+      { dl:0.53, dw:0.135, deck:'box', deckH:0.054, bar:1.01, bw:0.62, bars:'oversize', clamp:'hic', wr:0.060, spokes:0, brake:'flex', neck:2, pegs:true,
+        tape:'acc', tapeArt:'stripe', art:'chevron', ink:'acc', logoStyle:'stencil', cups:'acc', clampMat:'black' },
+      0x1b1c20, 0xe8412c, { fork:0x1b1c20, rim:0xe8412c, tire:0x17181b, grip:0xe8412c, bars:0x1b1c20 },
+      'Wide boxed street deck, oversized bars and 120 mm hollow-core wheels. Built for rails, ledges and big gaps.', 1450),
+    row('apexpro', 'A32', 'Apex Pro', 'Apex', 'Pro', [1.02, 1.00, 1.04, 1.02],
+      { dl:0.50, dw:0.120, deck:'flare', bar:0.97, bw:0.56, bars:'tbar', clamp:'scs', wr:0.055, spokes:6, brake:'flex', neck:1,
+        tape:'white', tapeArt:'logo', art:'stars', ink:'white', logoStyle:'wide', cups:'white' },
+      0x26b7b0, 0xf4f6f8, { fork:0xf4f6f8, rim:0xf4f6f8, tire:0xf4f6f8, grip:0xf4f6f8, bars:0x16181c },
+      'Short and light park scooter: a flared deck, a classic T-bar and white 110 mm wheels. Spins fast, whips faster.', 1100),
+    row('droneaeon', 'A33', 'Drone Aeon 3', 'Drone', 'Aeon 3', [1.00, 1.02, 0.99, 1.02],
+      { dl:0.54, dw:0.125, deck:'flare', bar:1.04, bw:0.60, bars:'tbar', clamp:'ihc', wr:0.0575, spokes:8, brake:'alloy', neck:3,
+        tape:'acc', tapeArt:'split', art:'bolt', ink:'acc', logoStyle:'heavy', cups:'acc' },
+      0x1d2c52, 0xff7a1a, { fork:0xff7a1a, rim:0x1d2c52, tire:0x17181b, grip:0xff7a1a, bars:0x1d2c52 },
+      'Tall bars, a long flared deck and 115 mm 8-spoke wheels: a big rider\'s scooter that stays calm on big airs.', 1300),
+    row('chubbymelon', 'A34', 'Chubby Melon', 'Chubby', 'Melon', [0.98, 1.00, 0.97, 1.05],
+      { dl:0.55, dw:0.150, deck:'box', deckH:0.056, bar:1.00, bw:0.64, bars:'oversize', clamp:'4bolt', wr:0.0625, spokes:0, brake:'none', neck:0, pegs:true, forkW:0.0145,
+        tape:'acc', tapeArt:'stripe', art:'flames', ink:'acc', logoStyle:'heavy', cups:'black', clampMat:'black' },
+      0xff5f8a, 0x2bd36a, { fork:0x2bd36a, rim:0x2bd36a, tire:0x17181b, grip:0x2bd36a, bars:0x16181c },
+      'The fat one: a 6-inch box deck, 125 mm wheels and no brake. Lands everything, grinds everything, looks like a melon.', 1700),
+    row('northblade', 'A35', 'North Switchblade', 'North', 'Switchblade', [1.03, 1.03, 0.98, 1.00],
+      { dl:0.58, dw:0.122, deck:'taper', bar:1.02, bw:0.58, bars:'swept', clamp:'4bolt', wr:0.060, spokes:5, brake:'alloy', neck:2, forkW:0.0135,
+        tape:'white', tapeArt:'logo', art:'chevron', ink:'ink', logoStyle:'cond', cups:'black', clampMat:'black' },
+      0xeef0f2, 0x16181c, { fork:0x16181c, rim:0x16181c, tire:0x17181b, grip:0x16181c, bars:0x16181c },
+      'Long tapered deck, gently swept bars and a 4-bolt clamp. Fast in a straight line, smooth through the bowl.', 1250),
+    row('bluntprodigy', 'A36', 'Blunt Prodigy S9', 'Blunt', 'Prodigy S9', [1.00, 0.99, 1.02, 1.01],
+      { dl:0.51, dw:0.120, deck:'flat', bar:0.98, bw:0.56, bars:'tbar', clamp:'ihc', wr:0.055, spokes:6, brake:'flex', neck:1,
+        tape:'acc', tapeArt:'logo', art:'bolt', ink:'acc', logoStyle:'heavy', cups:'acc' },
+      0x2a6fd6, 0xffd23f, { fork:0xffd23f, rim:0x2a6fd6, tire:0xffd23f, grip:0xffd23f, bars:0x16181c },
+      'The do-everything starter pro scooter: flat deck, T-bar, IHC clamp and yellow wheels. Easy to learn whips on.', 650),
+    row('gritelite', 'A37', 'Grit Elite', 'Grit', 'Elite', [1.01, 1.02, 1.00, 1.03],
+      { dl:0.52, dw:0.128, deck:'box', bar:1.00, bw:0.60, bars:'y', clamp:'scs', wr:0.060, spokes:5, brake:'flex', neck:2,
+        tape:'acc', tapeArt:'split', art:'stars', ink:'acc', logoStyle:'stencil', cups:'acc', clampMat:'acc' },
+      0x16181c, 0xd4a52a, { fork:0xd4a52a, rim:0xd4a52a, tire:0x17181b, grip:0x16181c, bars:0xd4a52a },
+      'Black and gold: a boxed deck, Y-bars and a gold SCS clamp. The show-off scooter that rides as good as it looks.', 1900),
+    row('districttitled', 'A38', 'District Titled', 'District', 'Titled', [1.00, 1.00, 1.01, 1.04],
+      { dl:0.53, dw:0.124, deck:'taper', bar:1.00, bw:0.60, bars:'oversize', clamp:'hic', wr:0.060, spokes:0, brake:'flex', neck:3, pegs:true,
+        tape:'white', tapeArt:'stripe', art:'flames', ink:'white', logoStyle:'wide', cups:'white' },
+      0x7a3fe0, 0x18d4f0, { fork:0x18d4f0, rim:0x18d4f0, tire:0xf4f6f8, grip:0x18d4f0, bars:0x16181c },
+      'Purple and ice-blue street-park hybrid: tapered deck, oversized bars, HIC, pegs. Tailwhips for days.', 1500)
+  ];
+  let at = -1; FLEET.forEach((v, i)=>{ if (v.cat === 'scooter' && v.tab !== 'customs') at = i; });
+  rows.forEach(r=>{
+    if (has(r.id)) return;
+    FLEET.splice(at < 0 ? FLEET.length : ++at, 0, r);
+    SCOOT47.ids[r.id] = 1; SCOOT47.rows.push(r.id);
+    if (typeof COOL60 !== 'undefined' && COOL60 && COOL60.ids){ COOL60.ids[r.id] = 1; COOL60.price[r.id] = r.price; }     // a fixed price, outside the shop's ranking
+  });
+})();
+
+/* =========================================================================
    FLEET CORE -- turns the FLEET table into the game's vehicles.
      fleetInit()          replaces VEHICLES / VEH_LOOK / VEH_MODE / DRIVES / KITS with the 60 vehicles + 30 colours
      fleetApply(kind)     what applyVehicle() now does (the old rigs are gone): build lazily, mount on the rig, paint
@@ -77552,8 +77615,10 @@ function ride25PartsPhys(){
   if (typeof VEH === 'undefined' || !VEH || !VEH._hb || typeof FLEET_CUR === 'undefined') return;   // only on the per-apply record (never the shared one)
   const fx = ride25PartsFx(FLEET_CUR); if (!fx) return;
   const B = VEH._hb;
-  B.steer *= fx.steer; B.grip *= fx.grip; B.top *= fx.top; if (B.eTop) B.eTop *= fx.top; B.hop *= fx.hop;
-  VEH.steer = B.steer; VEH.hop = B.hop;
+  B.steer *= fx.steer; B.grip *= fx.grip; B.top *= fx.top; if (B.eTop) B.eTop *= fx.top;
+  // 15.44: the hop lives on the record itself (hndBuild's _hb has no hop: B.hop *= .. made it NaN = no hop with any part fitted)
+  VEH.hop = (VEH.hop > 0 ? VEH.hop : 1)*fx.hop; if (B.hop !== undefined) B.hop = VEH.hop;
+  VEH.steer = B.steer;
   B.__g0 = B.grip; RIDE25.fx = fx;
 }
 /* off-road grip: knobby tyres bite on grass / dirt / gravel / snow, slicks slide (the base grip handling13 reads each step) */
@@ -90554,7 +90619,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.43';
+const DL_VER = '15.44';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -91288,7 +91353,10 @@ const L46_FAC = {
   madone:[13, 0x3a0a14, 10, 9],    dogma:[13, 0x6a1050, 10, 4],     oltre:[0, 0, 0, 10],
   // pro push scooters (deck / neck / head tube take the paint; bars + rims keep their colours, some get chrome bars)
   erawan:[0, 0, 0, 9],             prospect:[0, 0, 0, 3],           invictus:[0, 0, 0, 6, 5],        prodigyx:[0, 0, 0, 8],
-  vx9:[0, 0, 0, 10],               maven:[0, 0, 0, 9]
+  vx9:[0, 0, 0, 10],               maven:[0, 0, 0, 9],
+  // 15.44 (scoot47_rows.js): the eight new pro scooters
+  tilttheory:[0, 0, 0, 3],         apexpro:[0, 0, 0, 9],            droneaeon:[13, 0x0a1022, 10, 4], chubbymelon:[0, 0, 0, 10],
+  northblade:[0, 0, 0, 1],         bluntprodigy:[0, 0, 0, 4],       gritelite:[0, 0, 0, 1, 4],       districttitled:[0, 0, 0, 7]
 };
 /* the row's factory paint job onto a look (fleetLook's result), unless the player chose their own paint, pattern or finish */
 function l46Factory(L, ci, cust){
@@ -91458,6 +91526,169 @@ function p46Bright(on){
       else if (f.kind === 'band' && !f.pad && f.line !== undefined && f.t) p46Bales(ch, f);
       else if (f.kind === 'pump') p46Pump(ch, f);
     } catch(e){ if (!PARK46.err) PARK46.err = (f && f.kind) + ': ' + e.message; }
+    return r;
+  };
+})();
+
+/* =========================================================================
+   WARM47 -- Release 15.44: "make the indoor parks have lights inside, make them feel nice and warm". Every indoor bike park
+   (the three indoor39 halls + the Mega Stunt Island hall):
+     LIGHTS THAT LIGHT   the hall's ceiling panels feed the lamp field (lampfield.js: real per-pixel light through the materials'
+                         own BRDF, no new THREE lights = no shader recompiles): the 7 nearest to where the camera looks pour warm
+                         pools of light onto the floor, the ramps, the rider -- day and night
+     WARM INSIDE         under the roof the sun drops away (it was shining straight through the roof) and the sky light turns to
+                         a warm indoor glow; it eases in and out as you ride through the door (sun / rim / hemi are reset by the
+                         day-night code every frame, so this only ever scales this frame's values)
+     FIXTURES            warm glowing diffusers under every ceiling panel and strings of warm festoon bulbs across each hall, on
+                         a material that shares the city's window-glow program (W2M.glow's onBeforeCompile): no new program
+   ?warm47=0 turns it off. API: WARM47 (state: w = how far inside, cur = the hall)
+   ========================================================================= */
+const WARM47 = { on: !/[?&]warm47=0\b/.test(location.search), w:0, cur:null, halls:{}, built:0, slots:0, mat:null, err:'' };
+const W47_COL = C(0xffb469), W47_SKY = C(0xffd3a1), W47_GND = C(0x8c5a34);
+/* a hall as the lights see it: { id, lamps:[[x, y, z]...], F (floor), inside(x, y, z), strings:[...] } */
+function w47Defs(){
+  const out = [];
+  if (typeof IND39 !== 'undefined' && IND39.halls) for (const H of IND39.halls){
+    if (H.F === undefined) continue;
+    let d = WARM47.halls[H.id];
+    if (!d || d.F !== H.F){
+      const lamps = [], WH = typeof IND39_WH === 'number' ? IND39_WH : 9;
+      for (let u = -24; u <= 24; u += 12) for (const v of [-13, 0, 13]){ const q = ind39W(H, u, v); lamps.push([q[0], H.F + WH - 0.62, q[1]]); }
+      d = WARM47.halls[H.id] = { id:H.id, kind:'ind39', H, F:H.F, lamps, rot:H.th || 0,
+        P:(u, v)=> ind39W(H, u, v), uLen:28, vs:[-17.5, -6.5, 6.5, 17.5], sy:H.F + 7.45, sag:0.6,
+        inside:(x, y, z)=> Math.abs(x - H.x) < H.ax && Math.abs(z - H.z) < H.az && y < H.F + WH + 0.3 && y > H.F - 3 };
+    }
+    out.push(d);
+  }
+  if (typeof ISL33 !== 'undefined' && ISL33.hall){
+    const H = ISL33.hall;
+    let d = WARM47.halls.isl33;
+    if (!d || d.F !== H.floor){
+      const lamps = [];
+      for (let a = -24; a <= 24; a += 12) for (const b of [-14, 0, 14]) lamps.push([H.x + a, H.h - 0.68, H.z + b]);
+      d = WARM47.halls.isl33 = { id:'isl33', kind:'isl33', H, F:H.floor, lamps, rot:0,
+        P:(u, v)=> [H.x + u, H.z + v], uLen:30, vs:[-21, -7, 7, 21], sy:H.floor + 8.1, sag:0.6,
+        inside:(x, y, z)=> Math.abs(x - H.x) < H.w && Math.abs(z - H.z) < H.d && y < H.floor + H.h && y > H.floor - 3 };
+    }
+    out.push(d);
+  }
+  return out;
+}
+/* the warm glow material: the city's window-glow program (emission x vertex colour), at a fixed brightness */
+function w47Mat(){
+  if (WARM47.mat) return WARM47.mat;
+  const W = (typeof W2M !== 'undefined') ? W2M : null;
+  if (W && !W.glow && typeof w2Init === 'function'){ try { w2Init(); } catch(e){} }
+  const obc = W && W.glow ? W.glow.onBeforeCompile : null;
+  const m = S({ color:C(0x0c0d10), vertexColors:true, roughness:0.45, metalness:0.0, emissive:C(0xffffff), emissiveIntensity:2.6 });
+  if (obc){ m.onBeforeCompile = obc; m.needsUpdate = true; } else patchWorldShading(m, {});
+  WARM47.mat = m;
+  return m;
+}
+/* the fixtures of one hall: a warm diffuser under every ceiling panel + festoon strings (bulbs + a dark wire) */
+function w47Fixtures(d){
+  const S0 = isl33Soup(), rot = d.rot;
+  for (const L of d.lamps) isl33Box(S0, L[0], L[1] - 0.02, L[2], 4.6, 0.05, 1.0, rot, 0xffd590);
+  for (const v of d.vs){
+    const anchors = []; for (let u = -d.uLen; u <= d.uLen + 1e-6; u += 14) anchors.push(u);
+    for (let a = 0; a + 1 < anchors.length; a++){
+      const u0 = anchors[a], u1 = anchors[a + 1], n = Math.round((u1 - u0)/1.1);
+      let prev = null;
+      for (let k = 0; k <= n; k++){
+        const t = k/n, u = u0 + (u1 - u0)*t, y = d.sy - d.sag*4*t*(1 - t), q = d.P(u, v);
+        if (prev){ const mu = (u + prev[0])/2, my = (y + prev[1])/2, mq = d.P(mu, v); isl33Box(S0, mq[0], my - 0.008, mq[1], (u1 - u0)/n, 0.016, 0.016, rot, 0x1c1a18); }
+        if (k > 0 && k < n) isl33Box(S0, q[0], y - 0.17, q[1], 0.11, 0.15, 0.11, rot, (k % 5 === 2) ? 0xffe0a8 : 0xffcf86);
+        prev = [u, y];
+      }
+    }
+  }
+  const m = isl33SoupMesh(S0, w47Mat());
+  m.castShadow = false; m.receiveShadow = false; m.userData.noMerge = true;
+  return m;
+}
+function* w47Gen(ch){
+  if (!WARM47.on) return;
+  for (const d of w47Defs()){
+    const H = d.H, ci = d.kind === 'isl33' ? ISL33.ci : H.ci, cj = d.kind === 'isl33' ? ISL33.cj : H.cj;
+    if (ci !== ch.i || cj !== ch.j) continue;
+    try { ch.addMesh(w47Fixtures(d)); WARM47.built++; } catch(e){ if (!WARM47.err) WARM47.err = 'fixtures: ' + e.message; }
+    yield;
+  }
+}
+/* how far inside: eased toward 1 while the camera is in a hall */
+function w47Frame(dt){
+  if (!WARM47.on || typeof camera === 'undefined') return;
+  const cp = camera.position;
+  let cur = null;
+  for (const d of w47Defs()) if (d.inside(cp.x, cp.y, cp.z)){ cur = d; break; }
+  if (cur) WARM47.cur = cur;
+  const k = Math.min(1, Math.max(0, +dt || 0.016)*2.4);
+  WARM47.w += ((cur ? 1 : 0) - WARM47.w)*k;
+  if (WARM47.w < 0.003){ WARM47.w = 0; return; }
+  const w = WARM47.w;
+  if (typeof sun !== 'undefined') sun.intensity *= 1 - 0.72*w;                      // the roof is over you
+  if (typeof rim !== 'undefined') rim.intensity *= 1 - 0.5*w;
+  if (typeof hemi !== 'undefined'){
+    hemi.color.lerp(W47_SKY, 0.6*w); hemi.groundColor.lerp(W47_GND, 0.6*w);
+    hemi.intensity += (Math.max(hemi.intensity, 1.05) - hemi.intensity)*w;           // the hall's own lights: bright at night too
+  }
+  if (typeof bounce !== 'undefined') bounce.intensity += (Math.max(bounce.intensity, 0.32) - bounce.intensity)*w;
+}
+/* the ceiling panels into the lamp field (after lampFieldUpdate has filled its slots for the frame) */
+function w47Lamps(){
+  const w = WARM47.w, d = WARM47.cur;
+  if (w < 0.01 || !d || typeof LF === 'undefined' || (typeof LF_ON !== 'undefined' && !LF_ON)) return;
+  let k = LF.meta[0] | 0;
+  const lite = (typeof GFX !== 'undefined' && GFX === 'off'), n = Math.min(LF_N - k, lite ? 5 : 7);
+  if (n <= 0) return;
+  const cp = camera.position, f = new T.Vector3(); camera.getWorldDirection(f);
+  const fl = Math.hypot(f.x, f.z) || 1, fx = cp.x + f.x/fl*9, fz = cp.z + f.z/fl*9;
+  const L = d.lamps.map(p=> [p, (p[0] - fx)*(p[0] - fx) + (p[2] - fz)*(p[2] - fz)]).sort((a, b)=> a[1] - b[1]);
+  for (let i = 0; i < n && i < L.length; i++){
+    const p = L[i][0];
+    lfWriteSlot(k++, p[0], p[1] - 0.1, p[2], 0, -1, 0, 0.26, 0.80, W47_COL, 5.2*w, 17);
+  }
+  LF.meta[0] = k;
+  WARM47.slots = n;
+}
+(function warm47Hooks(){
+  if (!WARM47.on) return;
+  if (typeof streamAddBuilder === 'function') streamAddBuilder('warm47', w47Gen, { order:16 });
+  if (typeof addFrameHook === 'function') addFrameHook(w47Frame);
+  if (typeof lampFieldUpdate === 'function'){
+    const lf0 = lampFieldUpdate;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    lampFieldUpdate = function(){
+      const r = lf0.apply(this, arguments);
+      try { w47Lamps(); } catch(e){ if (!WARM47.err) WARM47.err = 'lamps: ' + e.message; }
+      return r;
+    };
+  }
+})();
+
+/* =========================================================================
+   SCOOT47 feel -- Release 15.44: "make the trick scooters better". On the live ride only (handlingApply's fresh per-apply record,
+   after ride25's parts): every push scooter pops higher (hop x1.25: a whip fits on a flat hop), spins quicker (rot x1.13: whips and
+   barspins come round sooner) and lands softer (hard >= 25). The shared records (garage stat bars, shop prices) are untouched.
+   ?scoot47=0 turns it off. API: SCOOT47F
+   ========================================================================= */
+const SCOOT47F = { on: !/[?&]scoot47=0\b/.test(location.search), hop:1.25, rot:1.13, hard:25, n:0 };
+(function scoot47Feel(){
+  if (!SCOOT47F.on || typeof handlingApply !== 'function') return;
+  const ha = handlingApply;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  handlingApply = function(){
+    const r = ha.apply(this, arguments);
+    try {
+      const v = typeof FLEET_BY_ID !== 'undefined' && typeof FLEET_CUR !== 'undefined' ? FLEET_BY_ID[FLEET_CUR] : null;
+      if (v && v.cls === 'pscooter' && typeof VEH !== 'undefined' && VEH && VEH._hb && !VEH._s47){
+        const B = VEH._hb;
+        VEH.hop = (VEH.hop > 0 ? VEH.hop : 0.72)*SCOOT47F.hop; if (B.hop !== undefined) B.hop = VEH.hop;
+        VEH.rot = (VEH.rot || 1)*SCOOT47F.rot;
+        VEH.hard = Math.max(VEH.hard || 0, SCOOT47F.hard);
+        VEH._s47 = true; SCOOT47F.n++;
+      }
+    } catch(e){}
     return r;
   };
 })();
