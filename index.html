@@ -3804,6 +3804,302 @@ html body #sheet.tm .tmBody:not(.tkSet) .tmRow{ padding:8px 10px; gap:4px 10px; 
 html body #sheet.tm .tmNote{ font-size:11px; }
 html body #sheet.tm .tmFoot{ padding:6px 14px 10px; font-size:10.5px; }
 html body #sheet.tm .tmFoot kbd{ min-width:18px; height:18px; font-size:9px; }
+/* WS48 -- the Workshop (Release 15.45). Layer: above the garage (60), the pause panel (60) and the shop (66); notes (95) stay on top. */
+#ws48{ position:fixed; inset:0; z-index:70; display:none; flex-direction:column; color:#eef1f5; font:14px/1.35 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background:radial-gradient(120% 90% at 50% 0%, #1b2230 0%, #0e1218 60%, #0a0d12 100%); -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+#ws48.on{ display:flex; }
+#ws48 *{ box-sizing:border-box; }
+#ws48 button{ font:inherit; color:inherit; cursor:pointer; }
+#ws48 button:focus-visible{ outline:2px solid #ffc46b; outline-offset:2px; }
+#ws48 input, #ws48 select, #ws48 textarea{ font:inherit; color:#eef1f5; background:#151b24; border:1px solid #2a3442; border-radius:8px; padding:7px 10px; outline:none; color-scheme:dark; -webkit-user-select:text; user-select:text; }
+#ws48 input:focus, #ws48 select:focus, #ws48 textarea:focus{ border-color:#ffc46b; }
+#ws48 input[type=checkbox]{ width:18px; height:18px; padding:0; accent-color:#ffc46b; vertical-align:-3px; }
+#ws48 svg{ flex:none; vertical-align:-3px; }
+.wsHead{ display:flex; align-items:center; gap:14px; padding:10px 16px; padding-top:max(10px, env(safe-area-inset-top)); border-bottom:1px solid #222b37; background:rgba(10,13,18,.72); flex:0 0 auto; }
+.wsBrand b{ display:flex; align-items:center; gap:8px; font:400 24px/1 var(--dl-display, "Arial Black", sans-serif); letter-spacing:.03em; color:#ffc46b; text-transform:uppercase; }
+.wsBrand span{ display:block; margin-top:3px; font:700 10px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.18em; text-transform:uppercase; color:#8d98a8; }
+.wsTabs{ display:flex; gap:6px; margin-left:8px; flex-wrap:wrap; }
+.wsTabs button{ border:1px solid #2a3442; background:#141a22; border-radius:999px; padding:8px 15px; font:700 15px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.05em; text-transform:uppercase; transition:background .12s, border-color .12s; }
+.wsTabs button:hover{ border-color:#4a5768; }
+.wsTabs button.sel{ background:#ffc46b; color:#141414; border-color:#ffc46b; }
+.wsTabs button:active{ transform:scale(.96); }
+.wsCash{ margin-left:auto; font:800 19px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.02em; color:#7dffa8; background:#11261a; border:1px solid #1f4a30; border-radius:10px; padding:8px 12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.wsX{ border:1px solid #3a4452; background:#1a212b; border-radius:10px; padding:8px 16px; font:800 15px/1 var(--dl-cond, "Arial Narrow", sans-serif) !important; letter-spacing:.06em; text-transform:uppercase; }
+.wsBody{ flex:1 1 auto; min-height:0; position:relative; }
+.wsPane{ position:absolute; inset:0; display:none; min-height:0; }
+.wsPane.on{ display:grid; }
+.wsScroll{ overflow:auto; min-height:0; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#2f3a49 transparent; }
+#wsThumbHost{ position:fixed; left:-10000px; top:0; width:400px; height:250px; pointer-events:none; }
+/* ---- shared bits ---- */
+.wsBar{ display:flex; gap:8px; align-items:center; padding:12px 16px; flex-wrap:wrap; border-bottom:1px solid #1d2530; }
+.wsBar input[type=search]{ width:200px; }
+.wsBarTx{ flex:1 1 320px; display:flex; flex-direction:column; gap:3px; }
+.wsBarTx b{ font:800 20px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.04em; text-transform:uppercase; }
+.wsBarTx span{ font-size:13px; color:#9aa6b6; }
+.wsCount{ margin-left:auto; font-size:12px; color:#7d8898; }
+.wsBtn{ border:1px solid #2f3a49; background:#18202a; border-radius:10px; padding:8px 13px; font:700 14px/1.1 var(--dl-cond, "Arial Narrow", sans-serif) !important; letter-spacing:.05em; text-transform:uppercase; display:inline-flex; align-items:center; gap:6px; transition:background .12s, border-color .12s; }
+.wsBtn:hover:not(:disabled){ border-color:#4a5768; }
+.wsBtn.sm{ padding:6px 10px; font-size:12px !important; }
+.wsBtn.pri{ background:#ffc46b; color:#141414; border-color:#ffc46b; }
+.wsBtn.go{ background:#2bd36a; color:#0c1a10; border-color:#2bd36a; }
+.wsBtn.bad{ background:#3a1418; border-color:#6b2027; color:#ffb0b6; }
+.wsBtn:disabled{ opacity:.45; cursor:default; }
+.wsBtn:active:not(:disabled){ transform:scale(.96); }
+.wsBtn.armed, .wsBtn.s13Armed{ background:#ff4f7b !important; border-color:#ff4f7b !important; color:#fff !important; animation:wsPulse .9s ease-in-out infinite; }
+.wsBtn .s13BtnTx, .wsBtn .s13BtnP{ display:inline; }
+.wsBtn .s13BtnP{ margin-left:6px; }
+@keyframes wsPulse{ 50%{ box-shadow:0 0 0 4px rgba(255,79,123,.25); } }
+#ws48 .shake{ animation:wsShake .38s; }
+@keyframes wsShake{ 20%{ transform:translateX(-5px); } 40%{ transform:translateX(5px); } 60%{ transform:translateX(-3px); } 80%{ transform:translateX(3px); } }
+.wsChips{ display:flex; gap:6px; flex-wrap:wrap; }
+.wsChip{ border:1px solid #2a3442; background:#131920; border-radius:999px; padding:5px 11px; font-size:12px; font-weight:700; }
+.wsChip.sel{ border-color:#ffc46b; color:#ffc46b; background:#2a2414; }
+.wsChip[style*="--rc"].sel{ border-color:var(--rc); color:var(--rc); background:rgba(255,255,255,.04); }
+.wsBadge{ font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; border-radius:6px; padding:3px 6px; background:#24303f; color:#cfd6df; white-space:nowrap; }
+.wsBadge.wear{ background:#1d4a2c; color:#7dffa8; }
+.wsBadge.miss{ background:#4a1d2a; color:#ff9db6; }
+.wsBadge.val{ background:#2a2414; color:#ffc46b; }
+.wsEmpty{ padding:40px 20px; text-align:center; color:#9aa6b6; max-width:560px; margin:0 auto; line-height:1.5; }
+.wsEmpty b{ display:block; font:800 22px/1.1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.03em; text-transform:uppercase; color:#eef1f5; margin-bottom:8px; }
+.wsEmpty .row{ display:flex; gap:8px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+.wsEmpty.sm{ padding:22px 12px; } .wsEmpty.sm b{ font-size:17px; }
+.wsSub{ font:800 11px/1.2 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.14em; text-transform:uppercase; color:#8d98a8; margin-top:6px; }
+.wsSub.pad{ margin:12px 2px 2px; }
+#ws48 .note{ font-size:12.5px; color:#9aa6b6; line-height:1.45; }
+#ws48 .note b{ color:#eef1f5; }
+#ws48 .sub{ margin-top:0; font-size:12px; letter-spacing:normal; text-transform:none; opacity:1; }
+#ws48 .row{ justify-content:flex-start; padding:0; font-size:inherit; font-weight:inherit; border-radius:0; }
+#ws48 .rar-common{ color:#a9b2bd; } #ws48 .rar-rare{ color:#3f8cff; } #ws48 .rar-epic{ color:#b05cff; } #ws48 .rar-legend{ color:#ffb21a; } #ws48 .rar-limited{ color:#ff4f7b; }
+.wsRar{ font:800 11px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.12em; text-transform:uppercase; }
+.wsStats{ display:flex; gap:6px; flex-wrap:wrap; }
+.wsStats span{ font-size:11px; font-weight:800; border-radius:6px; padding:3px 7px; background:#1a2430; }
+.wsStats .up{ color:#7dffa8; } .wsStats .dn{ color:#ff9db6; }
+.wsCanAfford{ font-size:11.5px; color:#8d98a8; flex:1 1 100%; }
+#ws48 .sw{ display:flex; align-items:center; justify-content:center; flex:none; width:36px; height:36px; border-radius:10px; border:1px solid rgba(255,255,255,.14); box-shadow:inset 0 -8px 12px -6px rgba(0,0,0,.45); }
+/* ---- my builds + showroom ---- */
+.wsPane[data-pane="builds"], .wsPane[data-pane="show"], .wsPane[data-pane="bin"]{ grid-template-rows:auto 1fr; }
+.wsCards{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; padding:16px 16px 48px; }
+.wsCard{ position:relative; background:linear-gradient(180deg, #18202b, #121820); border:1px solid #263040; border-radius:16px; padding:0 0 12px; display:flex; flex-direction:column; gap:6px; overflow:hidden; transition:border-color .15s, transform .15s; }
+.wsCard:hover{ border-color:#3a475a; }
+.wsCard .th{ position:relative; aspect-ratio:16/10; background:radial-gradient(120% 100% at 50% 40%, #2e394a, #161c26 60%, #0c1016); cursor:pointer; }
+.wsCard .th img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .35s; }
+.wsCard .th img.on{ opacity:1; }
+.wsCard .th .band{ position:absolute; left:0; right:0; bottom:0; height:5px; }
+.wsCard h4, .wsCard .sub, .wsCard .row{ margin-left:12px; margin-right:12px; }
+.wsCard h4{ margin-top:8px; margin-bottom:0; font:800 19px/1.1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.02em; text-transform:uppercase; padding-right:28px; }
+.wsCard .sub{ font-size:12px; color:#93a0b1; }
+.wsCard .row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.wsCard .row.acts{ margin-top:4px; }
+.wsCard .star{ position:absolute; top:8px; right:8px; border:0; background:rgba(10,13,18,.55); width:34px; height:34px; border-radius:50%; font-size:18px; line-height:1; color:#8b939e; }
+.wsCard .star.on{ color:#ffc46b; }
+.wsCard.feat h4{ color:#ffe2b0; }
+/* ---- editor ---- */
+.wsPane[data-pane="edit"]{ grid-template-columns:250px minmax(0, 1fr) 350px; grid-template-rows:auto minmax(0, 1fr); }
+.wsTop{ grid-column:1 / -1; display:flex; gap:8px 10px; align-items:center; padding:10px 16px; border-bottom:1px solid #1d2530; flex-wrap:wrap; }
+.wsTopL{ display:flex; flex-direction:column; gap:5px; min-width:0; flex:1 1 300px; }
+.wsTopB{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+.wsTop .nm{ font:800 19px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.03em; width:min(320px, 100%); text-transform:uppercase; padding:6px 10px; }
+.wsTop .meta{ color:#93a0b1; font-size:12.5px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.wsTop .meta b{ color:#eef1f5; }
+.wsTop .wsBtn{ padding:7px 11px; font-size:13px !important; }
+.wsSaved{ font-size:12px; font-weight:800; color:#7dffa8; opacity:0; }
+.wsSaved.flash{ animation:wsSaved 1.6s ease-out; }
+@keyframes wsSaved{ 0%{ opacity:0; } 15%{ opacity:1; } 70%{ opacity:1; } 100%{ opacity:0; } }
+.wsSlots{ border-right:1px solid #1d2530; padding:8px; display:flex; flex-direction:column; gap:4px; }
+.wsSlot{ text-align:left; border:1px solid transparent; background:#131920; border-radius:10px; padding:8px 10px; display:grid; grid-template-columns:10px minmax(0, 1fr); gap:2px 9px; align-items:center; flex:none; }
+.wsSlot:hover{ background:#18202a; }
+.wsSlot .dot{ width:10px; height:10px; border-radius:50%; grid-row:1 / 3; background:#3a4452; box-shadow:0 0 0 2px rgba(255,255,255,.06); }
+.wsSlot b{ font:700 15px/1.1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center; gap:5px; }
+.wsSlot span{ font-size:11.5px; color:#93a0b1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wsSlot.k-part span{ color:#9fe8b8; }
+.wsSlot.k-custom span{ color:#9fd8ff; }
+.wsSlot.miss span{ color:#ff9db6; }
+.wsSlot.sel{ border-color:#ffc46b; background:#221d12; }
+.wsStageHost{ position:relative; min-height:0; min-width:0; }
+.wsStage{ position:absolute; inset:0; }
+.wsStage canvas{ position:absolute !important; inset:0 !important; z-index:auto !important; width:100% !important; height:100% !important; display:block; touch-action:none; cursor:grab; }
+.wsStage canvas:active{ cursor:grabbing; }
+.wsViews{ position:absolute; left:50%; bottom:12px; transform:translateX(-50%); display:flex; gap:2px; background:rgba(10,13,18,.72); border:1px solid #263040; border-radius:999px; padding:4px; max-width:calc(100% - 24px); overflow-x:auto; }
+.wsViews button{ border:0; background:none; padding:7px 11px; border-radius:999px; font:800 12px/1 var(--dl-cond, "Arial Narrow", sans-serif) !important; letter-spacing:.08em; text-transform:uppercase; color:#cfd6df; white-space:nowrap; }
+.wsViews button:hover{ background:#232c38; }
+.wsZoom{ position:absolute; right:12px; top:44px; display:flex; flex-direction:column; gap:6px; }
+.wsZoom button{ width:38px; height:38px; border-radius:50%; border:1px solid #2f3a49; background:rgba(10,13,18,.72); font-size:22px; line-height:1; font-weight:700; }
+.wsStageTag{ position:absolute; left:14px; top:12px; font:800 15px/1.2 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.08em; text-transform:uppercase; color:#ffc46b; text-shadow:0 1px 2px #000; pointer-events:none; }
+.wsTry{ position:absolute; right:14px; top:12px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; background:#ff4f7b; color:#fff; border-radius:6px; padding:4px 8px; display:none; pointer-events:none; }
+.wsTry.on{ display:block; }
+.wsRiderT{ position:absolute; right:12px; top:134px; border:1px solid #263040; background:rgba(10,13,18,.72); border-radius:999px; padding:7px 12px; font:800 12px/1 var(--dl-cond, "Arial Narrow", sans-serif) !important; text-transform:uppercase; letter-spacing:.08em; display:flex; align-items:center; gap:5px; }
+.wsRiderT.on{ border-color:#ffc46b; color:#ffc46b; }
+.wsHint{ position:absolute; left:14px; top:34px; font-size:11px; color:#6f7b8b; pointer-events:none; }
+.wsPick{ border-left:1px solid #1d2530; display:flex; flex-direction:column; min-height:0; }
+.wsPickHead{ padding:10px 12px 8px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid #1d2530; }
+.wsPickHead h3{ margin:0; font:800 20px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+.wsPickHead .sub{ font-size:12px; color:#93a0b1; }
+.wsPickHead .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:space-between; }
+.wsPickHead select{ padding:5px 8px; font-size:12px; }
+.wsPickList{ flex:1 1 auto; padding:8px 10px 24px; display:flex; flex-direction:column; gap:6px; }
+.wsFree{ display:flex; flex-direction:column; gap:6px; padding:4px 2px 10px; border-bottom:1px dashed #263040; }
+.wsPart{ text-align:left; display:grid; grid-template-columns:36px minmax(0, 1fr) auto; gap:3px 10px; align-items:center; border:1px solid #263040; background:#141a22; border-radius:12px; padding:8px 10px; flex:none; transition:border-color .12s, background .12s; }
+.wsPart:hover{ border-color:#3a475a; }
+.wsPart .sw{ grid-row:1 / 3; }
+.wsPart b{ font-size:13px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wsPart .pd{ grid-column:2; font-size:11.5px; color:#93a0b1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wsPart .pr{ grid-row:1 / 3; grid-column:3; text-align:right; font-weight:800; font-size:13px; font-variant-numeric:tabular-nums; }
+.wsPart .pr i{ display:block; font-style:normal; font-size:10px; letter-spacing:.08em; text-transform:uppercase; margin-top:2px; }
+.wsPart .pr i.ok{ color:#7dffa8; }
+.wsPart.sel{ border-color:#ffc46b; box-shadow:0 0 0 1px #ffc46b inset; background:#1c1a14; }
+.wsPart.inst{ background:#122219; border-color:#225a35; }
+.wsPart.inst.sel{ border-color:#7dffa8; box-shadow:0 0 0 1px #7dffa8 inset; }
+.wsPart.miss{ border-color:#6b2a3b; }
+.wsPart.stock .sw{ background:#1d2530; }
+.wsAct{ padding:10px 12px; padding-bottom:max(10px, env(safe-area-inset-bottom)); border-top:1px solid #1d2530; display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#0d1117; }
+.wsAct .note{ flex:1 1 100%; }
+.wsAct .wsBtn{ min-height:40px; }
+.wsPal{ display:flex; gap:5px; flex-wrap:wrap; }
+.wsPal button{ width:26px; height:26px; border-radius:8px; border:1px solid rgba(255,255,255,.18); padding:0; }
+.wsPal button.sel{ outline:2px solid #ffc46b; outline-offset:2px; }
+.wsPal button.fac{ background:repeating-linear-gradient(45deg, #2a3442 0 4px, #3a4452 4px 8px); }
+/* ---- marketplace ---- */
+.wsPane[data-pane="market"]{ grid-template-columns:240px minmax(0, 1fr) 370px; }
+.wsFilt{ border-right:1px solid #1d2530; padding:12px; display:flex; flex-direction:column; gap:12px; }
+.wsFilt .grp{ display:flex; flex-direction:column; gap:6px; }
+.wsFilt label{ font:800 11px/1.2 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.14em; text-transform:uppercase; color:#8d98a8; }
+.wsFilt label.chk{ font:600 12.5px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing:0; text-transform:none; color:#cfd6df; display:flex; gap:8px; align-items:flex-start; cursor:pointer; }
+.wsFilt .cat{ text-align:left; border:0; background:none; padding:6px 8px; border-radius:8px; display:flex; align-items:center; gap:6px; font-size:13px; color:#cfd6df; }
+.wsFilt .cat i{ font-style:normal; color:#6f7b8b; font-size:11px; margin-left:auto; }
+.wsFilt .cat:hover{ background:#151b24; }
+.wsFilt .cat.sel{ background:#2a2414; color:#ffc46b; }
+.wsFilt .mOnly{ display:none; }
+.wsMain{ display:flex; flex-direction:column; min-height:0; min-width:0; }
+.wsMkTop{ display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #1d2530; }
+.wsMkTop .cnt{ font-size:13px; color:#9aa6b6; } .wsMkTop .cnt b{ color:#eef1f5; }
+.wsMkTop .sp{ flex:1; }
+.wsMkTop select{ padding:6px 8px; font-size:12.5px; }
+.wsDrop{ margin:12px 16px 0; border:1px solid #5a2034; background:linear-gradient(90deg, #2a0f1a, #1a1220); border-radius:14px; padding:10px 12px 8px; }
+.wsDrop h3{ margin:0 0 3px; font:800 18px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.04em; text-transform:uppercase; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.wsDrop h3 span{ font-size:12px; color:#ff9db6; letter-spacing:.06em; font-variant-numeric:tabular-nums; }
+.wsDropTx{ font-size:12px; color:#c9a3b2; margin-bottom:8px; }
+.wsDropRow{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; }
+.wsDropRow .wsProd{ min-width:190px; max-width:190px; }
+.wsProds{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px; padding:12px 16px 20px; }
+.wsProd{ text-align:left; border:1px solid #263040; background:#141a22; border-radius:12px; padding:9px; display:flex; flex-direction:column; gap:5px; position:relative; transition:border-color .12s, transform .12s; min-width:0; }
+.wsProd:hover{ border-color:#3a475a; transform:translateY(-1px); }
+.wsProd .top{ display:flex; gap:9px; align-items:center; min-width:0; }
+.wsProd .nm{ min-width:0; }
+.wsProd b{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:13px; line-height:1.15; overflow:hidden; }
+.wsProd.owned b{ padding-right:44px; }
+.wsProd .br{ font-size:11px; color:#93a0b1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wsProd .ds{ font-size:11.5px; color:#b6c0cc; min-height:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wsProd .ft{ display:flex; align-items:center; justify-content:space-between; }
+.wsProd .pr{ font-weight:800; font-size:14px; font-variant-numeric:tabular-nums; }
+.wsProd .own{ position:absolute; top:8px; right:8px; font-size:9px; font-weight:900; letter-spacing:.08em; background:#1d4a2c; color:#7dffa8; border-radius:5px; padding:2px 5px; }
+.wsProd.sel{ border-color:#ffc46b; box-shadow:0 0 0 1px #ffc46b inset; }
+.wsProd.r-epic{ background:linear-gradient(180deg, rgba(176,92,255,.10), #141a22 55%); }
+.wsProd.r-legend{ background:linear-gradient(180deg, rgba(255,178,26,.12), #141a22 55%); border-color:#4a3a18; }
+.wsProd.r-limited{ background:linear-gradient(180deg, rgba(255,79,123,.14), #141a22 60%); border-color:#5a2034; }
+.wsMore{ margin:0 16px 40px; align-self:center; }
+.wsDetail{ border-left:1px solid #1d2530; display:grid; grid-template-rows:minmax(220px, 46%) minmax(0, 1fr); min-height:0; background:#0d1117; }
+.wsDetail.empty{ grid-template-rows:0 1fr; }
+.wsDetail.empty .wsStageHost{ display:none; }
+.wsInfo{ padding:12px 14px 30px; display:flex; flex-direction:column; gap:9px; }
+.wsDetHead{ display:flex; align-items:center; gap:10px; font-size:12px; color:#93a0b1; }
+.wsDetHead .wsBtn{ margin-left:auto; display:none; }
+.wsInfo h3{ margin:0; font:800 24px/1.05 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.02em; text-transform:uppercase; }
+.wsInfo .sub{ font-size:12.5px; color:#93a0b1; } .wsInfo .sub b{ color:#cfd6df; }
+.wsInfo .bigp{ font:800 28px/1 var(--dl-cond, "Arial Narrow", sans-serif); font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:10px; }
+.wsInfo .bigp .ok{ color:#7dffa8; font-size:22px; letter-spacing:.06em; text-transform:uppercase; }
+.wsInfo .bigp .ltd{ font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:#ff4f7b; border:1px solid #ff4f7b; border-radius:6px; padding:3px 6px; }
+.wsInfo .kv{ display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:12.5px; color:#93a0b1; }
+.wsInfo .kv b{ color:#eef1f5; font-weight:700; }
+.wsInfo .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.wsInfo label.pv{ font-size:12px; color:#93a0b1; display:flex; gap:8px; align-items:center; }
+.wsInfo label.pv select{ flex:1; min-width:0; padding:5px 8px; font-size:12px; }
+/* ---- dialogs + toast ---- */
+.wsModal{ position:absolute; inset:0; background:rgba(5,7,10,.72); display:none; align-items:center; justify-content:center; z-index:5; padding:16px; }
+.wsModal.on{ display:flex; }
+.wsDlg{ width:min(680px, 100%); max-height:100%; overflow:auto; background:#121820; border:1px solid #2a3442; border-radius:18px; padding:18px; display:flex; flex-direction:column; gap:10px; box-shadow:0 30px 80px -20px rgba(0,0,0,.9); }
+.wsDlg h3{ margin:0; font:800 24px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.03em; text-transform:uppercase; display:flex; gap:8px; align-items:center; }
+.wsDlg textarea{ width:100%; resize:vertical; font:12px/1.4 ui-monospace, Menlo, Consolas, monospace; word-break:break-all; }
+.wsDlg .row{ display:flex; gap:8px; flex-wrap:wrap; }
+.wsDlg .row.end{ justify-content:flex-end; margin-top:4px; }
+.wsFrames{ display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:6px; max-height:260px; overflow:auto; }
+.wsFrame{ text-align:left; border:1px solid #263040; background:#151b24; border-radius:10px; padding:8px 10px; font-size:12px; display:flex; flex-direction:column; gap:2px; }
+.wsFrame b{ font-size:13px; }
+.wsFrame span{ color:#93a0b1; } .wsFrame span.ok{ color:#7dffa8; }
+.wsFrame.sel{ border-color:#ffc46b; background:#221d12; }
+.wsToast{ position:absolute; left:50%; bottom:22px; transform:translate(-50%, 20px); background:#1a222d; border:1px solid #33404f; border-radius:12px; padding:10px 16px; font-weight:700;
+  opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:6; max-width:min(560px, 92vw); text-align:center; box-shadow:0 12px 30px rgba(0,0,0,.5); }
+.wsToast.on{ opacity:1; transform:translate(-50%, 0); }
+.wsToast.good{ border-color:#2bd36a; } .wsToast.bad{ border-color:#ff4f7b; }
+/* ---- parts bin ---- */
+.wsBinGrp{ padding:0 16px; }
+.wsBinGrp h4{ margin:16px 0 8px; font:800 16px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.06em; text-transform:uppercase; color:#ffc46b; display:flex; gap:7px; align-items:center; }
+.wsBinGrp h4 i{ font-style:normal; color:#6f7b8b; font-size:12px; }
+.wsBinRows{ display:grid; grid-template-columns:repeat(auto-fill, minmax(330px, 1fr)); gap:8px; }
+.wsBinRow{ display:flex; gap:10px; align-items:center; border:1px solid #263040; background:#141a22; border-radius:12px; padding:8px 10px; }
+.wsBinRow .tx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.wsBinRow .tx b{ font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wsBinRow .tx span{ font-size:11.5px; color:#93a0b1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wsBinRow .tx i{ font-style:normal; }
+#wsBinList{ padding-bottom:40px; }
+/* ---- the doors: main menu, garage, pause ---- */
+#menu.m28 .mDock .mSub.ws48Four{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+#menu .mDock .mSub.ws48Four{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+#menu .ws48MenuBtn .ws48Ico{ display:inline-flex; width:16px; height:16px; opacity:.9; color:#ffc46b; }
+#menu .ws48MenuBtn .ws48Ico svg{ width:100%; height:100%; }
+.ws48GBtn{ display:inline-flex; align-items:center; gap:6px; border-color:rgba(255,196,107,.55) !important; color:#ffc46b !important; }
+.ws48GGo{ margin-top:6px; }
+/* ---- narrow screens (iPad portrait, phones) ---- */
+@media (max-width: 980px){
+  .wsHead{ flex-wrap:wrap; gap:8px; padding:8px 10px; }
+  .wsBrand span{ display:none; }
+  .wsBrand b{ font-size:20px; }
+  .wsTabs{ order:3; width:100%; margin:0; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none; }
+  .wsTabs::-webkit-scrollbar{ display:none; }
+  .wsTabs button{ white-space:nowrap; padding:8px 13px; }
+  .wsPane[data-pane="edit"]{ grid-template-columns:minmax(0, 1fr); grid-template-rows:auto minmax(210px, 38%) auto minmax(0, 1fr); }
+  .wsTop{ grid-row:1; padding:8px 10px; }
+  .wsTopB{ flex:1 1 100%; justify-content:flex-start; }
+  .wsPane[data-pane="edit"] > .wsStageHost{ grid-row:2; }
+  .wsSlots{ grid-row:3; flex-direction:row; overflow-x:auto; overflow-y:hidden; border-right:0; border-bottom:1px solid #1d2530; padding:6px 8px; }
+  .wsSlot{ min-width:140px; max-width:180px; }
+  .wsPick{ grid-row:4; border-left:0; }
+  .wsHint{ display:none; }
+  .wsPane[data-pane="market"]{ grid-template-columns:minmax(0, 1fr); grid-template-rows:auto minmax(0, 1fr); }
+  .wsFilt{ grid-row:1; flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid #1d2530; padding:8px 10px; gap:8px; display:none; max-height:46vh; }
+  .wsFilt.open{ display:flex; }
+  .wsFilt .grp{ flex:1 1 200px; }
+  .wsFilt .grp.cats{ display:none; }
+  .wsFilt .mOnly{ display:flex; }
+  .wsMain{ grid-row:2; }
+  .wsDetail{ position:absolute; inset:auto 0 0 0; height:78%; background:#0f141b; border-left:0; border-top:1px solid #2a3442; z-index:4; display:none; border-radius:18px 18px 0 0; box-shadow:0 -20px 50px rgba(0,0,0,.6); }
+  .wsDetail.on{ display:grid; }
+  .wsDetHead .wsBtn{ display:inline-flex; }
+  .wsCards{ grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); padding:12px 10px 40px; gap:10px; }
+  .wsProds{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); padding:10px; }
+  .wsBinRows{ grid-template-columns:1fr; }
+  .wsBar input[type=search]{ flex:1 1 160px; width:auto; }
+}
+@media (max-width: 560px){
+  .wsTop .nm{ width:100%; }
+  .wsTop .wsBtn{ padding:7px 9px; font-size:12px !important; }
+  .wsViews button{ padding:6px 8px; }
+  .wsCash{ font-size:16px; padding:6px 9px; }
+}
+html.touchUI #ws48 .wsPal button{ width:34px; height:34px; border-radius:9px; }
+html.touchUI #ws48 .wsPart{ min-height:56px; }
+html.touchUI #ws48 .wsHint{ display:none; }
+@media (prefers-reduced-motion: reduce){ .wsToast, .wsProd, .wsCard .th img{ transition:none; } .wsBtn.armed{ animation:none; } }
+
+/* WT48 -- Weather & time on the pause screen (ride45's sheet look) */
+#r45WBtn, #pause.pz43 .pz43Grid #r45WBtn, #pause #r45WBtn.btn{ display:none !important; }
+.wt48Card h4{ display:flex; align-items:baseline; gap:10px; }
+.wt48Now{ font:600 12px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing:0; text-transform:none; color:#ffd34d; opacity:.9; }
+.wt48Clock{ margin-left:auto; font:800 16px/1 var(--dl-cond, "Arial Narrow", sans-serif); letter-spacing:.06em; color:#ffd34d; font-variant-numeric:tabular-nums; }
+.wt48Slide{ display:flex; align-items:center; gap:10px; margin:10px 2px 2px; font-size:11px; opacity:.75; }
+.wt48Slide input{ flex:1; accent-color:#ffd34d; height:28px; }
+.wt48Card .r45Seg button:disabled{ opacity:.4; cursor:default; }
+.wt48Tip{ margin:12px 4px 0 !important; font-size:12px !important; }
+html.touchUI .wt48Tip{ display:none; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -90619,7 +90915,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.44';
+const DL_VER = '15.45';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -91692,6 +91988,2140 @@ const SCOOT47F = { on: !/[?&]scoot47=0\b/.test(location.search), hop:1.25, rot:1
     return r;
   };
 })();
+
+/* =========================================================================
+   WS48 DATA -- Release 15.45: THE WORKSHOP's parts catalogue ("make it so players can buy custom parts ... a huge customization
+   system with tons of parts, options, brands and combinations").
+     TYPES   push scooters, BMX, MTB (full sus + hardtail), road, dirt / street motos, e-scooters, e-bikes, mopeds (+ 'other': the
+             rides with no shape parts get paint, stickers, accessories)
+     SLOTS   per type: deck, grip tape, bars, clamp / stem, fork, grips, wheels, tyres / urethane, seat, pedals, pegs, brakes,
+             suspension, drivetrain, lights, body, bottles, rack, paint, stickers, accessories ...
+             a slot = shape keys (ride25's R25P_FAM options: real geometry, the rider fits) + colour keys of the customisation
+             (cust.c: fr ac fk rm ty sd gp br sp tw ch pd pg hl pl) + a finish key (fb bars, fm rims, f frame) + seat material
+     PARTS   generated, deterministic, stable ids: a MODEL (a combination of the slot's shape options, or a product line) by a
+             BRAND, in COLOURWAYS (anodised colours, chrome, gold ...). Price = category base x brand tier x rarity.
+             Rarity: Common, Rare, Epic, Legendary (+ LIMITED: the daily drop, special colourways sold one day only).
+             Shared parts (every ride): paint finishes, patterns, designer paint jobs, sticker kits, accessories, glow kits.
+   API: WS48_TYPES, WS48_SLOTS, ws48Catalog() -> { list, byId, bySlot }, ws48Part(id), ws48TypeOf(vehId), ws48SlotsFor(vehId),
+        ws48Drop(day) (today's limited parts), ws48Rarity
+   ========================================================================= */
+const WS48_TYPES = {
+  scooter:  { name:'Push scooters', short:'Scooter',  fam:['pd15scoot'], mul:0.8, brands:['Kickform', 'Deckhand', 'Whipcraft', 'Tailspin', 'Stomp Lab'] },
+  bmx:      { name:'BMX',           short:'BMX',      fam:['bx15'],      mul:1.0, brands:['Rattlecage', 'Peg Theory', 'Sprocket & Co', 'Street Vandal', 'Old Mill'] },
+  mtb:      { name:'Mountain bikes', short:'MTB',     fam:['pd15fs', 'pd15ht'], mul:1.4, brands:['Rootline', 'Granite Peak', 'Switchback', 'Loamworks', 'Talon Forge'] },
+  road:     { name:'Road bikes',    short:'Road',     fam:['pd15road'],  mul:1.5, brands:['Velo Aster', 'Corsa Lume', 'Strada Nera', 'Aerolite'] },
+  dirt:     { name:'Dirt & street bikes', short:'Moto', fam:['mo15moto'], mul:2.4, brands:['Dirtforge', 'Throttle Kings', 'Mudline', 'Voltrider'] },
+  escooter: { name:'E-scooters',    short:'E-scooter', fam:['mo15scoot'], mul:1.2, brands:['Voltkick', 'Amp Deck', 'Zipline'] },
+  ebike:    { name:'E-bikes',       short:'E-bike',   fam:['mo15ebike'], mul:1.3, brands:['Commuta', 'Torque Pine', 'Cityspark'] },
+  moped:    { name:'Mopeds',        short:'Moped',    fam:['mo15moped'], mul:1.6, brands:['Bellamoto', 'Retro Moto', 'Scoot City'] },
+  other:    { name:'Other rides',   short:'Other',    fam:[], mul:1.0, brands:[] }
+};
+const WS48_TYPE_ORDER = ['scooter', 'bmx', 'mtb', 'road', 'dirt', 'escooter', 'ebike', 'moped'];
+/* marketplace categories */
+const WS48_CATS = [
+  ['paint', 'Paint & finish'], ['deck', 'Decks'], ['tape', 'Grip tape'], ['bars', 'Handlebars'], ['stem', 'Stems & clamps'], ['fork', 'Forks'],
+  ['susp', 'Suspension'], ['grips', 'Grips'], ['wheels', 'Wheels'], ['tyres', 'Tyres'], ['seat', 'Seats'], ['pedals', 'Pedals'], ['pegs', 'Pegs'],
+  ['brakes', 'Brakes'], ['drive', 'Drivetrain'], ['lights', 'Lights'], ['body', 'Body & fenders'], ['acc', 'Accessories'], ['stickers', 'Stickers']
+];
+const WS48_CAT_NAME = {}; WS48_CATS.forEach(c=>{ WS48_CAT_NAME[c[0]] = c[1]; });
+/* component brands (shared across types) by category; the type's own brands make its frames, bars, decks ... */
+const WS48_CBRANDS = {
+  grips:['Gripzilla', 'Lockjaw', 'Waffle Co', 'Soft Touch'], tyres:['Tread Theory', 'Knobstar', 'Slickrock', 'Gumline'],
+  wheels:['Hoopworks', 'Spokeline', 'Corecast', 'Wheelhaus'], seat:['Perch', 'Saddle Lab', 'Comfy Co'], pedals:['Pinball', 'Stompers', 'Platform 9'],
+  drive:['Linkage', 'Goldlink', 'Cog & Co'], brakes:['Stopwell', 'Clamp Kings'], lights:['Beamline', 'Lumen Co'], susp:['Rebound Co', 'Talon Forge', 'Bounce Lab'],
+  paint:['Dusk Line Paint Shop', 'Kustom Kolor', 'Chroma Lab'], stickers:['Slap Co', 'Dusk Line'], acc:['Dusk Line', 'Ridewell']
+};
+const WS48_MODELS = {
+  deck:['Slab', 'Ironclad', 'Boxcar', 'Wedge', 'Longhaul', 'Shortstop', 'Brickhouse', 'Razorback'], tape:['Sandpaper', 'Bolt', 'Starfield', 'Inferno', 'Arrowhead', 'Classic'],
+  bars:['Titan', 'Raptor', 'Halo', 'Viper', 'Apex', 'Nova', 'Cobra', 'Falcon'], stem:['Lockdown', 'Vise', 'Clampzilla', 'Fortress', 'Keeper', 'Pinch'],
+  fork:['Spear', 'Trident', 'Arrow', 'Lance'], susp:['Plush', 'Bigfoot', 'Sledge', 'Ghost', 'Hammer', 'Float'], grips:['Lock-On', 'Waffle', 'Flange', 'Mushroom', 'Ribbed'],
+  wheels:['Orbit', 'Vortex', 'Cyclone', 'Halo', 'Turbine', 'Star', 'Comet', 'Disc'], tyres:['Grip King', 'Speedster', 'Mudslinger', 'Roadhog', 'Hardpack', 'Slicker'],
+  seat:['Throne', 'Perch', 'Cloud', 'Racer', 'Pivotal'], pedals:['Stomper', 'Pinhead', 'Clip-It', 'Platform'], pegs:['Grinder', 'Steelie', 'Slider'],
+  brakes:['Stopper', 'Anchor', 'Feather', 'Gripper'], drive:['Chainline', 'Guardian', 'Bashplate'], lights:['Beacon', 'Lighthouse', 'Flare', 'Strobe', 'Nova'],
+  body:['Shield', 'Wing', 'Shell', 'Armour', 'Fin'], acc:['Hauler', 'Bottle Pro', 'Rack Pack']
+};
+/* colourways: [id, name, hex, finish (0 stock .. 5 chrome: bars / rims), rarity 0 common .. 3 legendary] */
+const WS48_CW = {
+  anod:[['blk', 'Black', 0x16181c, 3, 0], ['raw', 'Raw', 0xc3c8ce, 4, 0], ['wht', 'White', 0xf1f2f4, 1, 0], ['red', 'Red', 0xd62a2a, 4, 1], ['blu', 'Blue', 0x2a6fd6, 4, 1],
+        ['pur', 'Purple', 0x7a3fe0, 4, 1], ['grn', 'Green', 0x2bb24c, 4, 1], ['org', 'Orange', 0xff7a1a, 4, 1], ['pnk', 'Pink', 0xff4fa0, 4, 1], ['tea', 'Teal', 0x18b8b0, 4, 1],
+        ['chr', 'Chrome', 0xe6e9ee, 5, 2], ['gld', 'Gold', 0xd4a52a, 4, 3]],
+  grip:[['blk', 'Black', 0x22252b, 0, 0], ['wht', 'White', 0xf1f2f4, 0, 0], ['gum', 'Gum', 0xb48a58, 0, 1], ['red', 'Red', 0xd62a2a, 0, 1], ['blu', 'Blue', 0x2a6fd6, 0, 1],
+        ['grn', 'Green', 0x2bb24c, 0, 1], ['pur', 'Purple', 0x7a3fe0, 0, 1], ['pnk', 'Pink', 0xff4fa0, 0, 1], ['org', 'Orange', 0xff7a1a, 0, 1], ['hiv', 'Hi-vis', 0xd7ff2e, 0, 2]],
+  tyre:[['blk', 'Black', 0x14161c, 0, 0], ['gry', 'Grey', 0x4a4f57, 0, 0], ['gum', 'Gum', 0xa8703c, 0, 1], ['wht', 'White', 0xf2f0ea, 0, 1], ['red', 'Red', 0xd62a2a, 0, 2], ['blu', 'Blue', 0x2a6fd6, 0, 2]],
+  pu:[['wht', 'White', 0xf4f6f8, 0, 0], ['blk', 'Black', 0x17181b, 0, 0], ['red', 'Red', 0xe8412c, 0, 1], ['blu', 'Blue', 0x2a6fd6, 0, 1], ['yel', 'Yellow', 0xffd23f, 0, 1],
+      ['pur', 'Purple', 0x7a3fe0, 0, 1], ['pnk', 'Pink', 0xff4fa0, 0, 1], ['grn', 'Green', 0x2bd36a, 0, 1], ['ice', 'Ice', 0x9fe8ff, 0, 2]],
+  wall:[['blkw', 'Black wall', 0x17181b, 0, 0], ['gumw', 'Gum wall', 0xa8703c, 0, 1], ['tanw', 'Tan wall', 0xc9a46c, 0, 1], ['crmw', 'Cream wall', 0xe6dcc4, 0, 2], ['whtw', 'White wall', 0xf2f0ea, 0, 2]],
+  seat:[['blk', 'Black', 0x171a21, 0, 0], ['brn', 'Brown', 0x5a3a24, 0, 1], ['tan', 'Tan', 0xb68a5c, 0, 1], ['crm', 'Cream', 0xe9dcc0, 0, 1], ['red', 'Red', 0xb3232c, 0, 1], ['blu', 'Navy', 0x1d2c52, 0, 1]],
+  light:[['wrm', 'Warm', 0xfff2c8, 0, 0], ['cool', 'Cool white', 0xe9f3ff, 0, 0], ['amb', 'Amber', 0xffb000, 0, 1], ['ice', 'Ice blue', 0x9fd8ff, 0, 1], ['pnk', 'Neon pink', 0xff4fa0, 0, 2]],
+  plas:[['blk', 'Black', 0x16181c, 0, 0], ['wht', 'White', 0xf1f2f4, 0, 0], ['red', 'Red', 0xd62a2a, 0, 1], ['blu', 'Blue', 0x2a6fd6, 0, 1], ['yel', 'Yellow', 0xffd23f, 0, 1],
+        ['org', 'Orange', 0xff7a1a, 0, 1], ['grn', 'Lime', 0x9be22b, 0, 1], ['pur', 'Purple', 0x7a3fe0, 0, 2]],
+  chain:[['stl', 'Steel', 0x6d7684, 0, 0], ['blk', 'Black', 0x1a1c20, 0, 0], ['gld', 'Gold', 0xd9ad32, 0, 2], ['chr', 'Chrome', 0xe6e9ee, 0, 2], ['red', 'Red', 0xd62a2a, 0, 1], ['blu', 'Blue', 0x2a6fd6, 0, 1]]
+};
+/* the limited colourways of the daily drop (sold one day each, owned for good) */
+const WS48_LTD = [['aur', 'Aurora', 0xb05cff, 5], ['lava', 'Lava', 0xff4a1a, 4], ['tox', 'Toxic', 0x9dff1a, 4], ['ice', 'Glacier', 0x9fe8ff, 5],
+                  ['mid', 'Midnight', 0x1a1f4a, 4], ['rose', 'Rose gold', 0xe8a090, 4], ['sun', 'Sunburst', 0xffc21a, 5], ['jade', 'Jade', 0x14a37f, 4]];
+const WS48_RAR = [['common', 'Common', '#a9b2bd', 1], ['rare', 'Rare', '#3f8cff', 1.35], ['epic', 'Epic', '#b05cff', 2.1], ['legend', 'Legendary', '#ffb21a', 3.2], ['limited', 'Limited', '#ff4f7b', 3.6]];
+const WS48_BASE = { deck:180, tape:35, bars:150, stem:85, fork:200, susp:420, grips:28, wheels:140, tyres:55, seat:70, pedals:55, pegs:45, brakes:60, drive:75,
+                    lights:60, body:120, acc:50, paint:300, stickers:120 };
+/* slots per type: { id, name, cat, keys:[R25P keys], c:[cust colour keys], fin:'fb'|'fm', s:1 (seat material), pal (colourway set per colour key),
+   need:'part flag custParts() must show' (else the slot is hidden on that ride), view:[yaw, pitch, zoom], shared:1 (shared parts) } */
+const WS48_SLOTS = {
+  scooter:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.24, 0.95] },
+    { id:'deck', name:'Deck', cat:'deck', keys:['dl', 'dw', 'ds'], view:[Math.PI/2 + 0.25, 0.55, 0.92] },
+    { id:'tape', name:'Grip tape', cat:'tape', keys:['gt', 'ta'], view:[0.6, 0.95, 0.85] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bs', 'bw', 'bh'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'clamp', name:'Clamp & headset', cat:'stem', keys:['cl'], c:['ac'], pal:{ ac:'anod' }, view:[0.5, 0.35, 0.62] },
+    { id:'fork', name:'Fork', cat:'fork', c:['fk'], pal:{ fk:'anod' }, view:[0.3, 0.1, 0.7] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.7] },
+    { id:'wheels', name:'Wheels', cat:'wheels', keys:['ws', 'wc'], c:['rm'], fin:'fm', pal:{ rm:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.8] },
+    { id:'tyres', name:'Urethane', cat:'tyres', c:['ty'], pal:{ ty:'pu' }, view:[Math.PI/2 - 0.42, 0.10, 0.8] },
+    { id:'pegs', name:'Pegs', cat:'pegs', keys:['pg'], c:['pg'], pal:{ pg:'anod' }, view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'brake', name:'Brake', cat:'brakes', keys:['bk'], view:[Math.PI - 0.5, 0.3, 0.75] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  bmx:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'fork', name:'Fork', cat:'fork', c:['fk'], pal:{ fk:'anod' }, view:[0.4, 0.15, 0.8] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bs', 'br', 'bw'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'stem', name:'Stem', cat:'stem', keys:['sm'], view:[0.42, 0.55, 0.7] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.8] },
+    { id:'wheels', name:'Wheels', cat:'wheels', keys:['wh'], c:['rm', 'sp'], fin:'fm', pal:{ rm:'anod', sp:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty', 'tw'], pal:{ ty:'tyre', tw:'wall' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'seat', name:'Seat', cat:'seat', c:['sd'], s:1, pal:{ sd:'seat' }, need:'seat', view:[1.25, 0.66, 0.9] },
+    { id:'pedals', name:'Pedals', cat:'pedals', c:['pd'], pal:{ pd:'anod' }, need:'pedal', view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'pegs', name:'Pegs', cat:'pegs', keys:['pg'], c:['pg'], pal:{ pg:'anod' }, view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'brake', name:'Brakes', cat:'brakes', keys:['bk'], view:[Math.PI - 0.5, 0.3, 0.85] },
+    { id:'chain', name:'Chain', cat:'drive', c:['ch'], pal:{ ch:'chain' }, need:'chain', view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  mtb:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'fork', name:'Fork', cat:'susp', keys:['fk'], c:['fk'], pal:{ fk:'anod' }, view:[0.6, 0.2, 0.9] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bw', 'br'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.8] },
+    { id:'wheels', name:'Wheels', cat:'wheels', c:['rm', 'sp'], fin:'fm', pal:{ rm:'anod', sp:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty', 'tw'], pal:{ ty:'tyre', tw:'wall' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'seat', name:'Saddle', cat:'seat', c:['sd'], s:1, pal:{ sd:'seat' }, need:'seat', view:[1.25, 0.66, 0.9] },
+    { id:'pedals', name:'Pedals', cat:'pedals', keys:['pd'], c:['pd'], pal:{ pd:'anod' }, need:'pedal', view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'drive', name:'Drivetrain', cat:'drive', keys:['cg'], c:['ch'], pal:{ ch:'chain' }, view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  road:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'wheels', name:'Wheels', cat:'wheels', keys:['rm'], c:['rm', 'sp'], fin:'fm', pal:{ rm:'anod', sp:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty', 'tw'], pal:{ ty:'tyre', tw:'wall' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'bars', name:'Drop bars', cat:'bars', keys:['bw'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'grips', name:'Bar tape', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.8] },
+    { id:'seat', name:'Saddle', cat:'seat', c:['sd'], s:1, pal:{ sd:'seat' }, need:'seat', view:[1.25, 0.66, 0.9] },
+    { id:'pedals', name:'Pedals', cat:'pedals', c:['pd'], pal:{ pd:'anod' }, need:'pedal', view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'bottles', name:'Bottles', cat:'acc', keys:['bt'], view:[Math.PI/2, 0.2, 0.9] },
+    { id:'chain', name:'Chain', cat:'drive', c:['ch'], pal:{ ch:'chain' }, need:'chain', view:[-Math.PI/2 + 0.32, 0.12, 0.9] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  dirt:[
+    { id:'paint', name:'Paint & plastics', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'fork', name:'Fork', cat:'susp', keys:['fk'], c:['fk'], pal:{ fk:'anod' }, view:[0.6, 0.2, 0.9] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bs', 'xb'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'guards', name:'Hand guards', cat:'body', keys:['hg'], view:[0.42, 0.46, 0.86] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.8] },
+    { id:'wheels', name:'Wheels', cat:'wheels', c:['rm'], fin:'fm', pal:{ rm:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty'], pal:{ ty:'tyre' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'lights', name:'Front light', cat:'lights', keys:['ms'], c:['hl'], pal:{ hl:'light' }, need:'lamp', view:[0.2, 0.15, 0.85] },
+    { id:'body', name:'Fender & plastics', cat:'body', keys:['fe'], c:['pl'], pal:{ pl:'plas' }, view:[0.6, 0.2, 0.9] },
+    { id:'seat', name:'Seat', cat:'seat', c:['sd'], s:1, pal:{ sd:'seat' }, need:'seat', view:[1.25, 0.66, 0.9] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  escooter:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.24, 0.95] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bs', 'bw', 'bh'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'stem', name:'Stem', cat:'stem', keys:['st'], view:[0.5, 0.3, 0.9] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.8] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty'], pal:{ ty:'tyre' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'wheels', name:'Wheels', cat:'wheels', c:['rm'], fin:'fm', pal:{ rm:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'susp', name:'Suspension', cat:'susp', keys:['su'], c:['fk'], pal:{ fk:'anod' }, view:[0.4, 0.15, 0.85] },
+    { id:'body', name:'Fenders', cat:'body', keys:['fd'], c:['pl'], pal:{ pl:'plas' }, view:[0.6, 0.2, 0.9] },
+    { id:'lights', name:'Lights', cat:'lights', keys:['lt', 'ne'], c:['hl'], pal:{ hl:'light' }, view:[0.2, 0.15, 0.85] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  ebike:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bs'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, view:[0.42, 0.46, 0.8] },
+    { id:'seat', name:'Saddle', cat:'seat', keys:['sd'], c:['sd'], s:1, pal:{ sd:'seat' }, view:[1.25, 0.66, 0.9] },
+    { id:'wheels', name:'Wheels', cat:'wheels', keys:['wh'], c:['rm', 'sp'], fin:'fm', pal:{ rm:'anod', sp:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty', 'tw'], pal:{ ty:'tyre', tw:'wall' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'fork', name:'Fork', cat:'fork', c:['fk'], pal:{ fk:'anod' }, view:[0.4, 0.15, 0.85] },
+    { id:'rack', name:'Rack', cat:'acc', keys:['rk'], view:[Math.PI - 0.6, 0.3, 0.9] },
+    { id:'lights', name:'Lights', cat:'lights', keys:['lt'], c:['hl'], pal:{ hl:'light' }, view:[0.2, 0.15, 0.85] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  moped:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'tank', name:'Tank', cat:'body', keys:['tk'], view:[1.0, 0.4, 0.85] },
+    { id:'seat', name:'Seat', cat:'seat', keys:['se'], c:['sd'], s:1, pal:{ sd:'seat' }, view:[1.25, 0.6, 0.9] },
+    { id:'body', name:'Fenders', cat:'body', keys:['fe'], c:['pl'], pal:{ pl:'plas' }, view:[0.6, 0.2, 0.9] },
+    { id:'lights', name:'Headlight', cat:'lights', keys:['lp'], c:['hl'], pal:{ hl:'light' }, view:[0.2, 0.15, 0.85] },
+    { id:'bars', name:'Bars', cat:'bars', keys:['bs'], c:['br'], fin:'fb', pal:{ br:'anod' }, view:[0.42, 0.46, 0.86] },
+    { id:'tyres', name:'Tyres', cat:'tyres', keys:['ty'], c:['ty'], pal:{ ty:'tyre' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'wheels', name:'Wheels', cat:'wheels', keys:['wh'], c:['rm'], fin:'fm', pal:{ rm:'anod' }, view:[Math.PI/2 - 0.42, 0.10, 0.92] },
+    { id:'rack', name:'Rack', cat:'acc', keys:['rk'], view:[Math.PI - 0.6, 0.3, 0.9] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ],
+  other:[
+    { id:'paint', name:'Paint & finish', cat:'paint', shared:1, view:[0.95, 0.17, 1.0] },
+    { id:'grips', name:'Grips', cat:'grips', c:['gp'], pal:{ gp:'grip' }, need:'grip', view:[0.42, 0.46, 0.8] },
+    { id:'stickers', name:'Stickers', cat:'stickers', shared:1, view:[Math.PI/2, 0.05, 0.86] },
+    { id:'acc', name:'Accessories', cat:'acc', shared:1, view:[0.95, 0.17, 1.0] }
+  ]
+};
+/* every ride: a Pattern slot right after Paint & finish (patterns stack on top of the paint) */
+Object.keys(WS48_SLOTS).forEach(t=>{
+  const L = WS48_SLOTS[t], i = L.findIndex(s=> s.id === 'paint');
+  if (i >= 0 && !L.some(s=> s.id === 'pattern')) L.splice(i + 1, 0, { id:'pattern', name:'Pattern', cat:'paint', shared:1, view:L[i].view });
+});
+const WS48_TAB = { scooter:'sc', bmx:'bx', mtb:'mt', road:'rd', dirt:'dm', escooter:'es', ebike:'eb', moped:'mp' };
+/* featured builds (the Showroom): a theme = [name, main colourway, second colourway, frame colour, paint part, pattern part, sticker part] */
+const WS48_THEMES = [
+  ['Gold Rush', 'gld', 'blk', 0x14161a, 'pa.fin.4', '', ''],      ['Ice Cold', 'wht', 'chr', 0xf1f2f4, 'pa.fin.9', '', ''],
+  ['Toxic', 'grn', 'blk', 0x16181c, 'pa.fin.3', '', 'st.2'],        ['Bubblegum', 'pnk', 'wht', 0xff4fa0, 'pa.fin.9', '', ''],
+  ['Stealth', 'blk', 'blk', 0x14161a, 'pa.fin.3', '', ''],          ['Inferno', 'red', 'org', 0x14161a, 'pa.job.0', '', ''],
+  ['Deep Sea', 'blu', 'tea', 0x14224d, 'pa.fin.4', '', ''],         ['Purple Haze', 'pur', 'blk', 0x4430b8, 'pa.fin.8', '', ''],
+  ['Race Day', 'red', 'wht', 0xf1f2f4, 'pa.fin.1', 'pa.pat.2', 'st.1'], ['Carbon Ops', 'blk', 'red', 0x22252b, 'pa.fin.2', 'pa.pat.12', ''],
+  ['Sunrise', 'org', 'yel', 0xf05a1a, 'pa.fin.10', 'pa.pat.4', ''], ['Chrome King', 'chr', 'blk', 0xc9ced6, 'pa.fin.5', '', '']
+];
+/* ---------------------------------------------------------------- push scooters: printed tape art becomes a part (pd15scoot P.art) */
+(function ws48TapeArt(){
+  try {
+    if (typeof R25P_FAM === 'undefined' || !R25P_FAM.pd15scoot || R25P_FAM.pd15scoot.some(d=> d.k === 'ta')) return;
+    const gi = R25P_FAM.pd15scoot.findIndex(d=> d.k === 'gt');
+    R25P_FAM.pd15scoot.splice(gi < 0 ? R25P_FAM.pd15scoot.length : gi + 1, 0,
+      { k:'ta', g:'Deck', n:'Tape art', o:[['bolt', 'Bolt', P=> ({ tape:P.tape || 'acc', art:'bolt' })], ['stars', 'Stars', P=> ({ tape:P.tape || 'acc', art:'stars' })],
+        ['flames', 'Flames', P=> ({ tape:P.tape || 'acc', art:'flames' })], ['chev', 'Chevrons', P=> ({ tape:P.tape || 'acc', art:'chevron' })], ['none', 'No art', { art:'' }]] });
+  } catch(e){}
+})();
+/* ---------------------------------------------------------------- helpers */
+function ws48Hash(s){ let h = 2166136261; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function ws48Round(p){ return p < 100 ? Math.round(p/5)*5 : p < 1000 ? Math.round(p/10)*10 : Math.round(p/50)*50; }
+/* a vehicle -> its parts type */
+function ws48TypeOf(vehId){
+  const v = typeof FLEET_BY_ID !== 'undefined' ? FLEET_BY_ID[vehId] : null; if (!v) return 'other';
+  for (const t of WS48_TYPE_ORDER) if (WS48_TYPES[t].fam.indexOf(v.b) >= 0) return t;
+  return 'other';
+}
+/* the R25P part def of key k on family fam */
+function ws48Def(fam, k){ const L = (typeof R25P_FAM !== 'undefined' && R25P_FAM[fam]) || []; return L.find(d=> d.k === k) || null; }
+/* shape combinations of a slot: [[k, code], ...] (1 or 2 keys changed from stock), deterministic, at most n */
+function ws48Combos(fam, keys, n){
+  const defs = keys.map(k=> ws48Def(fam, k)).filter(Boolean);
+  if (!defs.length) return [];
+  const out = [];
+  // first: every option of every key on its own
+  defs.forEach(d=> d.o.forEach(o=> out.push([[d.k, o[0]]])));
+  // then pairs of the first key with each other key's options
+  if (defs.length > 1) for (let a = 0; a < defs[0].o.length; a++) for (let b = 1; b < defs.length; b++) defs[b].o.forEach(o=> out.push([[defs[0].k, defs[0].o[a][0]], [defs[b].k, o[0]]]));
+  // keep the first key's single options, then spread the rest
+  const single = out.filter(c=> c.length === 1), pairs = out.filter(c=> c.length === 2), pick = single.slice(0, Math.min(single.length, n));
+  for (let i = 0; pick.length < n && i < pairs.length; i += Math.max(1, Math.floor(pairs.length/Math.max(1, n - pick.length)))) pick.push(pairs[i]);
+  return pick.slice(0, n);
+}
+function ws48ComboFx(fam, combo){
+  const fx = { steer:1, grip:1, off:1, top:1, hop:1 }; let any = false;
+  combo.forEach(([k, code])=>{ const d = ws48Def(fam, k), o = d && d.o.find(x=> x[0] === code); if (o && o[3]){ any = true; Object.keys(o[3]).forEach(s=>{ fx[s] *= o[3][s]; }); } });
+  return any ? fx : null;
+}
+function ws48ComboLabel(fam, combo){
+  return combo.map(([k, code])=>{ const d = ws48Def(fam, k), o = d && d.o.find(x=> x[0] === code); return o ? (o[1] === 'None' ? 'No ' + d.n.toLowerCase() : o[1] + (/^(Short|Long|Narrow|Wide|Low|Tall|High|Flat|Riser|Slim|Fat|Mid|Deep|One|Two|Plain|Off|On)$/.test(o[1]) ? ' ' + d.n.toLowerCase().replace(/^(deck|bar|wheel) /, '') : '')) : code; }).join(' · ');
+}
+/* ---------------------------------------------------------------- the catalogue (built once, on first use) */
+let WS48_CAT = null;
+function ws48Catalog(){
+  if (WS48_CAT) return WS48_CAT;
+  const list = [], byId = {}, add = p=>{ if (byId[p.id]) return; byId[p.id] = p; list.push(p); };
+  const rar = r=> WS48_RAR[Math.max(0, Math.min(4, r))];
+  for (const t of WS48_TYPE_ORDER){
+    const T0 = WS48_TYPES[t], fam = T0.fam[0], tb = WS48_TAB[t];
+    WS48_SLOTS[t].forEach(S=>{
+      if (S.shared) return;
+      const brandsT = (WS48_CBRANDS[S.cat] && ['grips', 'tyres', 'wheels', 'seat', 'pedals', 'drive', 'brakes', 'lights', 'susp'].indexOf(S.cat) >= 0) ? WS48_CBRANDS[S.cat] : T0.brands;
+      const names = WS48_MODELS[S.cat] || ['Pro'];
+      const combos = S.keys ? ws48Combos(fam, S.keys, S.c ? 6 : 8) : [];
+      const models = combos.length ? combos.map((c, i)=> ({ combo:c, i })) : [0, 1, 2].map(i=> ({ combo:[], i, line:['Lite', 'Pro', 'Signature'][i] }));
+      if (S.keys && S.keys.indexOf('pg') >= 0 && !combos.length) return;
+      models.forEach(m=>{
+        const brand = brandsT[(m.i + ws48Hash(t + S.id)) % brandsT.length];
+        const tier = 0.8 + 0.35*((m.i + ws48Hash(brand)) % 3);
+        const label = m.combo.length ? ws48ComboLabel(fam, m.combo) : '';
+        const top = m.line === 'Signature' || (m.combo.length && m.i === models.length - 1);
+        const mname = names[(m.i + ws48Hash(t + S.id)) % names.length] + (m.line ? ' ' + m.line : (m.combo.length > 1 ? ' Pro' : ''));
+        const pt = {}; m.combo.forEach(([k, code])=>{ pt[k] = code; });
+        const fx = m.combo.length ? ws48ComboFx(fam, m.combo) : null;
+        const base = WS48_BASE[S.cat] || 80;
+        // a part that only takes something off (no pegs, brakeless, no tape art ...): one plain product, free
+        const off = m.combo.length && m.combo.every(([k, code])=>{ const d = ws48Def(fam, k), o = d && d.o.find(x=> x[0] === code); return !!o && /^(None|No |Brakeless|Off|Plain)/.test(o[1]); });
+        if (off){
+          add({ id:tb + '.' + S.id + '.' + m.i, t, slot:S.id, cat:S.cat, brand:'Stock', name:label, model:label, shape:'Remove', cw:'', hex:null, pt, c:{}, fin:null, s:0,
+                rar:'common', price:0, fx, off:1 });
+          return;
+        }
+        if (S.c && S.c.length){
+          // colourways: the slot's first colour key sets the palette; up to 5 per model, black / white first on the first model
+          const pal = WS48_CW[(S.pal && S.pal[S.c[0]]) || 'anod'], n = pal.length, K = Math.min(5, n);
+          for (let j = 0; j < K; j++){
+            const cw = pal[(m.i*3 + j*Math.max(1, Math.floor(n/K)) + (j === K - 1 && top ? n - 1 - (m.i % 2) : 0)) % n];
+            const r = Math.min(3, cw[4] + (top ? 1 : 0)), R = rar(r);
+            const c = {}; S.c.forEach((ck, q)=>{
+              if (q === 0){ c[ck] = cw[2]; return; }
+              if (ck === 'sp'){ c[ck] = cw[4] >= 1 && cw[0] !== 'chr' ? cw[2] : 0xdfe3e8; return; }          // spokes: match a coloured rim, else silver
+              const pq = WS48_CW[(S.pal && S.pal[ck]) || 'anod']; c[ck] = pq[(m.i + j) % pq.length][2];
+            });
+            add({ id:tb + '.' + S.id + '.' + m.i + '.' + cw[0], t, slot:S.id, cat:S.cat, brand, name:brand + ' ' + mname + (label && m.combo.length ? '' : ''), model:mname,
+                  shape:label, cw:cw[1], hex:cw[2], pt, c, fin:S.fin ? { k:S.fin, v:cw[3] } : null, s:S.s ? 1 + ((m.i + j) % 6) : 0,
+                  rar:R[0], price:ws48Round(base*T0.mul*tier*R[3]), fx });
+          }
+        } else {
+          const R = rar(top ? 2 : (m.i % 3 === 2 ? 1 : 0));
+          add({ id:tb + '.' + S.id + '.' + m.i, t, slot:S.id, cat:S.cat, brand, name:brand + ' ' + mname, model:mname, shape:label, cw:'', hex:null, pt, c:{}, fin:null, s:0,
+                rar:R[0], price:ws48Round(base*T0.mul*tier*R[3]), fx });
+        }
+      });
+    });
+  }
+  // shared: paint finishes, patterns, designer paint jobs, sticker kits, accessories, glow kits (every ride)
+  const FIN = [[1, 'Gloss', 0], [2, 'Satin', 0], [3, 'Matte', 0], [4, 'Metallic', 1], [6, 'Raw metal', 1], [9, 'Pearl', 2], [7, 'Glitter', 2], [10, 'Candy', 2], [5, 'Chrome', 3], [8, 'Oil slick', 3]];
+  FIN.forEach(([f, n, r], i)=> add({ id:'pa.fin.' + f, t:'*', slot:'paint', cat:'paint', brand:WS48_CBRANDS.paint[i % 3], name:n + ' paint', model:n, shape:'Finish', cw:'', hex:null,
+    pt:{}, c:{}, paint:{ f }, rar:rar(r)[0], price:ws48Round(WS48_BASE.paint*(0.5 + i*0.22)*rar(r)[3]/1.6), fx:null }));
+  const PATN = (typeof CUST_PATTERNS !== 'undefined') ? CUST_PATTERNS : [];
+  PATN.forEach((n, i)=>{ if (!i) return; const r = [0, 0, 1, 0, 1, 1, 1, 2, 1, 1, 1, 2, 0, 0, 1][i] || 1;
+    add({ id:'pa.pat.' + i, t:'*', slot:'pattern', cat:'paint', brand:'Kustom Kolor', name:n + ' pattern', model:n, shape:'Pattern', cw:'', hex:null, pt:{}, c:{}, paint:{ p:i },
+          rar:rar(r)[0], price:ws48Round(160*rar(r)[3]), fx:null }); });
+  const JOBS = [['Candy Flames', 10, 8, 0xffc21a], ['Pearl Fade', 9, 4, 0x2a1a40], ['Oil Slick Hex', 8, 7, 0x16181c], ['Matte Camo', 3, 5, 0x3a4a2c], ['Chrome Racer', 5, 2, 0xd62a2a],
+                ['Glitter Dots', 7, 9, 0xffffff], ['Satin Carbon', 2, 12, 0x22252b], ['Metallic Two-Tone', 4, 14, 0x16181c], ['Candy Zigzag', 10, 10, 0x18d4f0], ['Pearl Chevron', 9, 11, 0xff4fa0],
+                ['Raw Digital', 6, 6, 0x2a6fd6], ['Gloss Checker', 1, 3, 0x111317], ['Midnight Fade Back', 4, 13, 0x0b1022], ['Sunset Stripes', 1, 1, 0xff7a1a], ['Galaxy Oil', 8, 4, 0x2a0f5c], ['Gold Rush', 5, 13, 0xd4a52a]];
+  JOBS.forEach(([n, f, p, col], i)=>{ const r = f === 5 || f === 8 ? 3 : (f >= 7 ? 2 : 1);
+    add({ id:'pa.job.' + i, t:'*', slot:'paint', cat:'paint', brand:WS48_CBRANDS.paint[(i + 1) % 3], name:n, model:n, shape:'Designer paint job', cw:'', hex:col, pt:{}, c:{},
+          paint:{ f, p, pc:col }, rar:rar(r)[0], price:ws48Round(420*rar(r)[3]), fx:null }); });
+  const DEC = (typeof CUST_DECALS !== 'undefined') ? CUST_DECALS : [];
+  DEC.forEach((n, i)=>{ const r = i < 2 ? 0 : (i < 5 ? 1 : 2);
+    add({ id:'st.' + (i + 1), t:'*', slot:'stickers', cat:'stickers', brand:WS48_CBRANDS.stickers[i % 2], name:n + ' sticker kit', model:n, shape:'Stickers', cw:'', hex:null, pt:{}, c:{},
+          stk:i + 1, rar:rar(r)[0], price:ws48Round(WS48_BASE.stickers*rar(r)[3]), fx:null }); });
+  const ACC = (typeof CUST_ACC !== 'undefined') ? CUST_ACC : [];
+  ACC.forEach((a, i)=>{ const r = a.id === 'ring' ? 3 : (a.id === 'plate' || a.id === 'strm' ? 1 : 0);
+    add({ id:'ac.' + a.id, t:'*', slot:'acc', cat:'acc', brand:WS48_CBRANDS.acc[i % 2], name:a.name, model:a.name, shape:a.hint || '', cw:'', hex:null, pt:{}, c:{},
+          acc:a.id, rar:rar(r)[0], price:ws48Round((a.id === 'ring' ? 220 : 60)*rar(r)[3]), fx:null }); });
+  const bySlot = {};
+  list.forEach(p=>{ const k = p.t + ':' + p.slot; (bySlot[k] = bySlot[k] || []).push(p); });
+  WS48_CAT = { list, byId, bySlot };
+  return WS48_CAT;
+}
+/* a part by id, the daily limited ones included ('<base id>~<ltd id>') */
+function ws48Part(id){
+  const C = ws48Catalog();
+  if (C.byId[id]) return C.byId[id];
+  const m = /^(.+)~([a-z]+)$/.exec(String(id || '')); if (!m) return null;
+  const b = C.byId[m[1]], L = WS48_LTD.find(x=> x[0] === m[2]); if (!b || !L || !b.hex) return null;
+  const S = WS48_SLOTS[b.t] && WS48_SLOTS[b.t].find(s=> s.id === b.slot); if (!S || !S.c) return null;
+  const c = Object.assign({}, b.c); c[S.c[0]] = L[2];
+  const p = Object.assign({}, b, { id, cw:L[1], hex:L[2], c, fin:b.fin ? { k:b.fin.k, v:L[3] } : null, rar:'limited', price:ws48Round(b.price*2.6), ltd:L[0] });
+  C.byId[id] = p;
+  return p;
+}
+/* today's limited drop: 8 parts in special colourways, a new set every day (local date) */
+function ws48Day(d){ d = d || new Date(); return d.getFullYear()*10000 + (d.getMonth() + 1)*100 + d.getDate(); }
+function ws48Drop(day){
+  const C = ws48Catalog(), day0 = day || ws48Day(), pool = C.list.filter(p=> p.t !== '*' && p.hex !== null && p.c && Object.keys(p.c).length && /\.(blk|wht)$/.test(p.id));
+  const out = [], seen = new Set();
+  let h = ws48Hash('drop' + day0);
+  for (let k = 0; out.length < 8 && k < 64; k++){
+    h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+    const b = pool[h % pool.length]; if (!b) break;
+    const key = b.t + b.slot; if (seen.has(key)) continue; seen.add(key);
+    const L = WS48_LTD[(h >>> 8) % WS48_LTD.length], p = ws48Part(b.id + '~' + L[0]);
+    if (p) out.push(p);
+  }
+  return out;
+}
+/* the slots a vehicle shows (the ones its build has: shape keys of its family, the part flags custParts reports) */
+function ws48SlotsFor(vehId){
+  const t = ws48TypeOf(vehId), v = FLEET_BY_ID[vehId], fam = v ? v.b : '', parts = typeof custParts === 'function' ? custParts(vehId) : null;
+  return (WS48_SLOTS[t] || WS48_SLOTS.other).filter(S=>{
+    if (S.need && parts && parts[S.need] === false) return false;
+    if (S.keys && !S.c && !S.keys.some(k=> ws48Def(fam, k))) return false;
+    return true;
+  });
+}
+/* the parts that fit a vehicle's slot */
+function ws48PartsFor(vehId, slotId){
+  const C = ws48Catalog(), t = ws48TypeOf(vehId), S = (WS48_SLOTS[t] || []).find(s=> s.id === slotId);
+  if (!S) return [];
+  if (S.shared) return C.bySlot['*:' + slotId] || [];
+  return (C.bySlot[t + ':' + slotId] || []).filter(p=> Object.keys(p.pt).every(k=> ws48Def(FLEET_BY_ID[vehId].b, k)));
+}
+function ws48Rarity(id){ return WS48_RAR.find(r=> r[0] === id) || WS48_RAR[0]; }
+
+/* =========================================================================
+   WS48 CORE -- Release 15.45: the Workshop's state and rules.
+     PARTS BIN    parts you bought (once bought, a part fits any number of your builds). Stock + removal parts are free; the paint
+                  finishes, patterns, sticker kits and accessories that Customise has are the SAME unlocks as there (free basics stay
+                  free, premium ones are the Shop's premium keys: one purchase, both places).
+     BUILDS       named, saved builds: { id, name, veh (the frame = a ride), cust (shape parts, colours, finishes, paint, stickers,
+                  accessories), parts { slot | 'a.<accessory>': part id }, t0, t1, fav }. The BUILD is the source of truth:
+                  a build the ride wears (its look = the ride's saved customisation) writes every change straight through to
+                  the ride, so the live rig, the garage, the menu card and friends online (custPack) all see it. A build with
+                  parts you do not own yet (a share code, a Showroom pick) is a blueprint: edit it, buy what is missing, then wear it.
+     SHARE CODES  'DL1-...' text another player can paste.
+   Saved in localStorage 'dusk_line_ws_v1' (validated on load; a broken save starts empty instead of breaking the game).
+   API: wsD(), wsOwns(id), wsPrice(p), wsBuy(id), wsPremKey(p), wsApplyPart(cust, p, veh), wsClearSlot(cust, veh, slot, parts),
+        wsTakeAcc(cust, accId), wsPartKey(p), wsPartMatches(cust, p), wsLive(veh), wsBuilds(), wsBuildNew(veh, name, from),
+        wsBuildFromRide(veh), wsBuildLoad(b, equip), wsWorn(b), wsBuildDup(b), wsBuildDel(b), wsBuildRename(b, name),
+        wsBuildValue(b), wsMissing(b), wsShareCode(b), wsImportCode(s), ws48Featured()
+   ========================================================================= */
+const WS48 = { open:false, err:'', n:{ buys:0, loads:0, saves:0, edits:0 } };
+const WS48_KEY = 'dusk_line_ws_v1', WS48_MAXB = 80;
+const WS48_PKEY = /^[a-z][a-z0-9.]{1,15}$/, WS48_PID = /^[a-z0-9.~*-]{2,40}$/i, WS48_BID = /^b[a-z0-9]{1,16}$/;
+/* build ids are unique across devices (the cloud save merges builds by id) */
+function wsNewId(){ return 'b' + Date.now().toString(36) + Math.floor(Math.random()*46656).toString(36).padStart(3, '0'); }
+let WS48_D = null;
+function wsD(){
+  if (WS48_D) return WS48_D;
+  const d = { v:1, own:{}, builds:[], live:{}, seq:1, del:{} };
+  try {
+    const o = JSON.parse(localStorage.getItem(WS48_KEY) || 'null');
+    if (o && typeof o === 'object'){
+      if (o.own && typeof o.own === 'object') Object.keys(o.own).forEach(k=>{ if (WS48_PID.test(k)) d.own[k] = +o.own[k] || 1; });
+      if (Array.isArray(o.builds)) o.builds.slice(0, WS48_MAXB).forEach(b=>{ const c = wsBuildClean(b); if (c && !d.builds.some(x=> x.id === c.id)) d.builds.push(c); });
+      if (o.live && typeof o.live === 'object') Object.keys(o.live).forEach(v=>{ if (typeof FLEET_BY_ID === 'undefined' || FLEET_BY_ID[v]) d.live[v] = wsPartsClean(o.live[v]) || {}; });
+      d.seq = Math.max(1, +o.seq || 1);
+      if (o.del && typeof o.del === 'object') Object.keys(o.del).slice(-120).forEach(k=>{ if (WS48_BID.test(k)) d.del[k] = +o.del[k] || 1; });
+    }
+  } catch(e){ WS48.err = 'load: ' + e.message; }
+  WS48_D = d;
+  return d;
+}
+let _wsSaveT = 0;
+function wsSave(now){
+  const go = ()=>{ _wsSaveT = 0; try { localStorage.setItem(WS48_KEY, JSON.stringify(wsD())); } catch(e){ WS48.err = 'save: ' + e.message; } };
+  if (now){ if (_wsSaveT) clearTimeout(_wsSaveT); go(); } else if (!_wsSaveT) _wsSaveT = setTimeout(go, 300);
+}
+addEventListener('pagehide', ()=>{ if (_wsSaveT) wsSave(true); });
+function wsPartsClean(o){
+  if (!o || typeof o !== 'object') return null;
+  const out = {}; let n = 0;
+  Object.keys(o).forEach(k=>{ if (n < 32 && WS48_PKEY.test(k) && typeof o[k] === 'string' && WS48_PID.test(o[k])){ out[k] = o[k]; n++; } });
+  return out;
+}
+function wsBuildClean(b){
+  if (!b || typeof b !== 'object' || typeof b.veh !== 'string') return null;
+  if (typeof FLEET_BY_ID !== 'undefined' && !FLEET_BY_ID[b.veh]) return null;
+  const name = String(b.name || 'My build').replace(/[<>]/g, '').trim().slice(0, 32) || 'My build';
+  return { id:WS48_BID.test(b.id) ? b.id : wsNewId(), name, veh:b.veh,
+           cust:(typeof custClean === 'function' ? custClean(b.cust) : b.cust) || null, parts:wsPartsClean(b.parts) || {},
+           t0:+b.t0 || Date.now(), t1:+b.t1 || Date.now(), fav:b.fav ? 1 : 0 };
+}
+/* ---------------------------------------------------------------- owning + buying */
+/* a shared part that IS a Customise option: its premium key (null = a free basic, undefined = a Workshop-only part) */
+function wsPremKey(p){
+  if (!p || p.t !== '*' || typeof custPremiumKey !== 'function') return undefined;
+  if (p.paint && p.paint.f && !p.paint.p) return custPremiumKey('fin', p.paint.f);
+  if (p.paint && p.paint.p && !p.paint.f) return custPremiumKey('pat', p.paint.p);
+  if (p.stk) return custPremiumKey('dec', p.stk);
+  if (p.acc) return custPremiumKey('acc', p.acc);
+  return undefined;
+}
+function wsPrice(p){
+  if (!p) return 0;
+  const k = wsPremKey(p);
+  if (k === null) return 0;
+  if (k && typeof shopPrice === 'function'){ const s = shopPrice(k); if (s !== null && s !== undefined) return s; }
+  return p.price | 0;
+}
+function wsOwns(id){
+  const p = typeof id === 'object' ? id : ws48Part(id); if (!p) return false;
+  if (wsD().own[p.id]) return true;
+  const k = wsPremKey(p);
+  if (k === null) return true;
+  if (k) return typeof shopHas !== 'function' || shopHas(k);
+  return (p.price | 0) === 0;
+}
+function wsBuy(id){
+  const p = ws48Part(id); if (!p) return { ok:false, why:'none' };
+  if (wsOwns(p)) return { ok:true, already:true };
+  if (wsPremKey(p)) return { ok:false, why:'shop' };                       // sold through the Shop's premium key (shopTry)
+  if (p.ltd && !ws48Drop().some(x=> x.id === id)) return { ok:false, why:'gone' };
+  const price = p.price | 0;
+  if (typeof cashSpend === 'function' && price > 0 && !cashSpend(price, 'Workshop: ' + p.name)) return { ok:false, why:'cash', need:price - (typeof cashGet === 'function' ? cashGet() : 0) };
+  wsD().own[id] = Date.now(); WS48.n.buys++;
+  wsSave(true);
+  return { ok:true, price };
+}
+/* ---------------------------------------------------------------- parts on a customisation */
+function wsCustCopy(c){ return c ? JSON.parse(JSON.stringify(c)) : {}; }
+function wsSlotDef(vehId, slotId){ return (WS48_SLOTS[ws48TypeOf(vehId)] || WS48_SLOTS.other).find(s=> s.id === slotId) || null; }
+/* where a part sits in a build's parts map (accessories add up: one key each) */
+function wsPartKey(p){ return p.acc ? 'a.' + p.acc : p.slot; }
+/* does customisation `cust` still show part p? (Customise can change a ride behind the Workshop's back) */
+function wsPartMatches(cust, p){
+  if (!cust || !p) return false;
+  if (p.acc) return !!(cust.a && cust.a[p.acc]);
+  if (p.stk) return !!(cust.k && cust.k[0] === p.stk);
+  if (p.paint){
+    if (p.paint.f && cust.f !== p.paint.f) return false;
+    if (p.paint.p && !(cust.p && cust.p[0] === p.paint.p)) return false;
+    return true;
+  }
+  for (const k in p.pt) if (!cust.pt || cust.pt[k] !== p.pt[k]) return false;
+  for (const k in p.c) if (!cust.c || cust.c[k] !== p.c[k]) return false;
+  if (p.fin && p.fin.v && cust[p.fin.k] !== p.fin.v) return false;
+  if (p.s && cust.s !== p.s) return false;
+  return true;
+}
+/* take everything a slot sets off a customisation (back to the factory part); `parts` (a build's map) follows */
+function wsClearSlot(cust, vehId, slotId, parts){
+  const S = wsSlotDef(vehId, slotId); if (!S) return cust;
+  if (S.keys && cust.pt){ S.keys.forEach(k=>{ delete cust.pt[k]; }); if (!Object.keys(cust.pt).length) delete cust.pt; }
+  if (S.c && cust.c){ S.c.forEach(k=>{ delete cust.c[k]; }); if (!Object.keys(cust.c).length) delete cust.c; }
+  if (S.fin) delete cust[S.fin];
+  if (S.s) delete cust.s;
+  if (slotId === 'paint'){
+    delete cust.f;
+    const j = parts && parts.paint ? ws48Part(parts.paint) : null;
+    if (j && j.paint && j.paint.p && !(parts && parts.pattern)) delete cust.p;     // a designer job's own pattern goes with it
+  }
+  if (slotId === 'pattern') delete cust.p;
+  if (slotId === 'stickers') delete cust.k;
+  if (slotId === 'acc'){ delete cust.a; if (parts) Object.keys(parts).forEach(k=>{ if (k.indexOf('a.') === 0) delete parts[k]; }); }
+  if (parts) delete parts[slotId];
+  return cust;
+}
+function wsTakeAcc(cust, accId, parts){
+  if (cust.a){ delete cust.a[accId]; if (!Object.keys(cust.a).length) delete cust.a; }
+  if (parts) delete parts['a.' + accId];
+  return cust;
+}
+/* put part p on a customisation (the slot's earlier part comes off first; paint layers and accessories add up); `parts` follows */
+function wsApplyPart(cust, p, vehId, parts){
+  cust = cust || {};
+  if (p.paint){
+    if (p.paint.f) cust.f = p.paint.f;
+    if (p.paint.p){
+      const keep = cust.p && cust.p[0] === p.paint.p ? cust.p : null;
+      const col = p.paint.pc !== undefined ? p.paint.pc : (keep ? keep[1] : ((cust.c && cust.c.ac !== undefined) ? cust.c.ac : (FLEET_BY_ID[vehId] && FLEET_BY_ID[vehId].acc) || 0xffffff));
+      cust.p = [p.paint.p, col, keep ? keep[2] : 10];
+    }
+    if (parts){
+      if (p.paint.f && p.paint.p){ parts.paint = p.id; delete parts.pattern; }        // a designer job: finish + pattern in one
+      else if (p.paint.f) parts.paint = p.id;
+      else parts.pattern = p.id;
+    }
+    return cust;
+  }
+  if (p.stk){
+    const k0 = cust.k;
+    cust.k = [p.stk, k0 ? k0[1] : 0xf4f4f0, k0 ? k0[2] : 0x111317, k0 ? k0[3] : 1, k0 ? k0[4] : 10];
+    if (parts) parts.stickers = p.id;
+    return cust;
+  }
+  if (p.acc){
+    if (typeof CUST_ACC !== 'undefined'){ const a = CUST_ACC.find(x=> x.id === p.acc); if (a){ cust.a = Object.assign({}, cust.a || {}); cust.a[a.id] = a.def.slice(); } }
+    if (parts) parts['a.' + p.acc] = p.id;
+    return cust;
+  }
+  wsClearSlot(cust, vehId, p.slot, parts);
+  if (p.pt && Object.keys(p.pt).length) cust.pt = Object.assign({}, cust.pt || {}, p.pt);
+  if (p.c && Object.keys(p.c).length) cust.c = Object.assign({}, cust.c || {}, p.c);
+  if (p.fin && p.fin.v) cust[p.fin.k] = p.fin.v;
+  if (p.s) cust.s = p.s;
+  if (parts) parts[p.slot] = p.id;
+  return cust;
+}
+function wsLive(vehId){ const L = wsD().live; return L[vehId] || (L[vehId] = {}); }
+/* a customisation as a stable string (key order does not matter) */
+function wsCustSig(c){
+  const norm = o=> (o && typeof o === 'object' && !Array.isArray(o)) ? Object.keys(o).sort().reduce((a, k)=>{ a[k] = norm(o[k]); return a; }, {}) : o;
+  const cc = c && typeof custClean === 'function' ? custClean(c) : c;
+  return JSON.stringify(norm(cc || null));
+}
+/* ---------------------------------------------------------------- builds */
+function wsBuilds(){ return wsD().builds; }
+function wsBuildNew(veh, name, from){
+  const d = wsD();
+  if (d.builds.length >= WS48_MAXB) return null;
+  let cust = null, parts = {};
+  if (from === 'current'){ const r = wsBuildFromRide(veh); cust = r.cust; parts = r.parts; }
+  else if (from === 'bare') cust = { c:{ fr:0x8d939b }, f:3 };                       // a raw frame in grey primer, every part stock
+  else if (from && typeof from === 'object'){ cust = from.cust ? wsCustCopy(from.cust) : null; parts = Object.assign({}, from.parts || {}); }
+  const b = { id:wsNewId(), name:String(name || (FLEET_BY_ID[veh] ? FLEET_BY_ID[veh].name + ' build' : 'My build')).replace(/[<>]/g, '').slice(0, 32), veh,
+              cust:cust && Object.keys(cust).length ? cust : null, parts, t0:Date.now(), t1:Date.now(), fav:0 };
+  d.builds.unshift(b); WS48.n.saves++; wsSave(true);
+  return b;
+}
+/* the ride's current look + the Workshop parts it still shows */
+function wsBuildFromRide(veh){
+  const c = typeof custGet === 'function' ? custGet(veh) : null, cust = c ? wsCustCopy(c) : null, parts = {}, live = wsLive(veh);
+  Object.keys(live).forEach(k=>{ const p = ws48Part(live[k]); if (p && wsPartMatches(cust, p)) parts[k] = p.id; });
+  return { cust, parts };
+}
+/* does the ride wear build b right now? */
+function wsWorn(b){ return !!b && wsCustSig(typeof custGet === 'function' ? custGet(b.veh) : null) === wsCustSig(b.cust); }
+/* the ride wears build b (and, with equip, you ride it). A blueprint (parts missing) cannot be worn. */
+function wsBuildLoad(b, equip){
+  if (wsMissing(b).length) return false;
+  if (typeof custSet === 'function') custSet(b.veh, b.cust ? wsCustCopy(b.cust) : null);
+  wsD().live[b.veh] = Object.assign({}, b.parts || {});
+  wsSave();
+  wsKitZero(b.veh);
+  wsRefreshRide(b.veh);
+  if (equip && (typeof shopOwnsVeh !== 'function' || shopOwnsVeh(b.veh))){
+    try { if (typeof kitIndex !== 'undefined'){ kitIndex = 0; if (typeof applyKit === 'function') applyKit(0); } } catch(e){}
+    try { applyVehicle(b.veh); } catch(e){ WS48.err = 'equip: ' + e.message; }
+    try { if (typeof swap22After === 'function') swap22After(); } catch(e){}
+    try { if (typeof custCommit === 'function') custCommit(b.veh); } catch(e){}
+  }
+  WS48.n.loads++;
+  return true;
+}
+/* a quick paint (the 30 colours) would hide the build's paint: the Workshop look is what you ride */
+function wsKitZero(veh){
+  try {
+    if (typeof FLEET_CUR !== 'undefined' && veh === FLEET_CUR && typeof kitIndex !== 'undefined' && kitIndex){ kitIndex = 0; if (typeof applyKit === 'function') applyKit(0); }
+    if (typeof GARAGE !== 'undefined' && GARAGE.open && GARAGE.sel === veh) GARAGE.color = 0;
+  } catch(e){}
+}
+/* after the customisation of a ride changed: rebuild its shape if the parts changed, repaint the rig, the garage, the menu card,
+   tell friends online (custCommit does all of it; ride25 hooks it for the shape) */
+function wsRefreshRide(veh){
+  try {
+    if (typeof custCommit === 'function'){ custCommit(veh); return; }
+    const now = typeof ride25PartsSig === 'function' ? ride25PartsSig(ride25PartsGet(veh)) : '';
+    if (typeof FLEET_LOOKS !== 'undefined' && FLEET_LOOKS[veh] && typeof ride25Rebuild === 'function' && (R25P.sig[veh] || '') !== now) ride25Rebuild(veh);
+    if (typeof FLEET_CUR !== 'undefined' && veh === FLEET_CUR && typeof fleetPaint === 'function') fleetPaint(veh, typeof kitIndex !== 'undefined' ? kitIndex : 0);
+  } catch(e){ WS48.err = 'refresh: ' + e.message; }
+}
+function wsBuildDup(b){
+  const d = wsD(); if (d.builds.length >= WS48_MAXB) return null;
+  const c = { id:wsNewId(), name:(b.name.slice(0, 27) + ' copy'), veh:b.veh, cust:b.cust ? wsCustCopy(b.cust) : null, parts:Object.assign({}, b.parts), t0:Date.now(), t1:Date.now(), fav:0 };
+  const i = d.builds.indexOf(b); d.builds.splice(i < 0 ? 0 : i + 1, 0, c); wsSave(true);
+  return c;
+}
+function wsBuildDel(b){ const d = wsD(), i = d.builds.indexOf(b); if (i >= 0){ d.builds.splice(i, 1); d.del[b.id] = Date.now(); wsSave(true); } }
+function wsBuildRename(b, name){ name = String(name || '').replace(/[<>]/g, '').trim().slice(0, 32); if (name && name !== b.name){ b.name = name; b.t1 = Date.now(); wsSave(); } return b.name; }
+function wsBuildValue(b){
+  let v = typeof garagePrice === 'function' ? garagePrice(b.veh) : 0;
+  Object.keys(b.parts || {}).forEach(s=>{ const p = ws48Part(b.parts[s]); if (p) v += wsPrice(p); });
+  return v;
+}
+/* the parts of a build you do not own yet (a share code or a Showroom pick may use parts you have not bought) */
+function wsMissing(b){ const seen = {}; return Object.keys(b.parts || {}).map(s=> b.parts[s]).filter(id=>{ if (seen[id]) return false; seen[id] = 1; return !wsOwns(id); }); }
+/* share codes: the build (ride + customisation + parts) as text another player can paste */
+function wsShareCode(b){
+  const o = { v:1, n:b.name, r:b.veh, c:b.cust || null, p:b.parts || {} };
+  try { return 'DL1-' + btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch(e){ return ''; }
+}
+function wsImportCode(s){
+  try {
+    s = String(s || '').replace(/\s+/g, ''); const i = s.indexOf('DL1-'); if (i < 0) return null;
+    let t = s.slice(i + 4).replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '=';
+    const o = JSON.parse(decodeURIComponent(escape(atob(t))));
+    const b = wsBuildClean({ name:o.n, veh:typeof fleetResolve === 'function' ? fleetResolve(o.r) : o.r, cust:o.c, parts:o.p }); if (!b) return null;
+    Object.keys(b.parts).forEach(k=>{ if (!ws48Part(b.parts[k])) delete b.parts[k]; });
+    const d = wsD(); if (d.builds.length >= WS48_MAXB) return null;
+    b.id = wsNewId(); b.t0 = b.t1 = Date.now(); b.fav = 0;
+    d.builds.unshift(b); wsSave(true);
+    return b;
+  } catch(e){ return null; }
+}
+/* ---------------------------------------------------------------- the Showroom: featured builds in themes (blueprints to copy) */
+let WS48_FEAT = null;
+function ws48Featured(){
+  if (WS48_FEAT) return WS48_FEAT;
+  const out = [];
+  if (typeof FLEET === 'undefined') return out;
+  WS48_TYPE_ORDER.forEach((t, ti)=>{
+    const rides = FLEET.filter(v=> ws48TypeOf(v.id) === t);
+    if (!rides.length) return;
+    [0, 1].forEach(k=>{
+      const th = WS48_THEMES[(ti*3 + k*5) % WS48_THEMES.length], v = rides[ws48Hash(t + ':' + k) % rides.length];
+      const cust = { c:{ fr:th[3] } }, parts = {}, h0 = ws48Hash(th[0] + v.id);
+      ws48SlotsFor(v.id).forEach((S, si)=>{
+        let p = null;
+        if (S.id === 'paint') p = ws48Part(th[4]);
+        else if (S.id === 'pattern') p = th[5] ? ws48Part(th[5]) : null;
+        else if (S.id === 'stickers') p = th[6] ? ws48Part(th[6]) : null;
+        else if (S.id === 'acc') p = null;
+        else {
+          const all = ws48PartsFor(v.id, S.id).filter(x=> !x.off);
+          if (!all.length) return;
+          if (S.c){
+            const want = [th[1], th[2], 'blk'];
+            for (const w of want){ const m = all.filter(x=> x.id.split('.').pop() === w); if (m.length){ p = m[(h0 + si) % m.length]; break; } }
+            if (!p) p = all[(h0 + si) % all.length];
+          } else p = all[(h0 + si*7) % all.length];
+        }
+        if (p) wsApplyPart(cust, p, v.id, parts);
+      });
+      out.push({ id:'f' + out.length, name:th[0] + ' ' + v.name, theme:th[0], veh:v.id, cust:typeof custClean === 'function' ? custClean(cust) : cust, parts });
+    });
+  });
+  WS48_FEAT = out;
+  return out;
+}
+
+/* ---------------------------------------------------------------- the cloud save (signed in, the online version): parts you own
+   follow you to every device (a set: union), and so do your builds (merged build by build: the newer edit wins, a deleted build
+   stays deleted). A pref value may hold 16 KB: the newest builds that fit go up. */
+function wsCloudPack(){
+  const d = wsD(), out = [], del = {};
+  let size = 40;
+  for (const b of d.builds.slice().sort((x, y)=> y.t1 - x.t1)){
+    const o = { i:b.id, n:b.name, r:b.veh, c:b.cust || null, p:b.parts || {}, t:b.t1, f:b.fav ? 1 : 0 };
+    const len = JSON.stringify(o).length + 1;
+    if (size + len > 15000) break;
+    size += len; out.push(o);
+  }
+  Object.keys(d.del).sort((a, b)=> d.del[b] - d.del[a]).slice(0, 60).forEach(k=>{ del[k] = d.del[k]; });
+  return { b:out, x:del };
+}
+function wsCloudMerge(v){
+  if (!v || typeof v !== 'object') return 0;
+  const d = wsD(); let n = 0;
+  if (v.x && typeof v.x === 'object') Object.keys(v.x).forEach(id=>{
+    if (!WS48_BID.test(id)) return;
+    const t = +v.x[id] || 1; if (!(d.del[id] >= t)) d.del[id] = t;
+    const i = d.builds.findIndex(b=> b.id === id);
+    if (i >= 0 && d.builds[i].t1 <= t){ d.builds.splice(i, 1); n++; }
+  });
+  if (Array.isArray(v.b)) v.b.forEach(o=>{
+    if (!o || typeof o !== 'object') return;
+    const b = wsBuildClean({ id:o.i, name:o.n, veh:o.r, cust:o.c, parts:o.p, t0:o.t, t1:o.t, fav:o.f });
+    if (!b || !WS48_BID.test(String(o.i)) || (d.del[b.id] && d.del[b.id] >= b.t1)) return;
+    const i = d.builds.findIndex(x=> x.id === b.id);
+    if (i >= 0){ if (d.builds[i].t1 < b.t1){ b.t0 = d.builds[i].t0; d.builds[i] = b; n++; } }
+    else if (d.builds.length < WS48_MAXB){ d.builds.push(b); n++; }
+  });
+  if (n){ d.builds.sort((a, b)=> b.t1 - a.t1); wsSave(true); try { if (typeof wuCloudChanged === 'function') wuCloudChanged(); } catch(e){} }
+  return n;
+}
+(function wsCloud(){
+  if (typeof cloudRegister !== 'function') return;
+  cloudRegister('ws', {
+    own:()=>{ const o = {}; Object.keys(wsD().own).forEach(k=>{ o[k] = 1; }); return o; },
+    pref:()=> wsCloudPack(),
+    apply:x=>{
+      if (!x) return;
+      if (x.own){ const d = wsD(); let n = 0; Object.keys(x.own).forEach(k=>{ if (x.own[k] && WS48_PID.test(k) && !d.own[k] && ws48Part(k)){ d.own[k] = Date.now(); n++; } }); if (n){ wsSave(true); try { if (typeof wuCloudChanged === 'function') wuCloudChanged(); } catch(e){} } }
+      if (x.pref !== undefined) wsCloudMerge(x.pref);
+    }
+  });
+})();
+
+/* =========================================================================
+   WS48 UI -- Release 15.45: THE WORKSHOP (Garage -> Workshop, the menu, the pause screen).
+     MY BUILDS     your named builds as cards with a 3D snapshot: edit, ride, copy, share, star, delete, search, sort, filter by type
+     BUILD EDITOR  every slot of the ride (paint, pattern, deck, bars, wheels, tyres, seat, pedals, pegs, brakes, chain, lights, body,
+                   stickers, accessories ...): tap a part to TRY IT ON in the live 3D preview (spin, pinch / scroll zoom, close-up on
+                   the part), buy it, fit it, take it off, back to stock; free frame / accent / pattern / sticker colours; undo;
+                   shuffle; copy to another frame; wear it; ride it
+     MARKETPLACE   every part: search, ride type, fits-my-build, categories, brands, rarity, price, hide owned, sorting; today's
+                   limited drop with a countdown; a detail panel with its own 3D preview on a ride it fits
+     SHOWROOM      featured themed builds (blueprints): copy one, buy what you miss, ride it
+     PARTS BIN     everything you own, where it is fitted, fit it to the build you are editing
+   One FleetView (the garage's showroom viewer) moves between the editor, the marketplace detail and an off-screen thumbnail host.
+   While the Workshop is open the world does not render (shopIsOpen() says true), so it costs no more than the garage.
+   API: openWorkshop({ veh, build, tab }), closeWorkshop(), WSU
+   ========================================================================= */
+const WSU = { built:false, dom:null, tab:'builds', view:null, stage:null, shown:'', c0:null, aim:{ z:0, y:0 }, rider:false,
+              ed:{ b:null, slot:'paint', sel:null, undo:[], own:'all', sort:'feat', worn:false },
+              mk:{ q:'', type:'all', cat:'all', brand:'all', rar:'all', max:0, hide:false, fit:false, sort:'feat', sel:null, n:60, sheet:false, pv:null },
+              bl:{ q:'', type:'all', sort:'recent' }, thumbs:new Map(), tq:[], tc:null, clk:0, toastT:0, from:'menu', hay:new Map() };
+const wuEl = id=> document.getElementById(id);
+const wuEsc = s=> String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c=> ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+const wuMoney = n=> '$' + Math.round(n || 0).toLocaleString('en-US');
+const wuHex = h=> '#' + ((h >>> 0) & 0xffffff).toString(16).padStart(6, '0');
+const wuLum = h=> { const r = (h >> 16) & 255, g = (h >> 8) & 255, b = h & 255; return (0.299*r + 0.587*g + 0.114*b)/255; };
+function wuCash(){ try { return typeof cashGet === 'function' ? cashGet() : 0; } catch(e){ return 0; } }
+function wuRideName(id){ const v = FLEET_BY_ID[id]; return v ? v.name : id; }
+function wuTypeName(t){ return t === '*' ? 'Every ride' : (WS48_TYPES[t] ? WS48_TYPES[t].short : 'Other'); }
+/* small line icons (24x24, stroke) for the categories */
+const WSU_ICO = {
+  paint:'<path d="M12 3c3 4 6 7.2 6 10.4A6 6 0 0 1 6 13.4C6 10.2 9 7 12 3z"/>',
+  pattern:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 14L14 4M9 20L20 9"/>',
+  deck:'<rect x="2.5" y="9" width="19" height="5.5" rx="2.75"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/>',
+  tape:'<rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M9 14h.01M13 14h.01M17 14h.01"/>',
+  bars:'<path d="M3 8c3 2.2 6 2.8 9 2.8s6-.6 9-2.8"/><path d="M12 10.8V20"/>',
+  stem:'<rect x="7.5" y="5" width="9" height="6" rx="1.5"/><path d="M12 11v9M9 20h6"/>',
+  fork:'<path d="M9 3v9l-3 9M15 3v9l3 9M9 7h6"/>',
+  susp:'<path d="M12 2v3M12 19v3M8 6l8 2-8 2 8 2-8 2 8 2"/>',
+  grips:'<rect x="3" y="9" width="12" height="6" rx="3"/><path d="M15 12h6M6.5 9v6M9.5 9v6M12.5 9v6"/>',
+  wheels:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3v7M12 14v7M3 12h7M14 12h7"/>',
+  tyres:'<circle cx="12" cy="12" r="8.2" stroke-width="3.4"/><circle cx="12" cy="12" r="2.6"/>',
+  seat:'<path d="M3 9.5c4-2.2 9-2.2 13 0 2 .8 4 .8 5 .3-.6 2.4-3 3.6-6 3.4l-3 .3c-3 .2-6-.8-9-2.8z"/><path d="M12 13.5V20"/>',
+  pedals:'<rect x="5" y="8" width="14" height="8" rx="2"/><path d="M8 8V6M12 8V6M16 8V6M8 16v2M12 16v2M16 16v2"/>',
+  pegs:'<rect x="4" y="9" width="16" height="6" rx="3"/><path d="M8.5 9v6"/>',
+  brakes:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v2M20 12h-2M12 20v-2M4 12h2"/>',
+  drive:'<circle cx="12" cy="12" r="7.5" stroke-dasharray="2.2 1.7"/><circle cx="12" cy="12" r="3"/>',
+  lights:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  body:'<path d="M3 17a9 9 0 0 1 18 0"/><path d="M6 17h12"/>',
+  acc:'<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6L3.4 9.3l6-.7z"/>',
+  stickers:'<path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8l-6 6H6a2 2 0 0 1-2-2z"/><path d="M14 20v-4a2 2 0 0 1 2-2h4"/>',
+  build:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-2.4z"/>',
+  frame:'<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l3 7M9 6h3"/>'
+};
+function wuIco(k, col, sz){ return '<svg viewBox="0 0 24 24" width="' + (sz || 18) + '" height="' + (sz || 18) + '" fill="none" stroke="' + (col || 'currentColor') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (WSU_ICO[k] || WSU_ICO.acc) + '</svg>'; }
+function wuCatIco(p){ return p.slot === 'pattern' ? 'pattern' : (WSU_ICO[p.cat] ? p.cat : 'acc'); }
+/* a part's swatch: its colour with the category icon on top */
+function wuSwatch(p, cls){
+  const hx = p.hex !== null && p.hex !== undefined ? p.hex : null;
+  const bg = hx !== null ? wuHex(hx) : 'linear-gradient(135deg, #2d3746, #1a212b)';
+  const fg = hx !== null ? (wuLum(hx) > 0.6 ? '#10141a' : '#ffffff') : '#cfd6df';
+  return '<i class="' + (cls || 'sw') + '" style="background:' + bg + '">' + wuIco(wuCatIco(p), fg, 17) + '</i>';
+}
+function wuRar(p){ const r = ws48Rarity(p.rar); return '<span class="wsRar rar-' + r[0] + '">' + r[1] + '</span>'; }
+/* what a part does to the ride's handling, as chips */
+function wuFxChips(fx){
+  if (!fx) return '';
+  const N = { steer:'steering', grip:'grip', top:'top speed', hop:'hop', off:'off-road' };
+  return Object.keys(N).map(k=>{ const v = fx[k]; if (!v || Math.abs(v - 1) < 0.004) return ''; const pc = Math.round((v - 1)*100);
+    return '<span class="' + (pc > 0 ? 'up' : 'dn') + '">' + (pc > 0 ? '+' : '') + pc + '% ' + N[k] + '</span>'; }).join('');
+}
+function wuSfx(kind){
+  try {
+    if (kind === 'buy' || kind === 'arm' || kind === 'no' || kind === 'tab'){ if (typeof sh13Sfx === 'function') sh13Sfx(kind); return; }
+    if (typeof initAudio === 'function') initAudio();
+    if (typeof fsReady !== 'function' || !fsReady()) return;
+    const t = AC.currentTime + 0.005;
+    if (kind === 'fit'){ for (let i = 0; i < 4; i++) fsNoise(t + i*0.055, 0.018, 3600 - i*300, 3600 - i*300, 1.6, 0.07); fsTone(t + 0.24, 220, 0.12, 0.06, 'triangle', 140); }
+    else if (kind === 'pick') fsNoise(t, 0.012, 3000, 3000, 1.4, 0.035);
+    else if (kind === 'off'){ fsTone(t, 330, 0.09, 0.05, 'triangle', 200); fsNoise(t + 0.05, 0.02, 1800, 1800, 1.4, 0.05); }
+  } catch(e){}
+}
+function wuToast(html, kind){
+  const t = wuEl('wsToast'); if (!t) return;
+  t.className = 'wsToast on' + (kind ? ' ' + kind : ''); t.innerHTML = html;
+  clearTimeout(WSU.toastT); WSU.toastT = setTimeout(()=>{ t.className = 'wsToast'; }, kind === 'bad' ? 3400 : 2400);
+}
+function wuSaved(){ const s = wuEl('wsSavedTag'); if (!s) return; s.textContent = 'Saved'; s.classList.remove('flash'); void s.offsetWidth; s.classList.add('flash'); }
+function wuCashSync(){
+  const c = wuEl('wsCash'); if (!c) return;
+  const v = wuCash(); if (v === WSU.cashSeen) return;
+  WSU.cashSeen = v; c.textContent = wuMoney(v);
+}
+
+/* ---------------------------------------------------------------- buying: a two-press button (Buy -> Confirm), Shop items via shopTry */
+function wuDisarm(btn){ if (!btn || !btn._ws) return; clearTimeout(btn._ws.t); btn.innerHTML = btn._ws.html; btn.classList.remove('armed'); btn._ws = null; }
+function wuArm(btn, label){
+  if (btn._ws) return false;
+  btn._ws = { html:btn.innerHTML, t:setTimeout(()=> wuDisarm(btn), 3600) };
+  btn.classList.add('armed'); btn.innerHTML = label; wuSfx('arm');
+  return true;
+}
+function wuShake(btn){ if (!btn) return; btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); }
+function wuNoCash(btn, need){
+  wuDisarm(btn); wuShake(btn); wuSfx('no');
+  wuToast('Not enough cash: you need <b>' + wuMoney(need) + '</b> more. Land some tricks and come back.', 'bad');
+}
+/* buy part p (after() runs once it is yours) */
+function wuBuyPart(p, btn, after){
+  if (wsOwns(p)){ if (after) after(); return; }
+  const key = wsPremKey(p);
+  if (key){ if (typeof shopTry === 'function') shopTry(key, btn, r=>{ if (r && r.ok){ wuCashSync(); if (after) after(); } }); return; }
+  const price = wsPrice(p), cash = wuCash();
+  if (price > cash){ wuNoCash(btn, price - cash); return; }
+  if (btn && wuArm(btn, 'Confirm ' + wuMoney(price))) return;
+  wuDisarm(btn);
+  const r = wsBuy(p.id);
+  if (!r.ok){
+    if (r.why === 'cash') wuNoCash(btn, r.need || price);
+    else if (r.why === 'gone') wuToast('That limited part has sold out for today.', 'bad');
+    return;
+  }
+  wuSfx('buy'); wuCashSync();
+  wuToast('<b>' + wuEsc(p.name) + '</b> is yours' + (r.price ? ' · ' + wuMoney(r.price) : '') + '. It fits every build of this kind.', 'good');
+  if (after) after();
+}
+/* buy every part in ids at once (a blueprint's missing parts) */
+function wuBuyAll(ids, btn, after){
+  const ps = ids.map(id=> ws48Part(id)).filter(p=> p && !wsOwns(p));
+  if (!ps.length){ if (after) after(); return; }
+  const total = ps.reduce((a, p)=> a + wsPrice(p), 0), cash = wuCash();
+  if (total > cash){ wuNoCash(btn, total - cash); return; }
+  if (btn && wuArm(btn, 'Confirm ' + wuMoney(total))) return;
+  wuDisarm(btn);
+  let n = 0;
+  ps.forEach(p=>{
+    const key = wsPremKey(p);
+    if (key){ if (typeof sh13Buy === 'function'){ const r = sh13Buy(key); if (r && r.ok) n++; } }
+    else { const r = wsBuy(p.id); if (r.ok) n++; }
+  });
+  wuSfx('buy'); wuCashSync();
+  wuToast(n + ' part' + (n === 1 ? '' : 's') + ' bought · ' + wuMoney(total), 'good');
+  if (after) after();
+}
+/* a ride (frame) through the Shop */
+function wuBuyFrame(veh, btn, after){
+  if (typeof shopTry !== 'function' || (typeof shopOwnsVeh === 'function' && shopOwnsVeh(veh))){ if (after) after(); return; }
+  shopTry('veh:' + veh, btn, r=>{ if (r && r.ok){ wuCashSync(); if (after) after(); } });
+}
+function wuOwnsFrame(veh){ return typeof shopOwnsVeh !== 'function' || shopOwnsVeh(veh); }
+
+/* ---------------------------------------------------------------- the 3D stage (one FleetView that moves between hosts) */
+function wuStage(){
+  if (WSU.stage) return WSU.stage;
+  const st = document.createElement('div');
+  st.className = 'wsStage'; st.id = 'wsStage';
+  st.innerHTML = '<canvas aria-label="3D preview: drag to spin, pinch or scroll to zoom"></canvas>' +
+    '<div class="wsStageTag" id="wsTag"></div><div class="wsTry" id="wsTryB">Trying on</div>' +
+    '<div class="wsZoom"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">&minus;</button></div>' +
+    '<div class="wsViews" id="wsViews"><button type="button" data-v="34">3/4</button><button type="button" data-v="side">Side</button><button type="button" data-v="front">Front</button>' +
+    '<button type="button" data-v="rear">Rear</button><button type="button" data-v="top">Top</button><button type="button" data-v="part">Close-up</button></div>' +
+    '<button type="button" class="wsRiderT" id="wsRiderT" aria-pressed="false">' + wuIco('frame', null, 14) + ' Rider</button>' +
+    '<div class="wsHint">Drag to spin · pinch or scroll to zoom</div>';
+  WSU.stage = st;
+  const V = WSU.view = new FleetView(st.querySelector('canvas'), {});
+  st.querySelector('#wsViews').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if (!b) return;
+    const v = b.getAttribute('data-v');
+    WSU.aim = { z:0, y:0 };
+    if (v === 'side') V.focus(Math.PI/2, 0.04, 1); else if (v === 'front') V.focus(0, 0.06, 1); else if (v === 'rear') V.focus(Math.PI, 0.06, 1);
+    else if (v === 'top') V.focus(V.yaw, 1.2, 1); else if (v === 'part') wuAimSlot(WSU.tab === 'market' && WSU.mk.sel ? (ws48Part(WSU.mk.sel) || {}).slot : WSU.ed.slot, true);
+    else V.focus(0.95, 0.17, 1);
+  });
+  st.querySelector('.wsZoom').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if (!b) return;
+    const z = (V.tZoom !== null && V.tZoom !== undefined) ? V.tZoom : V.zoom;
+    V.tZoom = Math.max(0.34, Math.min(1.9, z*(b.getAttribute('data-z') === 'in' ? 0.8 : 1.25))); V.idle = 0;
+  });
+  st.querySelector('#wsRiderT').onclick = ()=>{ WSU.rider = !WSU.rider; wuRiderSync(); wuRefreshStage(); };
+  return st;
+}
+function wuRiderSync(){ const b = wuEl('wsRiderT'); if (b){ b.classList.toggle('on', WSU.rider); b.setAttribute('aria-pressed', WSU.rider ? 'true' : 'false'); } }
+function wuStageTo(hostId){
+  const st = wuStage(), h = wuEl(hostId);
+  if (h && st.parentNode !== h) h.appendChild(st);
+  WSU.host = hostId;
+}
+/* show ride `veh` wearing customisation `cust` (the shape parts too: a part set the ride does not have saved is built as a variant) */
+function wuShow(veh, cust, noRider){
+  const V = WSU.view; if (!V || !veh || !FLEET_BY_ID[veh]) return;
+  const rider = (WSU.rider && !noRider && typeof CHAR_ID !== 'undefined') ? CHAR_ID : false;
+  const pt = cust && cust.pt && typeof ride25PartsClean === 'function' ? ride25PartsClean(cust.pt) : null;
+  const ps = typeof ride25PartsSig === 'function' ? ride25PartsSig(pt) : '';
+  const sig = veh + '|' + ps;
+  try {
+    if (V.g && !V.g.dead && V.id === veh && WSU.shown === sig){
+      V.setLook(0, cust);
+      if ((V.riderId || false) !== (rider || false)){ V.setRider(rider); WSU.c0 = V.center.clone(); }
+      return;
+    }
+    V.id = null;
+    const mine = typeof ride25PartsGet === 'function' ? ride25PartsSig(ride25PartsGet(veh)) : '';
+    if (ps !== mine && typeof ride25Variant === 'function'){
+      const lk = ride25Variant(veh, pt), keep = FLEET_LOOKS[veh];
+      FLEET_LOOKS[veh] = lk;
+      try { V.setVehicle(veh, { kit:0, cust, rider }); } finally { if (keep) FLEET_LOOKS[veh] = keep; else delete FLEET_LOOKS[veh]; }
+    } else V.setVehicle(veh, { kit:0, cust, rider });
+    WSU.shown = sig; WSU.c0 = V.center.clone();
+  } catch(e){ WS48.err = 'show: ' + e.message; console.warn('[ws48] preview', e); }
+}
+/* aim the camera at a slot: turn + zoom like the garage, and slide the look-at point onto the part */
+const WSU_AIM = {
+  bars:[0.78, 0.86], grips:[0.82, 0.88], clamp:[0.72, 0.62], stem:[0.74, 0.8], lights:[0.9, 0.5], guards:[0.82, 0.86], fork:[0.66, 0.15], susp:[0.66, 0.2],
+  wheels:[-0.64, -0.3], tyres:[-0.64, -0.3], deck:[0.0, -0.55], tape:[0.05, -0.45], seat:[-0.3, 0.55], tank:[0.05, 0.45], pedals:[-0.12, -0.45],
+  pegs:[-0.55, -0.42], brake:[-0.62, -0.05], chain:[-0.3, -0.42], drive:[-0.3, -0.42], body:[0.55, 0.1], rack:[-0.7, 0.3], bottles:[0.0, 0.1]
+};
+function wuAimSlot(slotId, close){
+  const V = WSU.view; if (!V) return;
+  const veh = WSU.tab === 'market' ? WSU.mk.pv : (WSU.ed.b && WSU.ed.b.veh);
+  const S = veh ? wsSlotDef(veh, slotId) : null;
+  const a = WSU_AIM[slotId];
+  WSU.aim = a ? { z:a[0], y:a[1] } : { z:0, y:0 };
+  if (S && S.view){ V.focus(S.view[0], S.view[1], S.view[2]); if (close) V.tZoom = Math.max(0.4, S.view[2]*0.6); }
+  else V.focus(0.95, 0.2, 1);
+}
+function wuAimTick(dt){
+  const V = WSU.view; if (!V || !WSU.c0 || !V.bikeBox) return;
+  const b = V.bikeBox, hz = (b.max.z - b.min.z)/2, hy = (b.max.y - b.min.y)/2;
+  const k = Math.max(0, Math.min(1, (1.05 - V.zoom)/0.55));        // the closer in, the more the look-at point slides onto the part
+  const tx = WSU.c0.x, ty = WSU.c0.y + WSU.aim.y*hy*0.8*k, tz = WSU.c0.z + WSU.aim.z*hz*0.85*k;
+  const f = Math.min(1, dt*5);
+  V.center.x += (tx - V.center.x)*f; V.center.y += (ty - V.center.y)*f; V.center.z += (tz - V.center.z)*f;
+}
+/* the stage shows what the current tab wants */
+function wuRefreshStage(){
+  if (WSU.tab === 'edit') wuEdShow();
+  else if (WSU.tab === 'market') wuMkShow();
+}
+/* ---------------------------------------------------------------- 3D snapshots for the build cards (one per frame, off screen) */
+function wuThumbKey(veh, cust){ return veh + ':' + ws48Hash(wsCustSig(cust)); }
+function wuThumbWant(key, veh, cust){
+  if (WSU.thumbs.has(key) || WSU.tq.some(q=> q.key === key)) return;
+  WSU.tq.push({ key, veh, cust });
+}
+function wuThumbNext(){
+  const q = WSU.tq.shift(); if (!q) return;
+  if (WSU.thumbs.has(q.key)) return;
+  try {
+    wuStageTo('wsThumbHost');
+    const V = WSU.view;
+    wuShow(q.veh, q.cust, true);
+    WSU.aim = { z:0, y:0 }; if (WSU.c0) V.center.copy(WSU.c0);
+    V.yaw = 0.92; V.pitch = 0.2; V.zoom = 0.94; V.tYaw = V.tPitch = V.tZoom = null; V.idle = 0;
+    V.render(0.001);
+    const cv = V.canvas, t = WSU.tc || (WSU.tc = document.createElement('canvas'));
+    t.width = 400; t.height = 250;
+    const g = t.getContext('2d'), gr = g.createRadialGradient(200, 105, 10, 200, 125, 250);
+    gr.addColorStop(0, '#2e394a'); gr.addColorStop(0.6, '#161c26'); gr.addColorStop(1, '#0c1016');
+    g.fillStyle = gr; g.fillRect(0, 0, 400, 250);
+    g.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, 400, 250);
+    const url = t.toDataURL('image/jpeg', 0.84);
+    WSU.thumbs.set(q.key, url);
+    if (WSU.thumbs.size > 120){ const k = WSU.thumbs.keys().next().value; WSU.thumbs.delete(k); }
+    document.querySelectorAll('#ws48 img[data-th="' + q.key + '"]').forEach(im=>{ im.src = url; im.classList.add('on'); });
+  } catch(e){ WS48.err = 'thumb: ' + e.message; }
+}
+function wuThumbImg(veh, cust){
+  const key = wuThumbKey(veh, cust), url = WSU.thumbs.get(key);
+  if (!url) wuThumbWant(key, veh, cust);
+  return '<img alt="" data-th="' + key + '"' + (url ? ' class="on" src="' + url + '"' : '') + '>';
+}
+
+/* ---------------------------------------------------------------- the shell */
+const WSU_TABS = [['builds', 'My builds'], ['edit', 'Build editor'], ['market', 'Marketplace'], ['show', 'Showroom'], ['bin', 'Parts bin']];
+function wuBuild(){
+  if (WSU.built) return;
+  WSU.built = true;
+  const root = document.createElement('div');
+  root.id = 'ws48'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Workshop');
+  root.innerHTML =
+    '<div class="wsHead">' +
+      '<div class="wsBrand"><b>' + wuIco('build', '#ffc46b', 22) + 'Workshop</b><span>Parts · builds · paint</span></div>' +
+      '<div class="wsTabs" role="tablist">' + WSU_TABS.map(t=> '<button type="button" role="tab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' +
+      '<div class="wsCash" id="wsCash" title="Your cash">$0</div>' +
+      '<button type="button" class="wsX" id="wsX" title="Back (Esc)">Back</button>' +
+    '</div>' +
+    '<div class="wsBody">' +
+      '<section class="wsPane" data-pane="builds"><div class="wsBar" id="wsBlBar"></div><div class="wsScroll" id="wsBlList"></div></section>' +
+      '<section class="wsPane" data-pane="edit"><div class="wsTop" id="wsEdTop"></div><div class="wsSlots wsScroll" id="wsEdSlots"></div>' +
+        '<div class="wsStageHost" id="wsEdHost"></div>' +
+        '<div class="wsPick"><div class="wsPickHead" id="wsEdPH"></div><div class="wsScroll wsPickList" id="wsEdList"></div><div class="wsAct" id="wsEdAct"></div></div></section>' +
+      '<section class="wsPane" data-pane="market"><div class="wsFilt wsScroll" id="wsMkFilt"></div>' +
+        '<div class="wsMain"><div class="wsMkTop" id="wsMkTop"></div><div class="wsScroll" id="wsMkList"></div></div>' +
+        '<div class="wsDetail" id="wsMkDet"><div class="wsStageHost" id="wsMkHost"></div><div class="wsInfo wsScroll" id="wsMkInfo"></div></div></section>' +
+      '<section class="wsPane" data-pane="show"><div class="wsBar" id="wsShBar"></div><div class="wsScroll" id="wsShList"></div></section>' +
+      '<section class="wsPane" data-pane="bin"><div class="wsBar" id="wsBinBar"></div><div class="wsScroll" id="wsBinList"></div></section>' +
+      '<div class="wsModal" id="wsModal"><div class="wsDlg" id="wsDlg" role="dialog" aria-modal="true"></div></div>' +
+      '<div class="wsToast" id="wsToast" role="status" aria-live="polite"></div>' +
+      '<div id="wsThumbHost" aria-hidden="true"></div>' +
+    '</div>';
+  document.body.appendChild(root);
+  WSU.dom = root;
+  root.querySelector('.wsTabs').addEventListener('click', e=>{ const b = e.target.closest('[data-tab]'); if (b){ wuSfx('tab'); wuTab(b.getAttribute('data-tab')); } });
+  wuEl('wsX').onclick = ()=> closeWorkshop();
+  wuEl('wsModal').addEventListener('click', e=>{ if (e.target.id === 'wsModal') wuModal(false); });
+  if (typeof cashOn === 'function'){ try { cashOn(()=>{ if (WS48.open) wuCashSync(); }); } catch(e){} }
+  wuStage();
+}
+function wuTab(t){
+  if (!WSU_TABS.some(x=> x[0] === t)) t = 'builds';
+  if (WSU.tab !== t && WSU.tab === 'edit') wuEdTryOff(true);
+  WSU.tab = t;
+  WSU.dom.querySelectorAll('.wsTabs [data-tab]').forEach(b=>{ const on = b.getAttribute('data-tab') === t; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  WSU.dom.querySelectorAll('.wsPane').forEach(p=> p.classList.toggle('on', p.getAttribute('data-pane') === t));
+  try {
+    if (t === 'builds') wuBlRender();
+    else if (t === 'edit') wuEdOpen();
+    else if (t === 'market') wuMkRender();
+    else if (t === 'show') wuShRender();
+    else if (t === 'bin') wuBinRender();
+  } catch(e){ WS48.err = 'tab ' + t + ': ' + e.message; console.error('[ws48]', e); }
+}
+/* open the Workshop: o.veh opens the editor on that ride, o.build on a build, o.tab on a tab */
+function openWorkshop(o){
+  o = o || {};
+  try { wuBuild(); ws48Catalog(); } catch(e){ WS48.err = 'open: ' + e.message; console.error('[ws48]', e); return; }
+  WSU.from = o.from || ((typeof GARAGE !== 'undefined' && GARAGE.open) ? 'garage' : (typeof GAME !== 'undefined' && GAME === 'pause' ? 'pause' : 'menu'));
+  WS48.open = true;
+  WSU.dom.classList.add('on');
+  WSU.cashSeen = -1; wuCashSync();
+  try {
+    if (o.build) wuEditBuild(o.build);
+    else if (o.veh) wuEditRide(o.veh);
+    else wuTab(o.tab || (wsBuilds().length ? 'builds' : 'edit'));
+  } catch(e){ WS48.err = 'open tab: ' + e.message; console.error('[ws48]', e); }
+}
+function closeWorkshop(){
+  if (!WS48.open) return;
+  try { wuEdTryOff(true); } catch(e){}
+  wuModal(false);
+  WS48.open = false;
+  WSU.dom.classList.remove('on');
+  wsSave(true);
+  try { if (typeof GARAGE !== 'undefined' && GARAGE.open){ if (typeof garageRender === 'function') garageRender(); if (typeof custPanelSync === 'function') custPanelSync(); } } catch(e){}
+  try { if (typeof refreshRideCard === 'function') refreshRideCard(); } catch(e){}
+}
+/* ride it: the Workshop (and the garage) close, the run starts or carries on */
+function wuGo(){
+  closeWorkshop();
+  try { if (typeof GARAGE !== 'undefined' && GARAGE.open && typeof closeGarage === 'function') closeGarage(true); } catch(e){}
+  try { if (typeof swap22Resume === 'function' && swap22Resume()) return; } catch(e){}
+  try { if (typeof GAME !== 'undefined' && GAME === 'menu' && typeof startRun === 'function') startRun(); } catch(e){}
+}
+/* Esc / B: close the top thing (dialog, part sheet, try-on), then the Workshop */
+function wuBack(){
+  if (wuEl('wsModal') && wuEl('wsModal').classList.contains('on')){ wuModal(false); return; }
+  if (WSU.tab === 'market' && WSU.mk.sheet){ wuMkSheet(false); return; }
+  if (WSU.tab === 'edit' && WSU.ed.sel){ wuEdTryOff(); wuEdRender(); return; }
+  closeWorkshop();
+}
+addEventListener('keydown', e=>{
+  if (!WS48.open) return;
+  const tag = (e.target && e.target.tagName) || '', typing = /INPUT|TEXTAREA|SELECT/.test(tag);
+  e.stopImmediatePropagation();                                   // the game under the Workshop hears nothing
+  if (e.key === 'Escape'){
+    if (typing && e.target.value && e.target.type === 'search'){ return; }
+    e.preventDefault(); wuBack(); return;
+  }
+  if (typing) return;
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')){ e.preventDefault(); if (WSU.tab === 'edit') wuEdUndo(); return; }
+  if (WSU.tab === 'edit' && !e.ctrlKey && !e.metaKey && !e.altKey && !wuEl('wsModal').classList.contains('on')){
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown'){ e.preventDefault(); wuEdSlotStep(e.key === 'ArrowDown' ? 1 : -1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight'){ e.preventDefault(); wuEdPartStep(e.key === 'ArrowRight' ? 1 : -1); }
+    else if ((e.key === 'Enter') && tag !== 'BUTTON'){ const b = wuEl('wsEdGo'); if (b && !b.disabled){ e.preventDefault(); b.click(); } }
+  }
+}, true);
+/* while open: the world does not render (the main loop checks shopIsOpen), the garage's own viewer and keys rest */
+(function wuShopHook(){
+  if (typeof shopIsOpen !== 'function') return;
+  const _so = shopIsOpen;
+  shopIsOpen = function(){ return WS48.open || _so.apply(this, arguments); };
+})();
+addFrameHook(function ws48Frame(dt){
+  if (!WS48.open) return;
+  dt = Math.min(0.1, Math.max(0, dt || 0.016));
+  const V = WSU.view;
+  const live = (WSU.tab === 'edit' && WSU.host === 'wsEdHost') || (WSU.tab === 'market' && WSU.host === 'wsMkHost' && WSU.mk.sel && (!WSU.mk.narrow || WSU.mk.sheet));
+  if (live && V){ wuAimTick(dt); V.render(dt); }
+  else if (WSU.tq.length && (WSU.tab === 'builds' || WSU.tab === 'show')) wuThumbNext();
+  WSU.clk += dt;
+  if (WSU.clk > 1){ WSU.clk = 0; wuCashSync(); wuDropClock(); }
+});
+
+/* ---------------------------------------------------------------- doors: the garage, the main menu, the pause screen */
+(function wuDoors(){
+  if (typeof garageBuild === 'function'){
+    const _gb = garageBuild;
+    garageBuild = function(){
+      const had = typeof GARAGE !== 'undefined' && !!GARAGE.dom;
+      const r = _gb.apply(this, arguments);
+      try {
+        if (!had && GARAGE.dom && !wuEl('gWs')){
+          const sh = wuEl('gShop'), b = document.createElement('button');
+          b.className = 'gBtn ws48GBtn'; b.id = 'gWs'; b.type = 'button'; b.title = 'The Workshop: buy parts, build and save your own rides';
+          b.innerHTML = wuIco('build', null, 14) + '<span>Workshop</span>';
+          b.onclick = ()=> openWorkshop({ veh:GARAGE.sel, from:'garage' });
+          if (sh && sh.parentNode) sh.parentNode.insertBefore(b, sh);
+        }
+      } catch(e){ WS48.err = 'garage door: ' + e.message; }
+      return r;
+    };
+  }
+  if (typeof garageInfo === 'function'){
+    const _gi = garageInfo;
+    garageInfo = function(){
+      const r = _gi.apply(this, arguments);
+      try {
+        const P = wuEl('gRidePane'), tc = P && P.querySelector('#gToCust');
+        if (tc && !P.querySelector('#gToWs')){
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'gGo ws48GGo'; b.id = 'gToWs';
+          b.innerHTML = 'Build it in the Workshop: parts, brands, paint &rarr;';
+          b.onclick = ()=> openWorkshop({ veh:GARAGE.sel, from:'garage' });
+          tc.after(b);
+        }
+      } catch(e){}
+      return r;
+    };
+  }
+})();
+let _wuDoorTries = 0;
+addFrameHook(function ws48DoorFrame(){
+  if (_wuDoorTries > 600 || (wuEl('ws48MenuBtn') && wuEl('ws48PauseBtn'))) return;
+  _wuDoorTries++;
+  try {
+    const g = wuEl('garageBtn'), sub = document.querySelector('#menu .mDock .mSub');
+    if (!wuEl('ws48MenuBtn') && g && sub && g.parentNode === sub){
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'ws48MenuBtn'; b.className = 'btn ghost ws48MenuBtn'; b.title = 'The Workshop: buy parts, build and save your own rides';
+      b.innerHTML = '<span class="ws48Ico">' + wuIco('build', null, 16) + '</span><span class="m28Lbl">Workshop</span>';
+      b.onclick = ()=> openWorkshop({ from:'menu' });
+      g.after(b); sub.classList.add('ws48Four');
+    }
+    const rs = wuEl('resumeBtn'), sp = wuEl('s13PauseBtn');
+    if (!wuEl('ws48PauseBtn') && rs && (sp || _wuDoorTries > 120)){
+      const b = document.createElement('button');
+      b.className = 'btn ghost ws48PauseBtn'; b.id = 'ws48PauseBtn'; b.type = 'button'; b.textContent = 'Workshop';
+      b.onclick = ()=> openWorkshop({ veh:typeof FLEET_CUR !== 'undefined' ? FLEET_CUR : null, from:'pause' });
+      const at = sp || rs;
+      if (at.parentNode) at.after(b);
+    }
+  } catch(e){ WS48.err = 'doors: ' + e.message; }
+});
+try { if (typeof UI43_ICO !== 'undefined') UI43_ICO.ws48PauseBtn = WSU_ICO.build; } catch(e){}
+
+/* ---------------------------------------------------------------- MY BUILDS */
+function wuBuildBand(b){
+  const c = b.cust && b.cust.c, fr = c && c.fr !== undefined ? c.fr : (FLEET_BY_ID[b.veh] && FLEET_BY_ID[b.veh].frame) || 0x5a6472;
+  const ac = c && c.ac !== undefined ? c.ac : (FLEET_BY_ID[b.veh] && FLEET_BY_ID[b.veh].acc) || 0xffc46b;
+  return 'linear-gradient(90deg, ' + wuHex(fr) + ' 0 62%, ' + wuHex(ac) + ' 62% 100%)';
+}
+function wuBuildStats(b){
+  const ids = Object.keys(b.parts || {}).map(k=> b.parts[k]), brands = {};
+  let n = 0;
+  ids.forEach(id=>{ const p = ws48Part(id); if (p && !p.off){ n++; if (p.brand && p.brand !== 'Stock') brands[p.brand] = 1; } });
+  return { n, brands:Object.keys(brands).length, value:wsBuildValue(b), miss:wsMissing(b).length };
+}
+function wuBlRender(){
+  const B = WSU.bl, all = wsBuilds(), bar = wuEl('wsBlBar'), L = wuEl('wsBlList');
+  const types = {}; all.forEach(b=>{ types[ws48TypeOf(b.veh)] = 1; });
+  bar.innerHTML = '<button type="button" class="wsBtn pri" id="wsBlNew">' + wuIco('build', null, 15) + ' New build</button>' +
+    '<button type="button" class="wsBtn" id="wsBlCur">Edit the ride I am on</button>' +
+    '<button type="button" class="wsBtn" id="wsBlImp">Import a code</button>' +
+    '<input type="search" id="wsBlQ" placeholder="Search builds" value="' + wuEsc(B.q) + '" aria-label="Search builds">' +
+    '<div class="wsChips">' + ['all'].concat(WS48_TYPE_ORDER.concat(['other']).filter(t=> types[t])).map(t=> '<button type="button" class="wsChip' + (B.type === t ? ' sel' : '') + '" data-t="' + t + '">' + (t === 'all' ? 'All' : wuTypeName(t)) + '</button>').join('') + '</div>' +
+    '<select id="wsBlSort" aria-label="Sort builds">' + [['recent', 'Recently edited'], ['name', 'Name'], ['value', 'Value'], ['fav', 'Starred first']].map(o=> '<option value="' + o[0] + '"' + (B.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' +
+    '<span class="wsCount">' + all.length + ' / ' + WS48_MAXB + ' builds</span>';
+  wuEl('wsBlNew').onclick = ()=> wuNewDlg();
+  wuEl('wsBlCur').onclick = ()=> wuEditRide(FLEET_CUR);
+  wuEl('wsBlImp').onclick = ()=> wuImportDlg();
+  const q = wuEl('wsBlQ'); q.oninput = ()=>{ B.q = q.value; wuBlList(); };
+  bar.querySelector('.wsChips').onclick = e=>{ const c = e.target.closest('[data-t]'); if (c){ B.type = c.getAttribute('data-t'); wuBlRender(); } };
+  wuEl('wsBlSort').onchange = e=>{ B.sort = e.target.value; wuBlList(); };
+  wuBlList();
+  if (!L._wired){
+    L._wired = true;
+    L.addEventListener('click', e=>{
+      const btn = e.target.closest('[data-a]'), card = e.target.closest('[data-b]'); if (!card) return;
+      const b = wsBuilds().find(x=> x.id === card.getAttribute('data-b')); if (!b) return;
+      const a = btn ? btn.getAttribute('data-a') : 'edit';
+      if (a === 'edit') wuEditBuild(b);
+      else if (a === 'ride') wuRideBuild(b, btn);
+      else if (a === 'dup'){ const c = wsBuildDup(b); if (c){ wuToast('Copied: <b>' + wuEsc(c.name) + '</b>', 'good'); wuBlList(); } else wuToast('Your build list is full (' + WS48_MAXB + '). Delete one first.', 'bad'); }
+      else if (a === 'share') wuShareDlg(b);
+      else if (a === 'fav'){ b.fav = b.fav ? 0 : 1; wsSave(); wuBlList(); }
+      else if (a === 'del'){
+        if (wuArm(btn, 'Sure? Delete')) return;
+        wuDisarm(btn); wsBuildDel(b); wuSfx('off'); wuToast('Deleted <b>' + wuEsc(b.name) + '</b>');
+        if (WSU.ed.b === b) WSU.ed.b = null;
+        wuBlList();
+      }
+    });
+  }
+}
+function wuBlList(){
+  const B = WSU.bl, L = wuEl('wsBlList'), q = B.q.trim().toLowerCase();
+  let list = wsBuilds().filter(b=> (B.type === 'all' || ws48TypeOf(b.veh) === B.type) && (!q || (b.name + ' ' + wuRideName(b.veh)).toLowerCase().indexOf(q) >= 0));
+  if (B.sort === 'name') list = list.slice().sort((a, b)=> a.name.localeCompare(b.name));
+  else if (B.sort === 'value') list = list.slice().sort((a, b)=> wsBuildValue(b) - wsBuildValue(a));
+  else if (B.sort === 'fav') list = list.slice().sort((a, b)=> (b.fav - a.fav) || (b.t1 - a.t1));
+  else list = list.slice().sort((a, b)=> b.t1 - a.t1);
+  if (!wsBuilds().length){
+    L.innerHTML = '<div class="wsEmpty"><b>No builds yet</b>Start one from a bare frame, a factory ride or the ride you are on. Buy parts, mix brands, paint every piece, then save it with a name.' +
+      '<div class="row"><button type="button" class="wsBtn pri" data-x="new">' + wuIco('build', null, 15) + ' Start a build</button><button type="button" class="wsBtn" data-x="show">Browse the Showroom</button></div></div>';
+    L.querySelector('[data-x="new"]').onclick = ()=> wuNewDlg();
+    L.querySelector('[data-x="show"]').onclick = ()=> wuTab('show');
+    return;
+  }
+  if (!list.length){ L.innerHTML = '<div class="wsEmpty"><b>Nothing matches</b>Try another search or type.</div>'; return; }
+  let h = '<div class="wsCards">';
+  list.forEach(b=>{
+    const st = wuBuildStats(b), worn = wsWorn(b), cur = b.veh === FLEET_CUR && worn, own = wuOwnsFrame(b.veh);
+    h += '<article class="wsCard" data-b="' + b.id + '">' +
+      '<div class="th">' + wuThumbImg(b.veh, b.cust) + '<div class="band" style="background:' + wuBuildBand(b) + '"></div></div>' +
+      '<button type="button" class="star' + (b.fav ? ' on' : '') + '" data-a="fav" aria-label="Star">&#9733;</button>' +
+      '<h4>' + wuEsc(b.name) + '</h4>' +
+      '<div class="sub">' + wuEsc(wuRideName(b.veh)) + ' · ' + wuTypeName(ws48TypeOf(b.veh)) + '</div>' +
+      '<div class="row">' + (cur ? '<span class="wsBadge wear">Riding</span>' : (worn ? '<span class="wsBadge wear">Worn</span>' : '')) +
+        (st.miss ? '<span class="wsBadge miss">' + st.miss + ' to buy</span>' : '') + (!own ? '<span class="wsBadge">Frame not owned</span>' : '') +
+        '<span class="wsBadge">' + st.n + ' part' + (st.n === 1 ? '' : 's') + '</span>' + (st.brands > 1 ? '<span class="wsBadge">' + st.brands + ' brands</span>' : '') +
+        '<span class="wsBadge val">' + wuMoney(st.value) + '</span></div>' +
+      '<div class="row acts"><button type="button" class="wsBtn pri" data-a="edit">Edit</button>' +
+        '<button type="button" class="wsBtn go" data-a="ride"' + (st.miss || !own ? ' title="Buy what is missing first"' : '') + '>Ride</button>' +
+        '<button type="button" class="wsBtn" data-a="dup">Copy</button><button type="button" class="wsBtn" data-a="share">Share</button>' +
+        '<button type="button" class="wsBtn bad" data-a="del">Delete</button></div>' +
+    '</article>';
+  });
+  L.innerHTML = h + '</div>';
+}
+function wuRideBuild(b, btn){
+  if (wsMissing(b).length){ wuToast('This build still needs ' + wsMissing(b).length + ' part' + (wsMissing(b).length === 1 ? '' : 's') + ': buy them in the editor first.', 'bad'); wuEditBuild(b); return; }
+  if (!wuOwnsFrame(b.veh)){ wuToast('Buy the <b>' + wuEsc(wuRideName(b.veh)) + '</b> frame first (in the editor).', 'bad'); wuEditBuild(b); return; }
+  if (!wsBuildLoad(b, true)) return;
+  wuToast('Riding <b>' + wuEsc(b.name) + '</b>', 'good');
+  wuGo();
+}
+
+/* ---------------------------------------------------------------- SHOWROOM (featured blueprints) */
+function wuShRender(){
+  const bar = wuEl('wsShBar'), L = wuEl('wsShList'), F = ws48Featured();
+  bar.innerHTML = '<div class="wsBarTx"><b>Showroom</b><span>Themed builds by the Workshop crew. Copy one to your builds, buy the parts you are missing, then ride it, or make it your own.</span></div>';
+  let h = '<div class="wsCards">';
+  F.forEach(f=>{
+    const miss = wsMissing(f), cost = miss.reduce((a, id)=> a + wsPrice(ws48Part(id)), 0), n = Object.keys(f.parts).length;
+    h += '<article class="wsCard feat" data-f="' + f.id + '">' +
+      '<div class="th">' + wuThumbImg(f.veh, f.cust) + '<div class="band" style="background:' + wuBuildBand(f) + '"></div></div>' +
+      '<h4>' + wuEsc(f.name) + '</h4><div class="sub">' + wuEsc(wuRideName(f.veh)) + ' · ' + wuTypeName(ws48TypeOf(f.veh)) + ' · ' + n + ' parts</div>' +
+      '<div class="row">' + (miss.length ? '<span class="wsBadge miss">' + miss.length + ' to buy · ' + wuMoney(cost) + '</span>' : '<span class="wsBadge wear">You own every part</span>') +
+        (!wuOwnsFrame(f.veh) ? '<span class="wsBadge">Frame ' + wuMoney(garagePrice(f.veh)) + '</span>' : '') + '</div>' +
+      '<div class="row acts"><button type="button" class="wsBtn pri" data-a="copy">Copy to my builds</button><button type="button" class="wsBtn" data-a="look">Look closer</button></div>' +
+    '</article>';
+  });
+  L.innerHTML = h + '</div>';
+  L.onclick = e=>{
+    const btn = e.target.closest('[data-a]'), card = e.target.closest('[data-f]'); if (!btn || !card) return;
+    const f = F.find(x=> x.id === card.getAttribute('data-f')); if (!f) return;
+    if (btn.getAttribute('data-a') === 'look'){      // a look only: saved the moment you change something
+      wuEditBuild({ tmp:1, id:'', name:f.name.slice(0, 32), veh:f.veh, cust:wsCustCopy(f.cust), parts:Object.assign({}, f.parts), t0:Date.now(), t1:Date.now(), fav:0 });
+      return;
+    }
+    const b = wsBuildNew(f.veh, f.name, { cust:f.cust, parts:f.parts });
+    if (!b){ wuToast('Your build list is full (' + WS48_MAXB + '). Delete one first.', 'bad'); return; }
+    wuSfx('fit');
+    wuToast('<b>' + wuEsc(b.name) + '</b> is in your builds' + (wsMissing(b).length ? ': buy the missing parts to ride it.' : '.'), 'good');
+    wuEditBuild(b);
+  };
+}
+
+/* ---------------------------------------------------------------- dialogs */
+function wuModal(on, html){
+  const m = wuEl('wsModal'); if (!m) return;
+  if (on){ wuEl('wsDlg').innerHTML = html; m.classList.add('on'); const f = m.querySelector('input,textarea,button'); if (f) try { f.focus({ preventScroll:true }); } catch(e){} }
+  else m.classList.remove('on');
+}
+/* a new build: ride type -> frame -> start from (bare frame, factory, the ride's current setup) -> name */
+function wuNewDlg(pre){
+  const S = WSU.newb = Object.assign({ t:ws48TypeOf(FLEET_CUR), veh:null, from:'factory', name:'' }, pre || {});
+  const draw = ()=>{
+    const rides = FLEET.filter(v=> ws48TypeOf(v.id) === S.t);
+    if (!S.veh || ws48TypeOf(S.veh) !== S.t) S.veh = (rides.find(v=> v.id === FLEET_CUR) || rides.find(v=> wuOwnsFrame(v.id)) || rides[0] || {}).id || null;
+    const own = S.veh ? wuOwnsFrame(S.veh) : true;
+    let h = '<h3>' + wuIco('build', '#ffc46b', 20) + ' New build</h3>' +
+      '<div class="wsSub">1 · What are you building?</div><div class="wsChips">' +
+      WS48_TYPE_ORDER.concat(['other']).filter(t=> FLEET.some(v=> ws48TypeOf(v.id) === t)).map(t=> '<button type="button" class="wsChip' + (S.t === t ? ' sel' : '') + '" data-t="' + t + '">' + (t === 'other' ? 'Other rides' : WS48_TYPES[t].name) + '</button>').join('') + '</div>' +
+      '<div class="wsSub">2 · Pick a frame</div><div class="wsFrames">' +
+      rides.map(v=> '<button type="button" class="wsFrame' + (v.id === S.veh ? ' sel' : '') + '" data-v="' + v.id + '"><b>' + wuEsc(v.name) + '</b>' +
+        (wuOwnsFrame(v.id) ? '<span class="ok">Owned</span>' : '<span>' + wuMoney(garagePrice(v.id)) + '</span>') + '</button>').join('') + '</div>' +
+      '<div class="wsSub">3 · Start from</div><div class="wsChips">' +
+      [['bare', 'Bare frame (primer, stock parts)'], ['factory', 'Factory setup'], ['current', 'Its current setup']].map(o=> '<button type="button" class="wsChip' + (S.from === o[0] ? ' sel' : '') + '" data-f="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
+      '<div class="wsSub">4 · Name it</div><input id="wsNewName" maxlength="32" placeholder="' + wuEsc(S.veh ? wuRideName(S.veh) + ' build' : 'My build') + '" value="' + wuEsc(S.name) + '">' +
+      (!own ? '<div class="note">You can design on any frame. To ride it, buy the frame (' + wuMoney(garagePrice(S.veh)) + ') in the editor or the garage.</div>' : '') +
+      '<div class="row end"><button type="button" class="wsBtn" data-x="cancel">Cancel</button><button type="button" class="wsBtn pri" data-x="go"' + (S.veh ? '' : ' disabled') + '>Create build</button></div>';
+    wuModal(true, h);
+    const D = wuEl('wsDlg');
+    const nm = D.querySelector('#wsNewName'); nm.oninput = ()=>{ S.name = nm.value; };
+    D.onclick = e=>{
+      const t = e.target.closest('[data-t]'), v = e.target.closest('[data-v]'), f = e.target.closest('[data-f]'), x = e.target.closest('[data-x]');
+      if (t){ S.t = t.getAttribute('data-t'); S.veh = null; draw(); }
+      else if (v){ S.veh = v.getAttribute('data-v'); draw(); }
+      else if (f){ S.from = f.getAttribute('data-f'); draw(); }
+      else if (x && x.getAttribute('data-x') === 'cancel') wuModal(false);
+      else if (x && x.getAttribute('data-x') === 'go'){
+        const b = wsBuildNew(S.veh, S.name.trim() || (wuRideName(S.veh) + ' build'), S.from === 'factory' ? null : S.from);
+        if (!b){ wuToast('Your build list is full (' + WS48_MAXB + '). Delete one first.', 'bad'); return; }
+        wuModal(false); wuSfx('fit');
+        wuToast('New build: <b>' + wuEsc(b.name) + '</b>. Pick a slot on the left, then a part.', 'good');
+        wuEditBuild(b);
+      }
+    };
+  };
+  draw();
+}
+function wuShareDlg(b){
+  const code = wsShareCode(b);
+  wuModal(true, '<h3>Share “' + wuEsc(b.name) + '”</h3>' +
+    '<div class="note">Send this code to a friend. In their Workshop they press <b>Import a code</b> and paste it: they get your exact build ' +
+    '(they still need the frame and the parts to ride it). When you ride this build online, everyone sees it.</div>' +
+    '<textarea id="wsCode" readonly rows="5">' + wuEsc(code) + '</textarea>' +
+    '<div class="row end"><button type="button" class="wsBtn" data-x="close">Close</button><button type="button" class="wsBtn pri" data-x="copy">Copy code</button></div>');
+  const D = wuEl('wsDlg');
+  D.onclick = e=>{
+    const x = e.target.closest('[data-x]'); if (!x) return;
+    if (x.getAttribute('data-x') === 'close'){ wuModal(false); return; }
+    const ta = D.querySelector('#wsCode');
+    const done = ()=>{ x.textContent = 'Copied!'; wuSfx('pick'); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, ()=>{ ta.select(); try { document.execCommand('copy'); done(); } catch(e){} }); else { ta.select(); document.execCommand('copy'); done(); } }
+    catch(e){ ta.select(); }
+  };
+}
+function wuImportDlg(){
+  wuModal(true, '<h3>Import a build code</h3><div class="note">Paste a code that starts with <b>DL1-</b>.</div>' +
+    '<textarea id="wsImp" rows="5" placeholder="DL1-..."></textarea>' +
+    '<div class="row end"><button type="button" class="wsBtn" data-x="close">Cancel</button><button type="button" class="wsBtn pri" data-x="go">Import</button></div>');
+  const D = wuEl('wsDlg');
+  D.onclick = e=>{
+    const x = e.target.closest('[data-x]'); if (!x) return;
+    if (x.getAttribute('data-x') === 'close'){ wuModal(false); return; }
+    const b = wsImportCode(D.querySelector('#wsImp').value);
+    if (!b){ wuShake(x); wuSfx('no'); wuToast('That code did not work (or your build list is full).', 'bad'); return; }
+    wuModal(false); wuSfx('fit');
+    const miss = wsMissing(b).length;
+    wuToast('Imported <b>' + wuEsc(b.name) + '</b>' + (miss ? ': ' + miss + ' part' + (miss === 1 ? '' : 's') + ' to buy before you can ride it.' : '.'), 'good');
+    wuEditBuild(b);
+  };
+}
+/* copy a build onto another frame of the same kind (the parts that fit come along) */
+function wuFrameDlg(b){
+  const t = ws48TypeOf(b.veh), rides = FLEET.filter(v=> ws48TypeOf(v.id) === t && v.id !== b.veh);
+  if (!rides.length){ wuToast('There is no other frame of this kind.', 'bad'); return; }
+  wuModal(true, '<h3>Copy “' + wuEsc(b.name) + '” to another frame</h3><div class="note">Your paint and every part that fits comes along. The original stays as it is.</div>' +
+    '<div class="wsFrames">' + rides.map(v=> '<button type="button" class="wsFrame" data-v="' + v.id + '"><b>' + wuEsc(v.name) + '</b>' + (wuOwnsFrame(v.id) ? '<span class="ok">Owned</span>' : '<span>' + wuMoney(garagePrice(v.id)) + '</span>') + '</button>').join('') + '</div>' +
+    '<div class="row end"><button type="button" class="wsBtn" data-x="close">Cancel</button></div>');
+  wuEl('wsDlg').onclick = e=>{
+    const x = e.target.closest('[data-x]'), v = e.target.closest('[data-v]');
+    if (x){ wuModal(false); return; }
+    if (!v) return;
+    const veh = v.getAttribute('data-v'), parts = {}, cust = wsCustCopy(b.cust);
+    Object.keys(b.parts || {}).forEach(k=>{
+      const p = ws48Part(b.parts[k]); if (!p) return;
+      if (p.t === '*' || ws48PartsFor(veh, p.slot).some(x=> x.id === p.id.split('~')[0])) parts[k] = p.id;
+    });
+    if (cust.pt){ const fam = FLEET_BY_ID[veh].b; Object.keys(cust.pt).forEach(k=>{ if (!ws48Def(fam, k)) delete cust.pt[k]; }); }
+    const nb = wsBuildNew(veh, (b.name.slice(0, 22) + ' · ' + FLEET_BY_ID[veh].name).slice(0, 32), { cust, parts });
+    if (!nb){ wuToast('Your build list is full (' + WS48_MAXB + '). Delete one first.', 'bad'); return; }
+    wuModal(false); wuSfx('fit');
+    wuToast('Copied onto the <b>' + wuEsc(FLEET_BY_ID[veh].name) + '</b>', 'good');
+    wuEditBuild(nb);
+  };
+}
+
+/* ---------------------------------------------------------------- BUILD EDITOR */
+const WSU_FIN = { 1:'Gloss', 2:'Satin', 3:'Matte', 4:'Metallic', 5:'Chrome', 6:'Raw metal', 7:'Glitter', 8:'Oil slick', 9:'Pearl', 10:'Candy' };
+function wuEditBuild(b){
+  const E = WSU.ed;
+  if (E.b !== b){ E.undo = []; E.sel = null; }
+  E.b = b;
+  const slots = ws48SlotsFor(b.veh);
+  if (!slots.some(s=> s.id === E.slot)) E.slot = slots[0] ? slots[0].id : 'paint';
+  wuTab('edit');
+}
+/* the ride's current setup: the build it wears, or a new (unsaved until you change something) one from what it shows */
+function wuEditRide(veh){
+  veh = veh && FLEET_BY_ID[veh] ? veh : FLEET_CUR;
+  const worn = wsBuilds().filter(b=> b.veh === veh && wsWorn(b)).sort((a, b)=> b.t1 - a.t1)[0];
+  if (worn){ wuEditBuild(worn); return; }
+  const r = wsBuildFromRide(veh);
+  wuEditBuild({ tmp:1, id:'', name:(wuRideName(veh) + ' build').slice(0, 32), veh, cust:r.cust, parts:r.parts, t0:Date.now(), t1:Date.now(), fav:0 });
+}
+function wuEdOpen(){
+  const E = WSU.ed;
+  if (!E.b || (!E.b.tmp && wsBuilds().indexOf(E.b) < 0)){ E.b = null; wuEditRide(FLEET_CUR); return; }
+  E.worn = wsWorn(E.b);
+  wuStageTo('wsEdHost'); wuRiderSync();
+  wuEdRender();
+  wuEdShow();
+  wuAimSlot(E.slot);
+}
+/* what the preview shows: the build, with the part you are trying on */
+function wuEdPreviewCust(){
+  const E = WSU.ed, b = E.b; if (!b) return null;
+  if (!E.sel) return b.cust;
+  const parts = Object.assign({}, b.parts || {});
+  if (E.sel === 'stock') return wsClearSlot(wsCustCopy(b.cust), b.veh, E.slot, parts);
+  const p = ws48Part(E.sel); if (!p) return b.cust;
+  if (p.acc && parts['a.' + p.acc]) return b.cust;
+  return wsApplyPart(wsCustCopy(b.cust), p, b.veh, parts);
+}
+function wuEdSelFitted(){
+  const E = WSU.ed, p = E.sel && E.sel !== 'stock' ? ws48Part(E.sel) : null;
+  return !!(p && E.b && E.b.parts && E.b.parts[wsPartKey(p)] === p.id);
+}
+function wuEdShow(){
+  const E = WSU.ed; if (!E.b || WSU.tab !== 'edit') return;
+  wuStageTo('wsEdHost');
+  wuShow(E.b.veh, wuEdPreviewCust());
+  const tb = wuEl('wsTryB'); if (tb) tb.classList.toggle('on', !!E.sel && !wuEdSelFitted());
+  const S = wsSlotDef(E.b.veh, E.slot), tag = wuEl('wsTag'); if (tag) tag.textContent = S ? S.name : '';
+}
+function wuEdTryOff(quiet){ const E = WSU.ed; if (!E.sel) return; E.sel = null; if (!quiet) wuEdShow(); }
+/* ---- a slot's state: the Workshop part in it, stock, or changed in Customise ---- */
+function wuSlotState(b, S){
+  const parts = b.parts || {}, cust = b.cust || {};
+  if (S.id === 'acc'){
+    const ids = Object.keys(parts).filter(k=> k.indexOf('a.') === 0).map(k=> parts[k]);
+    const extra = cust.a ? Object.keys(cust.a).filter(a=> !parts['a.' + a]).length : 0, n = ids.length + extra;
+    return { label:n ? n + ' fitted' : 'None', kind:n ? 'part' : 'stock', p:ids.length ? ws48Part(ids[0]) : null, miss:ids.some(id=> !wsOwns(id)) };
+  }
+  const id = parts[S.id], p = id ? ws48Part(id) : null;
+  if (p){
+    const lab = p.t === '*' ? p.model : (p.off ? p.name : p.model + (p.cw ? ' · ' + p.cw : ''));
+    return { label:lab, brand:p.off || p.t === '*' ? '' : p.brand, kind:'part', p, miss:!wsOwns(p), hex:S.id === 'paint' && cust.c && cust.c.fr !== undefined ? cust.c.fr : p.hex };
+  }
+  if (S.id === 'paint'){
+    const own = (cust.c && cust.c.fr !== undefined) || cust.f;
+    return { label:(cust.f ? WSU_FIN[cust.f] || 'Custom' : 'Factory') + (cust.c && cust.c.fr !== undefined ? ' · own colour' : ' paint'), kind:own ? 'custom' : 'stock', hex:cust.c && cust.c.fr !== undefined ? cust.c.fr : null };
+  }
+  if (S.id === 'pattern'){
+    const j = parts.paint ? ws48Part(parts.paint) : null;
+    if (cust.p) return { label:((typeof CUST_PATTERNS !== 'undefined' && CUST_PATTERNS[cust.p[0]]) || 'Pattern') + (j && j.paint && j.paint.p ? ' (paint job)' : ''), kind:'custom', hex:cust.p[1] };
+    return { label:'None', kind:'stock' };
+  }
+  if (S.id === 'stickers'){
+    if (cust.k) return { label:(typeof CUST_DECALS !== 'undefined' && CUST_DECALS[cust.k[0] - 1]) || 'Stickers', kind:'custom', hex:cust.k[1] };
+    return { label:'None', kind:'stock' };
+  }
+  const mod = (S.keys && cust.pt && S.keys.some(k=> cust.pt[k])) || (S.c && cust.c && S.c.some(k=> cust.c[k] !== undefined)) || (S.fin && cust[S.fin]) || (S.s && cust.s);
+  return mod ? { label:'Custom (from Customise)', kind:'custom', hex:S.c && cust.c ? cust.c[S.c[0]] : null } : { label:'Stock', kind:'stock' };
+}
+function wuEdRender(){
+  const E = WSU.ed; if (!E.b) return;
+  wuEdTop(); wuEdSlots(); wuEdPick();
+}
+function wuEdTop(){
+  const E = WSU.ed, b = E.b, T = wuEl('wsEdTop'), st = wuBuildStats(b), miss = wsMissing(b), own = wuOwnsFrame(b.veh);
+  const cost = miss.reduce((a, id)=> a + wsPrice(ws48Part(id)), 0);
+  const ready = !miss.length && own;
+  const badge = b.veh === FLEET_CUR && E.worn ? '<span class="wsBadge wear">Riding this</span>' : (E.worn ? '<span class="wsBadge wear">Worn</span>' :
+    (miss.length ? '<span class="wsBadge miss">Blueprint: ' + miss.length + ' to buy</span>' : '<span class="wsBadge">Saved build</span>'));
+  T.innerHTML = '<div class="wsTopL"><input class="nm" id="wsEdName" maxlength="32" aria-label="Build name" value="' + wuEsc(b.name) + '">' +
+    '<div class="meta"><span><b>' + wuEsc(wuRideName(b.veh)) + '</b> · ' + wuTypeName(ws48TypeOf(b.veh)) + ' · ' + st.n + ' part' + (st.n === 1 ? '' : 's') +
+      (st.brands > 1 ? ' · ' + st.brands + ' brands' : '') + ' · worth <b>' + wuMoney(st.value) + '</b>' + (b.tmp ? ' · <i>not saved yet</i>' : '') + '</span>' + badge +
+      '<span class="wsSaved" id="wsSavedTag"></span></div></div><div class="wsTopB">' +
+    '<button type="button" class="wsBtn" id="wsEdUndo"' + (E.undo.length ? '' : ' disabled') + ' title="Undo (Ctrl+Z)">Undo</button>' +
+    '<button type="button" class="wsBtn" id="wsEdShuf" title="Random parts you own">Shuffle</button>' +
+    '<button type="button" class="wsBtn" id="wsEdOther" title="Copy this build onto another frame">Other frame</button>' +
+    '<button type="button" class="wsBtn" id="wsEdShare">Share</button>' +
+    (b.tmp ? '<button type="button" class="wsBtn" id="wsEdSave">Save build</button>' : '<button type="button" class="wsBtn" id="wsEdSave">Save as new</button>') +
+    (!own ? '<button type="button" class="wsBtn pri" id="wsEdBuyF">Buy frame ' + wuMoney(garagePrice(b.veh)) + '</button>' : '') +
+    (miss.length ? '<button type="button" class="wsBtn pri" id="wsEdBuyAll">Buy ' + miss.length + ' missing · ' + wuMoney(cost) + '</button>' : '') +
+    (!E.worn && ready ? '<button type="button" class="wsBtn" id="wsEdWear" title="Your ride wears this build (without riding yet)">Wear it</button>' : '') +
+    '<button type="button" class="wsBtn go" id="wsEdRide"' + (ready ? '' : ' disabled') + '>Ride it</button></div>';
+  const nm = wuEl('wsEdName');
+  const ren = ()=>{ const v = nm.value.replace(/[<>]/g, '').trim(); if (!v || v === b.name) return; if (b.tmp){ b.name = v.slice(0, 32); wuAdopt(b); } else wsBuildRename(b, v); wuSaved(); };
+  nm.onchange = ren; nm.onblur = ren; nm.onkeydown = e=>{ if (e.key === 'Enter') nm.blur(); };
+  wuEl('wsEdUndo').onclick = ()=> wuEdUndo();
+  wuEl('wsEdShuf').onclick = ()=> wuEdShuffle();
+  wuEl('wsEdOther').onclick = ()=>{ if (b.tmp) wuAdopt(b); wuFrameDlg(b); };
+  wuEl('wsEdShare').onclick = ()=>{ if (b.tmp) wuAdopt(b); wuShareDlg(b); };
+  wuEl('wsEdSave').onclick = ()=>{
+    if (b.tmp){ wuAdopt(b); wuEdTop(); wuSaved(); wuToast('Saved: <b>' + wuEsc(b.name) + '</b>', 'good'); return; }
+    const c = wsBuildDup(b); if (!c){ wuToast('Your build list is full (' + WS48_MAXB + ').', 'bad'); return; }
+    wuToast('Saved a copy: <b>' + wuEsc(c.name) + '</b>. You are editing the copy now.', 'good'); wuEditBuild(c);
+  };
+  const bf = wuEl('wsEdBuyF'); if (bf) bf.onclick = ()=> wuBuyFrame(b.veh, bf, ()=>{ wuToast('The <b>' + wuEsc(wuRideName(b.veh)) + '</b> frame is yours.', 'good'); wuEdRender(); });
+  const ba = wuEl('wsEdBuyAll'); if (ba) ba.onclick = ()=> wuBuyAll(wsMissing(b), ba, ()=>{ if (b.tmp) wuAdopt(b); wuEdRender(); });
+  const we = wuEl('wsEdWear'); if (we) we.onclick = ()=>{ if (b.tmp) wuAdopt(b); if (wsBuildLoad(b, false)){ E.worn = true; wuSfx('fit'); wuToast('Your <b>' + wuEsc(wuRideName(b.veh)) + '</b> now wears <b>' + wuEsc(b.name) + '</b>', 'good'); wuEdRender(); } };
+  wuEl('wsEdRide').onclick = ()=>{ if (b.tmp) wuAdopt(b); wuRideBuild(b); };
+}
+function wuEdSlots(){
+  const E = WSU.ed, b = E.b, L = wuEl('wsEdSlots'), slots = ws48SlotsFor(b.veh);
+  if (!slots.some(s=> s.id === E.slot)) E.slot = slots[0].id;
+  L.innerHTML = slots.map(S=>{
+    const st = wuSlotState(b, S), col = st.hex !== null && st.hex !== undefined ? wuHex(st.hex) : (st.p ? ws48Rarity(st.p.rar)[2] : '#3a4452');
+    return '<button type="button" class="wsSlot' + (S.id === E.slot ? ' sel' : '') + ' k-' + st.kind + (st.miss ? ' miss' : '') + '" data-s="' + S.id + '">' +
+      '<i class="dot" style="background:' + col + '"></i><b>' + wuIco(S.cat === 'paint' && S.id === 'pattern' ? 'pattern' : S.cat, null, 13) + ' ' + wuEsc(S.name) + '</b>' +
+      '<span>' + (st.brand ? wuEsc(st.brand) + ' · ' : '') + wuEsc(st.label) + (st.miss ? ' · to buy' : '') + '</span></button>';
+  }).join('');
+  L.onclick = e=>{
+    const s = e.target.closest('[data-s]'); if (!s) return;
+    E.slot = s.getAttribute('data-s'); E.sel = null;
+    wuSfx('pick'); wuEdSlots(); wuEdPick(true); wuEdShow(); wuAimSlot(E.slot);
+  };
+  const on = L.querySelector('.wsSlot.sel'); if (on && on.scrollIntoView) try { on.scrollIntoView({ block:'nearest', inline:'nearest' }); } catch(e){}
+}
+/* the parts of the slot, filtered + sorted */
+function wuEdParts(){
+  const E = WSU.ed, b = E.b, R = { common:0, rare:1, epic:2, legend:3, limited:4 };
+  let L = ws48PartsFor(b.veh, E.slot).slice();
+  // today's limited colourways of this slot join the list
+  try { ws48Drop().forEach(p=>{ if ((p.t === ws48TypeOf(b.veh)) && p.slot === E.slot && L.some(x=> x.id === p.id.split('~')[0])) L.push(p); }); } catch(e){}
+  // limited parts you bought on another day stay in your list
+  Object.keys(wsD().own).forEach(id=>{ if (id.indexOf('~') > 0 && !L.some(x=> x.id === id)){ const p = ws48Part(id); if (p && p.t === ws48TypeOf(b.veh) && p.slot === E.slot && L.some(x=> x.id === id.split('~')[0])) L.push(p); } });
+  if (E.own === 'own') L = L.filter(p=> wsOwns(p)); else if (E.own === 'shop') L = L.filter(p=> !wsOwns(p));
+  const fit = p=> b.parts && b.parts[wsPartKey(p)] === p.id ? 0 : 1;
+  if (E.sort === 'pa') L.sort((a, c)=> wsPrice(a) - wsPrice(c));
+  else if (E.sort === 'pd') L.sort((a, c)=> wsPrice(c) - wsPrice(a));
+  else if (E.sort === 'rar') L.sort((a, c)=> (R[c.rar] - R[a.rar]) || (wsPrice(a) - wsPrice(c)));
+  else if (E.sort === 'br') L.sort((a, c)=> a.brand.localeCompare(c.brand) || (wsPrice(a) - wsPrice(c)));
+  else L.sort((a, c)=> (fit(a) - fit(c)) || ((wsOwns(c) ? 1 : 0) - (wsOwns(a) ? 1 : 0)) || ((a.off ? 0 : 1) - (c.off ? 0 : 1)) || (wsPrice(a) - wsPrice(c)));
+  return L;
+}
+function wuPal(kind, cur, list, factory){
+  return '<div class="wsPal" data-k="' + kind + '">' + (factory ? '<button type="button" class="fac' + (cur === null || cur === undefined ? ' sel' : '') + '" data-h="" title="Factory" aria-label="Factory colour"></button>' : '') +
+    list.map(c=> '<button type="button" style="background:' + wuHex(c[1]) + '"' + (cur === c[1] ? ' class="sel"' : '') + ' data-h="' + c[1] + '" title="' + wuEsc(c[0]) + '" aria-label="' + wuEsc(c[0]) + '"></button>').join('') + '</div>';
+}
+function wuEdPick(top){
+  const E = WSU.ed, b = E.b, S = wsSlotDef(b.veh, E.slot); if (!S) return;
+  const all = ws48PartsFor(b.veh, E.slot), brands = {}; all.forEach(p=>{ if (!p.off) brands[p.brand] = 1; });
+  const H = wuEl('wsEdPH'), list = wuEl('wsEdList');
+  H.innerHTML = '<h3>' + wuIco(S.id === 'pattern' ? 'pattern' : S.cat, '#ffc46b', 18) + ' ' + wuEsc(S.name) + '</h3>' +
+    '<div class="sub">' + all.filter(p=> !p.off).length + ' parts · ' + Object.keys(brands).length + ' brand' + (Object.keys(brands).length === 1 ? '' : 's') + (S.shared ? ' · fits every ride' : ' · fits ' + wuEsc(wuRideName(b.veh))) + '</div>' +
+    '<div class="row"><div class="wsChips">' + [['all', 'All'], ['own', 'Owned'], ['shop', 'To buy']].map(o=> '<button type="button" class="wsChip' + (E.own === o[0] ? ' sel' : '') + '" data-o="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
+    '<select id="wsEdSort" aria-label="Sort parts">' + [['feat', 'Fitted & owned first'], ['pa', 'Price: low to high'], ['pd', 'Price: high to low'], ['rar', 'Rarest first'], ['br', 'Brand']].map(o=> '<option value="' + o[0] + '"' + (E.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></div>';
+  H.querySelector('.wsChips').onclick = e=>{ const c = e.target.closest('[data-o]'); if (c){ E.own = c.getAttribute('data-o'); wuEdPick(true); } };
+  wuEl('wsEdSort').onchange = e=>{ E.sort = e.target.value; wuEdPick(true); };
+  const cust = b.cust || {}, slots = ws48SlotsFor(b.veh);
+  const cols = (typeof FLEET_COLORS !== 'undefined' ? FLEET_COLORS.slice(1) : []);
+  let h = '';
+  // free colours (paint, pattern, stickers)
+  if (S.id === 'paint'){
+    h += '<div class="wsFree"><div class="wsSub">Frame colour · free</div>' + wuPal('fr', cust.c ? cust.c.fr : undefined, cols, true);
+    if (!slots.some(x=> x.c && x.c.indexOf('ac') >= 0)) h += '<div class="wsSub">Accent colour · free</div>' + wuPal('ac', cust.c ? cust.c.ac : undefined, cols, true);
+    h += '</div><div class="wsSub pad">Finishes and designer paint jobs</div>';
+  } else if (S.id === 'pattern' && cust.p){
+    h += '<div class="wsFree"><div class="wsSub">Pattern colour · free</div>' + wuPal('pc', cust.p[1], cols, false) +
+      '<div class="wsSub">Pattern size</div><div class="wsChips" data-k="ps">' + [[6, 'Small'], [10, 'Medium'], [16, 'Large'], [22, 'Huge']].map(o=> '<button type="button" class="wsChip' + ((cust.p[2] || 10) === o[0] ? ' sel' : '') + '" data-h="' + o[0] + '">' + o[1] + '</button>').join('') + '</div></div>';
+  } else if (S.id === 'stickers' && cust.k){
+    const ink = (typeof CUST_PRESETS !== 'undefined' ? CUST_PRESETS.k1 : []).concat(cols.slice(0, 12)), out = (typeof CUST_PRESETS !== 'undefined' ? CUST_PRESETS.k2 : []).concat(cols.slice(0, 8));
+    h += '<div class="wsFree"><div class="wsSub">Sticker colour · free</div>' + wuPal('k1', cust.k[1], ink, false) + '<div class="wsSub">Outline</div>' + wuPal('k2', cust.k[2], out, false) +
+      '<div class="wsSub">Size</div><div class="wsChips" data-k="kz">' + [[6, 'Small'], [8, 'Medium'], [10, 'Large']].map(o=> '<button type="button" class="wsChip' + (cust.k[4] === o[0] ? ' sel' : '') + '" data-h="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
+      '<div class="wsSub">How many</div><div class="wsChips" data-k="kn">' + [[1, 'One per side'], [2, 'Two per side']].map(o=> '<button type="button" class="wsChip' + (cust.k[3] === o[0] ? ' sel' : '') + '" data-h="' + o[0] + '">' + o[1] + '</button>').join('') + '</div></div>';
+  }
+  // the stock row, then the parts
+  const stockName = { paint:'Factory paint', pattern:'No pattern', stickers:'No stickers', acc:'Take everything off' }[S.id] || 'Stock part (factory)';
+  const st = wuSlotState(b, S);
+  h += '<button type="button" class="wsPart stock' + (E.sel === 'stock' ? ' sel' : '') + (st.kind === 'stock' ? ' inst' : '') + '" data-p="stock"><i class="sw">' + wuIco('build', '#cfd6df', 17) + '</i>' +
+    '<b>' + stockName + '</b><span class="pd">' + (S.id === 'acc' ? 'Back to a clean ride' : 'What it came with') + '</span><span class="pr">Free' + (st.kind === 'stock' ? '<i class="ok">Fitted</i>' : '') + '</span></button>';
+  const parts = wuEdParts(); E.vis = parts.map(p=> p.id);
+  if (!parts.length) h += '<div class="wsEmpty sm">' + (E.own === 'own' ? 'You do not own a part for this slot yet. Tap <b>To buy</b>.' : 'Nothing here.') + '</div>';
+  parts.forEach(p=>{
+    const fitted = b.parts && b.parts[wsPartKey(p)] === p.id, owns = wsOwns(p), pr = wsPrice(p), R = ws48Rarity(p.rar);
+    h += '<button type="button" class="wsPart' + (E.sel === p.id ? ' sel' : '') + (fitted ? ' inst' : '') + (!owns && fitted ? ' miss' : '') + '" data-p="' + p.id + '">' + wuSwatch(p) +
+      '<b>' + wuEsc(p.off ? p.name : (p.t === '*' ? p.name : p.brand + ' ' + p.model)) + '</b>' +
+      '<span class="pd">' + wuEsc([p.t === '*' ? p.brand : p.shape, p.cw].filter(Boolean).join(' · ')) + (p.ltd ? ' · <b class="rar-limited">Today only</b>' : '') + '</span>' +
+      '<span class="pr">' + (fitted ? '<i class="ok">Fitted</i>' : (owns ? '<i class="ok">Owned</i>' : wuMoney(pr))) + '<i class="rar-' + R[0] + '">' + R[1] + '</i></span></button>';
+  });
+  const sc = top ? 0 : list.scrollTop;
+  list.innerHTML = h; list.scrollTop = sc;
+  list.onclick = e=>{
+    const pal = e.target.closest('[data-k] [data-h]');
+    if (pal){ const k = pal.parentNode.getAttribute('data-k'), v = pal.getAttribute('data-h'); wuEdColour(k, v === '' ? null : +v); return; }
+    const it = e.target.closest('[data-p]'); if (!it) return;
+    const id = it.getAttribute('data-p');
+    E.sel = E.sel === id && id !== 'stock' && wuEdSelFitted() ? null : id;
+    wuSfx('pick'); wuEdPick(); wuEdShow();
+  };
+  list.ondblclick = e=>{ const it = e.target.closest('[data-p]'); if (!it) return; const g = wuEl('wsEdGo'); if (g && !g.disabled && !g.classList.contains('pri')) g.click(); };
+  wuEdAct();
+  if (E.sel){ const on = list.querySelector('.wsPart.sel'); if (on && on.scrollIntoView) try { on.scrollIntoView({ block:'nearest' }); } catch(e){} }
+}
+/* the action bar under the list: fit / buy / take off / cancel */
+function wuEdAct(){
+  const E = WSU.ed, b = E.b, A = wuEl('wsEdAct'), S = wsSlotDef(b.veh, E.slot), st = wuSlotState(b, S);
+  if (!E.sel){
+    A.innerHTML = '<div class="note">Tap a part to <b>try it on</b>. Fitted parts are green; parts you own fit for free.</div>' +
+      (st.kind !== 'stock' ? '<button type="button" class="wsBtn" id="wsEdGo">' + (S.id === 'acc' ? 'Take everything off' : 'Back to stock') + '</button>' : '');
+    const g = wuEl('wsEdGo'); if (g) g.onclick = ()=> wuEdStock(S.id);
+    return;
+  }
+  if (E.sel === 'stock'){
+    A.innerHTML = '<div class="note"><b>' + (S.id === 'acc' ? 'No accessories' : 'The stock part') + '</b> · free</div>' +
+      '<button type="button" class="wsBtn go" id="wsEdGo"' + (st.kind === 'stock' ? ' disabled' : '') + '>' + (st.kind === 'stock' ? 'Already stock' : 'Fit it') + '</button><button type="button" class="wsBtn" id="wsEdNo">Cancel</button>';
+    wuEl('wsEdGo').onclick = ()=> wuEdStock(S.id);
+    wuEl('wsEdNo').onclick = ()=>{ wuEdTryOff(); wuEdPick(); };
+    return;
+  }
+  const p = ws48Part(E.sel); if (!p){ E.sel = null; wuEdAct(); return; }
+  const fitted = wuEdSelFitted(), owns = wsOwns(p), pr = wsPrice(p), R = ws48Rarity(p.rar), key = wsPremKey(p);
+  let h = '<div class="note"><b>' + wuEsc(p.off ? p.name : (p.t === '*' ? p.name : p.brand + ' ' + p.model)) + '</b> <span class="wsRar rar-' + R[0] + '">' + R[1] + '</span>' +
+    (p.shape && p.t !== '*' ? '<br>' + wuEsc(p.shape) : '') + (p.cw ? ' · ' + wuEsc(p.cw) : '') + (p.fin && WSU_FIN[p.fin.v] ? ' · ' + WSU_FIN[p.fin.v] + ' finish' : '') +
+    (key ? '<br><i>Also unlocks it in Customise for every ride.</i>' : '') + (p.ltd ? '<br><b class="rar-limited">Limited: on sale today only.</b>' : '') + '</div>';
+  const fx = wuFxChips(p.fx); if (fx) h += '<div class="wsStats">' + fx + '</div>';
+  if (fitted) h += (p.acc ? '<button type="button" class="wsBtn bad" id="wsEdGo">Take it off</button>' : '<button type="button" class="wsBtn" id="wsEdGo" disabled>Fitted</button>');
+  else if (owns) h += '<button type="button" class="wsBtn go" id="wsEdGo">Fit it</button>';
+  else h += '<button type="button" class="wsBtn pri" id="wsEdGo"><span>Buy &amp; fit</span> <b>' + wuMoney(pr) + '</b></button>';
+  h += '<button type="button" class="wsBtn" id="wsEdNo">' + (fitted ? 'Close' : 'Cancel') + '</button>';
+  if (!fitted && !owns) h += '<span class="wsCanAfford">' + (wuCash() >= pr ? 'You have ' + wuMoney(wuCash()) : 'You need ' + wuMoney(pr - wuCash()) + ' more') + '</span>';
+  A.innerHTML = h;
+  const g = wuEl('wsEdGo');
+  g.onclick = ()=>{
+    if (fitted){ if (p.acc) wuEdTakeAcc(p); return; }
+    if (owns){ wuEdFit(p); return; }
+    wuBuyPart(p, g, ()=> wuEdFit(p));
+  };
+  wuEl('wsEdNo').onclick = ()=>{ wuEdTryOff(); wuEdPick(); };
+}
+/* ---- edits: every one goes through here (undo, save, the ride when it wears the build) ---- */
+function wuAdopt(b){
+  if (!b.tmp) return true;
+  const d = wsD();
+  if (d.builds.length >= WS48_MAXB){ wuToast('Your build list is full (' + WS48_MAXB + '): delete one to save this build.', 'bad'); return false; }
+  delete b.tmp; b.id = wsNewId(); b.t0 = b.t1 = Date.now();
+  d.builds.unshift(b); WS48.n.saves++; wsSave(true);
+  return true;
+}
+function wuEdApply(cust, parts, msg){
+  const E = WSU.ed, b = E.b; if (!b) return;
+  E.undo.push(JSON.stringify({ c:b.cust || null, p:b.parts || {} })); if (E.undo.length > 40) E.undo.shift();
+  b.cust = (typeof custClean === 'function' ? custClean(cust) : cust) || null;
+  b.parts = parts || {}; b.t1 = Date.now();
+  wuEdCommit(msg);
+}
+function wuEdCommit(msg){
+  const E = WSU.ed, b = E.b;
+  if (b.tmp) wuAdopt(b);
+  if (E.worn){
+    if (!wsMissing(b).length){
+      if (typeof custSet === 'function') custSet(b.veh, b.cust ? wsCustCopy(b.cust) : null);
+      wsD().live[b.veh] = Object.assign({}, b.parts);
+      wsKitZero(b.veh); wsRefreshRide(b.veh);
+    } else E.worn = false;
+  }
+  const d = wsD(), i = d.builds.indexOf(b); if (i > 0){ d.builds.splice(i, 1); d.builds.unshift(b); }
+  wsSave(); WS48.n.edits++;
+  E.sel = null;
+  wuEdRender(); wuEdShow(); wuSaved();
+  if (msg) wuToast(msg, 'good');
+}
+function wuEdUndo(){
+  const E = WSU.ed, b = E.b; if (!b || !E.undo.length) return;
+  const s = JSON.parse(E.undo.pop());
+  b.cust = s.c || null; b.parts = s.p || {}; b.t1 = Date.now();
+  wuSfx('off'); wuEdCommit('Undone');
+}
+function wuEdFit(p){
+  const b = WSU.ed.b, parts = Object.assign({}, b.parts || {});
+  const cust = wsApplyPart(wsCustCopy(b.cust), p, b.veh, parts);
+  wuSfx('fit');
+  wuEdApply(cust, parts, '<b>' + wuEsc(p.off ? p.name : (p.t === '*' ? p.name : p.brand + ' ' + p.model)) + '</b> fitted');
+}
+function wuEdStock(slotId){
+  const b = WSU.ed.b, parts = Object.assign({}, b.parts || {});
+  const cust = wsClearSlot(wsCustCopy(b.cust), b.veh, slotId, parts);
+  wuSfx('off'); wuEdApply(cust, parts, slotId === 'acc' ? 'Accessories off' : 'Back to the stock part');
+}
+function wuEdTakeAcc(p){
+  const b = WSU.ed.b, parts = Object.assign({}, b.parts || {});
+  const cust = wsTakeAcc(wsCustCopy(b.cust), p.acc, parts);
+  wuSfx('off'); wuEdApply(cust, parts, '<b>' + wuEsc(p.name) + '</b> taken off');
+}
+/* the free colours: frame, accent, pattern colour + size, sticker inks + size + count */
+function wuEdColour(k, v){
+  const b = WSU.ed.b, cust = wsCustCopy(b.cust), parts = Object.assign({}, b.parts || {});
+  if (k === 'fr' || k === 'ac'){ cust.c = Object.assign({}, cust.c || {}); if (v === null) delete cust.c[k]; else cust.c[k] = v; if (!Object.keys(cust.c).length) delete cust.c; }
+  else if (k === 'pc' && cust.p) cust.p = [cust.p[0], v, cust.p[2] || 10];
+  else if (k === 'ps' && cust.p) cust.p = [cust.p[0], cust.p[1], v];
+  else if (cust.k && (k === 'k1' || k === 'k2' || k === 'kz' || k === 'kn')){ const i = { k1:1, k2:2, kn:3, kz:4 }[k]; cust.k = cust.k.slice(); cust.k[i] = v; }
+  else return;
+  wuSfx('pick'); wuEdApply(cust, parts, null);
+}
+/* random parts you own on every slot (a fresh frame colour too; accessories stay) */
+function wuEdShuffle(){
+  const b = WSU.ed.b, rnd = a=> a[Math.floor(Math.random()*a.length)], parts = {};
+  let cust = { c:{ fr:rnd(FLEET_COLORS.slice(1))[1] } };
+  if (b.cust && b.cust.a) cust.a = JSON.parse(JSON.stringify(b.cust.a));
+  Object.keys(b.parts || {}).forEach(k=>{ if (k.indexOf('a.') === 0) parts[k] = b.parts[k]; });
+  let n = 0;
+  ws48SlotsFor(b.veh).forEach(S=>{
+    if (S.id === 'acc') return;
+    const own = ws48PartsFor(b.veh, S.id).filter(p=> wsOwns(p));
+    if (!own.length || Math.random() < 0.2) return;
+    cust = wsApplyPart(cust, rnd(own), b.veh, parts); n++;
+  });
+  wuSfx('fit');
+  wuEdApply(cust, parts, n ? 'Shuffled: ' + n + ' slots with parts you own' : 'Shuffled the paint (buy parts to shuffle more)');
+}
+function wuEdSlotStep(d){
+  const E = WSU.ed; if (!E.b) return;
+  const sl = ws48SlotsFor(E.b.veh), i = sl.findIndex(s=> s.id === E.slot);
+  E.slot = sl[(i + d + sl.length) % sl.length].id; E.sel = null;
+  wuEdSlots(); wuEdPick(true); wuEdShow(); wuAimSlot(E.slot);
+}
+function wuEdPartStep(d){
+  const E = WSU.ed, v = ['stock'].concat(E.vis || []); if (!E.b || v.length < 2) return;
+  const i = Math.max(-1, v.indexOf(E.sel));
+  E.sel = v[(i + d + v.length) % v.length];
+  wuEdPick(); wuEdShow();
+}
+
+/* ---------------------------------------------------------------- MARKETPLACE */
+function wuHay(p){
+  let h = WSU.hay.get(p.id);
+  if (!h){ h = [p.name, p.brand, p.model, p.shape, p.cw, WS48_CAT_NAME[p.cat], wuTypeName(p.t), ws48Rarity(p.rar)[1], p.ltd ? 'limited drop today' : ''].join(' ').toLowerCase(); WSU.hay.set(p.id, h); }
+  return h;
+}
+/* everything for sale: the catalogue (no removal parts), today's limited drop, limited parts you bought on other days */
+function wuMkPool(){
+  const C = ws48Catalog(), L = C.list.filter(p=> !p.off), seen = new Set(L.map(p=> p.id));
+  ws48Drop().forEach(p=>{ if (!seen.has(p.id)){ seen.add(p.id); L.push(p); } });
+  Object.keys(wsD().own).forEach(id=>{ if (id.indexOf('~') > 0 && !seen.has(id)){ const p = ws48Part(id); if (p){ seen.add(id); L.push(p); } } });
+  return L;
+}
+function wuMkFitSet(veh){
+  if (WSU.fitSet && WSU.fitSet.v === veh) return WSU.fitSet.s;
+  const s = new Set(); ws48SlotsFor(veh).forEach(S=> ws48PartsFor(veh, S.id).forEach(p=> s.add(p.id)));
+  WSU.fitSet = { v:veh, s };
+  return s;
+}
+function wuMkFilter(L, ign){
+  const M = WSU.mk, q = M.q.trim().toLowerCase(), fv = M.fit && WSU.ed.b ? WSU.ed.b.veh : null, fs = fv ? wuMkFitSet(fv) : null;
+  return L.filter(p=>{
+    if (fs && !fs.has(p.id.split('~')[0])) return false;
+    if (ign !== 'type' && M.type !== 'all'){ if (M.type === '*' ? p.t !== '*' : (p.t !== M.type && p.t !== '*')) return false; }
+    if (ign !== 'cat' && M.cat !== 'all' && p.cat !== M.cat) return false;
+    if (ign !== 'brand' && M.brand !== 'all' && p.brand !== M.brand) return false;
+    if (ign !== 'rar' && M.rar !== 'all' && p.rar !== M.rar) return false;
+    if (M.max && wsPrice(p) > M.max) return false;
+    if (M.hide && wsOwns(p)) return false;
+    if (q && wuHay(p).indexOf(q) < 0) return false;
+    return true;
+  });
+}
+function wuMkSort(L){
+  const M = WSU.mk, R = { common:0, rare:1, epic:2, legend:3, limited:4 };
+  if (M.sort === 'pa') return L.sort((a, b)=> wsPrice(a) - wsPrice(b));
+  if (M.sort === 'pd') return L.sort((a, b)=> wsPrice(b) - wsPrice(a));
+  if (M.sort === 'rar') return L.sort((a, b)=> (R[b.rar] - R[a.rar]) || (wsPrice(b) - wsPrice(a)));
+  if (M.sort === 'name') return L.sort((a, b)=> a.name.localeCompare(b.name));
+  const day = ws48Day(), sc = new Map();                          // featured: a fresh mix every day, rarer parts nearer the top
+  L.forEach(p=> sc.set(p.id, R[p.rar]*0.42 + (ws48Hash(p.id + ':' + day) % 1000)/1000*2.2));
+  return L.sort((a, b)=> sc.get(b.id) - sc.get(a.id));
+}
+function wuMkRender(){
+  const M = WSU.mk;
+  M.narrow = innerWidth <= 980;
+  wuMkFilters(); wuMkList(true); wuMkDetail();
+}
+function wuOpt(v, label, cur){ return '<option value="' + wuEsc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + wuEsc(label) + '</option>'; }
+function wuMkFilters(){
+  const M = WSU.mk, F = wuEl('wsMkFilt'), pool = wuMkPool(), eb = WSU.ed.b;
+  const count = (ign, key)=>{ const o = {}; wuMkFilter(pool, ign).forEach(p=>{ o[p[key]] = (o[p[key]] || 0) + 1; }); return o; };
+  const cc = count('cat', 'cat'), bc = count('brand', 'brand'), rc = count('rar', 'rar'), call = wuMkFilter(pool, 'cat').length;
+  F.classList.toggle('open', !!M.fopen);
+  F.innerHTML =
+    '<div class="grp"><input type="search" id="wsMkQ" placeholder="Search parts, brands, colours" aria-label="Search parts" value="' + wuEsc(M.q) + '"></div>' +
+    '<div class="grp"><label for="wsMkType">Ride type</label><select id="wsMkType">' + wuOpt('all', 'Every ride type', M.type) +
+      WS48_TYPE_ORDER.map(t=> wuOpt(t, WS48_TYPES[t].name, M.type)).join('') + wuOpt('*', 'Paint, stickers & extras', M.type) + '</select>' +
+      (eb ? '<label class="chk"><input type="checkbox" id="wsMkFit"' + (M.fit ? ' checked' : '') + '> Only parts for my build <b>' + wuEsc(eb.name) + '</b></label>' : '') + '</div>' +
+    '<div class="grp cats"><label>Category</label><button type="button" class="cat' + (M.cat === 'all' ? ' sel' : '') + '" data-c="all">All parts<i>' + call + '</i></button>' +
+      WS48_CATS.filter(c=> cc[c[0]]).map(c=> '<button type="button" class="cat' + (M.cat === c[0] ? ' sel' : '') + '" data-c="' + c[0] + '">' + wuIco(c[0], null, 14) + ' ' + c[1] + '<i>' + cc[c[0]] + '</i></button>').join('') + '</div>' +
+    '<div class="grp mOnly"><label for="wsMkCat">Category</label><select id="wsMkCat">' + wuOpt('all', 'All parts (' + call + ')', M.cat) + WS48_CATS.filter(c=> cc[c[0]]).map(c=> wuOpt(c[0], c[1] + ' (' + cc[c[0]] + ')', M.cat)).join('') + '</select></div>' +
+    '<div class="grp"><label for="wsMkBrand">Brand</label><select id="wsMkBrand">' + wuOpt('all', 'Every brand', M.brand) + Object.keys(bc).sort().map(b=> wuOpt(b, b + ' (' + bc[b] + ')', M.brand)).join('') + '</select></div>' +
+    '<div class="grp"><label>Rarity</label><div class="wsChips" id="wsMkRar"><button type="button" class="wsChip' + (M.rar === 'all' ? ' sel' : '') + '" data-r="all">Any</button>' +
+      WS48_RAR.filter(r=> rc[r[0]]).map(r=> '<button type="button" class="wsChip' + (M.rar === r[0] ? ' sel' : '') + '" data-r="' + r[0] + '" style="--rc:' + r[2] + '">' + r[1] + '</button>').join('') + '</div></div>' +
+    '<div class="grp"><label for="wsMkMax">Price</label><select id="wsMkMax">' + [[0, 'Any price'], [100, 'Up to $100'], [250, 'Up to $250'], [500, 'Up to $500'], [1000, 'Up to $1,000'], [2500, 'Up to $2,500'], [5000, 'Up to $5,000']].map(o=> wuOpt(o[0], o[1], M.max)).join('') +
+      wuOpt(-1, 'What I can afford (' + wuMoney(wuCash()) + ')', M.max === wuCash() && M.aff ? -1 : '') + '</select></div>' +
+    '<div class="grp"><label class="chk"><input type="checkbox" id="wsMkHide"' + (M.hide ? ' checked' : '') + '> Hide parts I own</label></div>' +
+    '<button type="button" class="wsBtn" id="wsMkReset">Reset filters</button>';
+  const re = ()=>{ M.n = 60; wuMkFilters(); wuMkList(true); };
+  const q = wuEl('wsMkQ'); q.oninput = ()=>{ M.q = q.value; M.n = 60; wuMkList(true); };
+  q.onchange = ()=> re();
+  wuEl('wsMkType').onchange = e=>{ M.type = e.target.value; M.cat = 'all'; M.brand = 'all'; re(); };
+  const fit = wuEl('wsMkFit'); if (fit) fit.onchange = ()=>{ M.fit = fit.checked; re(); };
+  F.querySelectorAll('.cat[data-c]').forEach(b=> b.onclick = ()=>{ M.cat = b.getAttribute('data-c'); re(); });
+  wuEl('wsMkCat').onchange = e=>{ M.cat = e.target.value; re(); };
+  wuEl('wsMkBrand').onchange = e=>{ M.brand = e.target.value; re(); };
+  wuEl('wsMkRar').onclick = e=>{ const c = e.target.closest('[data-r]'); if (c){ M.rar = c.getAttribute('data-r'); re(); } };
+  wuEl('wsMkMax').onchange = e=>{ const v = +e.target.value; M.aff = v < 0; M.max = v < 0 ? wuCash() : v; re(); };
+  wuEl('wsMkHide').onchange = e=>{ M.hide = e.target.checked; re(); };
+  wuEl('wsMkReset').onclick = ()=>{ Object.assign(M, { q:'', type:'all', cat:'all', brand:'all', rar:'all', max:0, aff:false, hide:false, fit:false }); re(); };
+}
+function wuProdHtml(p){
+  const owns = wsOwns(p), R = ws48Rarity(p.rar);
+  return '<button type="button" class="wsProd r-' + R[0] + (WSU.mk.sel === p.id ? ' sel' : '') + (owns ? ' owned' : '') + '" data-p="' + p.id + '"><div class="top">' + wuSwatch(p) +
+    '<div class="nm"><b>' + wuEsc(p.t === '*' ? p.name : p.brand + ' ' + p.model) + '</b><div class="br">' + wuEsc(WS48_CAT_NAME[p.cat] || '') + ' · ' + wuTypeName(p.t) + '</div></div></div>' +
+    '<div class="ds">' + wuEsc([p.t === '*' ? p.brand : p.shape, p.cw].filter(Boolean).join(' · ')) + '</div>' +
+    '<div class="ft"><span class="wsRar rar-' + R[0] + '">' + R[1] + '</span><span class="pr">' + (owns ? 'Owned' : wuMoney(wsPrice(p))) + '</span></div>' +
+    (owns ? '<span class="own">OWNED</span>' : '') + '</button>';
+}
+function wuDropLeft(){
+  const n = new Date(), m = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1), s = Math.max(0, Math.floor((m - n)/1000));
+  return 'new parts in ' + Math.floor(s/3600) + 'h ' + String(Math.floor(s/60) % 60).padStart(2, '0') + 'm ' + String(s % 60).padStart(2, '0') + 's';
+}
+function wuDropClock(){ const c = wuEl('wsDropClock'); if (c && WSU.tab === 'market') c.textContent = wuDropLeft(); }
+function wuMkList(top){
+  const M = WSU.mk, L = wuEl('wsMkList'), T = wuEl('wsMkTop');
+  const strip = M.cat === 'all' && !M.q && M.rar === 'all' && M.brand === 'all' && !M.fit && !M.hide && M.type === 'all';
+  let items = wuMkSort(wuMkFilter(wuMkPool()));
+  if (strip) items = items.filter(p=> !p.ltd);                     // today's drop has its own strip on top
+  T.innerHTML = '<span class="cnt"><b>' + items.length.toLocaleString('en-US') + '</b> part' + (items.length === 1 ? '' : 's') + '</span>' +
+    (M.narrow ? '<button type="button" class="wsBtn" id="wsMkFT">' + (M.fopen ? 'Hide filters' : 'Filters') + '</button>' : '') +
+    '<span class="sp"></span><select id="wsMkSort" aria-label="Sort">' + [['feat', 'Featured'], ['pa', 'Price: low to high'], ['pd', 'Price: high to low'], ['rar', 'Rarest first'], ['name', 'Name']].map(o=> wuOpt(o[0], o[1], M.sort)).join('') + '</select>';
+  wuEl('wsMkSort').onchange = e=>{ M.sort = e.target.value; M.n = 60; wuMkList(true); };
+  const ft = wuEl('wsMkFT'); if (ft) ft.onclick = ()=>{ M.fopen = !M.fopen; wuEl('wsMkFilt').classList.toggle('open', M.fopen); ft.textContent = M.fopen ? 'Hide filters' : 'Filters'; };
+  let h = '';
+  if (strip){
+    const D = ws48Drop();
+    if (D.length) h += '<div class="wsDrop"><h3>' + wuIco('acc', '#ff4f7b', 16) + ' Today’s limited drop <span id="wsDropClock">' + wuDropLeft() + '</span></h3>' +
+      '<div class="wsDropTx">Special colourways sold for one day only. Buy one and it is yours for good.</div><div class="wsDropRow">' + D.map(wuProdHtml).join('') + '</div></div>';
+  }
+  if (items.length) h += '<div class="wsProds">' + items.slice(0, M.n).map(wuProdHtml).join('') + '</div>';
+  else h += '<div class="wsEmpty"><b>No parts match</b>Try fewer filters, or reset them.</div>';
+  if (items.length > M.n) h += '<button type="button" class="wsBtn wsMore" id="wsMkMore">Show more · ' + (items.length - M.n).toLocaleString('en-US') + ' left</button>';
+  const sc = top ? 0 : L.scrollTop;
+  L.innerHTML = h; L.scrollTop = sc;
+  L.onclick = e=>{
+    if (e.target.closest('#wsMkMore')){ M.n += 60; wuMkList(false); return; }
+    const it = e.target.closest('[data-p]'); if (!it) return;
+    wuSfx('pick'); wuMkSelect(it.getAttribute('data-p'));
+  };
+}
+function wuMkSelect(id){
+  const M = WSU.mk, p = ws48Part(id); if (!p) return;
+  if (M.sel !== id) M.pv = null;
+  M.sel = id; M.sheet = true;
+  wuEl('wsMkList').querySelectorAll('.wsProd.sel').forEach(x=> x.classList.remove('sel'));
+  wuEl('wsMkList').querySelectorAll('.wsProd[data-p="' + id.replace(/"/g, '') + '"]').forEach(x=> x.classList.add('sel'));
+  wuMkDetail();
+  wuAimSlot(p.slot);
+}
+function wuMkSheet(on){ WSU.mk.sheet = !!on; wuEl('wsMkDet').classList.toggle('on', !!on); }
+/* the rides a part can be previewed on */
+function wuMkRides(p){
+  if (p.t === '*'){
+    const ids = [], push = v=>{ if (v && FLEET_BY_ID[v] && ids.indexOf(v) < 0) ids.push(v); };
+    if (WSU.ed.b) push(WSU.ed.b.veh); push(FLEET_CUR);
+    FLEET.forEach(v=>{ if (ids.length < 24 && wuOwnsFrame(v.id)) push(v.id); });
+    return ids;
+  }
+  return FLEET.filter(v=> ws48TypeOf(v.id) === p.t && Object.keys(p.pt || {}).every(k=> ws48Def(v.b, k))).map(v=> v.id);
+}
+function wuMkDetail(){
+  const M = WSU.mk, D = wuEl('wsMkDet'), I = wuEl('wsMkInfo'), p = M.sel ? ws48Part(M.sel) : null;
+  D.classList.toggle('on', !!p && M.sheet); D.classList.toggle('empty', !p);
+  if (!p){ I.innerHTML = '<div class="wsEmpty sm"><b>Pick a part</b>Tap any part to see it on a ride in 3D, what it fits and what it does.</div>'; return; }
+  const rides = wuMkRides(p), eb = WSU.ed.b;
+  if (!M.pv || rides.indexOf(M.pv) < 0) M.pv = (eb && rides.indexOf(eb.veh) >= 0) ? eb.veh : (rides.indexOf(FLEET_CUR) >= 0 ? FLEET_CUR : (rides.find(id=> wuOwnsFrame(id)) || rides[0]));
+  const owns = wsOwns(p), pr = wsPrice(p), R = ws48Rarity(p.rar), key = wsPremKey(p);
+  const fitsEd = eb && (p.t === '*' || wuMkFitSet(eb.veh).has(p.id.split('~')[0]));
+  const fittedEd = fitsEd && eb.parts && eb.parts[wsPartKey(p)] === p.id;
+  const used = wsBuilds().filter(b=> Object.keys(b.parts || {}).some(k=> b.parts[k] === p.id)).length;
+  I.innerHTML = '<div class="wsDetHead"><span class="wsRar rar-' + R[0] + '">' + R[1] + '</span><span>' + wuEsc(WS48_CAT_NAME[p.cat] || '') + '</span><button type="button" class="wsBtn sm" id="wsMkClose">Close</button></div>' +
+    '<h3>' + wuEsc(p.t === '*' ? p.name : p.brand + ' ' + p.model) + '</h3>' +
+    '<div class="sub">by <b>' + wuEsc(p.brand) + '</b> · ' + (p.t === '*' ? 'fits every ride' : 'for ' + WS48_TYPES[p.t].name.toLowerCase()) + '</div>' +
+    '<div class="bigp">' + (owns ? '<span class="ok">Owned</span>' : wuMoney(pr)) + (p.ltd ? '<span class="ltd">Today only</span>' : '') + '</div>' +
+    '<div class="kv">' + (p.t !== '*' ? '<span>Fits</span><b>' + rides.length + ' ' + (rides.length === 1 ? 'ride' : 'rides') + ' (' + WS48_TYPES[p.t].name + ')</b>' : '') +
+      (p.shape ? '<span>' + (p.t === '*' ? 'Type' : 'Shape') + '</span><b>' + wuEsc(p.shape) + '</b>' : '') + (p.cw ? '<span>Colourway</span><b>' + wuEsc(p.cw) + '</b>' : '') +
+      (p.fin && WSU_FIN[p.fin.v] ? '<span>Finish</span><b>' + WSU_FIN[p.fin.v] + '</b>' : '') + (p.s && typeof CUST_SEATS !== 'undefined' && CUST_SEATS[p.s] ? '<span>Cover</span><b>' + CUST_SEATS[p.s].name + '</b>' : '') +
+      '<span>Model</span><b>' + wuEsc(p.model) + '</b>' + (used ? '<span>On</span><b>' + used + ' of your builds</b>' : '') + '</div>' +
+    (wuFxChips(p.fx) ? '<div class="wsStats">' + wuFxChips(p.fx) + '</div>' : '') +
+    (key ? '<div class="note">Bought here or in the Shop, it unlocks in Customise too, on every ride.</div>' : '') +
+    '<div class="row">' + (owns ? '' : '<button type="button" class="wsBtn pri" id="wsMkBuy"><span>Buy</span> <b>' + wuMoney(pr) + '</b></button>') +
+      (fitsEd && !fittedEd ? '<button type="button" class="wsBtn go" id="wsMkFitB">' + (owns ? 'Fit to ' : 'Buy & fit to ') + wuEsc(eb.name) + '</button>' : '') +
+      (fittedEd ? '<span class="wsBadge wear">Fitted to ' + wuEsc(eb.name) + '</span>' : '') +
+      '<button type="button" class="wsBtn" id="wsMkTry">Try it in the editor</button></div>' +
+    (!owns ? '<div class="wsCanAfford">' + (wuCash() >= pr ? 'You have ' + wuMoney(wuCash()) : 'You need ' + wuMoney(pr - wuCash()) + ' more') + '</div>' : '') +
+    (rides.length > 1 ? '<label class="pv">Preview on <select id="wsMkPv">' + rides.slice(0, 40).map(id=> wuOpt(id, wuRideName(id) + (wuOwnsFrame(id) ? '' : ' (not owned)'), M.pv)).join('') + '</select></label>' : '');
+  wuEl('wsMkClose').onclick = ()=> wuMkSheet(false);
+  const buy = wuEl('wsMkBuy'); if (buy) buy.onclick = ()=> wuBuyPart(p, buy, ()=>{ wuMkDetail(); wuMkList(false); });
+  const fb = wuEl('wsMkFitB'); if (fb) fb.onclick = ()=>{
+    const go = ()=>{ wuEdFit(p); wuToast('<b>' + wuEsc(p.t === '*' ? p.name : p.brand + ' ' + p.model) + '</b> fitted to <b>' + wuEsc(eb.name) + '</b>', 'good'); wuMkDetail(); wuMkList(false); };
+    if (owns) go(); else wuBuyPart(p, fb, go);
+  };
+  wuEl('wsMkTry').onclick = ()=>{
+    const slot = p.slot, id = p.id;
+    if (fitsEd) wuEditBuild(eb); else wuEditRide(M.pv);
+    const E = WSU.ed; E.slot = slot; E.sel = id; E.own = 'all';
+    wuEdRender(); wuEdShow(); wuAimSlot(slot);
+  };
+  const pv = wuEl('wsMkPv'); if (pv) pv.onchange = ()=>{ M.pv = pv.value; wuMkShow(); wuAimSlot(p.slot); };
+  wuMkShow();
+}
+function wuMkShow(){
+  const M = WSU.mk, p = M.sel ? ws48Part(M.sel) : null; if (!p || !M.pv || WSU.tab !== 'market') return;
+  wuStageTo('wsMkHost');
+  const E = WSU.ed, base = E.b && E.b.veh === M.pv ? E.b.cust : (typeof custGet === 'function' ? custGet(M.pv) : null);
+  wuShow(M.pv, wsApplyPart(wsCustCopy(base), p, M.pv, {}));
+  const tag = wuEl('wsTag'); if (tag) tag.textContent = wuRideName(M.pv);
+  const tb = wuEl('wsTryB'); if (tb){ tb.textContent = wsOwns(p) ? 'Yours' : 'Preview'; tb.classList.add('on'); }
+}
+
+/* ---------------------------------------------------------------- PARTS BIN */
+function wuBinRender(){
+  const bar = wuEl('wsBinBar'), L = wuEl('wsBinList'), d = wsD(), eb = WSU.ed.b;
+  const own = Object.keys(d.own).map(id=> ws48Part(id)).filter(Boolean);
+  ws48Catalog().list.forEach(p=>{ if (p.t === '*' && !d.own[p.id] && wsPremKey(p) && wsOwns(p)) own.push(p); });
+  const used = {}; wsBuilds().forEach(b=> Object.keys(b.parts || {}).forEach(k=>{ const id = b.parts[k]; (used[id] = used[id] || []).push(b); }));
+  const value = own.reduce((a, p)=> a + wsPrice(p), 0);
+  bar.innerHTML = '<div class="wsBarTx"><b>Parts bin</b><span>' + own.length + ' part' + (own.length === 1 ? '' : 's') + ' · worth ' + wuMoney(value) +
+    '. A part you own fits every build of its kind, as many as you like. Stock parts, basic paint and taking parts off are always free.</span></div>' +
+    '<button type="button" class="wsBtn pri" data-x="market">Shop for parts</button>';
+  bar.querySelector('[data-x="market"]').onclick = ()=> wuTab('market');
+  if (!own.length){ L.innerHTML = '<div class="wsEmpty"><b>Your parts bin is empty</b>Buy parts in the Marketplace or the editor. They land here and fit every build of their kind.</div>'; return; }
+  let h = '';
+  WS48_CATS.forEach(c=>{
+    const ps = own.filter(p=> p.cat === c[0]); if (!ps.length) return;
+    h += '<div class="wsBinGrp"><h4>' + wuIco(c[0], '#ffc46b', 15) + ' ' + c[1] + ' <i>' + ps.length + '</i></h4><div class="wsBinRows">';
+    ps.forEach(p=>{
+      const R = ws48Rarity(p.rar), on = used[p.id] || [];
+      const fits = eb && (p.t === '*' || wuMkFitSet(eb.veh).has(p.id.split('~')[0])), fitted = fits && eb.parts && eb.parts[wsPartKey(p)] === p.id;
+      h += '<div class="wsBinRow">' + wuSwatch(p) + '<div class="tx"><b>' + wuEsc(p.t === '*' ? p.name : p.brand + ' ' + p.model) + '</b>' +
+        '<span>' + wuEsc([wuTypeName(p.t), p.t === '*' ? '' : p.shape, p.cw].filter(Boolean).join(' · ')) + ' · <i class="rar-' + R[0] + '">' + R[1] + '</i>' +
+        (on.length ? ' · on ' + on.slice(0, 2).map(b=> wuEsc(b.name)).join(', ') + (on.length > 2 ? ' +' + (on.length - 2) : '') : '') + '</span></div>' +
+        (fits && !fitted ? '<button type="button" class="wsBtn go sm" data-fit="' + p.id + '">Fit to ' + wuEsc(eb.name) + '</button>' : (fitted ? '<span class="wsBadge wear">Fitted</span>' : '')) +
+        '<button type="button" class="wsBtn sm" data-see="' + p.id + '">View</button></div>';
+    });
+    h += '</div></div>';
+  });
+  L.innerHTML = h;
+  L.onclick = e=>{
+    const f = e.target.closest('[data-fit]'), s = e.target.closest('[data-see]');
+    if (f){ const p = ws48Part(f.getAttribute('data-fit')); if (p){ wuEdFit(p); wuBinRender(); } return; }
+    if (s){ wuTab('market'); wuMkSelect(s.getAttribute('data-see')); }
+  };
+}
+addEventListener('resize', ()=>{
+  if (!WS48.open || WSU.tab !== 'market') return;
+  clearTimeout(WSU.rzT); WSU.rzT = setTimeout(()=>{ const n = innerWidth <= 980; if (n !== WSU.mk.narrow) wuMkRender(); }, 200);
+});
+
+/* the cloud save brought builds or parts from another device */
+function wuCloudChanged(){
+  if (!WS48.open) return;
+  try { if (WSU.tab === 'builds') wuBlList(); else if (WSU.tab === 'bin') wuBinRender(); else if (WSU.tab === 'market') wuMkList(false); } catch(e){}
+}
+
+/* =========================================================================
+   WT48 -- Release 15.45: "i cant change the weather and time mid game".
+   The pause screen gets WEATHER & TIME for everyone (before, only the host of an online server had it):
+     WEATHER   Auto / Clear / Cloudy / Rain / Storm / Fog / Snow -- weather33's own picks, saved like Settings -> Weather, and shown
+               at once (no slow fade when you picked it yourself)
+     TIME      presets (sunrise ... midnight) + a 24-hour slider
+     CLOCK     Running (the sun moves, as before) or Frozen on your hour (saved: the next ride starts at that hour too)
+   Online: in a room the time is the room's (adminSetHour is net_world's shared setter; Frozen = the room's clock stops for everyone);
+   in a server whose host fixed the weather or the time it says so; the host of a server gets ride45's server panel from the same
+   button. Keys: [ steps through the time presets (] already steps through the weather).
+   API: WT48, wt48Open(on), wt48SetHour(h), wt48Freeze(on), wt48Hour()
+   ========================================================================= */
+const WT48 = { el:null, btn:null, frozen:false, hour:12, err:'', n:0, t:0 };
+const WT48_KEY = 'dusk_line_wt48_v1';
+const WT48_TIMES = [[6, 'Sunrise'], [8.5, 'Morning'], [12, 'Noon'], [15, 'Afternoon'], [16.8, 'Golden hour'], [18, 'Sunset'], [21, 'Night'], [0, 'Midnight']];
+const WT48_W = [['auto', 'Auto'], ['clear', 'Clear'], ['cloudy', 'Cloudy'], ['rain', 'Rain'], ['storm', 'Storm'], ['fog', 'Fog'], ['snow', 'Snow']];
+try {
+  const o = JSON.parse(localStorage.getItem(WT48_KEY) || 'null');
+  if (o && typeof o === 'object'){ WT48.frozen = !!o.frozen; const h = +o.hour; if (h === h && h >= 0 && h < 24) WT48.hour = h; }
+} catch(e){}
+function wt48Save(){ try { localStorage.setItem(WT48_KEY, JSON.stringify({ frozen:WT48.frozen, hour:Math.round(WT48.hour*100)/100 })); } catch(e){} }
+function wt48Hour(){
+  try { return ((((DAYNIGHT_CLOCK % DAYNIGHT_PERIOD) + DAYNIGHT_PERIOD) % DAYNIGHT_PERIOD) / DAYNIGHT_PERIOD * 24 + 12) % 24; } catch(e){ return 12; }
+}
+function wt48Fmt(h){ h = ((h % 24) + 24) % 24; let hh = Math.floor(h), mm = Math.round((h - hh)*60); if (mm === 60){ hh = (hh + 1) % 24; mm = 0; } return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); }
+function wt48Room(){ try { return typeof NETW !== 'undefined' && NETW.core && NETW.core.S && !!NETW.core.S.on; } catch(e){ return false; } }
+function wt48Host(){ try { return typeof r45Host === 'function' && r45Host(); } catch(e){ return false; } }
+/* what a server's host has fixed for the rest of us */
+function wt48Rules(){
+  const out = { w:false, h:false };
+  try {
+    if (typeof SV42 !== 'undefined' && SV42.room && SV42.kind && !SV42.own && SV42.rules){
+      out.w = !!(SV42.rules.weather && SV42.rules.weather !== 'live');
+      out.h = SV42.rules.hour >= 0;
+    }
+  } catch(e){}
+  return out;
+}
+function wt48SetHour(h){
+  h = ((+h % 24) + 24) % 24; if (h !== h) return;
+  if (wt48Rules().h) return;
+  try { adminSetHour(h); } catch(e){ WT48.err = 'hour: ' + e.message; }
+  if (!wt48Room()){ WT48.hour = h; wt48Save(); }
+}
+function wt48Freeze(on){
+  on = !!on;
+  if (wt48Rules().h) return;
+  if (wt48Room()){ try { NETW.core.change({ speed:on ? 0 : 1 }, 'speed'); } catch(e){ WT48.err = 'speed: ' + e.message; } return; }
+  WT48.frozen = on; WT48.hour = wt48Hour(); wt48Save();
+}
+function wt48Frozen(){ return wt48Room() ? (NETW.core.S.speed === 0) : WT48.frozen; }
+/* a weather picked by hand shows at once */
+function wt48Weather(v){
+  if (wt48Rules().w || typeof w33Set !== 'function') return;
+  w33Set(v);
+  try {
+    w33Targets(); const c = W33.cur, t = W33.tgt;
+    c.rain = t.rain; c.storm = t.storm; c.fog = t.fog; c.snow = t.snow; c.cloud = t.cloud;
+    W33.wet = c.rain; W33.cover = W33.frost ? 0 : c.snow; if (typeof w33GripSync === 'function') w33GripSync(true);
+  } catch(e){ WT48.err = 'weather: ' + e.message; }
+}
+/* the solo clock stands still while frozen (net_world drives it in a room) */
+(function wt48ClockHook(){
+  if (typeof updateDayNight !== 'function') return;
+  const _ud = updateDayNight;
+  updateDayNight = function(dt){ return _ud.call(this, (WT48.frozen && !wt48Room()) ? 0 : dt); };
+})();
+/* ---------------------------------------------------------------- the panel */
+function wt48Build(){
+  if (WT48.el) return WT48.el;
+  const d = document.createElement('div');
+  d.id = 'wt48'; d.className = 'r45Ov wt48Ov'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'Weather and time');
+  d.innerHTML = '<div class="r45Card wt48Card"><div class="r45Head"><b>Weather &amp; time</b><button type="button" class="r45X" data-a="x">Done</button></div>' +
+    '<p class="r45Sub" id="wt48Sub"></p>' +
+    '<h4>Weather <span class="wt48Now" id="wt48Now"></span></h4><div class="r45Seg" data-r="w">' + WT48_W.map(w=> '<button type="button" data-v="' + w[0] + '">' + w[1] + '</button>').join('') + '</div>' +
+    '<h4>Time of day <output class="wt48Clock" id="wt48Clock">12:00</output></h4><div class="r45Seg" data-r="h">' + WT48_TIMES.map(t=> '<button type="button" data-v="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' +
+    '<div class="wt48Slide"><span>00:00</span><input type="range" min="0" max="24" step="0.1" value="12" id="wt48Range" aria-label="Time of day"><span>24:00</span></div>' +
+    '<h4>Clock</h4><div class="r45Seg" data-r="c"><button type="button" data-v="run" title="The sun keeps moving through the day">Running</button><button type="button" data-v="stop" title="Keep this exact time of day">Frozen</button></div>' +
+    '<p class="r45Sub wt48Tip">Keys: <b>]</b> changes the weather, <b>[</b> the time.</p></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click', e=>{
+    if (e.target === d){ wt48Open(false); return; }
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.getAttribute('data-a') === 'x'){ wt48Open(false); return; }
+    const sg = b.closest('.r45Seg'); if (!sg || b.disabled) return;
+    const r = sg.getAttribute('data-r'), v = b.getAttribute('data-v');
+    if (r === 'w') wt48Weather(v);
+    else if (r === 'h') wt48SetHour(+v);
+    else if (r === 'c') wt48Freeze(v === 'stop');
+    WT48.n++;
+    wt48Sync();
+  });
+  const rg = d.querySelector('#wt48Range');
+  rg.addEventListener('input', ()=>{ wt48SetHour(parseFloat(rg.value)); wt48Sync(); });
+  WT48.el = d;
+  return d;
+}
+function wt48Sync(){
+  const d = WT48.el; if (!d || !d.classList.contains('on')) return;
+  const R = wt48Rules(), room = wt48Room(), h = wt48Hour(), fz = wt48Frozen();
+  const sub = d.querySelector('#wt48Sub');
+  sub.textContent = R.w || R.h ? 'The host of this server picked the ' + (R.w && R.h ? 'weather and the time' : (R.w ? 'weather' : 'time')) + ' for everyone.'
+    : (room ? 'Online room: the time of day is shared with everyone here. The weather is just yours.' : 'Changes show at once. Your picks are saved for your next ride.');
+  let wsel = 'auto', now = '';
+  try { wsel = W33.pick; now = (typeof W33_NAMES !== 'undefined' && W33_NAMES[W33.state]) || W33.state; if (typeof w33Allowed === 'function' && !w33Allowed()) now = 'off in this room'; } catch(e){}
+  d.querySelector('#wt48Now').textContent = now ? 'now: ' + now : '';
+  d.querySelectorAll('.r45Seg[data-r="w"] button').forEach(b=>{ b.classList.toggle('sel', b.getAttribute('data-v') === wsel); b.disabled = R.w; });
+  d.querySelectorAll('.r45Seg[data-r="h"] button').forEach(b=>{ let x = Math.abs(+b.getAttribute('data-v') - h); if (x > 12) x = 24 - x; b.classList.toggle('sel', x < 0.12); b.disabled = R.h; });
+  d.querySelectorAll('.r45Seg[data-r="c"] button').forEach(b=>{ b.classList.toggle('sel', (b.getAttribute('data-v') === 'stop') === fz); b.disabled = R.h; });
+  d.querySelector('#wt48Clock').textContent = wt48Fmt(h) + (fz ? ' · frozen' : '');
+  const rg = d.querySelector('#wt48Range'); rg.disabled = R.h; if (document.activeElement !== rg) rg.value = h.toFixed(1);
+}
+function wt48Open(on){
+  if (on && wt48Host() && typeof r45WorldOpen === 'function'){ r45WorldOpen(true); return; }     // the server's host: the server panel
+  const d = wt48Build();
+  d.classList.toggle('on', !!on);
+  if (on){ wt48Sync(); try { d.querySelector('.r45X').focus({ preventScroll:true }); } catch(e){} }
+}
+addEventListener('keydown', e=>{
+  if (e.code !== 'Escape' || !WT48.el || !WT48.el.classList.contains('on')) return;
+  wt48Open(false); e.stopImmediatePropagation(); e.preventDefault();
+}, true);
+if (typeof onKey === 'function') onKey('BracketLeft', ()=>{
+  if (wt48Rules().h) return;
+  const h = wt48Hour(); let i = WT48_TIMES.findIndex(t=>{ let x = Math.abs(t[0] - h); if (x > 12) x = 24 - x; return x < 0.12; });
+  i = (i + 1) % WT48_TIMES.length;
+  wt48SetHour(WT48_TIMES[i][0]);
+  try { if (typeof toast === 'function') toast('Time: ' + WT48_TIMES[i][1] + ' (' + wt48Fmt(WT48_TIMES[i][0]) + ')', true); } catch(e){}
+  wt48Sync();
+}, 'Time of day');
+try { if (typeof UI43_ICO !== 'undefined') UI43_ICO.wt48PauseBtn = '<circle cx="9" cy="8.5" r="3.2"/><path d="M9 2.5v1.3M3 8.5h1.3M4.8 4.3l.9.9M13.2 4.3l-.9.9"/><path d="M7.5 19.5h9a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.4A2.8 2.8 0 0 0 7.5 19.5z"/>'; } catch(e){}
+/* the pause button (ui43 files it into the pause grid with an icon); a frozen clock is put back on its hour at the first frame */
+addFrameHook(function wt48Frame(dt){
+  if (!WT48.btn){
+    const pz = document.getElementById('pause'), rs = document.getElementById('resumeBtn');
+    if (pz && rs){
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn ghost wt48PauseBtn'; b.id = 'wt48PauseBtn'; b.textContent = 'Weather & time';
+      b.onclick = ()=> wt48Open(true);
+      const host = document.getElementById('r45WBtn');
+      if (host && host.parentNode) host.parentNode.insertBefore(b, host); else pz.appendChild(b);
+      WT48.btn = b;
+      if (WT48.frozen && !wt48Room()){ try { adminSetHour(WT48.hour); } catch(e){} }
+    }
+  }
+  if (WT48.el && WT48.el.classList.contains('on')){ WT48.t += dt || 0; if (WT48.t > 0.25){ WT48.t = 0; wt48Sync(); } }
+});
 
 /*@@LATE@@*/
 /* =========================================================================
