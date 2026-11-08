@@ -16689,8 +16689,10 @@ const BRIGHT_FRAG = `
 varying vec2 vUv;
 uniform sampler2D tDiffuse;
 uniform float uThreshold, uKnee;
+uniform vec2 uTexel;                     // perf49: the bloom runs at QUARTER resolution: 4 bilinear taps = a clean 4x4 downsample
 void main(){
-  vec3 c = texture2D(tDiffuse, vUv).rgb;
+  vec3 c = 0.25*(texture2D(tDiffuse, vUv + vec2(-uTexel.x, -uTexel.y)).rgb + texture2D(tDiffuse, vUv + vec2(uTexel.x, -uTexel.y)).rgb +
+                 texture2D(tDiffuse, vUv + vec2(-uTexel.x, uTexel.y)).rgb + texture2D(tDiffuse, vUv + vec2(uTexel.x, uTexel.y)).rgb);
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   float w = smoothstep(uThreshold, uThreshold + uKnee, l);
   gl_FragColor = vec4(c * w, 1.0);
@@ -16949,9 +16951,11 @@ function makeTargets(){
   rtAOb    = new T.WebGLRenderTarget(hw, hh, ldr);
   rtAOq    = new T.WebGLRenderTarget(qw, qh, ldr);
   rtAOqb   = new T.WebGLRenderTarget(qw, qh, ldr);
-  rtBright = new T.WebGLRenderTarget(hw, hh, opt);
-  rtBlur   = new T.WebGLRenderTarget(hw, hh, opt);
-  rtBloom  = new T.WebGLRenderTarget(hw, hh, opt);
+  // perf49 ("I can't get much fps on High and Ultra"): the bloom chain at quarter resolution (was half): its five passes cost a
+  // quarter of what they did; the 4-tap bright pass + half-texel blur steps keep the same glow (same radius on screen, no flicker)
+  rtBright = new T.WebGLRenderTarget(qw, qh, opt);
+  rtBlur   = new T.WebGLRenderTarget(qw, qh, opt);
+  rtBloom  = new T.WebGLRenderTarget(qw, qh, opt);
   rtLDR    = new T.WebGLRenderTarget(W, H, ldr);
 
   if (mComp){
@@ -17012,7 +17016,7 @@ function init(){
       uIntensity:{value:0.95}, uTaps:{value:12}
     }, true);
     mBlur   = mkMat(BLUR_FRAG,   { tDiffuse:{value:null}, uDir:{value:new T.Vector2()} });
-    mBright = mkMat(BRIGHT_FRAG, { tDiffuse:{value:null}, uThreshold:{value:1.0}, uKnee:{value:0.7} });
+    mBright = mkMat(BRIGHT_FRAG, { tDiffuse:{value:null}, uThreshold:{value:1.0}, uKnee:{value:0.7}, uTexel:{value:new T.Vector2(1/1024, 1/1024)} });
     mComp   = mkMat(COMP_FRAG, {
       tScene:{value:null}, tBloom:{value:null}, tAO:{value:null},
       uAOTexel:{value:new T.Vector2()}, uExposure:{value:1.0}, uBloom:{value:0.40},
@@ -17129,8 +17133,9 @@ function render(exposure, time){
   rtBloom.__gfxClear = false;
   mBright.uniforms.tDiffuse.value = rtScene.texture;
   mBright.uniforms.uThreshold.value = 1.0/Math.max(exposure, 0.05);
+  mBright.uniforms.uTexel.value.set(1/W, 1/H);
   pass(mBright, rtBright);
-  const tx = 1/(W>>1), ty = 1/(H>>1);
+  const tx = 0.5/rtBright.width, ty = 0.5/rtBright.height;            // perf49: half a quarter-res texel = the old step on screen
   mBlur.uniforms.tDiffuse.value = rtBright.texture;
   mBlur.uniforms.uDir.value.set(tx, 0);       pass(mBlur, rtBlur);
   mBlur.uniforms.tDiffuse.value = rtBlur.texture;
@@ -48982,8 +48987,10 @@ const GFX_SHADOW = {
   off:     { on:false, map:1024, every:1, half:40 },
   low:     { on:true,  map:1024, every:2, half:40 },
   medium:  { on:true,  map:1536, every:2, half:40 },
-  high:    { on:true,  map:1536, every:1, half:40 },
-  ultra:   { on:true,  map:2048, every:1, half:40 },
+  // Release 15.46 (perf49): High and Ultra redraw the sun's shadow map every other frame (as Medium does): the shadow pass draws
+  // everything near you a second time; the sun holds still between redraws (camShadowHold), so nothing swims. Extreme: every frame.
+  high:    { on:true,  map:1536, every:2, half:40 },
+  ultra:   { on:true,  map:2048, every:2, half:40 },
   extreme: { on:true,  map:4096, every:1, half:52 }
 };
 /* every Advanced item: [value, label, hint?]. 'pref' items are device preferences, not part of the look (no Custom) */
@@ -49087,9 +49094,12 @@ function gfxPresetRaw(id){
     case 'low':     return v17 ? { scale:ph ? 0.8 : 0.75, out:tch ? 0.9 : 1, shadows:'off', view:0.55, fog:0.7, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 }
                                : { scale:ph ? 0.8 : 0.75, shadows:'off', view:0.55, detail:0, crowd:0.6, traffic:0.6, lamps:4, post:false, ao:0, bloom:false, fxaa:false, sharpen:false, aniso:4 };
     case 'medium':  return { scale:ph ? r2(Math.min(dpr, 1)) : (tch ? 0.9 : 1), shadows:'medium', view:0.85, detail:1, crowd:0.8, traffic:0.8, lamps:6, post:true, ao:0, bloom:true, fxaa:true, sharpen:true, aniso:8 };     // R15.2: computers draw Medium at 1.0 (0.9 was soft)
-    case 'ultra':   return { scale:r2(Math.min(dpr, 1.5)), shadows:'ultra', view:1.15, detail:2, crowd:1.35, traffic:1.3, lamps:9, post:true, ao:2, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };
+    // Release 15.46 (perf49, "I can't get much fps on High and Ultra"): Ultra's ambient occlusion at quarter resolution (it was
+    // half: ~1.5 full-screen passes a frame for a contact shade you barely see move) and a little less of the CPU-heavy crowd
+    case 'ultra':   return { scale:tch && !ph ? gfxTabletScale(2.0e6, 1, 1.5) : r2(Math.min(dpr, 1.5)), shadows:'ultra', view:1.15, detail:2, crowd:1.15, traffic:1.15, lamps:9, post:true, ao:1, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };
     case 'extreme': return { scale:r2(Math.min(dpr, 2)), shadows:'extreme', view:1.35, detail:2, crowd:1.6, traffic:1.6, lamps:9, post:true, ao:2, bloom:true, fxaa:true, sharpen:true, aniso:16 };
-    default:        return { scale:r2(Math.min(dpr, ph ? 1.25 : 1.5)), shadows:'high', view:1, detail:2, crowd:1, traffic:1, lamps:9, post:true, ao:0, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };      // R13.2: no AO on High
+    // perf49: a tablet draws High at a fixed ~1.7 Mpx (an iPad drew ~2.2 Mpx at 1.5x), sharp on a Retina screen with the sharpen pass
+    default:        return { scale:tch && !ph ? gfxTabletScale(1.7e6, 1, 1.5) : r2(Math.min(dpr, ph ? 1.25 : 1.5)), shadows:'high', view:1, detail:2, crowd:1, traffic:1, lamps:9, post:true, ao:0, bloom:true, fxaa:true, sharpen:true, aniso:tch ? 8 : 16 };      // R13.2: no AO on High
   }
 }
 function gfxPreset(id){ const p = gfxPresetRaw(GFX_IDS.indexOf(id) >= 0 ? id : 'high'); if (p.shade === undefined) p.shade = 'full'; return p; }
@@ -85738,7 +85748,7 @@ function w33Frame(dt, now){
   const wa = 0.7 + Math.sin(S.time*0.05)*0.7;
   // rain
   // qa35: no rain / snow falling through the roof of the island's indoor bike park
-  const H = typeof ISL33 !== 'undefined' && ISL33.hall, inHall = !!H && Math.abs(cp.x - H.x) < H.w && Math.abs(cp.z - H.z) < H.d && cp.y < H.floor + H.h || (typeof ind39InHall === 'function' && !!ind39InHall(cp.x, cp.y, cp.z));   // indoor39
+  const H = typeof ISL33 !== 'undefined' && ISL33.hall, inHall = (typeof mega49InHall === 'function' && !!mega49InHall(cp.x, cp.y, cp.z)) || !!H && Math.abs(cp.x - H.x) < H.w && Math.abs(cp.z - H.z) < H.d && cp.y < H.floor + H.h || (typeof ind39InHall === 'function' && !!ind39InHall(cp.x, cp.y, cp.z));   // indoor39
   const rOn = c.rain > 0.01 && !inHall;
   S.obj.visible = rOn;
   if (rOn){
@@ -90915,7 +90925,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.45';
+const DL_VER = '15.46';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -91868,6 +91878,7 @@ function w47Defs(){
     }
     out.push(d);
   }
+  if (typeof mega49W47Def === 'function'){ const d = mega49W47Def(); if (d) out.push(d); }   // mega49: the Mega Dome (its own reach / size per hall)
   return out;
 }
 /* the warm glow material: the city's window-glow program (emission x vertex colour), at a fixed brightness */
@@ -91884,7 +91895,7 @@ function w47Mat(){
 /* the fixtures of one hall: a warm diffuser under every ceiling panel + festoon strings (bulbs + a dark wire) */
 function w47Fixtures(d){
   const S0 = isl33Soup(), rot = d.rot;
-  for (const L of d.lamps) isl33Box(S0, L[0], L[1] - 0.02, L[2], 4.6, 0.05, 1.0, rot, 0xffd590);
+  for (const L of d.lamps) isl33Box(S0, L[0], L[1] - 0.02, L[2], d.fixW || 4.6, 0.05, d.fixD || 1.0, rot, 0xffd590);
   for (const v of d.vs){
     const anchors = []; for (let u = -d.uLen; u <= d.uLen + 1e-6; u += 14) anchors.push(u);
     for (let a = 0; a + 1 < anchors.length; a++){
@@ -91942,7 +91953,7 @@ function w47Lamps(){
   const L = d.lamps.map(p=> [p, (p[0] - fx)*(p[0] - fx) + (p[2] - fz)*(p[2] - fz)]).sort((a, b)=> a[1] - b[1]);
   for (let i = 0; i < n && i < L.length; i++){
     const p = L[i][0];
-    lfWriteSlot(k++, p[0], p[1] - 0.1, p[2], 0, -1, 0, 0.26, 0.80, W47_COL, 5.2*w, 17);
+    lfWriteSlot(k++, p[0], p[1] - 0.1, p[2], 0, -1, 0, d.cone || 0.26, 0.80, W47_COL, (d.inten || 5.2)*w, d.range || 17);   // per hall (mega49: higher lamps)
   }
   LF.meta[0] = k;
   WARM47.slots = n;
@@ -94130,6 +94141,1013 @@ addFrameHook(function wt48Frame(dt){
   }
   if (WT48.el && WT48.el.classList.contains('on')){ WT48.t += dt || 0; if (WT48.t > 0.25){ WT48.t = 0; wt48Sync(); } }
 });
+
+/* =========================================================================
+   MEGA49 (Release 15.46, helper `mega49`) -- THE MEGA DOME: a HUGE indoor bike + scooter park.
+   "add an huge mega indoor bike/scooter park make it huge make the celling very high and add insane stuff work on it an lot"
+   One hall in the Dusk Greenbelt, south-east of the city (centre 2780, 2780): 200 x 120 m inside, 34 m walls + an arched roof
+   (45 m at the ridge), a 16 m main door (west, onto the start ends of every lane) + a 12 m south door. Everything rideable is the
+   game's own collision pieces (flat / bank / quarter / bowl) on shared materials (no new shader programs):
+     MEGA RAMP      a 21 m start tower with an ELEVATOR (ride slowly onto the glowing LIFT pad: you're put on the top deck), a 32 deg
+                    roll-in with a real curved transition, a 5.1 m curved kicker, a 26 m gap over a 25 x 24 m FOAM PIT, an 8 m
+                    landing (32 deg, curved run-out), a 70 m run-out and a 7.9 m GIANT QUARTER PIPE for huge airs
+     GIANT BOWL     a raised 32 x 34 m deck (4.8 m up) with a 24 m bowl in it, access banks up to the deck on two sides
+     VERT HALF PIPE two 5.9 m quarters (85 deg), 20 m wide, entered from the open sides
+     FOAM PIT       35 x 17 m of foam behind its own kicker        RESI   a 13 m wide resi air-bag hill behind a kicker
+     DIRT LINE      six dirt jumps (2 tables + 4 doubles, gaps up to 10 m) that end at a WALL RIDE on the east wall
+     STREET PLAZA   grindable rails (RAILS) + ledges + manual pads + a stair set with handrails + a funbox + a spine mini ramp
+     MEZZANINE      a 4.8 m balcony (cafe + pro shop under it, a crowd on it) up a 50 m ramp: a big drop + a roll-down north, a drop
+                    east onto a landing that runs into the bowl's access bank
+   The JUMP ASSIST meters the run-in of every jump (per physics sub-step, so the take-off is the same at any frame rate) and lifts the
+   top-speed cap on the take-off so slow rides (push scooters) clear too; up the giant quarter, the vert + the wall ride the speed is
+   held to an energy budget (a 35 m/s motorbike airs like a BMX, not 30 m over the roof); brake (or the jump-assist setting) to opt out.
+   Foam / resi landings use the island's soft landing (pieces tagged isl33bag). Props: a few vertex-coloured soups (the city facade paint W2M.paint;
+   glowing screens / letters / LEDs on warm47's glow material; the outer windows on the city's night-window material); the roof
+   is kept apart and hides while the camera is above the walls. Warm lights inside (warm47 asks mega49W47Def), no rain / snow
+   inside (weather33 asks mega49InHall). Deterministic (no Math.random). API: M49 (state + stats), m49Plan(), mega49InHall(x, y, z),
+   m49Feats(), M49_TUNE (the assist speeds).
+   ========================================================================= */
+const M49 = { on:false, err:[], H:null, zones:[], feats:[], rails:[], railsIn:false, ch:null, built:false, near:false, liftCool:0, w47:null, travel:null,
+  stats:{ builds:0, pieces:0, meshes:0, boxes:0, glow:0, win:0, roof:0, decals:0, railMeshes:0, metered:0, lifted:0, lifts:0, roofHide:0, planMs:0, buildMs:0, maxStep:0 } };
+const M49_HW = 100, M49_HD = 60, M49_WH = 34, M49_T = 0.25, M49_D2R = Math.PI/180;
+/* the jump-assist design speeds (horizontal m/s at the lip), tuned with real rides (test/t_mega49.js) */
+const M49_TUNE = { mega:16.5, qp:19.5, foam:11.0, resi:10.5, dirt:[6.86, 7.59, 8.62, 9.25, 9.55, 10.26], drop:7.2, wall:11.5, wallCap:13, vert:16 };
+/* doors: side, span along the wall (v on the W / E walls, u on the N / S walls), opening height */
+const M49_DOORS = [{ side:'W', a0:-12, a1:4, h:11, main:true }, { side:'S', a0:-97, a1:-85, h:8 }];
+function m49Try(name, fn){ try { return fn(); } catch(e){ M49.err.push(name + ': ' + (e && e.message || e)); if (M49.err.length < 5) try { console.error('[mega49] ' + name, e); } catch(e2){} } }
+/* canonical (u east along the hall, v south across it) -> world; a canonical direction -> world */
+function m49W(H, u, v){ return [H.x + u*H.c + v*H.s, H.z - u*H.s + v*H.c]; }
+function m49D(H, du, dv){ return [du*H.c + dv*H.s, -du*H.s + dv*H.c]; }
+function m49qU(R, deg){ return R*Math.sin(deg*M49_D2R); }
+function m49qH(R, deg){ return R*(1 - Math.cos(deg*M49_D2R)); }
+
+/* ---------------------------------------------------------------- the plan (lazy: needs the land; idempotent) */
+function m49Plan(){ const H = M49.H; if (H && !H.P){ const it = m49PlanGen(H); while (!it.next().done); } return H; }
+function* m49PlanGen(H){
+  const t0 = performance.now();
+  // the floor: over the highest ground of the footprint + a 6 m ring (every door ramps UP into the hall), foundation to the lowest
+  // (the scan also reaches out to everything the props put outside -- flags, people, the way in -- so those land tiles are cached in
+  // slices here, not built in one go inside a props step)
+  let mx = -1e9, mn = 1e9, n = 0;
+  for (let u = -M49_HW - 42; u <= M49_HW + 6; u += 6){
+    for (let v = -M49_HD - 12; v <= M49_HD + 12; v += 6){
+      const q = m49W(H, u, v), y = landY(q[0], q[1]);
+      if (u < -M49_HW - 6 || Math.abs(v) > M49_HD + 6) continue;
+      if (y > mx) mx = y;
+      if (Math.abs(u) <= M49_HW + 1 && Math.abs(v) <= M49_HD + 1 && y < mn) mn = y;
+    }
+    if (++n % 3 === 0) yield;
+  }
+  H.F = mx + 0.22; H.B0 = mn - 0.8; H.land = [+mn.toFixed(2), +mx.toFixed(2)];
+  H.top = H.F + M49_WH + 11;
+  m49Try('plan', ()=> m49PlanHall(H));
+  M49.stats.planMs = +(performance.now() - t0).toFixed(1);
+}
+function m49PlanHall(H){
+  const P = [], HW = M49_HW, HD = M49_HD, WH = M49_WH, t = M49_T, F = H.F, B0 = H.B0, M = PK_MAT, E = Math.PI/2, Wd = -Math.PI/2, N = Math.PI;
+  const wood = MAT.wood || M.deckWood, dirt = MAT.dirt || M.orange, conc = MAT.concrete || M.pad, bowlM = MAT.bowl || conc;
+  const TU = M49_TUNE;
+  M49.zones.length = 0; M49.feats.length = 0;
+  H.rails = []; H.deco = { lanes:[], cop:[], pits:[], stairs:[], rail:[], bleach:[] };
+  const put = (p)=>{ const q = m49W(H, p.u, p.v); p.x = q[0]; p.z = q[1]; p.rot = (p.rot || 0) + H.th; if (p.base === undefined) p.base = F; delete p.u; delete p.v; p.m49 = 1; P.push(p); return p; };
+  // a lane frame: origin (u0, v0), heading yaw (canonical); a = along, s = to the left
+  const Kf = (u0, v0, yaw)=>{ const sy = Math.sin(yaw), cy = Math.cos(yaw); return { u0, v0, yaw, W:(a, s)=> [u0 + sy*a + cy*(s || 0), v0 + cy*a - sy*(s || 0)] }; };
+  const bank = (K, a, s, w, len, h, mat, o)=>{ const q = K.W(a, s); return put(Object.assign({ type:'bank', u:q[0], v:q[1], rot:K.yaw, w, len, h, mat }, o || {})); };
+  const down = (K, a, s, w, len, h, mat, o)=>{ const q = K.W(a + len, s); return put(Object.assign({ type:'bank', u:q[0], v:q[1], rot:K.yaw + Math.PI, w, len, h, mat }, o || {})); };
+  const flat = (K, a0, a1, s, w, h, mat, o)=>{ const q = K.W((a0 + a1)/2, s); return put(Object.assign({ type:'flat', u:q[0], v:q[1], rot:K.yaw, w, d:(a1 - a0)/2, h, mat }, o || {})); };
+  const qup = (K, a, s, w, R, deg, deck, mat, o)=>{ const q = K.W(a, s); return put(Object.assign({ type:'quarter', u:q[0], v:q[1], rot:K.yaw, w, R, maxDeg:deg, deck:deck || 0, mat }, o || {})); };
+  // a concave transition coming DOWN along the lane: its top at a, its bottom (flat) at a + U
+  const qdn = (K, a, s, w, R, deg, mat, o)=>{ const q = K.W(a + m49qU(R, deg), s); return put(Object.assign({ type:'quarter', u:q[0], v:q[1], rot:K.yaw + Math.PI, w, R, maxDeg:deg, deck:0, mat }, o || {})); };
+  // a jump-assist zone: the meter runs a0..a1 (to the lip); the top-speed lift (need) and the speed cap (cap, past a1) run to a2 (the
+  // lift past the lip: the sub-step that takes off is still on the kicker)
+  const zone = (K, a0, a1, hw, v, name, o)=>{ const o0 = m49W(H, K.u0, K.v0), y = K.yaw + H.th;
+    const z = Object.assign({ ox:o0[0], oz:o0[1], dx:Math.sin(y), dz:Math.cos(y), a0, a1, a2:a1, hw, v, need:0, name }, o || {}); M49.zones.push(z); return z; };
+  const feat = (id, name, K, a, extra)=>{ const q = K.W(a, 0), w = m49W(H, q[0], q[1]); M49.feats.push(Object.assign({ id, name, x:w[0], z:w[1], yaw:K.yaw + H.th }, extra || {})); };
+  const lane = (K, a0, a1, hw, col)=> H.deco.lanes.push({ K, a0, a1, hw, col:col || 0xf4f1e6 });
+  const cop = (K, a, s, w, y, col)=> H.deco.cop.push({ K, a, s, w, y, col });
+  const rail = (u0, v0, y0, u1, v1, y1, kind, vis, edge)=>{ const a = m49W(H, u0, v0), b = m49W(H, u1, v1); H.rails.push({ a:[a[0], y0, a[1]], b:[b[0], y1, b[1]], kind:kind || 'rail', vis:vis || 'round', edge:edge || 0 }); };
+  // railings: thin solid pieces (they stop the bike) + the yellow rails the props draw
+  const railU = (u0, u1, v, y0, vis)=>{ put({ type:'flat', u:(u0 + u1)/2, v, rot:0, w:(u1 - u0)/2, d:0.06, h:1.05, base:y0, mat:M.yellow, novis:true, railing:1 }); if (vis !== false) H.deco.rail.push({ u0, u1, v, y0, y1:y0 }); };
+  const railV = (v0, v1, u, y0, vis)=>{ put({ type:'flat', u, v:(v0 + v1)/2, rot:0, w:0.06, d:(v1 - v0)/2, h:1.05, base:y0, mat:M.yellow, novis:true, railing:1 }); if (vis !== false) H.deco.rail.push({ u0:u, u1:u, v0, v1, y0, y1:y0, along:'v' }); };
+  const bagHill = (K, a, w, l1, h, top, l2, mat, kind)=>{ const b1 = bank(K, a, 0, w, l1, h, mat, { deck:top }), b2 = down(K, a + l1 + top, 0, w, l2, h, mat); b1.bag = b2.bag = true; b1.isl33bag = b2.isl33bag = kind; return [b1, b2]; };
+
+  // ---- foundation (solid down into the ground) + the floor; walls (bld: they block the bike + the camera) with the door gaps
+  put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:F - 0.12 - B0, base:B0, mat:M.pad, found:1 });
+  put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:0.12, base:F - 0.12, mat:MAT.plaza || conc, surf:'park', hallFloor:1 });
+  const wallM = M.blue, wb = F - 0.12, wh = WH + 0.12;
+  const wallU = (u0, u1, v)=> put({ type:'flat', u:(u0 + u1)/2, v, w:(u1 - u0)/2, d:t, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
+  const wallV = (v0, v1, u)=> put({ type:'flat', u, v:(v0 + v1)/2, w:t, d:(v1 - v0)/2, h:wh, base:wb, mat:wallM, bld:true, wall:1 });
+  wallU(-HW - t, HW + t, -HD);
+  wallU(-HW - t, -97, HD); wallU(-85, HW + t, HD);
+  wallV(-HD + t, -12, -HW); wallV(4, HD - t, -HW);
+  wallV(-HD + t, HD - t, HW);
+  H.doors = M49_DOORS.map(D=> Object.assign({}, D));
+  // a ramp from the ground up to the floor outside every door
+  for (const D of H.doors){
+    const ac = (D.a0 + D.a1)/2, hw = (D.a1 - D.a0)/2 + 1, edge = (D.side === 'W' ? HW : HD) + 0.3;
+    const at = (d)=> D.side === 'W' ? m49W(H, -(edge + d), ac) : m49W(H, ac, edge + d);
+    let len = 3; for (let k = 0; k < 3; k++){ const q = at(len), g = landY(q[0], q[1]); len = Math.max(2.5, Math.min(10, (F - g)*7)); }
+    const qf = at(len), gf = Math.min(landY(qf[0], qf[1]), F - 0.05) - 0.04;
+    if (D.side === 'W') put({ type:'bank', u:-(edge + len), v:ac, rot:E, w:hw, len, h:F - gf, base:gf, mat:M.pad, m49ramp:1 });
+    else put({ type:'bank', u:ac, v:edge + len, rot:N, w:hw, len, h:F - gf, base:gf, mat:M.pad, m49ramp:1 });
+    D.len = len; D.foot = gf;
+  }
+
+  // =============================== A. THE MEGA RAMP (north strip, lane v -45, east)
+  { const K = Kf(-99, -45, E), Ht = 21;
+    flat(K, -0.5, 10, 0, 5.5, Ht, M.pad, { bld:true, tower:1 });                                   // the start tower (u -99.5..-89)
+    railU(-99.5, -89.3, -50.3, F + Ht, false); railU(-99.5, -89.3, -39.7, F + Ht, false);
+    railV(-50.3, -49.6, -89.1, F + Ht, false); railV(-40.4, -39.7, -89.1, F + Ht, false);
+    // the drop-in: a rounded top (8, 16, 24 deg over 1.5 m each: you roll over it, never off it), the 32 deg roll-in, a curved
+    // transition to the floor
+    let ya = Ht, aa = 10;
+    const rollY = [[aa, ya]];
+    for (const dg of [8, 16, 24]){ const d = 1.5*Math.tan(dg*M49_D2R);
+      down(K, aa, 0, 4.5, 1.5, d, M.yellow, { base:F + ya - d, rollin:1 }); flat(K, aa + 0.02, aa + 1.5, 0, 4.5, ya - d, M.pad, { fill:1 });
+      aa += 1.5; ya -= d; rollY.push([aa, ya]); }
+    const qa = 32, Rq = 24, Uq = m49qU(Rq, qa), Hq = m49qH(Rq, qa), st = (ya - Hq)/Math.tan(qa*M49_D2R);
+    down(K, aa, 0, 4.5, st, ya - Hq, M.yellow, { base:F + Hq, rollin:1 });                          // the roll-in (32 deg)
+    flat(K, aa + 0.02, aa + st, 0, 4.5, Hq, M.pad, { fill:1 });                                      // under it
+    qdn(K, aa + st, 0, 4.5, Rq, qa, M.yellow, { rollin:2 });                                         // the curved transition to the floor
+    rollY.push([aa + st, Hq], [aa + st + Uq, 0]);
+    const tEnd = aa + st + Uq;                                                                         // the floor (~a 52.9)
+    const kA = tEnd + 4.5, Rk = 24, kd = 38, Uk = m49qU(Rk, kd), Hk = m49qH(Rk, kd), lip = kA + Uk;
+    qup(K, kA, 0, 4, Rk, kd, 0, M.orange, { kicker:'mega' });                                      // the 5.1 m kicker
+    zone(K, aa + st + 2, lip - 0.05, 4.7, TU.mega, 'MEGA RAMP', { a2:lip + 1.5, need:TU.mega/Math.cos(kd*M49_D2R) + 0.8, key:'mega' });
+    const gap = 26, kn = lip + gap;
+    // the foam runs on under the kicker's lip and the landing's face (no floor slot between them: a short jump always lands in foam)
+    flat(K, lip - 0.4, kn + 0.4, 0, 12, 0.8, M.pink, { novis:true, bag:true, isl33bag:'foam', megaPit:1 });
+    H.deco.pits.push({ K, a0:lip + 0.4, a1:kn - 0.15, hw:12, top:F + 0.8, end:false });
+    const HL = 8, lb = 32, Rl = 14, Ul = m49qU(Rl, lb), Hl = m49qH(Rl, lb), ls = (HL - Hl)/Math.tan(lb*M49_D2R);
+    flat(K, kn, kn + 2.5, 0, 6, HL, M.yellow, { knuckle:1 });                                         // the landing's deck (8 m)
+    down(K, kn + 2.5, 0, 6, ls, HL - Hl, M.yellow, { base:F + Hl, landing:'mega' });                // 32 deg
+    flat(K, kn + 2.52, kn + 2.5 + ls, 0, 6, Hl, M.pad, { fill:1 });
+    qdn(K, kn + 2.5 + ls, 0, 6, Rl, lb, M.yellow, { landing:'mega' });
+    const lEnd = kn + 2.5 + ls + Ul;
+    const Rg = 8.5, gd = 86, Ug = m49qU(Rg, gd), Hg = m49qH(Rg, gd), gDeck = 3, gA = 198.68 - gDeck - Ug;
+    qup(K, gA, 0, 12, Rg, gd, gDeck, M.blue, { giantQ:1 });                                          // the GIANT quarter (7.9 m)
+    for (const vv of [-57.1, -32.9]) railU(gA + Ug - 99 + 0.2, 99.6, vv, F + Hg);
+    zone(K, lEnd + 24, gA - 0.05, 7, TU.qp, 'GIANT QUARTER', { a2:gA + Ug, need:TU.qp + 0.8, cap:TU.qp, key:'qp' });
+    const pad = put({ type:'flat', u:-94, v:-33, rot:0, w:2.4, d:2.4, h:0.06, mat:M.yellow, liftPad:1 });
+    H.lift = { x:pad.x, z:pad.z, y:F, r:2.7, to:m49W(H, -93.5, -45), yaw:E + H.th, top:F + Ht };
+    H.mega = { K, Ht, st, Uq, Hq, kA, Uk, Hk, lip, kn, HL, ls, Ul, Hl, lEnd, gA, Ug, Hg, gDeck, Rg, gap, rollY, tEnd };
+    cop(K, lip, 0, 4, F + Hk, 0xff3b30); cop(K, gA + Ug, 0, 12, F + Hg, 0xffd60a); cop(K, kn, 0, 6, F + HL, 0xff3b30);
+    lane(K, tEnd, gA, 7, 0xffffff);
+    feat('mega', 'Mega Ramp', K, 5, { lift:true, pad:[pad.x, pad.z], gap, H:Ht, lip, kn, lEnd, gA });
+    feat('megaRun', 'Mega Ramp (from the deck)', K, 5.5, { onTower:true, lip, kn, lEnd, gA }); }
+
+  // =============================== B. THE GIANT FOAM PIT (lane v -21)
+  { const K = Kf(-99, -21, E), Rf = 9, fd = 40, Uf = m49qU(Rf, fd), Hf = m49qH(Rf, fd), fA = 37, lip = fA + Uf;
+    qup(K, fA, 0, 3, Rf, fd, 0, wood, { kicker:'foam' });
+    zone(K, 8, lip - 0.05, 3.5, TU.foam, 'FOAM PIT', { a2:lip + 1.5, need:TU.foam/Math.cos(fd*M49_D2R) + 0.8, key:'foam' });
+    flat(K, lip - 0.4, lip + 36, 0, 8.5, 0.8, M.pink, { novis:true, bag:true, isl33bag:'foam' });
+    H.deco.pits.push({ K, a0:lip + 0.7, a1:lip + 36, hw:8.5, top:F + 0.8, end:true });
+    cop(K, lip, 0, 3, F + Hf, 0xff2d55); lane(K, 4, lip, 3.4); feat('foam', 'Giant Foam Pit', K, 6, { foam:true, lip }); }
+
+  // =============================== C. THE RESI AIR BAG (lane v -4: straight in from the main door)
+  { const K = Kf(-99, -4, E), Rr = 10, rd = 38, Ur = m49qU(Rr, rd), Hr = m49qH(Rr, rd), rA = 37, lip = rA + Ur;
+    qup(K, rA, 0, 3, Rr, rd, 0, wood, { kicker:'resi' });
+    zone(K, 8, lip - 0.05, 3.5, TU.resi, 'RESI', { a2:lip + 1.5, need:TU.resi/Math.cos(rd*M49_D2R) + 0.8, key:'resi' });
+    bagHill(K, lip + 3, 5.6, 5, 2.6, 10, 5, M.teal, 'resi');
+    H.deco.resi = { K, a0:lip + 3, l1:5, top:10, l2:5, w:5.6, h:2.6 };
+    cop(K, lip, 0, 3, F + Hr, 0x34c759); lane(K, 4, lip, 3.4); feat('resi', 'Resi Air Bag', K, 6, { resi:true, lip }); }
+
+  // =============================== D. THE STREET PLAZA (u -12..50, v -30..2)
+  { const Ke = (u, v)=> Kf(u, v, E);
+    // manual pads (0.3 m: you roll up onto them), a long ledge, a flat rail, a long rail
+    flat(Ke(-6, -25.5), 0, 12, 0, 1.5, 0.3, conc, { manual:1 });
+    flat(Ke(22, -11.2), 0, 12, 0, 1.4, 0.3, conc, { manual:1 });
+    flat(Ke(12, -26.9), 0, 14, 0, 0.6, 0.5, conc, { ledge:1 });
+    rail(12.05, -26.9, F + 0.5, 25.95, -26.9, F + 0.5, 'ledge', 'ledge', 0.57);
+    rail(-8, -18, F + 0.55, 6, -18, F + 0.55, 'rail');
+    rail(22, -5.5, F + 0.45, 40, -5.5, F + 0.45, 'rail');
+    // the stair set: a 1.8 m platform, five stairs down to the west (two handrails), a bank up from the east
+    const sh = 1.8;
+    flat(Ke(30, -22), 0, 8, 0, 6, sh, conc, { platform:1 });
+    down(Kf(30, -22, Wd), 0, 0, 6, 5, sh, conc, { novis:true, stairs:1 });
+    H.deco.stairs.push({ u0:30, u1:25, v0:-28, v1:-16, h:sh, n:5 });
+    bank(Kf(44, -22, Wd), 0, 0, 6, 6, sh, conc);
+    rail(30.15, -27.25, F + sh + 0.62, 25.15, -27.25, F + 0.62, 'rail', 'round');
+    rail(30.15, -16.75, F + sh + 0.62, 25.15, -16.75, F + 0.62, 'rail', 'round');
+    // the funbox: a 1.2 m box with banks east + west and a ledge on its north edge
+    flat(Ke(8, -7), 0, 8, 0, 3, 1.2, conc, { funbox:1 });
+    bank(Kf(4.4, -7, E), 0, 0, 3, 3.6, 1.2, M.red);
+    bank(Kf(19.6, -7, Wd), 0, 0, 3, 3.6, 1.2, M.red);
+    rail(8.1, -9.95, F + 1.2, 15.9, -9.95, F + 1.2, 'ledge', 'ledge', 0);
+    // the spine mini ramp (axis north-south at u 46): outer walls 70 deg, the spine tops out at 62 deg (< the 65 deg vert float-back)
+    { const R = 2.6, deg = 70, U = m49qU(R, deg), Hm = m49qH(R, deg), sd = 62, sR = Hm/(1 - Math.cos(sd*M49_D2R)), sU = m49qU(sR, sd), fl = 3, dk = 1.6;
+      const Ks = Kf(46, -17, N);                                          // +a = north
+      qup(Ks, sU, 0, 3, sR, sd, 0, wood, { spine:1 }); P[P.length - 1].rot += Math.PI;      // rises south to the ridge
+      qup(Ks, -sU, 0, 3, sR, sd, 0, wood, { spine:1 });                                       // rises north to the ridge
+      qup(Ks, sU + fl, 0, 3, R, deg, dk, wood); qup(Ks, -(sU + fl), 0, 3, R, deg, dk, wood); P[P.length - 1].rot += Math.PI;
+      H.deco.spine = { u:46, v:-17, half:sU + fl + U + dk, Hm };
+      cop(Ks, sU + fl + U, 0, 3, F + Hm, 0xffcc00); cop(Ks, -(sU + fl + U), 0, 3, F + Hm, 0xffcc00); }
+    feat('plaza', 'Street Plaza', Ke(-12, -14), 0, { street:true });
+    feat('plazaRail', 'Plaza Rail', Ke(-16, -18.32), 0, { rail:true });
+    H.deco.plaza = { u0:-12, u1:50, v0:-30, v1:2 }; }
+
+  // =============================== E. THE VERT HALF PIPE (u 56..86, v -27..-7; open north + south)
+  { const R = 6.5, deg = 85, U = m49qU(R, deg), Hm = m49qH(R, deg), dk = 3.2;
+    qup(Kf(76, -17, E), 0, 0, 10, R, deg, dk, wood, { vert:1 });
+    qup(Kf(66, -17, Wd), 0, 0, 10, R, deg, dk, wood, { vert:1 });
+    put({ type:'flat', u:71, v:-17, rot:E, w:9.97, d:5.02, h:0.02, mat:wood, vertFloor:1 });
+    for (const us of [-1, 1]) railV(-27, -7, 71 + us*(5 + U + dk - 0.15), F + Hm, false);
+    zone(Kf(71 - 5 - U, -17, E), 0, 0, 10, 0, 'VERT', { a2:10 + 2*U, cap:TU.vert, key:'vert' });
+    H.deco.vert = { u:71, v:-17, half:5 + U + dk, Hm, U, w:10 };
+    cop(Kf(76, -17, E), U, 0, 10, F + Hm, 0xff3b30); cop(Kf(66, -17, Wd), U, 0, 10, F + Hm, 0xff3b30);
+    feat('vert', 'Vert Half Pipe', Kf(66.5, -17, E), 0, { vert:true }); }
+
+  // =============================== F. THE DIRT LINE (lane v 6): two tables + four doubles, then the WALL RIDE
+  { const K = Kf(-99, 6, E), J = [
+      { R:10, d:34, kind:'table', L:5.0, beta:30 }, { R:10, d:36, kind:'table', L:6.5, beta:30 },
+      { R:11, d:36, kind:'double', L:6.0, h2:2.0, beta:33 }, { R:12, d:37, kind:'double', L:7.5, h2:2.2, beta:33 },
+      { R:12, d:38, kind:'double', L:8.5, h2:2.3, beta:34 }, { R:14, d:38, kind:'double', L:10.0, h2:2.6, beta:34 }];
+    let a = 17, z0 = 7;
+    H.deco.dirt = [];
+    for (let k = 0; k < J.length; k++){
+      const j = J[k], U = m49qU(j.R, j.d), Hk = m49qH(j.R, j.d), lip = a + U, v = TU.dirt[k];
+      qup(K, a, 0, 2.4, j.R, j.d, 0, dirt, { dirtJump:k + 1 });
+      zone(K, z0, lip - 0.05, 3.2, v, 'DIRT ' + (k + 1), { a2:lip + 1.2, need:v/Math.cos(j.d*M49_D2R) + 0.8, key:'dirt' + (k + 1) });
+      let foot, land0;
+      if (j.kind === 'table'){
+        const ls = Hk/Math.tan(j.beta*M49_D2R);
+        flat(K, lip, lip + j.L, 0, 2.4, Hk, dirt); down(K, lip + j.L, 0, 2.4, ls, Hk, dirt, { landing:'dirt' + (k + 1) });
+        foot = lip + j.L + ls; land0 = lip + j.L;
+      } else {
+        const bs = Hk/Math.tan(42*M49_D2R), fl = j.h2/Math.tan(50*M49_D2R), ls = j.h2/Math.tan(j.beta*M49_D2R), f0 = lip + j.L;
+        down(K, lip, 0, 2.4, bs, Hk, dirt);
+        bank(K, f0, 0, 2.4, fl, j.h2, dirt, { deck:1.0 });
+        down(K, f0 + fl + 1.0, 0, 2.4, ls, j.h2, dirt, { landing:'dirt' + (k + 1) });
+        foot = f0 + fl + 1.0 + ls; land0 = f0 + fl + 1.0;
+      }
+      H.deco.dirt.push({ a, lip, foot, land0, Hk, kind:j.kind });
+      cop(K, lip, 0, 2.4, F + Hk, 0xc8a46a);
+      a = foot + 6; z0 = foot + 0.3;
+    }
+    const dEnd = a - 6;
+    lane(K, 4, dEnd, 3.2, 0xe8c23a);
+    feat('dirt', 'Dirt Jump Line', K, 3, { jumps:J.length, end:dEnd, list:H.deco.dirt });
+    // the wall ride: a near-vertical wall across the end of the lane (the east wall)
+    const Rw = 4.2, wd = 85, Uw = m49qU(Rw, wd), Hw = m49qH(Rw, wd), wA = 198.66 - 0.4 - Uw;
+    qup(K, wA, 0, 9, Rw, wd, 0.4, M.green, { wallRide:1 });
+    zone(K, dEnd + 2, wA - 0.05, 4.4, TU.wall, 'WALL RIDE', { a2:wA + Uw, cap:TU.wallCap, key:'wall' });
+    cop(K, wA + Uw, 0, 9, F + Hw, 0xffffff);
+    H.deco.wallRide = { a:wA, U:Uw, Hm:Hw };
+    feat('wall', 'Wall Ride', K, dEnd + 4, { wall:true, a:wA }); }
+
+  // =============================== G. THE MEZZANINE (south wall) + H. THE GIANT BOWL (south-east)
+  const Rb = 5.6, bd = 82, Ub = m49qU(Rb, bd), Hz = m49qH(Rb, bd);
+  H.Hz = Hz;
+  { const Kz = Kf(-99, 53.5, E);
+    bank(Kz, 19, 0, 5.5, 50, Hz, wood, { access:'mezz' });                                            // the 50 m ramp up (u -80..-30)
+    put({ type:'flat', u:-9, v:51.875, rot:0, w:21, d:7.875, h:Hz, mat:wood, mezz:1 });                // the balcony deck (u -30..12)
+    // railings (thin, solid) on the open edges: the deck's north edge (openings for the drop + the roll-down), its west end, the ramp
+    const railP = (u0, u1, v, y0)=>{ put({ type:'flat', u:(u0 + u1)/2, v, rot:0, w:(u1 - u0)/2, d:0.06, h:1.05, base:y0, mat:M.yellow, novis:true, railing:1 }); H.deco.rail.push({ u0, u1, v, y0, y1:y0 }); };
+    railP(-30, -22, 44.1, F + Hz); railP(-14, -4, 44.1, F + Hz); railP(4, 12, 44.1, F + Hz);
+    put({ type:'flat', u:-29.9, v:46, rot:0, w:0.06, d:2, h:1.05, base:F + Hz, mat:M.yellow, novis:true, railing:1 });
+    H.deco.rail.push({ u0:-29.9, u1:-29.9, v0:44.1, v1:48, y0:F + Hz, y1:F + Hz, along:'v' });
+    for (let k = 0; k < 6; k++){                                           // the ramp's north edge (u -60..-30), in 5 m steps
+      const u0 = -60 + k*5, h0 = Hz*(u0 + 80)/50, h1 = Hz*(u0 + 5 + 80)/50;
+      put({ type:'flat', u:u0 + 2.5, v:47.9, rot:0, w:2.5, d:0.06, h:1.05 + (h1 - h0), base:F + h0, mat:M.yellow, novis:true, railing:1 });
+      H.deco.rail.push({ u0, u1:u0 + 5, v:47.9, y0:F + h0, y1:F + h1 });
+    }
+    // the BIG DROP (north, u -18): ride off the deck edge onto a 36 deg landing 3 m out
+    { const Kd = Kf(-18, 44, N), x0 = 3.0, hT = 3.6, b = 36, Rt = 8, Ht = m49qH(Rt, b), s2 = (hT - Ht)/Math.tan(b*M49_D2R);
+      flat(Kd, x0, x0 + 0.4, 0, 4, hT, wood);
+      down(Kd, x0 + 0.4, 0, 4, s2, hT - Ht, wood, { base:F + Ht, landing:'drop' });
+      flat(Kd, x0 + 0.42, x0 + 0.4 + s2, 0, 4, Ht, M.pad, { fill:1 });
+      qdn(Kd, x0 + 0.4 + s2, 0, 4, Rt, b, wood, { landing:'drop' });
+      zone(Kf(-18, 55, N), 0.3, 10.95, 3.6, TU.drop, 'BIG DROP', { key:'drop' });
+      H.deco.drop = { K:Kd, x0, hT };
+      feat('drop', 'Big Drop', Kf(-18, 55, N), 0, { onMezz:true }); }
+    // the ROLL-DOWN (north, u 0): a 19 deg bank from the deck edge to the floor
+    { const Kr = Kf(0, 44, N); down(Kr, 0, 0, 4, 14, Hz, wood, { rolldown:1 }); feat('rolldown', 'Roll-Down', Kf(0, 52, N), 0, { onMezz:true }); }
+    // the EAST DROP (the deck's east end, u 12): onto a landing, then up the bowl's west access bank
+    { const Kd = Kf(12, 52, E), x0 = 3.0, hT = 3.6, b = 36, Rt = 8, Ht = m49qH(Rt, b), s2 = (hT - Ht)/Math.tan(b*M49_D2R);
+      flat(Kd, x0, x0 + 0.4, 0, 5, hT, wood);
+      down(Kd, x0 + 0.4, 0, 5, s2, hT - Ht, wood, { base:F + Ht, landing:'edrop' });
+      flat(Kd, x0 + 0.42, x0 + 0.4 + s2, 0, 5, Ht, M.pad, { fill:1 });
+      qdn(Kd, x0 + 0.4 + s2, 0, 5, Rt, b, wood, { landing:'edrop' });
+      zone(Kf(-12, 52, E), 0, 23.95, 3.6, TU.drop, 'EAST DROP', { key:'edrop' });
+      H.deco.edrop = { K:Kd, x0, hT };
+      feat('mezz', 'Mezzanine', Kz, 3, { mezz:true }); feat('edrop', 'East Drop', Kf(-12, 52, E), 0, { onMezz:true }); }
+    lane(Kz, 4, 19, 5.2, 0x5ac8fa); }
+  { const bc = [56, 43], r0 = 6.5, rim = r0 + Ub, dk = 15.9 - rim;
+    put({ type:'bowl', u:bc[0], v:bc[1], rot:0, r0, R:Rb, maxDeg:bd, deck:dk, mat:bowlM, giantBowl:1 });
+    put({ type:'flat', u:56, v:42.875, rot:0, w:16, d:16.875, h:0.001, base:F + Hz - 0.02, mat:conc, holes:[{ x:0, z:0.125, r:12.9 }], bowlDeck:1 });
+    bank(Kf(26, 52, E), 0, 0, 6, 14, Hz, wood, { access:'bowlW' });                              // west access bank (u 26..40)
+    bank(Kf(86, 37, Wd), 0, 0, 6, 14, Hz, wood, { access:'bowlE' });                             // east access bank (u 86..72)
+    railU(40, 72, 26.1, F + Hz); railV(26.1, 46, 40.1, F + Hz); railV(58, HD - t, 40.1, F + Hz); railV(26.1, 31, 71.9, F + Hz); railV(43, HD - t, 71.9, F + Hz);
+    H.deco.bowl = { u:bc[0], v:bc[1], rim, y:F + Hz, u0:40, u1:72, v0:26, v1:HD - t, R:Rb, Hm:Hz, r0 };
+    feat('bowl', 'Giant Bowl', Kf(14, 52, E), 0, { bowl:true, c:m49W(H, bc[0], bc[1]), rim }); }
+
+  // ---- bleachers (solid: you can't ride through the crowd)
+  const B = [
+    { u0:20, u1:82, v0:-HD + t, v1:-54.8, face:'S', rows:4, base:F },                     // north wall: the mega landing + quarter
+    { u0:-28, u1:10, v0:55.8, v1:HD - t, face:'N', rows:3, base:F + Hz },                  // on the mezzanine
+    { u0:74, u1:HW - t, v0:55.4, v1:HD - t, face:'N', rows:3, base:F },                    // the south-east corner, by the bowl
+    { u0:-HW + t, u1:-95.8, v0:22, v1:44, face:'E', rows:3, base:F }                        // the west wall, by the dirt line's start
+  ];
+  for (const b of B){
+    put({ type:'flat', u:(b.u0 + b.u1)/2, v:(b.v0 + b.v1)/2, rot:0, w:(b.u1 - b.u0)/2, d:(b.v1 - b.v0)/2, h:0.5 + b.rows*0.45, base:b.base, mat:M.pad, novis:true, bld:true, bleach:1 });
+    H.deco.bleach.push(b);
+  }
+  H.P = P;
+  // the rails as the physics sees them (RAILS records), made once
+  M49.rails = H.rails.map(r=>{ const a = new T.Vector3(r.a[0], r.a[1], r.a[2]), b = new T.Vector3(r.b[0], r.b[1], r.b[2]);
+    return { a, b, kind:r.kind, dir:b.clone().sub(a).normalize(), len:a.distanceTo(b), m49:true }; });
+  return P;
+}
+
+/* ---------------------------------------------------------------- soups: typed arrays, split every 2600 boxes (16-bit indices), normals baked */
+const M49_PART = 2600;
+let M49_IDX = null;
+const _m49C = [[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1],[-1,-1,-1],[-1,1,-1],[1,1,-1],[1,-1,-1],[-1,1,-1],[-1,1,1],[1,1,1],[1,1,-1],
+               [-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1],[1,-1,1],[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]];
+const _m49N = [[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[1,0,0],[-1,0,0]], _m49Sh = [0.86, 0.74, 1, 0.74, 0.86, 0.74];
+/* a soup fills ONE working buffer (cap boxes); a full one is sealed into exact-size arrays (a part = a mesh) and refilled, so a build
+   leaves little garbage behind */
+function m49Soup(cap){ return { parts:[], cur:null, boxes:0, cap:Math.min(M49_PART, cap || M49_PART) }; }
+function m49Seal(S){
+  const P = S.cur; if (!P || !P.n) return;
+  const nf = P.n*(S.quad ? 12 : 72);
+  S.parts.push({ p:P.p.slice(0, nf), q:P.q.slice(0, nf), c:P.c.slice(0, nf), n:P.n });
+  P.n = 0;
+}
+/* a box: (x, z) its centre, y its bottom; w along its local x, d along its local z, rot about y (the island's isl33Box layout) */
+function m49Box(S, x, y, z, w, h, d, rot, hex){
+  if (!S.cur){ const n = S.cap*72; S.cur = { p:new Float32Array(n), q:new Float32Array(n), c:new Float32Array(n), n:0 }; }
+  else if (S.cur.n >= S.cap) m49Seal(S);
+  const P = S.cur, o = P.n*72, c = Math.cos(rot || 0), s = Math.sin(rot || 0), hw = w/2, hd = d/2;
+  const lr = Math.pow(((hex >> 16) & 255)/255, 2.2), lg = Math.pow(((hex >> 8) & 255)/255, 2.2), lb = Math.pow((hex & 255)/255, 2.2);
+  for (let k = 0; k < 24; k++){
+    const q = _m49C[k], lx = q[0]*hw, lz = q[2]*hd, f = k >> 2, nn = _m49N[f], sh = _m49Sh[f], i = o + k*3;
+    P.p[i] = x + lx*c + lz*s; P.p[i + 1] = y + (q[1] + 1)*h*0.5; P.p[i + 2] = z - lx*s + lz*c;
+    P.q[i] = nn[0]*c + nn[2]*s; P.q[i + 1] = nn[1]; P.q[i + 2] = -nn[0]*s + nn[2]*c;
+    P.c[i] = lr*sh; P.c[i + 1] = lg*sh; P.c[i + 2] = lb*sh;
+  }
+  P.n++; S.boxes++;
+}
+/* a quad soup (the letters' pixels: one front-facing quad each, 4 vertices instead of a box's 24) */
+const M49_QPART = 16000;
+let M49_QIDX = null;
+function m49QSoup(cap){ return { parts:[], cur:null, boxes:0, quad:true, cap:Math.min(M49_QPART, cap || M49_QPART) }; }
+/* a vertical quad: centre (x, y, z), (rx, rz) its right, (nx, nz) its facing, w x h */
+function m49Quad(S, x, y, z, rx, rz, nx, nz, w, h, hex){
+  if (!S.cur){ const n = S.cap*12; S.cur = { p:new Float32Array(n), q:new Float32Array(n), c:new Float32Array(n), n:0 }; }
+  else if (S.cur.n >= S.cap) m49Seal(S);
+  const P = S.cur, o = P.n*12, hw = w/2, hh = h/2;
+  const lr = Math.pow(((hex >> 16) & 255)/255, 2.2), lg = Math.pow(((hex >> 8) & 255)/255, 2.2), lb = Math.pow((hex & 255)/255, 2.2);
+  const C4 = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  for (let k = 0; k < 4; k++){ const i = o + k*3, sr = C4[k][0], su = C4[k][1];
+    P.p[i] = x + rx*hw*sr; P.p[i + 1] = y + hh*su; P.p[i + 2] = z + rz*hw*sr;
+    P.q[i] = nx; P.q[i + 1] = 0; P.q[i + 2] = nz; P.c[i] = lr; P.c[i + 1] = lg; P.c[i + 2] = lb; }
+  P.n++; S.boxes++;
+}
+function m49QPartMesh(P, mat){
+  if (!M49_QIDX){ M49_QIDX = new Uint16Array(M49_QPART*6); for (let b = 0; b < M49_QPART; b++){ const a = b*4, i = b*6;
+    M49_QIDX[i] = a; M49_QIDX[i + 1] = a + 1; M49_QIDX[i + 2] = a + 2; M49_QIDX[i + 3] = a; M49_QIDX[i + 4] = a + 2; M49_QIDX[i + 5] = a + 3; } }
+  const G = new T.BufferGeometry();
+  G.setAttribute('position', new T.BufferAttribute(P.p, 3)); G.setAttribute('normal', new T.BufferAttribute(P.q, 3)); G.setAttribute('color', new T.BufferAttribute(P.c, 3));
+  G.setIndex(new T.BufferAttribute(M49_QIDX.slice(0, P.n*6), 1));
+  G.computeBoundingSphere();
+  const m = new T.Mesh(G, mat); m.castShadow = false; m.receiveShadow = false;
+  return m;
+}
+/* the props' material: the city's facade paint (W2M.paint: vertex colours, FRONT side -- every box is closed, so the back faces the
+   island's double-sided cloth would also shade are culled; its program is compiled at boot); PK_MAT.cloth if the city has none */
+function m49PaintMat(){
+  try { if (typeof W2M !== 'undefined'){ if (!W2M.paint && typeof w2Init === 'function') w2Init(); if (W2M.paint) return W2M.paint; } } catch(e){}
+  return PK_MAT.cloth;
+}
+/* one part of a soup -> a mesh (one build step each) */
+function m49PartMesh(P, mat, shadow){
+  if (!M49_IDX){ M49_IDX = new Uint16Array(M49_PART*36); for (let b = 0; b < M49_PART; b++) for (let f = 0; f < 6; f++){ const a = b*24 + f*4, i = b*36 + f*6;
+    M49_IDX[i] = a; M49_IDX[i + 1] = a + 1; M49_IDX[i + 2] = a + 2; M49_IDX[i + 3] = a; M49_IDX[i + 4] = a + 2; M49_IDX[i + 5] = a + 3; } }
+  const G = new T.BufferGeometry();
+  G.setAttribute('position', new T.BufferAttribute(P.p, 3)); G.setAttribute('normal', new T.BufferAttribute(P.q, 3)); G.setAttribute('color', new T.BufferAttribute(P.c, 3));
+  G.setIndex(new T.BufferAttribute(M49_IDX.slice(0, P.n*36), 1));
+  G.computeBoundingSphere();
+  const m = new T.Mesh(G, mat); m.castShadow = false; m.receiveShadow = !!shadow;
+  return m;
+}
+function m49SoupMeshes(S, mat, shadow){
+  m49Seal(S);
+  const out = [];
+  for (const P of S.parts) if (P.n) out.push(S.quad ? m49QPartMesh(P, mat) : m49PartMesh(P, mat, shadow));
+  S.parts.length = 0; S.cur = null;
+  return out;
+}
+/* a seeded person (like the island's crowd; a quarter of them cheering) */
+const M49_SHIRTS = [0xe74c3c, 0x3498db, 0xf1c40f, 0x2ecc71, 0x9b59b6, 0xe67e22, 0x1abc9c, 0xecf0f1, 0x34495e, 0xff6fb5, 0x111111, 0xff9500];
+function m49Person(S, x, y, z, rot, R){
+  const shirt = M49_SHIRTS[Math.floor(R()*M49_SHIRTS.length)], legs = R() < 0.5 ? 0x2c3e50 : 0x5d6d7e, skin = [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69][Math.floor(R()*4)];
+  const c = Math.cos(rot), s = Math.sin(rot), lx = (a)=> [x + a*c, z - a*s], up = R() < 0.25;
+  for (const sd of [-0.11, 0.11]){ const q = lx(sd); m49Box(S, q[0], y, q[1], 0.14, 0.82, 0.16, rot, legs); }
+  m49Box(S, x, y + 0.82, z, 0.44, 0.62, 0.24, rot, shirt);
+  for (const sd of [-0.29, 0.29]){ const q = lx(sd); m49Box(S, q[0], y + (up ? 1.36 : 0.9), q[1], 0.12, up ? 0.55 : 0.52, 0.13, rot, shirt); }
+  m49Box(S, x, y + 1.46, z, 0.24, 0.26, 0.24, rot, skin);
+  if (R() < 0.45) m49Box(S, x, y + 1.7, z, 0.27, 0.07, 0.27, rot, M49_SHIRTS[Math.floor(R()*M49_SHIRTS.length)]);
+}
+/* a 5 x 7 block font (pixels as boxes): the screens, signs and boards */
+const M49_FONT = { A:'01110100011000111111100011000110001', B:'11110100011000111110100011000111110', C:'01110100011000010000100001000101110',
+  D:'11110100011000110001100011000111110', E:'11111100001000011110100001000011111', F:'11111100001000011110100001000010000',
+  G:'01110100011000010111100011000101111', H:'10001100011000111111100011000110001', I:'01110001000010000100001000010001110',
+  K:'10001100101010011000101001001010001', L:'10000100001000010000100001000011111', M:'10001110111010110101100011000110001',
+  N:'10001110011010110011100011000110001', O:'01110100011000110001100011000101110', P:'11110100011000111110100001000010000',
+  R:'11110100011000111110101001001010001', S:'01111100001000001110000010000111110', T:'11111001000010000100001000010000100',
+  U:'10001100011000110001100011000101110', V:'10001100011000110001100010101000100', W:'10001100011000110101101011101110001',
+  X:'10001100010101000100010101000110001', Y:'10001100010101000100001000010000100',
+  '!':'00100001000010000100001000000000100', '1':'00100011000010000100001000010001110', '2':'01110100010000100010001000100011111',
+  '4':'00010001100101010010111110001000010', '9':'01110100011000101111000010001001100', '0':'01110100011001110101110011000101110',
+  '-':'00000000000000011111000000000000000', ' ':'00000000000000000000000000000000000' };
+/* text on a vertical plane: (x, y, z) = its top-left (world), (rx, rz) = the reader's right, (nx, nz) = toward the reader, px = pixel */
+function m49Text(S, str, x, y, z, rx, rz, nx, nz, px, hex, depth){
+  const rot = Math.atan2(-rz, rx), d = depth || 0.06;
+  let col = 0;
+  for (const ch of String(str).toUpperCase()){
+    const g = M49_FONT[ch] || M49_FONT[' '];
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++){
+      if (g.charCodeAt(r*5 + c) !== 49) continue;
+      const a = (col + c + 0.5)*px;
+      if (S.quad) m49Quad(S, x + rx*a + nx*d, y - (r + 0.5)*px, z + rz*a + nz*d, rx, rz, nx, nz, px*0.9, px*0.9, hex);
+      else m49Box(S, x + rx*a + nx*d*0.5, y - (r + 1)*px + px*0.05, z + rz*a + nz*d*0.5, px*0.9, px*0.9, d, rot, hex);
+    }
+    col += 6;
+  }
+}
+function m49TextW(str, px){ return (String(str).length*6 - 1)*px; }
+/* a line of text centred on canonical (u, v), its top at y, facing the canonical direction (nu, nv) */
+function m49Sign(H, S, txt, u, v, y, nu, nv, px, hex, depth){
+  const tw = m49TextW(txt, px), ru = nv, rv = -nu;                          // the reader's right
+  const q = m49W(H, u - ru*tw/2, v - rv*tw/2), r = m49D(H, ru, rv), n = m49D(H, nu, nv);
+  m49Text(S, txt, q[0], y, q[1], r[0], r[1], n[0], n[1], px, hex, depth);
+  return tw;
+}
+
+/* ---------------------------------------------------------------- props: the hall dressed up (a generator: yields between slices) */
+function* m49PropsGen(H, S, G, Wn, GT){
+  const R = isl33Rnd(4900), F = H.F, HW = M49_HW, HD = M49_HD, WH = M49_WH, th = H.th;
+  let tl = performance.now();
+  const tick = function*(){ if (performance.now() - tl > 1.4){ yield; tl = performance.now(); } };
+  const bx = (Sx, u, v, y, w, h, d, rot, hex)=>{ const q = m49W(H, u, v); m49Box(Sx, q[0], y, q[1], w, h, d, (rot || 0) + th, hex); };
+  const KW = (K, a, s)=> K.W(a, s);
+  const doorAt = (side, a, pad)=> H.doors.some(D=> D.side === side && a > D.a0 - (pad === undefined ? 0.6 : pad) && a < D.a1 + (pad === undefined ? 0.6 : pad));
+  const BAN = [0xff3b30, 0xffcc00, 0x007aff, 0x34c759, 0xff2d55, 0xff9500, 0xaf52de, 0x5ac8fa];
+  const PAD = [0x1f6fd6, 0xff3b30, 0xffcc00, 0x1f6fd6, 0x34c759, 0xff9500];
+  const WIN_IN = 0xbfe3f7, WIN_OUT = 0xcfe2f2;          // outside: blue-grey glass by day, lit at night (the city's window material)
+  // ---- padded wall bottoms (2.4 m, alternating colours), two window bands (glass inside; outside on the night-window material)
+  for (let u = -HW + 1.5; u < HW; u += 3){
+    for (const vs of [-1, 1]){
+      const side = vs > 0 ? 'S' : 'N', inner = vs*(HD - M49_T);
+      if (!doorAt(side, u)) bx(S, u, inner - vs*0.08, F, 2.92, 2.4, 0.16, 0, PAD[(Math.round(u/3) + 60) % PAD.length]);
+      if (!doorAt(side, u, 3)) for (const wy of [13.5, 25.5]){ bx(S, u, inner - vs*0.05, F + wy, 2.6, 3.4, 0.05, 0, WIN_IN); bx(Wn, u, vs*(HD + M49_T) + vs*0.05, F + wy, 2.6, 3.4, 0.05, 0, WIN_OUT); }
+    }
+    yield* tick();
+  }
+  for (let v = -HD + 1.5; v < HD; v += 3){
+    for (const us of [-1, 1]){
+      const side = us > 0 ? 'E' : 'W', inner = us*(HW - M49_T);
+      if (!doorAt(side, v)) bx(S, inner - us*0.08, v, F, 0.16, 2.4, 2.92, 0, PAD[(Math.round(v/3) + 60) % PAD.length]);
+      if (!doorAt(side, v, 3)) for (const wy of [13.5, 25.5]){ bx(S, inner - us*0.05, v, F + wy, 0.05, 3.4, 2.6, 0, WIN_IN); bx(Wn, us*(HW + M49_T) + us*0.05, v, F + wy, 0.05, 3.4, 2.6, 0, WIN_OUT); }
+    }
+    yield* tick();
+  }
+  // trim bands outside (the foot, the windows, a yellow band, the top) + white corner posts
+  for (const [y, h, col] of [[F - 0.2, 1.0, 0xf2f2ec], [F + 12.6, 0.6, 0xf2f2ec], [F + 17.4, 0.5, 0xffcc00], [F + 24.6, 0.6, 0xf2f2ec], [F + WH - 1.2, 1.3, 0xf2f2ec]]){
+    bx(S, 0, HD + 0.31, y, HW*2 + 0.7, h, 0.08, 0, col); bx(S, 0, -HD - 0.31, y, HW*2 + 0.7, h, 0.08, 0, col);
+    bx(S, HW + 0.31, 0, y, 0.08, h, HD*2 + 0.7, 0, col); bx(S, -HW - 0.31, 0, y, 0.08, h, HD*2 + 0.7, 0, col);
+  }
+  for (const [u, v] of [[-HW, -HD], [HW, -HD], [-HW, HD], [HW, HD]]) bx(S, u, v, F - 0.2, 1.4, WH + 0.6, 1.4, 0, 0xe5e5ea);
+  // white pilasters outside (at the steel columns), breaking up the long walls
+  for (let u = -HW + 12.5; u < HW - 1; u += 12.5) for (const vs of [-1, 1]){ if (doorAt(vs > 0 ? 'S' : 'N', u, 1)) continue; bx(S, u, vs*(HD + 0.33), F + 0.8, 0.8, WH - 2.2, 0.1, 0, 0xe5e5ea); }
+  for (let v = -HD + 12; v < HD - 1; v += 12) for (const us of [-1, 1]){ if (doorAt(us > 0 ? 'E' : 'W', v, 1)) continue; bx(S, us*(HW + 0.33), v, F + 0.8, 0.1, WH - 2.2, 0.8, 0, 0xe5e5ea); }
+  // steel columns on the inner walls (I-beams every 12.5 m) + a ring beam under the roof's springing line
+  const COL = 0x39424e;
+  for (let u = -HW + 12.5; u < HW - 1; u += 12.5) for (const vs of [-1, 1]){
+    if (doorAt(vs > 0 ? 'S' : 'N', u, 1)) continue;
+    const vi = vs*(HD - M49_T - 0.45);
+    bx(S, u, vi, F + 2.4, 0.3, WH - 2.4, 0.7, 0, COL); bx(S, u, vi, F + 2.4, 0.9, WH - 2.4, 0.08, 0, COL);
+  }
+  for (let v = -HD + 12; v < HD - 1; v += 12) for (const us of [-1, 1]){
+    if (doorAt(us > 0 ? 'E' : 'W', v, 1)) continue;
+    const ui = us*(HW - M49_T - 0.45);
+    bx(S, ui, v, F + 2.4, 0.7, WH - 2.4, 0.3, 0, COL); bx(S, ui, v, F + 2.4, 0.08, WH - 2.4, 0.9, 0, COL);
+  }
+  for (const vs of [-1, 1]) bx(S, 0, vs*(HD - M49_T - 0.5), F + WH - 1.0, HW*2 - 1, 1.0, 0.9, 0, COL);
+  for (const us of [-1, 1]) bx(S, us*(HW - M49_T - 0.5), 0, F + WH - 1.0, 0.9, 1.0, HD*2 - 1, 0, COL);
+  yield* tick();
+  // ---- the doors: frames, lintels (the wall over the opening), slid-open door leaves, a chevron band inside
+  for (const D of H.doors){
+    const ac = (D.a0 + D.a1)/2, hw = (D.a1 - D.a0)/2, w = D.side === 'W';
+    const BX = (along, off, y, l, h, d, col)=>{ if (w) bx(S, -(HW + off), ac + along, y, d, h, l, 0, col); else bx(S, ac + along, HD + off, y, l, h, d, 0, col); };
+    BX(0, 0, F + D.h, hw*2 + 0.1, WH - D.h + 0.12, 0.5, 0x2f5ea8);
+    for (const sd of [-1, 1]) BX(sd*(hw + 0.3), 0.3, F - 0.1, 0.6, D.h + 0.6, 0.3, 0xffcc00);
+    BX(0, 0.3, F + D.h - 0.1, hw*2 + 1.2, 0.6, 0.3, 0xffcc00);
+    for (const sd of [-1, 1]) BX(sd*(hw*1.5 + 0.9), 0.62, F - 0.1, hw, D.h + 0.2, 0.18, 0xc9ced6);
+    for (const sd of [-1, 1]) for (let k = 0; k < 5; k++) BX(sd*(hw*1.5 + 0.9), 0.73, F + 0.6 + k*D.h/5, hw - 0.4, 0.12, 0.04, 0x9aa3ad);
+    for (let k = -Math.floor(hw); k <= Math.floor(hw); k++) BX(k, -0.32, F + D.h + 0.3, 0.8, 0.8, 0.05, (k & 1) ? 0xffcc00 : 0x16181c);
+    yield* tick();
+  }
+  // the main door's outside: a big red band with MEGA DOME in glowing letters, flags along the way in, people heading in
+  { const D = H.doors[0], ac = (D.a0 + D.a1)/2, x = -HW - 0.45;
+    bx(S, x, ac, F + D.h + 0.8, 0.1, 9.6, 46, 0, 0xd81e2c); bx(S, x - 0.06, ac, F + D.h + 1.1, 0.04, 9.0, 45.2, 0, 0x121418);
+    m49Sign(H, GT, 'MEGA DOME', x - 0.1, ac, F + D.h + 8.9, -1, 0, 0.62, 0xffd60a, 0.1); yield* tick();
+    m49Sign(H, GT, 'INDOOR BIKE PARK', x - 0.1, ac, F + D.h + 3.4, -1, 0, 0.3, 0xffffff, 0.08); yield* tick();
+    for (const sd of [-1, 1]) for (let k = 0; k < 4; k++){ const q3 = m49W(H, -HW - 8 - k*7, ac + sd*13), g = landY(q3[0], q3[1]);
+      m49Box(S, q3[0], g - 0.1, q3[1], 0.14, 9.5, 0.14, 0, 0xd0d4d8); m49Box(S, q3[0], g + 7.6, q3[1] + 0.9, 0.05, 1.6, 1.8, 0, BAN[(k*2 + (sd > 0 ? 1 : 0)) % BAN.length]); }
+    for (let k = 0; k < 14; k++){ const u = -HW - 6 - R()*30, v = ac + (R() - 0.5)*32; if (Math.abs(v - ac) < 4.5) continue; const q4 = m49W(H, u, v); m49Person(S, q4[0], landY(q4[0], q4[1]), q4[1], th + R()*6.28, R); yield* tick(); }
+    const D2 = H.doors[1], a2 = (D2.a0 + D2.a1)/2;
+    bx(S, a2, HD + 0.42, F + D2.h + 1.0, 18, 3.4, 0.1, 0, 0x1f6fd6);
+    m49Sign(H, GT, 'MEGA DOME', a2, HD + 0.5, F + D2.h + 3.85, 0, 1, 0.36, 0xffffff, 0.06); }
+  yield* tick();
+  // ---- huge banners hanging from the roof along the long walls, pennant strings across the hall
+  for (let k = 0; k < 14; k++){ const u = -84 + k*13; for (const vs of [-1, 1]){
+    const v = vs*(HD - 3.2), col = BAN[(k + (vs > 0 ? 3 : 0)) % BAN.length];
+    bx(S, u, v, F + 19, 6, 12.5, 0.08, 0, col); bx(S, u, v - vs*0.06, F + 24, 6.02, 1.4, 0.06, 0, 0xffffff); bx(S, u, v - vs*0.06, F + 19, 6.02, 0.8, 0.06, 0, 0x16181c);
+    bx(S, u, v, F + 31.4, 6.6, 0.25, 0.25, 0, 0x2b3038); bx(S, u, v, F + 31.6, 0.05, 1.0, 0.05, 0, 0x16181c); } }
+  for (const v of [-24, 6, 30]) for (let u = -96; u < 96; u += 1.7) bx(S, u, v, F + 24.5 - Math.abs(Math.sin(u*0.0655))*2.2, 0.7, 0.7, 0.03, 0, BAN[Math.floor(u/1.7 + 80) % BAN.length]);
+  yield* tick();
+  // ---- the giant screens (dark panels in frames, glowing letters, LED edges) + the centre-hung scoreboard cube
+  const screen = function*(u, v, y, w, h, nu, nv, lines, cols, px){
+    const across = nv !== 0;                                                // a wall facing +-v runs along u
+    if (across){ bx(S, u, v, y - 0.4, w + 0.8, h + 0.8, 0.3, 0, 0x2b3038); bx(S, u + nu*0.17, v + nv*0.17, y, w, h, 0.05, 0, 0x07080a); }
+    else { bx(S, u, v, y - 0.4, 0.3, h + 0.8, w + 0.8, 0, 0x2b3038); bx(S, u + nu*0.17, v + nv*0.17, y, 0.05, h, w, 0, 0x07080a); }
+    let yy = y + h - (h - (lines.length*8 - 1)*px)/2;
+    for (let i = 0; i < lines.length; i++){ m49Sign(H, GT, lines[i], u + nu*0.2, v + nv*0.2, yy, nu, nv, px, cols[i % cols.length], 0.06); yy -= 8*px; yield* tick(); }
+    for (const sy of [y - 0.3, y + h + 0.12]){ if (across) bx(G, u + nu*0.22, v + nv*0.22, sy, w + 0.5, 0.14, 0.05, 0, cols[0]); else bx(G, u + nu*0.22, v + nv*0.22, sy, 0.05, 0.14, w + 0.5, 0, cols[0]); }
+  };
+  yield* screen(-HW + 0.6, -4, F + 13.2, 21, 11.5, 1, 0, ['MEGA', 'DOME'], [0xffd60a, 0xff3b30], 0.62);     // west wall, over the main door
+  yield* screen(HW - 0.6, 6, F + 13.5, 26, 6.5, -1, 0, ['SEND IT!'], [0x5ac8fa], 0.5);                     // east wall, over the wall ride
+  yield* screen(51, -HD + 0.6, F + 12.5, 24, 6.5, 0, 1, ['BIG AIR'], [0xff9500], 0.52);                   // north wall, over the bleachers
+  yield* screen(-9, HD - 0.6, F + 12.5, 28, 6.5, 0, -1, ['MEGA DOME'], [0x34c759], 0.46);                // south wall, over the mezzanine
+  { const cu = 8, cv = 0, y0 = F + 23, hh = 6, half = 5.5;
+    bx(S, cu, cv, y0, half*2, hh, half*2, 0, 0x16181c); bx(S, cu, cv, y0 + hh, half*2 + 0.6, 0.5, half*2 + 0.6, 0, 0x2b3038); bx(S, cu, cv, y0 - 0.5, half*2 + 0.6, 0.5, half*2 + 0.6, 0, 0x2b3038);
+    for (const sd of [-1, 1]) for (const sd2 of [-1, 1]) bx(S, cu + sd*4, cv + sd2*4, y0 + hh + 0.5, 0.06, WH - 23 - hh + 6, 0.06, 0, 0x16181c);
+    [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach((f, i)=>{ const nu = f[0], nv = f[1];
+      m49Sign(H, GT, i % 2 ? 'DOME' : 'MEGA', cu + nu*(half + 0.05), cv + nv*(half + 0.05), y0 + hh - 0.9, nu, nv, 0.42, i % 2 ? 0x5ac8fa : 0xffd60a, 0.05);
+      for (const by of [y0 + 0.5, y0 + hh - 0.6]) bx(G, cu + nu*(half + 0.06), cv + nv*(half + 0.06), by, nv ? half*2 - 0.4 : 0.04, 0.16, nu ? half*2 - 0.4 : 0.04, 0, BAN[i]); }); }
+  yield* tick();
+  // ---- lane markings (dashed edges + a checked start line) and painted copings
+  for (const L of H.deco.lanes){
+    for (let a = L.a0; a < L.a1; a += 2.5) for (const s of [-L.hw, L.hw]){ const q = KW(L.K, a + 0.6, s); bx(S, q[0], q[1], F + 0.006, 0.14, 0.012, 1.2, L.K.yaw, L.col); }
+    for (let k = 0; k < 8; k++){ const q = KW(L.K, L.a0 + 0.6, -L.hw + (k + 0.5)*L.hw/4); bx(S, q[0], q[1], F + 0.007, L.hw/4, 0.012, 0.45, L.K.yaw, (k & 1) ? 0xffffff : 0x16181c); }
+    const q = KW(L.K, L.a0 - 1.6, 0); bx(S, q[0], q[1], F, L.hw*2, 0.03, 1.8, L.K.yaw, 0x16181c);
+    yield* tick();
+  }
+  for (const c of H.deco.cop){ const q = KW(c.K, c.a, c.s); bx(S, q[0], q[1], c.y - 0.13, c.w*2, 0.1, 0.16, c.K.yaw, c.col); }
+  // ---- the foam pits: padded walls round them + foam blocks (the mega pit: 25 x 24 m, the foam pit 35 x 17 m)
+  const FO = [0xff5e9c, 0x4fc3f7, 0xffd54f, 0x81c784, 0xff8a65, 0xba68c8, 0xffffff];
+  for (const p of H.deco.pits){
+    const K = p.K, L = p.a1 - p.a0, mid = (p.a0 + p.a1)/2;
+    for (const s of [-p.hw - 0.25, p.hw + 0.25]){ const q = KW(K, mid, s); bx(S, q[0], q[1], F, 0.5, 1.05, L + 1, K.yaw, 0x2f5ea8); bx(S, q[0], q[1], F + 1.05, 0.62, 0.12, L + 1.1, K.yaw, 0xffcc00); }
+    if (p.end){ const q = KW(K, p.a1 + 0.25, 0); bx(S, q[0], q[1], F, p.hw*2 + 1, 1.05, 0.5, K.yaw, 0x2f5ea8); bx(S, q[0], q[1], F + 1.05, p.hw*2 + 1.1, 0.12, 0.62, K.yaw, 0xffcc00); }
+    const st = 0.66;
+    for (let a = p.a0 + 0.35; a < p.a1 - 0.2; a += st){
+      for (let s = -p.hw + 0.35; s < p.hw - 0.2; s += st){
+        const q = KW(K, a + (R() - 0.5)*0.12, s + (R() - 0.5)*0.12);
+        bx(S, q[0], q[1], p.top - 0.5 + R()*0.22, 0.6, 0.55, 0.6, R()*1.5, FO[Math.floor(R()*FO.length)]);
+      }
+      yield* tick();
+    }
+  }
+  // ---- the resi bag: seams + a yellow target band
+  if (H.deco.resi){ const r = H.deco.resi, K = r.K; for (let k = 0; k < 7; k++){ const s = -r.w + (k + 0.5)*r.w/3.5, q = KW(K, r.a0 + r.l1 + r.top/2, s);
+    bx(S, q[0], q[1], F + r.h + 0.005, 0.06, 0.02, r.top, K.yaw, 0xe8f4f8); }
+    const q = KW(K, r.a0 + r.l1 + r.top/2, 0); bx(S, q[0], q[1], F + r.h + 0.006, r.w*2, 0.02, 0.6, K.yaw, 0xffcc00); }
+  yield* tick();
+  // ---- the mega ramp: tower stripes + railings, the start gate (MEGA RAMP / DROP IN), the elevator (frame, car, LIFT, glowing pad), scaffold legs
+  { const Mg = H.mega, K = Mg.K, top = F + Mg.Ht;
+    for (let k = 0; k < 7; k++){ const y = F + k*3, col = (k & 1) ? 0xff3b30 : 0xffffff;
+      for (const s of [-5.56, 5.56]){ const q = KW(K, 4.75, s); bx(S, q[0], q[1], y, 0.06, 3, 10.5, K.yaw, col); }
+      const qw = KW(K, -0.56, 0); bx(S, qw[0], qw[1], y, 11, 3, 0.06, K.yaw, col); }
+    for (const s of [-5.3, 5.3]){ const q = KW(K, 4.75, s); bx(S, q[0], q[1], top + 1.0, 0.08, 0.1, 10.4, K.yaw, 0xffcc00); for (let a = -0.4; a <= 9.6; a += 2.5){ const p = KW(K, a, s); bx(S, p[0], p[1], top, 0.08, 1.1, 0.08, K.yaw, 0xffcc00); } }
+    { const q = KW(K, -0.35, 0); bx(S, q[0], q[1], top + 1.0, 10.6, 0.1, 0.08, K.yaw, 0xffcc00); for (let s = -5; s <= 5; s += 2.5){ const p = KW(K, -0.35, s); bx(S, p[0], p[1], top, 0.08, 1.1, 0.08, K.yaw, 0xffcc00); } }
+    // the start gate over the drop-in: two posts + a banner beam, text both ways
+    for (const s of [-4.9, 4.9]){ const q = KW(K, 9.7, s); bx(S, q[0], q[1], top, 0.35, 5.4, 0.35, K.yaw, 0x2b3038); }
+    { const q = KW(K, 9.7, 0); bx(S, q[0], q[1], top + 3.7, 10.2, 1.6, 0.3, K.yaw, 0x16181c);
+      const c0 = KW(K, 9.7, 0);
+      m49Sign(H, GT, 'MEGA RAMP', c0[0] + 0.16, c0[1], top + 5.05, 1, 0, 0.16, 0xffd60a, 0.04);
+      m49Sign(H, GT, 'DROP IN', c0[0] - 0.16, c0[1], top + 5.0, -1, 0, 0.18, 0x34c759, 0.04);
+      for (const s of [-4.9, 4.9]){ const qq = KW(K, 9.7, s); bx(G, qq[0], qq[1], top + 5.4, 0.42, 0.25, 0.42, K.yaw, 0xff3b30); } }
+    // the elevator: an open steel frame by the tower, a car parked up top, LIFT over the way in, the glowing pad + arrows
+    { const L = H.lift;
+      for (const sd of [-1, 1]) for (const sd2 of [-1, 1]) bx(S, -94 + sd*2.9, -33 + sd2*2.9, F, 0.25, Mg.Ht + 2.5, 0.25, 0, 0x8e8e93);
+      for (let y = F + 3; y < top + 2; y += 4) for (const sd of [-1, 1]){ bx(S, -94 + sd*2.9, -33, y, 0.18, 0.18, 5.8, 0, 0x8e8e93); bx(S, -94, -33 + sd*2.9, y, 5.8, 0.18, 0.18, 0, 0x8e8e93); }
+      bx(S, -94, -33, top + 1.6, 5.2, 0.4, 5.2, 0, 0x2b3038); bx(S, -94, -35.6, top - 0.6, 5.0, 0.12, 2.6, 0, 0x8e8e93);
+      bx(S, -94, -30.35, F + 5.8, 5.6, 4.0, 0.06, 0, 0x16181c);
+      m49Sign(H, GT, 'LIFT', -94, -30.25, F + 9.2, 0, 1, 0.42, 0x34c759, 0.06);
+      m49Sign(H, GT, 'RIDE SLOW', -94, -30.25, F + 6.0, 0, 1, 0.08, 0xffffff, 0.04);
+      for (let k = 0; k < 24; k++){ const a = k/24*Math.PI*2; m49Box(G, L.x + Math.sin(a)*2.55, F + 0.06, L.z + Math.cos(a)*2.55, 0.62, 0.05, 0.16, a, (k & 1) ? 0xffcc00 : 0xff9500); }
+      for (let k = 0; k < 3; k++) bx(G, -94, -27.5 + k*1.1, F + 0.008, 1.3 - k*0.35, 0.03, 0.28, 0, 0x34c759); }
+    // scaffold legs + rails along both sides of the roll-in wedge
+    const RY = Mg.rollY, rollAt = (a)=>{ for (let i = 1; i < RY.length; i++) if (a <= RY[i][0]){ const t = (a - RY[i - 1][0])/(RY[i][0] - RY[i - 1][0]); return RY[i - 1][1] + (RY[i][1] - RY[i - 1][1])*t; } return 0; };
+    const aTop = RY[0][0], aLow = RY[RY.length - 2][0];
+    for (const s of [-4.62, 4.62]){
+      for (let a = aTop + 1; a < aLow; a += 3){ const q = KW(K, a, s); bx(S, q[0], q[1], F, 0.16, rollAt(a) - 0.3, 0.16, K.yaw, 0x8e8e93); }
+      for (let y = 3; y < Mg.Ht - 1; y += 4){ let a1 = aTop; while (a1 < aLow && rollAt(a1) > y + 0.3) a1 += 0.25; if (a1 <= aTop + 1) continue; const q = KW(K, (aTop + a1)/2, s); bx(S, q[0], q[1], F + y, 0.1, 0.1, a1 - aTop, K.yaw, 0x8e8e93); }
+    }
+    // the landing's back + sides: padded, MEGA painted on its face
+    { const q = KW(K, Mg.kn - 0.04, 0); bx(S, q[0], q[1], F + 1.05, 12, Mg.HL - 1.1, 0.06, K.yaw, 0x2f5ea8);
+      const c0 = KW(K, Mg.kn - 0.1, 0); m49Sign(H, GT, 'LAND HERE', c0[0], c0[1], F + Mg.HL - 0.6, -1, 0, 0.22, 0xffffff, 0.04); }
+    yield* tick();
+  }
+  // ---- the halfpipe: deck railings + ladders; the stairs (visual steps over the stair bank)
+  if (H.deco.vert){ const V = H.deco.vert;
+    for (const us of [-1, 1]){ const u = V.u + us*(V.half - 0.15); bx(S, u, V.v, F + V.Hm + 1.0, 0.08, 0.08, V.w*2, 0, 0xffcc00); for (let k = -4; k <= 4; k++) bx(S, u, V.v + k*V.w/4.4, F + V.Hm, 0.08, 1.05, 0.08, 0, 0xffcc00);
+      for (let k = 0; k < Math.floor(V.Hm/0.4); k++) bx(S, u + us*0.25, V.v - V.w - 0.35, F + 0.3 + k*0.4, 0.06, 0.05, 0.6, 0, 0x8e8e93);
+      for (const dv of [-0.3, 0.3]) bx(S, u + us*0.25, V.v - V.w - 0.35 + dv, F, 0.06, V.Hm + 1, 0.06, 0, 0x8e8e93); } }
+  for (const s of H.deco.stairs){ const n = s.n, du = (s.u1 - s.u0)/n;
+    for (let k = 0; k < n; k++){ const ua = s.u0 + du*k, ub = ua + du, hh = s.h*(1 - (k + 0.5)/n);
+      bx(S, (ua + ub)/2, (s.v0 + s.v1)/2, F, Math.abs(du), hh, s.v1 - s.v0, 0, (k & 1) ? 0x8f949b : 0x9da3aa);
+      bx(S, ua + du*0.96, (s.v0 + s.v1)/2, F + hh - 0.02, 0.1, 0.03, s.v1 - s.v0, 0, 0xffcc00); } }
+  // ---- the mezzanine: the cafe + pro shop front under it (warm windows), railings, a striped kick plate
+  { const Hz = H.Hz, v = 44 - 0.06;
+    for (let u = -29; u < 12; u += 4){ if (u > -5 && u < 5) continue;
+      bx(S, u + 2, v, F, 0.25, Hz, 0.12, 0, 0x2b3038);
+      bx(G, u, v - 0.02, F + 0.9, 3.4, 2.6, 0.05, 0, (Math.round(u/4) & 1) ? 0x8a6a42 : 0x9a7448); }
+    bx(S, -9, v - 0.08, F + Hz - 0.9, 42, 0.9, 0.12, 0, 0x16181c);
+    m49Sign(H, GT, 'CAFE', -24, v - 0.16, F + Hz - 0.12, 0, -1, 0.11, 0xffd60a, 0.04);
+    m49Sign(H, GT, 'PRO SHOP', 8, v - 0.16, F + Hz - 0.12, 0, -1, 0.11, 0x5ac8fa, 0.04);
+    m49Sign(H, GT, 'MEZZANINE', -14.5, v - 0.16, F + Hz - 0.12, 0, -1, 0.11, 0xffffff, 0.04);
+    for (const r of H.deco.rail){
+      if (r.along === 'v'){ bx(S, r.u0, (r.v0 + r.v1)/2, r.y0 + 1.0, 0.07, 0.07, r.v1 - r.v0, 0, 0xffcc00); for (let vv = r.v0; vv <= r.v1 + 0.01; vv += 1.3) bx(S, r.u0, vv, r.y0, 0.06, 1.05, 0.06, 0, 0xffcc00); continue; }
+      const n = Math.max(1, Math.round((r.u1 - r.u0)/1.25));
+      for (let k = 0; k < n; k++){ const ua = r.u0 + (r.u1 - r.u0)*k/n, ub = r.u0 + (r.u1 - r.u0)*(k + 1)/n, ya = r.y0 + (r.y1 - r.y0)*k/n, yb = r.y0 + (r.y1 - r.y0)*(k + 1)/n;
+        bx(S, (ua + ub)/2, r.v, Math.min(ya, yb) + 1.0, ub - ua + 0.02, 0.07 + Math.abs(yb - ya), 0.07, 0, 0xffcc00);
+        bx(S, ua, r.v, ya, 0.06, 1.05, 0.06, 0, 0xffcc00); bx(S, (ua + ub)/2, r.v, Math.min(ya, yb) + 0.5, ub - ua, 0.04, 0.04, 0, 0xffcc00); }
+    }
+    for (let u = -30; u < 12; u += 1.2) bx(S, u + 0.6, 44.0, F + Hz - 0.25, 1.2, 0.25, 0.06, 0, (Math.round(u/1.2) & 1) ? 0xffcc00 : 0x16181c);
+  }
+  yield* tick();
+  // ---- the giant bowl's platform: blue padded walls round it, a painted ring by the rim, rail posts round the deck, GIANT BOWL
+  { const b = H.deco.bowl, h = H.Hz;
+    for (let u = b.u0; u < b.u1; u += 2) bx(S, u + 1, b.v0 - 0.06, F, 2, h, 0.1, 0, (Math.round(u/2) & 1) ? 0x1f6fd6 : 0x2f86ff);
+    for (let v = b.v0; v < b.v1; v += 2){ bx(S, b.u0 - 0.06, v + 1, F, 0.1, h, 2, 0, (Math.round(v/2) & 1) ? 0x1f6fd6 : 0x2f86ff); bx(S, b.u1 + 0.06, v + 1, F, 0.1, h, 2, 0, (Math.round(v/2) & 1) ? 0x1f6fd6 : 0x2f86ff); }
+    for (let k = 0; k < 64; k++){ const a = k/64*Math.PI*2, r = b.rim + 0.3; bx(S, b.u + Math.sin(a)*r, b.v + Math.cos(a)*r, b.y + 0.004, r*0.1, 0.02, 0.36, a, (k & 1) ? 0xff3b30 : 0xffffff); }   // tangential dashes
+    // a pool-tile band just under the coping (the wall is near vertical there: 82 deg), so the bowl reads as deep
+    { const R = b.R, Hm = b.Hm, r0 = b.r0, rAt = (h)=> r0 + Math.sqrt(Math.max(0, R*R - (R - h)*(R - h)));
+      for (const [h0, h1, col] of [[Hm - 0.5, Hm - 0.06, 0x1f6fd6], [Hm - 0.62, Hm - 0.5, 0xffffff]]){ const r = rAt((h0 + h1)/2) - 0.04;
+        for (let k = 0; k < 72; k++){ const a = (k + 0.5)/72*Math.PI*2; bx(S, b.u + Math.sin(a)*r, b.v + Math.cos(a)*r, F + h0, r*0.0875, h1 - h0, 0.05, a, col); } } }
+    m49Sign(H, GT, 'GIANT BOWL', b.u, b.v0 - 0.18, F + h - 0.35, 0, -1, 0.3, 0xffd60a, 0.05); }
+  // ---- the drops' landings: pads on their backs
+  for (const dd of [H.deco.drop, H.deco.edrop]) if (dd){ const q = KW(dd.K, dd.x0 - 0.03, 0); bx(S, q[0], q[1], F, 9.8, dd.hT - 0.05, 0.06, dd.K.yaw, 0x2f5ea8); }
+  yield* tick();
+  // ---- bleachers + the crowd
+  for (const b of H.deco.bleach){
+    const rows = b.rows, horiz = b.face === 'S' || b.face === 'N';
+    const len = horiz ? b.u1 - b.u0 : b.v1 - b.v0, depth = horiz ? b.v1 - b.v0 : b.u1 - b.u0, rd = depth/rows;
+    for (let r = 0; r < rows; r++){
+      // row r = 0 is the front (the lowest), toward the riding area
+      const off = r*rd + rd/2, hh = 0.5 + (r + 1)*0.45;
+      let cu, cv;
+      if (b.face === 'S'){ cu = (b.u0 + b.u1)/2; cv = b.v1 - off; } else if (b.face === 'N'){ cu = (b.u0 + b.u1)/2; cv = b.v0 + off; }
+      else { cu = b.u0 + depth - off; cv = (b.v0 + b.v1)/2; }
+      if (horiz){ bx(S, cu, cv, b.base, len, hh, rd, 0, (r & 1) ? 0x9aa3ad : 0x7f8a96); bx(S, cu, cv, b.base + hh, len, 0.06, rd*0.5, 0, BAN[r % BAN.length]); }
+      else { bx(S, cu, cv, b.base, rd, hh, len, 0, (r & 1) ? 0x9aa3ad : 0x7f8a96); bx(S, cu, cv, b.base + hh, rd*0.5, 0.06, len, 0, BAN[r % BAN.length]); }
+      const face = b.face === 'S' ? 0 : b.face === 'N' ? Math.PI : Math.PI/2;   // (canonical) the yaw people look along: S = +v
+      for (let k = 0.6; k < len - 0.4; k += 0.8 + R()*0.45){
+        if (R() > 0.85) continue;
+        const pu = horiz ? b.u0 + k : cu, pv = horiz ? cv : b.v0 + k, q = m49W(H, pu, pv);
+        m49Person(S, q[0], b.base + hh + 0.06, q[1], face + th + (R() - 0.5)*0.4, R);
+        yield* tick();
+      }
+      yield* tick();
+    }
+  }
+  // standing crowds: by the roll-in, along the mega run-out, between the plaza + the dirt line, on the bowl deck, by the mezzanine ramp
+  const crowd = function*(u0, u1, v0, v1, n, yb, look){ for (let k = 0; k < n; k++){ const u = u0 + R()*(u1 - u0), v = v0 + R()*(v1 - v0), q = m49W(H, u, v);
+    m49Person(S, q[0], yb, q[1], (look === undefined ? R()*6.28 : look + (R() - 0.5)*1.2) + th, R); yield* tick(); } };
+  yield* crowd(-86, -79, -36, -28.5, 14, F, Math.PI); yield* crowd(20, 50, -36.5, -33.5, 16, F, Math.PI); yield* crowd(24, 38, 12.5, 19, 12, F, Math.PI);
+  yield* crowd(40.6, 44.5, 26.6, 30.5, 6, F + H.Hz, Math.PI/4); yield* crowd(67.5, 71.4, 26.6, 30.5, 6, F + H.Hz, -Math.PI/4); yield* crowd(-86, -82, 40, 46, 8, F, 0);
+  yield* crowd(92, 99, 44, 52, 8, F, -Math.PI/2);
+  yield* tick();
+  // the outside: flags along the north + south walls, benches along the south wall inside
+  for (let k = 0; k < 8; k++){ const q = m49W(H, -60 + k*15, 59.0); m49Box(S, q[0], F, q[1], 3.2, 0.45, 0.5, th, 0x8b5a2b); }
+  for (let k = 0; k < 10; k++) for (const vs of [-1, 1]){ const q = m49W(H, -90 + k*20, vs*(HD + 4)), g = landY(q[0], q[1]);
+    m49Box(S, q[0], g - 0.1, q[1], 0.12, 8, 0.12, 0, 0xd0d4d8); m49Box(S, q[0] + 0.8, g + 6.3, q[1], 1.5, 1.2, 0.05, th, BAN[(k + (vs > 0 ? 2 : 0)) % BAN.length]); }
+  M49.stats.boxes = S.boxes; M49.stats.glow = G.boxes; M49.stats.text = GT.boxes; M49.stats.win = Wn.boxes;
+}
+/* the roof: an arched vault from stacked boxes (hollow, so the arch shows from inside), skylights, trusses, the lamps' cables */
+function m49RoofGen(H, S, lamps){
+  const F = H.F, HW = M49_HW, HD = M49_HD, WH = M49_WH, y0 = F + WH + 0.12;
+  const bx = (u, v, y, w, h, d, hex)=>{ const q = m49W(H, u, v); m49Box(S, q[0], y, q[1], w, h, d, H.th, hex); };
+  const c = HD*2 + 1.2, s = 10.8, Rr = (c*c/4 + s*s)/(2*s), hwAt = (y)=> Math.sqrt(Math.max(0, Rr*Rr - (Rr - s + y)*(Rr - s + y)));
+  const archY = (v)=> y0 + s - (Rr - Math.sqrt(Math.max(0, Rr*Rr - v*v)));
+  const L = HW*2 + 1.2, n = 12, dy = s/n;
+  for (let k = 0; k < n; k++){
+    const ya = k*dy, w0 = hwAt(ya), w1 = hwAt(ya + dy), col = k % 3 === 2 ? 0xd7dde4 : 0xc3cad3;
+    for (const us of [-1, 1]) bx(us*(HW + 0.45), 0, y0 + ya, 0.3, dy, w0*2, 0xb7bec7);       // the gable ends (closed: no peeking in)
+    if (k === n - 1 || w1 < 1){ bx(0, 0, y0 + ya, L, dy, w0*2, col); break; }
+    const ring = w0 - w1 + 0.6;
+    for (const vs of [-1, 1]) bx(0, vs*(w0 - ring/2), y0 + ya, L, dy, ring, col);
+  }
+  for (const v of [-34, -12, 12, 34]){ const y = archY(v); bx(0, v, y - 0.05, L - 14, 0.35, 3.2, 0xa9d8f5); bx(0, v, y - 1.0, L - 14, 0.06, 3.0, 0xe9f6ff); }
+  for (const us of [-1, 1]) bx(us*(HW + 0.62), 0, y0, 0.1, 1.0, c, 0xf2f2ec);
+  for (let u = -90; u <= 90; u += 20){
+    bx(u, 0, y0 - 1.6, 0.5, 0.5, HD*2 - 1.2, 0x5b6470);
+    for (let v = -HD + 1.5; v < HD - 1; v += 3){ const y = archY(v); bx(u, v, y - 1.2, 0.4, 0.4, 3.05, 0x5b6470); bx(u, v, y0 - 1.2, 0.12, Math.max(0.2, y - y0), 0.12, 0x6c7684); }
+  }
+  for (const p of lamps) m49Box(S, p[0], p[1] + 0.8, p[2], 0.05, y0 - 1.2 - p[1] - 0.8, 0.05, 0, 0x16181c);
+  M49.stats.roof = S.boxes;
+}
+/* the pendant light clusters (warm47 draws their glowing diffusers + feeds the lamp field; the dark housings are ours) */
+function m49Lamps(H){
+  const out = [];
+  for (const u of [-84, -60, -36, -12, 12, 36, 60, 84]) for (const v of [-45, -15, 15, 45]){
+    const high = (v === -45 && u <= -60);                                   // over the start tower + roll-in: up out of the way
+    const q = m49W(H, u, v); out.push([q[0], H.F + (high ? 27 : 16.5), q[1]]);
+  }
+  return out;
+}
+function m49LampHousings(H, S, lamps){
+  for (const p of lamps){ m49Box(S, p[0], p[1] + 0.02, p[2], 6.0, 0.5, 2.6, H.th, 0x1c1f24); m49Box(S, p[0], p[1] + 0.52, p[2], 2.0, 0.3, 1.0, H.th, 0x2b3038); }
+}
+/* rails: steel tubes on posts (round) or angle steel on the edges (ledges), on the shared metal / coping materials (merged per chunk) */
+function m49RailMeshes(H, ch){
+  let n = 0;
+  for (const r of H.rails){
+    const a = new T.Vector3(r.a[0], r.a[1], r.a[2]), b = new T.Vector3(r.b[0], r.b[1], r.b[2]), L = a.distanceTo(b);
+    if (r.vis === 'ledge'){
+      const dx = (b.x - a.x)/L, dz = (b.z - a.z)/L;
+      for (const o of (r.edge ? [-r.edge, r.edge] : [0])){
+        const g = new T.BoxGeometry(0.11, 0.06, L), m = new T.Mesh(g, MAT.coping);
+        m.position.set((a.x + b.x)/2 - dz*o, (a.y + b.y)/2 - 0.025, (a.z + b.z)/2 + dx*o); m.lookAt(m.position.x + dx, m.position.y, m.position.z + dz);
+        m.castShadow = false; m.receiveShadow = true; ch.addMesh(m); n++;
+      }
+      continue;
+    }
+    const g = new T.CylinderGeometry(0.06, 0.06, L, 10); g.rotateX(Math.PI/2);
+    const m = new T.Mesh(g, MAT.metal); m.position.copy(a).add(b).multiplyScalar(0.5); m.lookAt(b); m.castShadow = true; m.receiveShadow = false; ch.addMesh(m); n++;
+    const k = Math.max(2, Math.round(L/2.6));
+    for (let i = 0; i <= k; i++){
+      const p = a.clone().lerp(b, i/k), gh = Math.max(0.15, p.y - H.F);
+      const pg = new T.CylinderGeometry(0.045, 0.045, gh, 6); pg.translate(0, -gh/2, 0);
+      const pm = new T.Mesh(pg, MAT.metal); pm.position.copy(p); pm.castShadow = false; ch.addMesh(pm); n++;
+    }
+  }
+  M49.stats.railMeshes = n;
+  return n;
+}
+/* floor paint: words + arrows from the park atlas (one material: the city's skatepark paint) */
+function m49Decals(H){
+  if (typeof pkAtlasInit !== 'function' || typeof PK_ATLAS === 'undefined') return null;
+  pkAtlasInit();
+  const A = PK_ATLAS, rows = Math.ceil(A.items.length/A.cols), F0 = H.F + 0.014;
+  const L = [], E = Math.PI/2, Nn = Math.PI;
+  const add = (id, u, v, yaw, w, h, hex, y)=> L.push({ id, u, v, yaw, w, h, hex, y:y === undefined ? F0 : y });
+  add('MEGA', -94.5, -45, E, 7.0, 3.4, 0xffcc00, H.F + 21.016); add('arrow', -90.6, -45, E, 2.0, 2.4, 0xffffff, H.F + 21.016);
+  add('MEGA', 30, -45, E, 9, 4.2, 0xffcc00); add('BIG AIR', 70, -45, E, 9, 4.0, 0xff9500);
+  add('START', -90, -21, E, 5, 2.4, 0xffffff); add('BIG AIR', -78, -21, E, 6, 2.6, 0xff2d55); add('arrow', -68, -21, E, 2, 2.4, 0xffffff);
+  add('START', -90, -4, E, 5, 2.4, 0xffffff); add('GAP', -78, -4, E, 4.4, 2.4, 0x34c759); add('arrow', -68, -4, E, 2, 2.4, 0xffffff);
+  add('START', -91, 6, E, 5, 2.4, 0xffffff); add('LINE', -85.5, 6, E, 4.4, 2.2, 0xe8c23a); add('WALL', 82, 6, E, 5, 2.4, 0xffffff);
+  add('VERT', 71, -17, E, 6, 2.8, 0xff3b30, H.F + 0.034); add('SPINE', 46, -4, E, 5, 2.2, 0xffcc00); add('RAIL', -1, -15.6, E, 4, 1.8, 0xffffff);
+  add('LEDGE', 19, -24.2, E, 4.4, 1.9, 0xffffff); add('STAIRS', 22, -22, -E, 4.6, 2.0, 0xffffff);
+  add('BOWL', 56, 43, E, 6, 2.6, 0xffffff, H.F + 0.016); add('DROP', -18, 46.6, Nn, 3.4, 1.6, 0xffffff, H.F + H.Hz + 0.014);
+  add('START', -91, 53.5, E, 5, 2.4, 0xffffff); add('arrow', -84, 53.5, E, 2.2, 2.6, 0x5ac8fa);
+  const pos = [], uv = [], col = [], nrm = [], idx = [];
+  for (const d of L){
+    const i = A.items.indexOf(d.id); if (i < 0) continue;
+    const cx = i % A.cols, cy = Math.floor(i/A.cols);
+    const u0 = cx/A.cols, u1 = (cx + 1)/A.cols, v1 = 1 - cy/rows, v0 = 1 - (cy + 1)/rows;
+    const c0 = m49W(H, d.u, d.v), y = d.yaw + H.th, fx = Math.sin(y), fz = Math.cos(y), rx = -Math.cos(y), rz = Math.sin(y), hw = d.w/2, hh = d.h/2;
+    const cc = C(d.hex), b = pos.length/3;
+    // top-left, top-right, bottom-left, bottom-right: the top of the word points ahead of a rider heading `yaw`
+    for (const [sr, sf, uu, vv] of [[-1, 1, u0, v1], [1, 1, u1, v1], [-1, -1, u0, v0], [1, -1, u1, v0]]){
+      pos.push(c0[0] + rx*hw*sr + fx*hh*sf, d.y, c0[1] + rz*hw*sr + fz*hh*sf); uv.push(uu, vv); col.push(cc.r, cc.g, cc.b); nrm.push(0, 1, 0);
+    }
+    idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+  }
+  if (!pos.length) return null;
+  const G = new T.BufferGeometry();
+  G.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); G.setAttribute('normal', new T.Float32BufferAttribute(nrm, 3));
+  G.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); G.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+  G.setIndex(idx); G.computeBoundingSphere();
+  const m = new T.Mesh(G, A.mat); m.castShadow = false; m.receiveShadow = true;
+  M49.stats.decals = L.length;
+  return m;
+}
+
+/* ---------------------------------------------------------------- the chunk builder (everything in the chunk of the hall's centre) */
+/* the forest's woods (forest14) plant by FR_NOTREE, not by the region's ground masks: the cleared boxes join it once its plan is done
+   (at load time FR_NOTREE is not declared yet). Every chunk build asks; the first after the plan adds them. */
+function m49NoTrees(){
+  if (M49.noTree) return;
+  try {
+    if (typeof FR === 'undefined' || !FR.planned || typeof FR_NOTREE === 'undefined') return;
+    for (const b of m49ClearRects()) FR_NOTREE.push(b);
+    M49.noTree = true;
+  } catch(e){}
+}
+function m49ClearRects(){
+  const H = M49.H, out = [];
+  const box = (u0, v0, u1, v1)=>{ const a = m49W(H, u0, v0), b = m49W(H, u1, v1); out.push([Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])]); };
+  box(-M49_HW - 14, -M49_HD - 14, M49_HW + 14, M49_HD + 14);       // the hall + a ring
+  box(-M49_HW - 46, -24, -M49_HW, 16);                                // the way in: the main door, the sign arch, the fast-travel spot
+  box(-106, M49_HD, -76, M49_HD + 26);                                // the south door's apron
+  return out;
+}
+function* m49Gen(ch){
+  const H = M49.H;
+  if (!H || ch.i !== H.ci || ch.j !== H.cj) return;
+  m49NoTrees();
+  if (!H.P) yield* m49PlanGen(H);
+  if (!H.P) return;
+  const t0 = performance.now();
+  let tl = performance.now(), maxStep = 0, ph = 'pieces', maxPh = '';
+  const step = ()=>{ const d = performance.now() - tl; if (d > maxStep){ maxStep = d; maxPh = ph; } };
+  M49.built = false; M49.ch = ch; H.roofMeshes = null;
+  let k = 0;
+  for (const p0 of H.P){
+    const p = Object.assign({}, p0); if (p.holes) p.holes = p0.holes.map(h=> Object.assign({}, h));
+    const n0 = ch.group.children.length;
+    m49Try('piece', ()=> ch.addPiece(p));
+    if (p.wall || p.found || p.fill) for (let i = n0; i < ch.group.children.length; i++) ch.group.children[i].castShadow = false;   // a bright hall
+    if (++k % 4 === 0){ step(); yield; tl = performance.now(); }
+  }
+  M49.stats.pieces = k;
+  step(); yield; tl = performance.now(); ph = 'rails';
+  m49Try('rails', ()=> m49RailMeshes(H, ch));
+  { const dm = m49Try('decals', ()=> m49Decals(H)); if (dm) ch.addMesh(dm); }
+  step(); yield; tl = performance.now(); ph = 'props';
+  // props: three soups (cloth / always glowing / night windows), built in slices
+  const S = m49Soup(), G = m49Soup(256), Wn = m49Soup(512), GT = m49QSoup(4096), lamps = m49Lamps(H);
+  m49LampHousings(H, S, lamps);
+  let ok = true;
+  try { const it = m49PropsGen(H, S, G, Wn, GT); while (true){ tl = performance.now(); const st = it.next(); step(); if (st.done) break; yield; } }
+  catch(e){ ok = false; M49.err.push('props: ' + (e && e.message || e)); try { console.error('[mega49] props', e); } catch(e2){} }
+  if (ok){
+    ph = 'soup';
+    const gm = (typeof w47Mat === 'function') ? w47Mat() : PK_MAT.cloth, wm = (typeof W2M !== 'undefined' && W2M.glow) ? W2M.glow : PK_MAT.cloth;
+    for (const [So, mat, sh, nm] of [[S, m49PaintMat(), true, false], [G, gm, false, true], [GT, gm, false, true], [Wn, wm, false, true]]){
+      m49Seal(So);
+      for (const P of So.parts){ if (!P.n) continue; tl = performance.now(); const m = So.quad ? m49QPartMesh(P, mat) : m49PartMesh(P, mat, sh); if (nm) m.userData.noMerge = true; ch.addMesh(m); step(); yield; }
+      So.parts.length = 0; So.cur = null;
+    }
+  }
+  // the roof, apart (it hides while the camera is above the walls inside the footprint)
+  tl = performance.now(); ph = 'roof';
+  const Rs = m49Soup(1200);
+  const roofOk = m49Try('roof', ()=>{ m49RoofGen(H, Rs, lamps); return true; });
+  step(); yield; tl = performance.now(); ph = 'roof mesh';
+  if (roofOk){
+    H.roofMeshes = m49SoupMeshes(Rs, m49PaintMat(), false);
+    for (const m of H.roofMeshes){ m.userData.noMerge = true; m.userData.m49Roof = 1; ch.addMesh(m); }
+  }
+  step();
+  M49.stats.meshes = ch.group.children.length;
+  M49.stats.buildMs = +(performance.now() - t0).toFixed(1); M49.stats.maxStep = +maxStep.toFixed(2); M49.stats.maxPhase = maxPh;
+  M49.built = true; M49.stats.builds++; H.built = performance.now();
+  m49RailsSync();
+}
+function m49Unload(ch){
+  if (ch !== M49.ch) return;
+  M49.built = false; M49.ch = null; if (M49.H) M49.H.roofMeshes = null;
+  m49RailsSync();
+}
+/* the street plaza's rails live in RAILS only while the hall's chunk is live (a chunk dropped mid-build never calls the unloader) */
+function m49RailsSync(){
+  if (typeof RAILS === 'undefined') return;
+  const ch = M49.ch;
+  if (ch && ch.state === 'dead'){ M49.ch = null; M49.built = false; if (M49.H) M49.H.roofMeshes = null; }
+  const live = !!(M49.ch && M49.built);
+  if (live === M49.railsIn) return;
+  if (live) for (const r of M49.rails) RAILS.push(r);
+  else for (const r of M49.rails){ const i = RAILS.indexOf(r); if (i >= 0) RAILS.splice(i, 1); }
+  M49.railsIn = live;
+}
+
+/* ---------------------------------------------------------------- runtime */
+function mega49InHall(x, y, z){
+  const H = M49.H; if (!H || H.F === undefined) return null;
+  return (Math.abs(x - H.x) < H.ax && Math.abs(z - H.z) < H.az && y < H.F + M49_WH + 11 && y > H.F - 3) ? H : null;
+}
+function m49Near(x, z){ const H = M49.H; return !!H && Math.abs(x - H.x) < H.ax + 30 && Math.abs(z - H.z) < H.az + 30; }
+const _m49Q = { z:null, a:0 };
+function m49ZoneAt(x, z){
+  const Z = M49.zones;
+  for (let i = 0; i < Z.length; i++){
+    const q = Z[i], ox = x - q.ox, oz = z - q.oz, a = ox*q.dx + oz*q.dz;
+    if (a < q.a0 || a > q.a2) continue;
+    if (Math.abs(ox*q.dz - oz*q.dx) > q.hw) continue;
+    _m49Q.z = q; _m49Q.a = a; return _m49Q;
+  }
+  return null;
+}
+function m49AssistOn(){ try { return !(typeof frAssistOn === 'function' && !frAssistOn()); } catch(e){ return true; } }
+/* the top-speed cap lifted for one physics sub-step (the meter asks more than a slow ride's top speed on the take-off) */
+const _m49Lift = { V:null, top:0, eTop:undefined, B:null, bTop:0, bTop0:0, bE:undefined, bE0:undefined };
+function m49Lift(need){
+  const V = typeof VEH !== 'undefined' ? VEH : null; if (!V) return null;
+  const eOn = typeof DRIVE !== 'undefined' && DRIVE.electric && DRIVE.battery > 0.005;
+  const cur = eOn ? (V.eTop || (typeof EBIKE !== 'undefined' ? EBIKE.top : V.top)) : V.top;
+  if (!(need > cur - 0.2)) return null;
+  const L = _m49Lift, B = V._hb || null;
+  L.V = V; L.top = V.top; L.eTop = V.eTop; L.B = B;
+  if (B){ L.bTop = B.top; L.bTop0 = B.top0; L.bE = B.eTop; L.bE0 = B.eTop0;
+    B.top = Math.max(B.top || 0, need); B.top0 = Math.max(B.top0 || 0, need);
+    if (eOn){ B.eTop = Math.max(B.eTop || 0, need); B.eTop0 = Math.max(B.eTop0 || 0, need); } }
+  V.top = Math.max(V.top, need);
+  if (eOn) V.eTop = Math.max(V.eTop || 0, need);
+  M49.stats.lifted++;
+  return L;
+}
+function m49LiftRestore(L){
+  const V = L.V; if (!V) return;
+  V.top = L.top; V.eTop = L.eTop;
+  const B = L.B; if (B){ B.top = L.bTop; B.top0 = L.bTop0; B.eTop = L.bE; B.eTop0 = L.bE0; }
+  L.V = null; L.B = null;
+}
+/* per physics sub-step (wraps updateRide): meter the run-in to the design speed (eased in, exact over the last 9 m), lift the cap */
+function m49PreStep(dt, In){
+  const q = m49ZoneAt(bike.pos.x, bike.pos.z); if (!q) return null;
+  const z = q.z, va = bike.vel.x*z.dx + bike.vel.z*z.dz;
+  if ((In && In.down) || !m49AssistOn()) return null;
+  // up a giant quarter / the wall ride / the vert walls: no more than the design speed less what the height took (energy: a motor
+  // can't keep pushing up the wall; a 35 m/s moto would otherwise go through the roof)
+  if (z.cap && q.a > z.a1){ const sp = bike.vel.length(), h = Math.max(0, bike.pos.y - M49.H.F), c = Math.sqrt(Math.max(9, z.cap*z.cap - 2*GRAV*h));
+    if (sp > c){ bike.vel.multiplyScalar(c/sp); M49.stats.capped = (M49.stats.capped || 0) + 1; } }
+  if (va < 1.2) return null;
+  if (q.a <= z.a1 && z.v > 0){
+    let k = z.v/va;
+    if (q.a < z.a1 - 9){ k = Math.min(k, 1 + 22*dt/va); k = Math.max(k, 1 - 30*dt/va); }
+    if (Math.abs(k - 1) > 1e-4){ bike.vel.multiplyScalar(k); M49.stats.metered++; }
+  }
+  return z.need > 0 ? m49Lift(z.need) : null;
+}
+/* the elevator: ride slowly onto the glowing pad -> the top of the start tower, facing the drop */
+function m49LiftTick(dt){
+  const H = M49.H, L = H && H.lift; if (!L || !M49.built) return;
+  if (typeof WALK !== 'undefined' && WALK && WALK.on) return;
+  if (M49.liftCool > 0){ M49.liftCool -= dt; return; }
+  const dx = bike.pos.x - L.x, dz = bike.pos.z - L.z;
+  if (dx*dx + dz*dz > L.r*L.r || bike.pos.y > L.y + 3) return;
+  if (Math.hypot(bike.vel.x, bike.vel.z) > 6) return;
+  resetBike({ x:L.to[0], z:L.to[1], yaw:L.yaw });
+  try { camInit = false; } catch(e){}
+  M49.liftCool = 2.5; M49.stats.lifts++;
+  m49Say('MEGA RAMP: 21 m up! Hold W to drop in');
+}
+function m49Say(t){ try { if (typeof toast === 'function') toast(t, true); } catch(e){} }
+/* the roof hides while the camera is above the walls inside the footprint; the rails follow the chunk */
+function m49Frame(){
+  const H = M49.H; if (!H) return;
+  m49RailsSync();
+  const L = H.roofMeshes; if (!L || !L.length || typeof camera === 'undefined') return;
+  const cp = camera.position;
+  const inside = Math.abs(cp.x - H.x) < H.ax + 0.7 && Math.abs(cp.z - H.z) < H.az + 0.7 && cp.y > H.F + M49_WH - 0.4;
+  if (L[0].visible === inside){ for (const m of L) m.visible = !inside; if (inside) M49.stats.roofHide++; }
+}
+function m49Feats(){ return M49.feats; }
+/* warm47: the hall as its lights see it (pendant clusters 16.5 m up: a longer reach, bigger diffusers) */
+function mega49W47Def(){
+  const H = M49.H; if (!H || H.F === undefined) return null;
+  let d = M49.w47; if (d && d.F === H.F) return d;
+  d = M49.w47 = { id:'mega49', kind:'mega49', H, F:H.F, lamps:m49Lamps(H), rot:H.th, P:(u, v)=> m49W(H, u, v), uLen:84, vs:[-30, 0, 30], sy:H.F + 28.5, sag:1.2,
+    range:33, inten:6.4, cone:0.3, fixW:5.6, fixD:2.2, inside:(x, y, z)=> !!mega49InHall(x, y, z) };
+  return d;
+}
+
+/* ---------------------------------------------------------------- registration (load time, Dusk City only) */
+function m49Register(){
+  if (M49.on || typeof RG === 'undefined' || !RG.on || typeof streamAddBuilder !== 'function' || typeof isl33Rnd !== 'function') return;
+  M49.on = true;
+  const th = 0, cx = 2780, cz = 2780;
+  M49.H = { id:'mega', name:'Mega Dome', x:cx, z:cz, th, c:Math.cos(th), s:Math.sin(th), ax:M49_HW + 0.3, az:M49_HD + 0.3, ci:Math.floor(cx/RG.chunk), cj:Math.floor(cz/RG.chunk), P:null };
+  const H = M49.H;
+  // fast travel (outside the main door on open ground, facing in) + the big sign arch over the way in
+  m49Try('travel', ()=>{ const q = m49W(H, -M49_HW - 24, -4);
+    M49.travel = { id:'mega49-dome', name:'Indoor Bike Park: Mega Dome', sub:'Dusk Greenbelt · mega ramp · giant bowl · vert · foam pits · dirt line · street', kind:'indoor', x:q[0], z:q[1], yaw:Math.PI/2 + th };
+    regionFastTravelAdd(M49.travel); });
+  m49Try('sign', ()=>{ if (typeof regionAddSign !== 'function') return; const q = m49W(H, -M49_HW - 15, -4);
+    regionAddSign({ id:'mega49-arch', x:q[0], z:q[1], yaw:-Math.PI/2 + th, style:'brown', w:15, h:3.2, clear:5.6, title:'MEGA INDOOR BIKE PARK', lines:['MEGA DOME · mega ramp · giant bowl · foam pits'] }); });
+  m49Try('far', ()=>{
+    if (typeof regionAddFarBoxes === 'function') regionAddFarBoxes([{ x:H.x, z:H.z, w:H.ax, d:H.az, h:M49_WH + 0.6, c:[0.25, 0.42, 0.7] },
+      { x:H.x, z:H.z, w:H.ax, d:40, h:M49_WH + 6, c:[0.74, 0.77, 0.8] }, { x:H.x, z:H.z, w:H.ax, d:20, h:M49_WH + 10, c:[0.78, 0.8, 0.83] }]);
+    if (typeof regionAddFarLights === 'function'){ const L = []; for (const [u, v] of [[-M49_HW, -M49_HD], [M49_HW, -M49_HD], [-M49_HW, M49_HD], [M49_HW, M49_HD], [-M49_HW - 2, -4], [0, -M49_HD - 1], [0, M49_HD + 1]]){ const q = m49W(H, u, v); L.push({ x:q[0], z:q[1], c:0, s:1.5 }); } regionAddFarLights(L); }
+  });
+  m49Try('mask', ()=>{ if (typeof regionAddGroundMask !== 'function') return; const R0 = m49ClearRects(), BB = [R0[0][0] - 50, R0[0][1] - 50, R0[0][2] + 50, R0[0][3] + 50];
+    regionAddGroundMask((ch, x, z)=>{ if (x < BB[0] || x > BB[2] || z < BB[1] || z > BB[3]) return false; for (const r of R0) if (x > r[0] && x < r[2] && z > r[1] && z < r[3]) return true; return false; }); });
+  streamAddBuilder('mega49', m49Gen, { order:15 });
+  if (typeof streamAddUnloader === 'function') streamAddUnloader('mega49', m49Unload);
+  // the physics: only near the hall (one box test a frame far away)
+  const sp = stepPhysics;
+  stepPhysics = function(dt){
+    try { M49.near = m49Near(bike.pos.x, bike.pos.z); } catch(e){ M49.near = false; }
+    const r = sp.apply(this, arguments);
+    try { if (M49.near && bike.state === 'ride') m49LiftTick(dt || 1/60); } catch(e){}
+    return r;
+  };
+  const ur = updateRide;
+  updateRide = function(dt, In){
+    if (!M49.near || bike.state !== 'ride') return ur.apply(this, arguments);
+    let L = null;
+    try { L = m49PreStep(dt, In); } catch(e){ L = null; }
+    try { return ur.apply(this, arguments); } finally { if (L) m49LiftRestore(L); }
+  };
+  if (typeof addFrameHook === 'function') addFrameHook(()=>{ try { m49Frame(); } catch(e){} });
+}
+m49Register();
 
 /*@@LATE@@*/
 /* =========================================================================
