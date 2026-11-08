@@ -3844,6 +3844,10 @@ html body #sheet.tm .tmFoot kbd{ min-width:18px; height:18px; font-size:9px; }
 .wsBtn.go{ background:#2bd36a; color:#0c1a10; border-color:#2bd36a; }
 .wsBtn.bad{ background:#3a1418; border-color:#6b2027; color:#ffb0b6; }
 .wsBtn:disabled{ opacity:.45; cursor:default; }
+/* ws49: "#ws48 button{ color:inherit }" outranked the button colours below (white text on amber, the star never lit up): restated here */
+#ws48 .wsTabs button.sel, #ws48 .wsBtn.pri{ color:#141414; } #ws48 .wsBtn.go{ color:#0c1a10; } #ws48 .wsBtn.bad{ color:#ffb0b6; }
+#ws48 .wsChip.sel, #ws48 .wsFilt .cat.sel, #ws48 .wsRiderT.on, #ws48 .wsCard .star.on{ color:#ffc46b; } #ws48 .wsChip[style*="--rc"].sel{ color:var(--rc); }
+#ws48 .wsViews button, #ws48 .wsFilt .cat{ color:#cfd6df; } #ws48 .wsCard .star{ color:#8b939e; }
 .wsBtn:active:not(:disabled){ transform:scale(.96); }
 .wsBtn.armed, .wsBtn.s13Armed{ background:#ff4f7b !important; border-color:#ff4f7b !important; color:#fff !important; animation:wsPulse .9s ease-in-out infinite; }
 .wsBtn .s13BtnTx, .wsBtn .s13BtnP{ display:inline; }
@@ -4100,6 +4104,88 @@ html.touchUI #ws48 .wsHint{ display:none; }
 .wt48Card .r45Seg button:disabled{ opacity:.4; cursor:default; }
 .wt48Tip{ margin:12px 4px 0 !important; font-size:12px !important; }
 html.touchUI .wt48Tip{ display:none; }
+/* WS49 -- the Workshop's online builds (Release 15.47): the gallery tab, the heart, the editor's publish buttons. Accent: online cyan #8fd3ff. */
+.wsPane[data-pane="online"]{ grid-template-rows:auto 1fr; }
+.ws49Bar{ row-gap:10px; }
+.ws49Bar .wsBarTx b{ display:flex; align-items:center; gap:8px; }
+.ws49Bar .wsBarTx span b{ display:inline; font:inherit; font-weight:700; letter-spacing:0; text-transform:none; color:#cfe9ff; }
+.ws49Bar .wsBtn.spin svg{ animation:ws49Spin .6s ease-out; }
+@keyframes ws49Spin{ to{ transform:rotate(360deg); } }
+.ws49Who{ display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:#9aa6b6; background:#121a24; border:1px solid #233142; border-radius:999px; padding:4px 12px 4px 4px; white-space:nowrap; }
+.ws49Who b{ color:#eef1f5; }
+.ws49Av{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; flex:none; font:800 12px/1 var(--dl-cond, "Arial Narrow", sans-serif); font-style:normal; color:#fff; text-transform:uppercase; box-shadow:0 0 0 1px rgba(255,255,255,.12); }
+.ws49Note{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#8d98a8; }
+.ws49Filt{ flex:1 1 100%; display:flex; gap:10px 12px; align-items:center; flex-wrap:wrap; min-width:0; }
+.ws49Seg{ display:inline-flex; flex:none; gap:2px; padding:3px; background:#0f141b; border:1px solid #2a3442; border-radius:999px; }
+#ws48 .ws49Seg button{ border:0; background:none; border-radius:999px; padding:8px 15px; font:800 14px/1 var(--dl-cond, "Arial Narrow", sans-serif) !important; letter-spacing:.06em; text-transform:uppercase; color:#b6c0cc; white-space:nowrap; transition:background .12s, color .12s; }
+#ws48 .ws49Seg button:hover{ color:#eef1f5; }
+#ws48 .ws49Seg button.sel{ background:#8fd3ff; color:#0b1722; }
+.ws49Seg button:active{ transform:scale(.96); }
+.ws49Kinds{ min-width:0; }
+.ws49Head{ margin:14px 16px -4px; font-size:13px; color:#9aa6b6; }
+.ws49Head b{ color:#8fd3ff; }
+/* ---- cards ---- */
+.ws49Card h4{ padding-right:0; }
+.ws49Card .th img{ transition:opacity .35s; }
+.ws49By{ margin:0 12px; display:flex; align-items:center; gap:6px; font-size:12.5px; color:#9aa6b6; min-width:0; white-space:nowrap; }
+.ws49By b{ color:#8fd3ff; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.ws49By span{ color:#6f7b8b; }
+.ws49Card.mine{ border-color:#1f4460; }
+#ws48 .ws49Like{ position:absolute; top:8px; right:8px; z-index:1; display:inline-flex; align-items:center; gap:5px; min-height:34px; padding:6px 12px 6px 9px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.14); background:rgba(10,13,18,.66); color:#eef1f5; font:800 15px/1 var(--dl-cond, "Arial Narrow", sans-serif) !important; letter-spacing:.02em;
+  font-variant-numeric:tabular-nums; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); transition:background .12s, border-color .12s, color .12s; }
+.ws49Like svg{ width:18px; height:18px; vertical-align:0 !important; }
+.ws49Like svg path{ fill:none; stroke:currentColor; stroke-width:2; stroke-linejoin:round; }
+.ws49Like:hover{ border-color:rgba(255,93,138,.6); }
+#ws48 .ws49Like.on{ color:#ff5d8a; border-color:rgba(255,93,138,.6); background:rgba(58,12,28,.78); }
+.ws49Like.on svg path{ fill:currentColor; }
+#ws48 .ws49Like.own{ cursor:default; color:#cfd6df; }
+.ws49Like.own:hover{ border-color:rgba(255,255,255,.14); }
+.ws49Like:active:not(.own){ transform:scale(.94); }
+.ws49Like.pop svg{ animation:ws49Pop .45s ease-out; }
+@keyframes ws49Pop{ 0%{ transform:scale(1); } 35%{ transform:scale(1.5); } 100%{ transform:scale(1); } }
+.wsBadge.ws49Pub{ background:#12304a; color:#8fd3ff; display:inline-flex; align-items:center; gap:5px; }
+.wsBadge.ws49Pub .ws49Av{ width:16px; height:16px; font-size:10px; }
+#ws48 .wsBtn.ws49Go{ background:#2f8cff; border-color:#2f8cff; color:#fff; }
+.wsBtn.ws49Go:hover:not(:disabled){ border-color:#8fd3ff; }
+/* loading: skeleton cards */
+.ws49Skel{ pointer-events:none; }
+.ws49Skel .th{ cursor:default; }
+.ws49Skel i{ display:block; height:14px; margin:6px 12px 0; border-radius:6px; background:#1d2633; }
+.ws49Skel i + i{ width:55%; }
+.ws49Skel i.s{ width:35%; height:26px; margin-top:10px; }
+.ws49Skel .th, .ws49Skel i{ animation:ws49Glow 1.2s ease-in-out infinite; }
+@keyframes ws49Glow{ 50%{ opacity:.45; } }
+.ws49Empty svg{ display:block; margin:0 auto 12px; opacity:.9; }
+#ws48 .ws49Empty .row{ justify-content:center; }
+/* the 'full' dialog */
+.ws49Rows{ display:flex; flex-direction:column; gap:6px; max-height:min(330px, 46vh); overflow:auto; }
+.ws49Row{ display:flex; gap:10px; align-items:center; border:1px solid #263040; background:#141a22; border-radius:12px; padding:8px 10px; }
+.ws49Row .dot{ width:30px; height:30px; border-radius:9px; flex:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+.ws49Row .tx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.ws49Row .tx b{ font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ws49Row .tx span{ font-size:11.5px; color:#93a0b1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ws49Wait{ padding:18px 6px; text-align:center; color:#93a0b1; font-size:13px; }
+/* the editor's top bar: the buttons sit with the others */
+.ws49Ed{ display:contents; }
+.wsTop .ws49Note{ padding:0 4px; }
+/* narrow screens: the ride-type chips scroll sideways instead of wrapping into rows */
+@media (max-width: 980px){
+  .ws49Kinds{ flex:1 1 100%; flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .ws49Kinds::-webkit-scrollbar{ display:none; }
+  .ws49Kinds .wsChip{ white-space:nowrap; flex:none; }
+  .ws49Head{ margin:12px 10px -2px; }
+  #ws48 .ws49Card .row.acts{ gap:5px; }
+  #ws48 .ws49Card .row.acts .wsBtn{ padding:8px 9px; min-height:36px; font-size:12.5px !important; letter-spacing:.04em; }
+}
+@media (max-width: 560px){
+  .ws49Bar .wsBarTx span{ display:none; }
+  #ws48 .ws49Seg button{ padding:7px 11px; font-size:13px !important; }
+  .ws49Who{ display:none; }
+}
+html.touchUI #ws48 .ws49Like{ min-height:40px; padding:8px 14px 8px 11px; }
+html.touchUI #ws48 .ws49Kinds .wsChip{ padding:8px 13px; font-size:13px; }
+@media (prefers-reduced-motion: reduce){ .ws49Like.pop svg, .ws49Skel .th, .ws49Skel i, .ws49Bar .wsBtn.spin svg{ animation:none; } #ws48 .ws49Like, #ws48 .ws49Seg button{ transition:none; } }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -16943,6 +17029,13 @@ function makeTargets(){
   });
   rtScene.depthTexture = new T.DepthTexture(W, H);
   rtScene.depthTexture.type = T.UnsignedIntType;
+  // perf50: WebGL2 -- depth + stencil in one texture (DEPTH24_STENCIL8: the same 24-bit depth the AO reads): the far land marks its
+  // pixels in the stencil so the sky can be drawn after the city with early-z (mods/perf50.js); ?p50=0 / ?p50s=0: depth only, as before
+  if (renderer.capabilities.isWebGL2 && !(typeof location !== 'undefined' && /[?&]p50s?=0\b/.test(location.search || ''))){
+    rtScene.depthTexture.format = T.DepthStencilFormat;
+    rtScene.depthTexture.type = T.UnsignedInt248Type;
+    rtScene.stencilBuffer = true;
+  }
 
   const opt = { minFilter:T.LinearFilter, magFilter:T.LinearFilter, format:T.RGBAFormat,
                 type:hdr, encoding:T.LinearEncoding, depthBuffer:false, stencilBuffer:false };
@@ -30253,7 +30346,10 @@ function fbBX15(P){
   const rz = -P.cs, fz = P.fc, M = BM.frame, N = BM.bars, AL = BK.alloy, A = FX.acc, CR = BK.chrome;
   const FMt = P.chrome ? CR : (P.steel ? VM.steel : M), RMt = P.chrome ? CR : M;
   const f = new T.Group(), fr = new T.Group();
-  const G = bxGeoFront({ fz, Rf, ha:P.ha || 74.5, fl:P.fl || 0.315, off:P.off || 0.045, ht:P.ht || 0.12 });
+  // Release 15.47 (sus51): a suspension fork (P.susFork) is longer and a touch slacker -- the head tube rises with it and the bars drop
+  // by about the same, so the hands stay where they were; a rear shock (P.rearShock) puts the seat stays on a rocker (not on looptails)
+  const SUS = !!P.susFork, RSH = !!P.rearShock && !P.loop;
+  const G = bxGeoFront({ fz, Rf, ha:(P.ha || 74.5) - (SUS ? (P.susHa === undefined ? 1.5 : P.susHa) : 0), fl:(P.fl || 0.315) + (SUS ? (P.susExt || 0.085) : 0), off:P.off || 0.045, ht:P.ht || 0.12 });
   const hz = (G.H0[0] + G.H1[0])/2, B3 = p=> [0, p[1], p[0]];
   const BB = [0, bbY], sa = (P.sa || 71)*Math.PI/180, sdir = [-Math.cos(sa), Math.sin(sa)], stl = P.st || 0.40;
   const ST = bxUp(BB, sdir, stl);
@@ -30301,7 +30397,24 @@ function fbBX15(P){
     f.add(bkMesh(bxTriG(t0, t1, t2, 0.011, 0), FMt));
   }
   // ---- rear triangle: chain stays, seat stays (or a wishbone), dropouts, bridge
-  const SSt = P.loop ? TTx : bxUp(BB, sdir, stl*0.95), csR = 0.0168*sk, ssR = 0.0134*sk;
+  let SSt = P.loop ? TTx : bxUp(BB, sdir, stl*0.95);
+  const csR = 0.0168*sk, ssR = 0.0134*sk;
+  // sus51 rear shock: a coil shock lies under the top tube; a rocker on the seat tube carries the seat stays (SSt moves to its back end)
+  let RK = null;
+  if (RSH){
+    const eT = [TTf[0] - TTr[0], TTf[1] - TTr[1]], lT = Math.hypot(eT[0], eT[1]); eT[0] /= lT; eT[1] /= lT;
+    const nD = [eT[1], -eT[0]], big = 0.74, rS = 0.0262*big, oL = ttR + rS + 0.009;
+    const Lp = s=> [TTr[0] + eT[0]*s + nD[0]*oL, TTr[1] + eT[1]*s + nD[1]*oL];
+    const stZ = y=> BB[0] + sdir[0]*(y - BB[1])/sdir[1];                          // the seat tube's z at height y
+    let s0 = 0; for (let i = 0; i < 120; i++){ const q = Lp(s0); if (q[0] - stZ(q[1]) >= 0.034) break; s0 += 0.002; }
+    const sl = Math.max(0.12, Math.min(0.17, lT - s0 - 0.11));                       // eye to eye, kept clear of the head tube
+    const Af = Lp(s0), Bf = Lp(s0 + sl);                                             // shaft eye (rocker) -> body eye (under the top tube)
+    const u0 = (Af[1] - 0.012 - BB[1])/sdir[1], P0 = [BB[0] + sdir[0]*u0, BB[1] + sdir[1]*u0];
+    const Rb = [P0[0] - 0.052, P0[1] + 0.012];
+    { const dz = Rb[0] - rz, dy = Rb[1] - Rr, dd = Math.hypot(dz, dy), need = Rr + 0.034; if (dd < need) Rb[1] += need - dd; }   // stays clear of the tyre
+    RK = { P0, Rb, Af, Bf, nD, oL, big, x:stR + 0.0048 };
+    SSt = Rb;
+  }
   [-1, 1].forEach(sd=>{
     bxT(f, BB, RA, csR, RMt, sd*0.040, sd*0.060, 1.0);
     if (P.loop){ const q = bxL2(TTx, RA, 0.22); f.add(bkTube([[sd*0.008, TTr[1] + 0.002, TTr[0] + 0.004], [sd*0.022, TTx[1] + 0.010, TTx[0] + 0.012], [sd*0.034, q[1], q[0]], [sd*0.060, RA[1], RA[0]]], ssR*1.25, RMt, 24)); }
@@ -30314,6 +30427,24 @@ function fbBX15(P){
   if (P.tri){                                                            // GT triple triangle: a third little triangle in the rear
     const m1 = bxUp(BB, sdir, stl*0.50), m2 = bxL2(SSt, RA, 0.50), m3 = bxL2(BB, RA, 0.50);
     [-1, 1].forEach(sd=>{ bxT(f, m1, m2, 0.012, FMt, sd*0.034, sd*0.050); bxT(f, m2, m3, 0.011, FMt, sd*0.050, sd*0.052); });
+  }
+  // ---- sus51 rear suspension: rocker plates either side of the seat tube, the coil shock under the top tube on a tab, a main pivot
+  //      on the chain stays behind the BB (the stays' bolts), pivot bolts through every eye
+  if (RK){
+    const B = new Map(), coil = (typeof VCOIL !== 'undefined' && VCOIL[P.coil || 'acc']) || FX.acc, rockM = bxMat(P.rockMat, AL);
+    const hull = m12hull([[RK.P0[0], RK.P0[1], 0.0158], [RK.Rb[0], RK.Rb[1], 0.0128], [RK.Af[0], RK.Af[1], 0.0138]], 6);
+    [-1, 1].forEach(sd=> f.add(bkMesh(m12plateGeo(hull, sd*RK.x, 0.0075, [], 0.0018), rockM)));
+    [[RK.P0, 0.0085], [RK.Rb, 0.0068], [RK.Af, 0.0068]].forEach(([p, r])=> G1.chrome.push(bxDiscG(r, 2*RK.x + 0.020, 0, 12).translate(0, p[1], p[0])));
+    pd15Shock(B, RK.Af, RK.Bf, { coil, big:RK.big, x:0, colMat:bxMat(P.coilCol, N) });
+    pd15Flush(B, f);
+    // the body eye's mount: a tab pair from the top tube's underside down to the eye
+    const up = [-RK.nD[0], -RK.nD[1]], T0 = [RK.Bf[0] + up[0]*(RK.oL - ttR*0.35), RK.Bf[1] + up[1]*(RK.oL - ttR*0.35)];
+    const tab = m12hull([[RK.Bf[0], RK.Bf[1], 0.0125], [T0[0] - 0.012, T0[1], 0.010], [T0[0] + 0.012, T0[1], 0.010]], 6);
+    [-1, 1].forEach(sd=> f.add(bkMesh(m12plateGeo(tab, sd*0.0185, 0.006, [], 0.0015), FMt)));
+    // main pivot on the chain stays, just behind the BB
+    const pv = bxL2(BB, RA, 0.20), px = 0.044 + csR*0.92 + 0.0035;
+    [-1, 1].forEach(sd=> G1.alloy.push(bxDiscG(0.0135, 0.007, sd*px, 16).translate(0, pv[1], pv[0])));
+    G1.chrome.push(bxDiscG(0.0062, 2*px + 0.010, 0, 10).translate(0, pv[1], pv[0]));
   }
   // ---- weld beads where the tubes meet (painted with the frame)
   { const wl = [], wb = 0.0015;
@@ -30356,10 +30487,11 @@ function fbBX15(P){
   if (peg.rl) putPeg(G1, 1, 0.068, Rr, rz); else G1.chrome.push(...bxNutG(1, Rr, rz));
   if (peg.rr || P.hg === 'all'){ G1.hg.push(bxDiscG(cog + 0.012, 0.012, -0.079, 22).translate(0, Rr, rz)); G1.hg.push(bxDiscG(cog + 0.006, 0.020, -0.072, 18).translate(0, Rr, rz)); }
   if (peg.rr) putPeg(G1, -1, -0.085, Rr, rz); else G1.chrome.push(...bxNutG(-1, Rr, rz).map(x=> x.translate(-0.012, 0, 0)));
-  if (hgOn('fl')) G2.hg.push(...bxHubGuardG(1, Rf, fz, 0.040, 0.044));
-  if (hgOn('fr')) G2.hg.push(...bxHubGuardG(-1, Rf, fz, 0.040, -0.044));
-  if (peg.fl) putPeg(G2, 1, 0.058, Rf, fz); else G2.chrome.push(...bxNutG(1, Rf, fz).map(x=> x.translate(-0.008, 0, 0)));
-  if (peg.fr) putPeg(G2, -1, -0.058, Rf, fz); else G2.chrome.push(...bxNutG(-1, Rf, fz).map(x=> x.translate(0.008, 0, 0)));
+  // (a suspension fork has its own axle feet + thru-axle: no front hub guards or nuts, front pegs sit outside its feet)
+  if (!SUS && hgOn('fl')) G2.hg.push(...bxHubGuardG(1, Rf, fz, 0.040, 0.044));
+  if (!SUS && hgOn('fr')) G2.hg.push(...bxHubGuardG(-1, Rf, fz, 0.040, -0.044));
+  if (peg.fl) putPeg(G2, 1, SUS ? 0.086 : 0.058, Rf, fz); else if (!SUS) G2.chrome.push(...bxNutG(1, Rf, fz).map(x=> x.translate(-0.008, 0, 0)));
+  if (peg.fr) putPeg(G2, -1, SUS ? -0.086 : -0.058, Rf, fz); else if (!SUS) G2.chrome.push(...bxNutG(-1, Rf, fz).map(x=> x.translate(0.008, 0, 0)));
   // ---- drivetrain: 3-piece cranks + sprocket (+ guard), half-link chain
   const cr = P.cr || 0.062, crL = P.crankL || 0.17;
   const crank = bx15Cranks({ y:bbY, cr, L:crL, rot:-Math.PI/2, arms:P.crankStyle || (P.chrome || P.bars === 'old' ? 'old' : 'tube'), armMat:bxMat(P.cranks, AL), pedalMat:bxMat(P.pedMat, N),
@@ -30370,15 +30502,27 @@ function fbBX15(P){
   // ---- front end (Release 15.5, forks17 kit): round tapered legs, a forged crown with leg caps, flat dropouts carrying the axle ahead of
   //      the legs (the offset split between the crown and the dropouts), weld beads; the steerer, top cap + bolt
   const A2 = [fz, Rf], forkMat = P.fork === 'frame' ? M : bxMat(P.fork, FX.fork);
-  const FK = fk17Bmx(G, { r:P.forkR || 0.0185, taper:!!P.taper, x:0.052 });
-  fr.add(bkMesh(bkMerge(FK.fork), forkMat));
-  FK.cap.forEach(g=> G2.black.push(g)); FK.chrome.forEach(g=> G2.chrome.push(g));
+  let FK, SF = null;
+  if (SUS){
+    // sus51: a short-travel single-crown suspension fork (forks19 kit) on the 20" wheel: lowers in the fork colour, coated stanchions,
+    // a black crown; the BMX headset cups + steerer stay this builder's; an optional front disc (P.fdisc) on the left lower
+    const B = new Map(), span = P.susSpan || 0.060;
+    SF = fk19Sus(B, G, { kind:'sus', fam:P.forkFam || 'xc', span, stanR:P.stanR || 0.0158, lowK:1.30, lowMat:forkMat, stanMat:fk17Stan(P.stan),
+      crownMat:bxMat(P.crownMat, N), archMat:forkMat, travel:(P.susExt || 0.085)*0.95, word:P.forkWord === false ? '' : (P.forkWord || 'SUS 80'),
+      steerer:false, cups:false, cal:!!P.fdisc, rotor:0.074, rotorX:0.046, tyreW:Math.min(span - 0.024, (P.tf || P.tr || 0.030) + 0.006) });
+    pd15Flush(B, fr);
+    FK = { brakeAx:[fz, Rf] };
+  } else {
+    FK = fk17Bmx(G, { r:P.forkR || 0.0185, taper:!!P.taper, x:0.052 });
+    fr.add(bkMesh(bkMerge(FK.fork), forkMat));
+    FK.cap.forEach(g=> G2.black.push(g)); FK.chrome.forEach(g=> G2.chrome.push(g));
+  }
   const S = bxUp(G.H1, G.d, 0.045);
   fr.add(limb(0, G.H0[1], G.H0[0], 0, S[1] + G.d[1]*0.004, S[0] + G.d[0]*0.004, 0.0145, N));                   // steerer
   G2.chrome.push(bxSegZY(bxUp(S, G.d, 0.000), bxUp(S, G.d, 0.008), 0.040));                                       // top cap
   G2.black.push(bxCylG([0, bxUp(S, G.d, 0.0075)[1], bxUp(S, G.d, 0.0075)[0]], [0, bxUp(S, G.d, 0.0125)[1], bxUp(S, G.d, 0.0125)[0]], 0.0068, 6));   // its bolt
   // ---- stem: front-load (4-bolt face plate) or top-load (bars on top, cap with 4 vertical bolts)
-  const hw = P.hw || 0.38, rise = P.rise || 0.19, back = P.back === undefined ? 0.055 : P.back, bk = P.bars || 'bmx';
+  const hw = P.hw || 0.38, rise = Math.max(0.06, (P.rise || 0.19) - (SUS ? (P.susDrop === undefined ? 0.07 : P.susDrop) : 0)), back = P.back === undefined ? 0.055 : P.back, bk = P.bars || 'bmx';
   const by = S[1] + 0.005, bz = S[0] + 0.01;                                                                      // (rider landmarks keep their old reference)
   const gx = hw - 0.06, gy = by + rise + 0.003, gz = bz - back - 0.001;
   const stemT = P.stem || ((bk === 'race' || bk === 'old' || bk === 'cruiser') ? 'top' : 'front');
@@ -30428,7 +30572,7 @@ function fbBX15(P){
     G2.alloy.push(bxTubeG([l0, l1, l2], 0.0058, 12, 6));                                                           // blade
     return l0;
   };
-  const hasRear = brk !== 'none', hasFront = !!P.fbrake;
+  const hasRear = brk !== 'none', hasFront = SUS ? !!(P.fdisc && SF && SF.hose) : !!P.fbrake;
   const cab = [];                                                                                                     // brake cable runs (black)
   const H1z = G.H1[0], H1y = G.H1[1];
   if (ribs.length) fr.add(bkMesh(bkMerge(ribs), FX.grip));
@@ -30443,7 +30587,10 @@ function fbBX15(P){
       cab.push(bxTubeG([l0, [-(gripIn - 0.045), gy - 0.045, l0[2] + 0.012], [-0.058, cy + 0.01, cz + 0.032], [-0.042, H1y + 0.016, H1z + 0.028], [-0.036, H1y - 0.030, H1z + 0.012]], 0.0024, 20, 5));
     }
   }
-  if (hasFront){
+  if (hasFront && SUS){                                                  // sus51: the disc hose down the back of the left leg to the caliper
+    const l0 = lever(1), h = SF.hose;
+    cab.push(bxTubeG([l0, [gripIn - 0.045, gy - 0.045, l0[2] + 0.012], [0.056, cy - 0.01, cz + 0.035], [h[2][0] + 0.004, h[2][1] + 0.05, h[2][2] - 0.01], h[2], h[1], h[0]], 0.0026, 28, 5));
+  } else if (hasFront){
     const l0 = lever(1);
     cab.push(bxTubeG([l0, [gripIn - 0.045, gy - 0.045, l0[2] + 0.012], [0.056, cy - 0.01, cz + 0.035], [0.042, G.C[1] + 0.03, G.C[0] + 0.045], [0.03, Rf + rbr + 0.06, fz + 0.02]], 0.0024, 20, 5));
   }
@@ -30470,7 +30617,8 @@ function fbBX15(P){
     f.add(bkMesh(bkMerge(fc), N));
   }
   // front brake on the fork: U-brake on the legs, or an 80s side-pull caliper through the crown
-  if (P.fbrake === 'u'){ const B = bxUBrakeG(FK.brakeAx, G.d, rbr, 0.052); addBrake(B, fr, G2); }
+  if (SUS){ /* (the fork's own disc, if any) */ }
+  else if (P.fbrake === 'u'){ const B = bxUBrakeG(FK.brakeAx, G.d, rbr, 0.052); addBrake(B, fr, G2); }
   else if (P.fbrake){
     const w = [G.C[0] + G.n[0]*0.02 - fz, G.C[1] - Rf], lw = Math.hypot(w[0], w[1]); w[0] /= lw; w[1] /= lw;
     const Pw = (lat, rad)=> [lat, Rf + w[1]*rad, fz + w[0]*rad];
@@ -37982,6 +38130,58 @@ const SCOOT47 = { ids:{}, rows:[] };
     if (has(r.id)) return;
     FLEET.splice(at < 0 ? FLEET.length : ++at, 0, r);
     SCOOT47.ids[r.id] = 1; SCOOT47.rows.push(r.id);
+    if (typeof COOL60 !== 'undefined' && COOL60 && COOL60.ids){ COOL60.ids[r.id] = 1; COOL60.price[r.id] = r.price; }     // a fixed price, outside the shop's ranking
+  });
+})();
+
+/* =========================================================================
+   SUS51 rows -- Release 15.47: "add bmx with suspension". Five suspension BMXs on the bx15 builder (mods/bmx15_build.js):
+     susFork    a short-travel single-crown suspension fork (forks19 kit): longer + a touch slacker than a rigid BMX fork, so the
+                head tube rises and the bars drop by the same (the hands stay put); coated stanchions, lowers in the fork colour,
+                a decal on the lowers (forkWord), optional front disc (fdisc) with its hose
+     rearShock  a coil shock under the top tube on a rocker that carries the seat stays, a main pivot behind the BB (coil = spring colour)
+   The physics side (more travel you can see, softer landings, a calmer ride on rough ground) is mods/ride51.js. Every other BMX can
+   get the same suspension as a part (Customise -> Parts -> Suspension, and the Workshop's Suspension slot).
+   Fixed prices outside the shop's ranking (cool60's list, like scoot47's rows), so no old price moves. Brands are the game's own
+   BMX brands (fleet_names15.js); the wordmark on the down tube is the brand. Right before the fleet core.
+   ========================================================================= */
+const SUS51 = { ids:{}, rows:[] };
+(function sus51Rows(){
+  const has = id=> FLEET.some(v=> v.id === id);
+  const K = 0x15171a, W = 0xf2f3f5;
+  const B20 = { R:0.262, tr:0.031, cs:0.375, fc:0.600, ha:74.5, fl:0.315, off:0.042, ht:0.120, sa:71, st:0.300, ttf:0.95, tube:0.0265, dtube:0.034,
+                hw:0.385, rise:0.215, back:0.055, cog:0.0186, cr:0.058, tread:'street', pl:0.070, pitch:-0.14, stem:'front', bars:'bmx', susFork:true };
+  const B24 = { R:0.312, tr:0.027, bbY:0.345, cs:0.435, fc:0.700, ha:73, fl:0.360, off:0.045, ht:0.140, sa:71.5, st:0.420, pl:0.120, tube:0.030, dtube:0.037, sk:1.1,
+                hw:0.40, rise:0.205, back:0.060, bars:'bmx', stem:'top', cr:0.080, cog:0.032, sw:0.05, sl:0.15, hipsY:1.02, lean:0.72, susFork:true };
+  const row = (id, no, brand, model, kind, cls, base, p, col, acc, liv, m, desc, price)=> ({ id, no, name:brand + ' ' + model, brand, model, cat:'bmx', kind, cls,
+    b:'bx15', p:Object.assign({}, base, { logo:brand.toUpperCase(), logoHex:p.logoHex === undefined ? acc : p.logoHex }, p), col, acc, liv, m, desc, price, sus51:true });
+  const rows = [
+    row('pogofs', 'X10', 'Gatedrop', 'Pogo FS', 'Full-suspension BMX', 'bmx', B20,
+      { rearShock:true, coil:'acc', stan:'gold', forkFam:'bulge', forkWord:'POGO 80', susExt:0.085, tread:'knobby', pegs:'none', brake:'u', hg:false, spk:5 },
+      0x1e5bd8, 0xffd21a, { fork:K, rim:K, grip:0xffd21a, seat:K, bars:K }, [0.98, 1.00, 0.99, 1.06],
+      'Full suspension on a BMX: an 80 mm air fork up front and a yellow coil shock under the top tube. Lands big drops like they were kerbs.', 2600),
+    row('shockwave', 'X11', 'Curbline', 'Shockwave', 'Front-suspension street BMX', 'bmx', B20,
+      { stan:'black', forkFam:'xc', forkWord:'SHOCK 70', susExt:0.075, pegs:'both', pegMat:'alloy', brake:'none', hg:'all', hgMat:'plas', spk:3 },
+      0x16181c, 0xff3b30, { fork:0xff3b30, rim:0x16181c, grip:0xff3b30, seat:0x16181c, bars:0x16181c }, [1.00, 1.01, 1.02, 1.03],
+      'Black street BMX with a red 70 mm suspension fork, four pegs and no brake. Soaks up stairs, still grinds everything.', 1600),
+    row('mudcat', 'X12', 'Ledgeworks', 'Mudcat', 'Suspension dirt BMX', 'bmx', B20,
+      { stan:'silver', forkFam:'ridge', forkWord:'MUD 90', susExt:0.095, fdisc:true, tread:'knobby', wall:'tan', pegs:'none', brake:'u', hg:false, logoHex:K, cs:0.390, spk:4 },
+      0xc75b1e, K, { fork:K, rim:K, grip:0x6e4527, seat:0x6e4527, bars:K }, [0.99, 1.00, 0.99, 1.08],
+      'Dirt jumper on 20-inch wheels: a 90 mm fork with a front disc brake, knobby gum-wall tyres and a longer back end. Made for the trails.', 2000),
+    row('hoverfs', 'X13', 'Concrete Saints', 'Hover FS', 'Full-suspension street BMX', 'bmx', B20,
+      { rearShock:true, coil:'acc', stan:'black', forkFam:'xc', forkWord:'HOVER', susExt:0.080, pegs:'rear', pegMat:'alloy', brake:'none', hg:'all', hgMat:'plas', spk:6 },
+      W, 0x7a3fe0, { fork:0x7a3fe0, rim:0x7a3fe0, grip:0x16181c, seat:0x16181c, bars:0x16181c }, [1.00, 1.00, 1.01, 1.05],
+      'White and purple full-suspension street BMX: purple fork, purple coil shock, two pegs, no brake. Floats down any set of stairs.', 2400),
+    row('bigpogo', 'X14', 'Gatedrop', 'Big Pogo 24 FS', '24" full-suspension cruiser', 'bmx29', B24,
+      { rearShock:true, coil:'red', stan:'gold', forkFam:'bulge', forkWord:'BIG 100', susExt:0.100, fdisc:true, tread:'knobby', pegs:'none', brake:'v', hg:false, logoHex:W, rimW:0.032, spk:5 },
+      0x18a36a, W, { fork:W, rim:K, grip:K, seat:K, bars:K }, [1.02, 1.05, 0.96, 1.00],
+      'The big one: 24-inch wheels, a 100 mm fork with a disc brake and a red coil shock. Fast, stable and almost impossible to bottom out.', 3000)
+  ];
+  let at = -1; FLEET.forEach((v, i)=>{ if (v.cat === 'bmx' && v.tab !== 'customs') at = i; });
+  rows.forEach(r=>{
+    if (has(r.id)) return;
+    FLEET.splice(at < 0 ? FLEET.length : ++at, 0, r);
+    SUS51.ids[r.id] = 1; SUS51.rows.push(r.id);
     if (typeof COOL60 !== 'undefined' && COOL60 && COOL60.ids){ COOL60.ids[r.id] = 1; COOL60.price[r.id] = r.price; }     // a fixed price, outside the shop's ranking
   });
 })();
@@ -57831,7 +58031,7 @@ void main(){
   // Release 15.34 ("the mountains need to look way better from a distance"), land only: a rocky relief on the hills + mountains
   // (two octaves of noise as a height bump, much stronger on steep ground), rock faces with strata where it is steep, snow caps
   // above ~620 m on the gentler parts -- per pixel, so the 64 m far grid no longer reads as smooth green blobs
-  if (uWater < 0.5 && uWin < 0.001){
+  if (uWater < 0.5 && uWin < 0.001 && vWP.y > 18.0){          // perf50: rel = smoothstep(18, 200, y) = 0 below: the block changes nothing there
     float fd = length(vWP.xz - cameraPosition.xz);
     vec3 q1 = rgFN(vWP.xz / 46.0), q2 = rgFN(vWP.xz / 15.0 + 7.31);
     float rel = smoothstep(18.0, 200.0, vWP.y);
@@ -77040,6 +77240,19 @@ function gfx25FarInit(size){
    tried too: their instanced depth variants cost +3 programs for shadows the near map already draws within ~60 m -- left out */
 function gfx25FarCasters(){}
 const GFX25_FAR_TMP = [];
+/* perf50: the casters are FARLOD.group's meshes (the cells' far skyline): a scene that holds exactly them (it shares that group's
+   child list; their matrices never change) -- the same draws, without walking + updating the whole 24k-object world again for
+   every cascade, and without the world's lights going "missing" for the layer-5 camera (three then re-initialised ~90 materials
+   on the next main pass). null (the old path) while the far LOD is hidden or not built. */
+function gfx25FarScene(){
+  if (typeof P50 !== 'undefined' && !P50.on) return null;
+  if (typeof FARLOD === 'undefined' || !FARLOD.group || FARLOD.group.visible === false || FARLOD.group.parent !== scene) return null;
+  let s = GFX25F.scene;
+  if (!s){ s = GFX25F.scene = new T.Scene(); s.autoUpdate = false; s.matrixAutoUpdate = false; s.name = 'gfx25far'; }
+  if (s.children !== FARLOD.group.children) s.children = FARLOD.group.children;
+  s.overrideMaterial = GFX25F.depthMat;
+  return s;
+}
 function gfx25FarPass(){
   const L = GFX25F.light, sh = L.shadow, sc = sh.camera, ms = GFX25F.size;
   // centre: ahead of the camera along the view, snapped to whole texels in the light's plane
@@ -77079,11 +77292,13 @@ function gfx25FarPass(){
   const rt0 = renderer.getRenderTarget(), ov = scene.overrideMaterial, ac = renderer.autoClear;
   renderer.getClearColor(_g25Clr); const ca = renderer.getClearAlpha();
   SM.autoUpdate = false; SM.needsUpdate = false;
+  const fs = gfx25FarScene();                              // perf50: just the far casters (null: the whole scene, layer 5)
   try {
     renderer.setRenderTarget(GFX25F.rt);
     renderer.setClearColor(0xffffff, 1); renderer.clear(true, true, false);
-    scene.overrideMaterial = GFX25F.depthMat; renderer.autoClear = false;
-    renderer.render(scene, sc);
+    if (!fs) scene.overrideMaterial = GFX25F.depthMat;
+    renderer.autoClear = false;
+    renderer.render(fs || scene, sc);
   } catch(e){ GFX25F.err = String(e); }
   scene.overrideMaterial = ov; renderer.autoClear = ac;
   renderer.setRenderTarget(rt0); renderer.setClearColor(_g25Clr, ca);
@@ -90925,7 +91140,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.46';
+const DL_VER = '15.47';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -93012,7 +93227,7 @@ function wuThumbImg(veh, cust){
 }
 
 /* ---------------------------------------------------------------- the shell */
-const WSU_TABS = [['builds', 'My builds'], ['edit', 'Build editor'], ['market', 'Marketplace'], ['show', 'Showroom'], ['bin', 'Parts bin']];
+const WSU_TABS = [['builds', 'My builds'], ['edit', 'Build editor'], ['market', 'Marketplace'], ['show', 'Showroom'], ['online', 'Online builds'], ['bin', 'Parts bin']];   // ws49: + Online builds
 function wuBuild(){
   if (WSU.built) return;
   WSU.built = true;
@@ -93034,6 +93249,7 @@ function wuBuild(){
         '<div class="wsMain"><div class="wsMkTop" id="wsMkTop"></div><div class="wsScroll" id="wsMkList"></div></div>' +
         '<div class="wsDetail" id="wsMkDet"><div class="wsStageHost" id="wsMkHost"></div><div class="wsInfo wsScroll" id="wsMkInfo"></div></div></section>' +
       '<section class="wsPane" data-pane="show"><div class="wsBar" id="wsShBar"></div><div class="wsScroll" id="wsShList"></div></section>' +
+      '<section class="wsPane" data-pane="online"><div class="wsBar ws49Bar" id="wsOnBar"></div><div class="wsScroll" id="wsOnList"></div></section>' +   // ws49: online builds
       '<section class="wsPane" data-pane="bin"><div class="wsBar" id="wsBinBar"></div><div class="wsScroll" id="wsBinList"></div></section>' +
       '<div class="wsModal" id="wsModal"><div class="wsDlg" id="wsDlg" role="dialog" aria-modal="true"></div></div>' +
       '<div class="wsToast" id="wsToast" role="status" aria-live="polite"></div>' +
@@ -93058,6 +93274,7 @@ function wuTab(t){
     else if (t === 'edit') wuEdOpen();
     else if (t === 'market') wuMkRender();
     else if (t === 'show') wuShRender();
+    else if (t === 'online'){ if (typeof ws49Render === 'function') ws49Render(); }   // ws49
     else if (t === 'bin') wuBinRender();
   } catch(e){ WS48.err = 'tab ' + t + ': ' + e.message; console.error('[ws48]', e); }
 }
@@ -93127,7 +93344,7 @@ addFrameHook(function ws48Frame(dt){
   const V = WSU.view;
   const live = (WSU.tab === 'edit' && WSU.host === 'wsEdHost') || (WSU.tab === 'market' && WSU.host === 'wsMkHost' && WSU.mk.sel && (!WSU.mk.narrow || WSU.mk.sheet));
   if (live && V){ wuAimTick(dt); V.render(dt); }
-  else if (WSU.tq.length && (WSU.tab === 'builds' || WSU.tab === 'show')) wuThumbNext();
+  else if (WSU.tq.length && (WSU.tab === 'builds' || WSU.tab === 'show' || WSU.tab === 'online')) wuThumbNext();   // ws49: + online
   WSU.clk += dt;
   if (WSU.clk > 1){ WSU.clk = 0; wuCashSync(); wuDropClock(); }
 });
@@ -93266,6 +93483,7 @@ function wuBlList(){
       '<h4>' + wuEsc(b.name) + '</h4>' +
       '<div class="sub">' + wuEsc(wuRideName(b.veh)) + ' · ' + wuTypeName(ws48TypeOf(b.veh)) + '</div>' +
       '<div class="row">' + (cur ? '<span class="wsBadge wear">Riding</span>' : (worn ? '<span class="wsBadge wear">Worn</span>' : '')) +
+        (typeof ws49CardBadge === 'function' ? ws49CardBadge(b) : '') +   // ws49: Published
         (st.miss ? '<span class="wsBadge miss">' + st.miss + ' to buy</span>' : '') + (!own ? '<span class="wsBadge">Frame not owned</span>' : '') +
         '<span class="wsBadge">' + st.n + ' part' + (st.n === 1 ? '' : 's') + '</span>' + (st.brands > 1 ? '<span class="wsBadge">' + st.brands + ' brands</span>' : '') +
         '<span class="wsBadge val">' + wuMoney(st.value) + '</span></div>' +
@@ -93514,6 +93732,7 @@ function wuEdTop(){
     '<button type="button" class="wsBtn" id="wsEdShuf" title="Random parts you own">Shuffle</button>' +
     '<button type="button" class="wsBtn" id="wsEdOther" title="Copy this build onto another frame">Other frame</button>' +
     '<button type="button" class="wsBtn" id="wsEdShare">Share</button>' +
+    (typeof ws49EdTop === 'function' ? ws49EdTop(b) : '') +            // ws49: Publish online / Update online + Take down
     (b.tmp ? '<button type="button" class="wsBtn" id="wsEdSave">Save build</button>' : '<button type="button" class="wsBtn" id="wsEdSave">Save as new</button>') +
     (!own ? '<button type="button" class="wsBtn pri" id="wsEdBuyF">Buy frame ' + wuMoney(garagePrice(b.veh)) + '</button>' : '') +
     (miss.length ? '<button type="button" class="wsBtn pri" id="wsEdBuyAll">Buy ' + miss.length + ' missing · ' + wuMoney(cost) + '</button>' : '') +
@@ -95148,6 +95367,871 @@ function m49Register(){
   if (typeof addFrameHook === 'function') addFrameHook(()=>{ try { m49Frame(); } catch(e){} });
 }
 m49Register();
+
+/* =========================================================================
+   PERF50 (Release 15.47, helper perf50): "the game is so hard to run, I can't get much fps on High and Ultra ... make it so I can
+   get so much (fps), like a ton" -- the REAL per-frame costs of High / Ultra, measured (test/t_perf50_prof.js: a downtown ride on
+   the real game loop, the frame's JS with no-op draws + a census of every draw; test/t_perf50_diag.js: three.js re-inits) and cut
+   without changing a pixel of the picture:
+   1. MATERIAL TWINS (CPU). three r128 keeps ONE current program per material: a material drawn both by plain meshes and by an
+      InstancedMesh (the city's lamp posts / heads / lenses / glows and the streamed mid-block lamps, the city's trees and the
+      region's tree pools, their shared depth material) re-ran initMaterial at every switch -- twice a frame each: all its program
+      parameters again plus a cache key built from its 13 kB onBeforeCompile source (15-43 re-inits a frame, ~1 MB of garbage
+      strings a frame for the collector). Now the instanced draws of such a material use a twin (the same program -- the cache key
+      is the same -- and the same values, kept in step every draw), so neither ever switches.
+   2. THE SKY AFTER THE CITY (GPU). The region's far pass (region14_core.js rgRenderHook) draws the far land and then the sky dome
+      BEFORE the city, so the sky's clouds (~90 noise hashes a pixel: the most expensive shader in the game) were worked out for
+      every pixel a building later covers. Now the far land marks its pixels in the stencil buffer (the scene target has one:
+      light12_post.js) and the sky is drawn in the city pass, last among the solid objects (renderOrder 9999, as it was before the
+      far pass existed): early-z skips every pixel the city covers, the stencil every pixel the far land covers -- the same pixels
+      get the same sky colour. (Low / Potato draw into a target without a stencil: unchanged.)
+   Elsewhere (marked "perf50"):
+   3. gfx25_shadow.js: the far shadow cascade renders a scene that holds only the far skyline meshes (FARLOD.group's children) --
+      the same draws without walking and updating the whole 24k-object world every 3rd (Ultra 2nd) frame, and without three
+      re-initialising ~90 materials on the next main pass (the world's lights were invisible to the cascade's layer-5 camera: a
+      "lights changed" every time).
+   4. region14_core.js (rep in the patch): the far land's per-pixel relief (two noise octaves, 8 hashes) is skipped where it cannot
+      change the colour (below 18 m: its weight is exactly 0 there) -- the city floor under the streets, the plains, the shore.
+   ?p50=0 turns all of it off (A/B checks); ?p50s=0 only the sky. P50.stats() -> counters.
+   ========================================================================= */
+var P50 = window.P50 = {
+  on: !(typeof location !== 'undefined' && /[?&]p50=0\b/.test(location.search || '')),
+  skyOn: !(typeof location !== 'undefined' && /[?&]p50s=0\b/.test(location.search || '')),
+  sortOn: !(typeof location !== 'undefined' && /[?&]p50o=0\b/.test(location.search || '')),
+  twins: 0, twinSync: 0, twinFull: 0,
+  sky: null, skyMat: null, skyFrames: 0, skyErr: '', rgDone: false, wrapped: false,
+  stats(){ return { on:this.on, twins:this.twins, twinFull:this.twinFull, sky:!!this.sky, skyOn:this.skyOn, skyFrames:this.skyFrames, skyErr:this.skyErr,
+    stencil:!!(typeof POST !== 'undefined' && POST.rt && POST.rt.scene && POST.rt.scene.stencilBuffer) }; }
+};
+/* ---------------------------------------------------------------- 1. material twins */
+const P50_COLS = ['color', 'emissive'];
+const P50_VALS = ['visible', 'opacity', 'transparent', 'side', 'emissiveIntensity', 'roughness', 'metalness', 'envMapIntensity', 'depthWrite', 'depthTest',
+  'alphaTest', 'map', 'emissiveMap', 'alphaMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'envMap', 'colorWrite', 'toneMapped', 'blending',
+  'polygonOffset', 'polygonOffsetFactor', 'polygonOffsetUnits', 'wireframe', 'clipShadows', 'clippingPlanes', 'clipIntersection'];
+function p50TwinFull(t, m){
+  const ud = m.userData;                                         // (Material.copy deep-copies userData through JSON: shared below instead)
+  m.userData = {};
+  try { t.copy(m); } finally { m.userData = ud; }
+  t.onBeforeCompile = m.onBeforeCompile;                         // (Material.copy leaves these out: the same program needs the same key)
+  if (Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey')) t.customProgramCacheKey = m.customProgramCacheKey;
+  t.userData = m.userData;
+  t._p50v = m.version;
+}
+/* the instanced draws' copy of m: same program (same cache key), same values (synced every draw, cheap: a few compares) */
+function p50Twin(m){
+  let t = m.__p50t;
+  if (!t){
+    try { t = new m.constructor(); } catch(e){ m.__p50k = -1; return m; }
+    p50TwinFull(t, m);
+    t.name = m.name;
+    m.__p50t = t; P50.twins++;
+    return t;
+  }
+  if (t._p50v !== m.version){ p50TwinFull(t, m); t.needsUpdate = true; P50.twinFull++; return t; }
+  for (let i = 0; i < P50_VALS.length; i++){ const k = P50_VALS[i], v = m[k]; if (t[k] !== v) t[k] = v; }
+  for (let i = 0; i < P50_COLS.length; i++){ const k = P50_COLS[i], a = m[k]; if (a && t[k] && !t[k].equals(a)) t[k].copy(a); }
+  if (m.normalScale && t.normalScale && !t.normalScale.equals(m.normalScale)) t.normalScale.copy(m.normalScale);
+  return t;
+}
+(function p50TwinHook(){
+  if (typeof renderer === 'undefined' || !renderer) return;
+  const R = renderer, rbd = R.renderBufferDirect;
+  R.renderBufferDirect = function(cam, sc, geo, mat, obj, grp){
+    // (a ShaderMaterial carries its own uniforms object: never twinned; neither is a material that failed to twin: __p50k -1)
+    if (mat && obj && P50.on && !mat.isShaderMaterial){
+      const k = mat.__p50k | 0;
+      if (k >= 0){
+        const bit = obj.isInstancedMesh ? 2 : 1;
+        if (!(k & bit)) mat.__p50k = k | bit;
+        if (bit === 2 && (k | bit) === 3) mat = p50Twin(mat);
+      }
+    }
+    return rbd.call(this, cam, sc, geo, mat, obj, grp);
+  };
+})();
+
+/* ---------------------------------------------------------------- 2. the sky after the city */
+const _p50Mat = { a:null };
+function p50SkyInit(){
+  if (P50.sky || P50.skyErr) return !!P50.sky;
+  try {
+    const R = RGF;
+    // the far land, water, skyline / far boxes and the night lights mark their pixels: stencil 1 (no other material uses the stencil)
+    [R.mat, R.waterMat, R.winMat, R.lightMat].forEach(m=>{
+      if (!m) return;
+      m.stencilWrite = true; m.stencilRef = 1; m.stencilFunc = T.AlwaysStencilFunc; m.stencilFuncMask = 0xff; m.stencilWriteMask = 0xff;
+      m.stencilFail = T.KeepStencilOp; m.stencilZFail = T.KeepStencilOp; m.stencilZPass = T.ReplaceStencilOp;
+    });
+    // the city pass's dome: skyMat's own program and uniforms; drawn only where nothing far was drawn (stencil 0). The write mask stays
+    // 0xff (KEEP ops write nothing): three never resets it, and the next clear must still clear the stencil.
+    const m = skyMat.clone();
+    m.uniforms = skyMat.uniforms;
+    m.stencilWrite = true; m.stencilRef = 0; m.stencilFunc = T.EqualStencilFunc; m.stencilFuncMask = 0xff; m.stencilWriteMask = 0xff;
+    m.stencilFail = T.KeepStencilOp; m.stencilZFail = T.KeepStencilOp; m.stencilZPass = T.KeepStencilOp;
+    const d = new T.Mesh(sky.geometry, m);
+    d.name = 'p50sky'; d.frustumCulled = false; d.renderOrder = 9999; d.visible = false;
+    d.castShadow = false; d.receiveShadow = false; d.userData.noBatch = true; d.userData.noCull = true;
+    scene.add(d);
+    P50.sky = d; P50.skyMat = m;
+    return true;
+  } catch(e){ P50.skyErr = String(e && e.message || e); return false; }
+}
+/* this render of the scene can take the sky: the far pass is on and the target has a stencil buffer */
+function p50SkyNow(){
+  if (!P50.on || !P50.skyOn || !P50.sky) return false;
+  if (typeof RGX === 'undefined' || !RGX.on || !RGX.farOn || typeof RGF === 'undefined' || !RGF.ok || !RGF.sky) return false;
+  const rt = renderer.getRenderTarget();
+  return !!(rt && rt.stencilBuffer && rt.depthTexture && rt.depthTexture.format === T.DepthStencilFormat);
+}
+function p50SkyWrap(){
+  if (P50.wrapped) return;
+  P50.wrapped = true;
+  const inner = renderer.render;
+  renderer.render = function(sc, cam){
+    if (sc === scene && cam === camera && p50SkyNow()){
+      const d = P50.sky, rs = RGF.sky;
+      d.position.copy(camera.position); d.quaternion.copy(sky.quaternion); d.scale.copy(sky.scale);
+      rs.visible = false; d.visible = true; P50.skyFrames++;
+      try { return inner.apply(this, arguments); } finally { rs.visible = true; d.visible = false; }
+    }
+    return inner.apply(this, arguments);
+  };
+}
+/* ---------------------------------------------------------------- 3. solid objects near-to-far */
+/* three r128 sorts the solid list by program (inert: its render items read materialProperties.program, which r128 never sets --
+   it is "currentProgram"), then material id, then the depth of each object's ORIGIN -- for the city's merged cell meshes (all at
+   the world origin) that key is the same for all of them, so a material's cells went in creation order, often far before near:
+   an early-z GPU then shaded every hidden facade behind the near ones (measured: 10.9 shaded fragments a pixel down a downtown
+   street; test/t_perf50_od.js). Now the solid list goes in four distance bands (nearest point of each object's world bounding
+   sphere: < 25 m, < 70 m, < 160 m, beyond), material by material inside each band (the same material / program switches as
+   before: 184 vs 176 there), nearest first inside a material: 2.3 shaded fragments a pixel. Only the ORDER of solid draws
+   changes: the depth test still decides every pixel the same way (the transparent list keeps three's back-to-front order). */
+function p50SortDist(it){
+  const o = it.object, f = renderer.info.render.frame;
+  if (o.__p50sf === f) return o.__p50sd;
+  let d = 0;
+  const g = it.geometry, bs = g && g.boundingSphere;
+  if (bs && !o.isInstancedMesh){
+    const e = o.matrixWorld.elements, c = bs.center, p = camera.position;
+    const x = e[0]*c.x + e[4]*c.y + e[8]*c.z + e[12] - p.x, y = e[1]*c.x + e[5]*c.y + e[9]*c.z + e[13] - p.y, z = e[2]*c.x + e[6]*c.y + e[10]*c.z + e[14] - p.z;
+    const sx = e[0]*e[0] + e[1]*e[1] + e[2]*e[2], sy = e[4]*e[4] + e[5]*e[5] + e[6]*e[6], sz = e[8]*e[8] + e[9]*e[9] + e[10]*e[10];
+    d = Math.sqrt(x*x + y*y + z*z) - bs.radius*Math.sqrt(sx > sy ? (sx > sz ? sx : sz) : (sy > sz ? sy : sz));
+    if (!(d > 0)) d = 0;                       // (instanced pools, the cell you are in, NaN: band 0, as near as it gets)
+  }
+  o.__p50sd = d; o.__p50sf = f;
+  o.__p50sb = d < 25 ? 0 : d < 70 ? 1 : d < 160 ? 2 : 3;
+  return d;
+}
+function p50OpaqueSort(a, b){
+  if (a.groupOrder !== b.groupOrder) return a.groupOrder - b.groupOrder;
+  if (a.renderOrder !== b.renderOrder) return a.renderOrder - b.renderOrder;
+  if (P50.on && P50.sortOn){
+    const da = p50SortDist(a), db = p50SortDist(b), ba = a.object.__p50sb, bb = b.object.__p50sb;
+    if (ba !== bb) return ba - bb;
+    if (a.material.id !== b.material.id) return a.material.id - b.material.id;
+    if (da !== db) return da - db;
+    return a.id - b.id;
+  }
+  // (off: three's own painterSortStable)
+  if (a.program !== b.program) return a.program.id - b.program.id;
+  if (a.material.id !== b.material.id) return a.material.id - b.material.id;
+  if (a.z !== b.z) return a.z - b.z;
+  return a.id - b.id;
+}
+(function p50SortHook(){
+  if (typeof renderer === 'undefined' || !renderer || typeof renderer.setOpaqueSort !== 'function') return;
+  renderer.setOpaqueSort(p50OpaqueSort);
+})();
+addFrameHook(function p50Frame(){
+  if (!P50.on || P50.rgDone) return;
+  // the region's far pass exists from the first menu frame (rgStart): set up once after it
+  if (typeof RGX === 'undefined' || !RGX.started || typeof RGF === 'undefined' || !RGF.ok || !RGF.sky || !renderer.__rgWrapped) return;
+  P50.rgDone = true;
+  if (P50.skyOn && p50SkyInit()) p50SkyWrap();
+});
+
+/* =========================================================================
+   WS49 GALLERY -- Release 15.47: ONLINE BUILDS in the Workshop ("completely unique builds that other players can see").
+     THE GALLERY  a Workshop tab: the newest / most liked builds of every rider, or my published ones; ride-type chips; cards like the
+                  Showroom's (3D snapshot, name, "by <rider>", ride + type, a heart with the likes, Copy to my builds = a blueprint:
+                  parts you do not own show as "to buy", Look closer = the editor on an unsaved copy). Loading / empty / offline /
+                  signed-out / error states. A list is kept 30 s; nothing polls (only opening the tab, a chip or Refresh asks).
+     PUBLISHING   the Build editor's top bar: Publish online (the online version, signed in) -> Online badge + Update online + Take down.
+                  At most 12 builds online per rider ('full': a dialog lists yours to take one down). Not publishable: a blueprint
+                  (parts you do not own), a stock factory ride, a rude name, an exact copy of someone else's build (online or the
+                  Showroom's): change something first. My builds cards say "Published".
+     SAFETY       everything from the server is cleaned: an own ride id only, wsBuildClean (custClean: known keys, clamped values),
+                  part ids that exist, sit in their own slot and fit the ride; looks from a Shop premium (chrome, patterns, sticker
+                  kits, accessories) come as the part that sells it; names keep letters, digits, spaces and basic punctuation (capped)
+                  and pass a small rude-word filter (a rude name shows as "<ride> build", a rude rider name as "a rider"); all text is
+                  escaped (wuEsc).
+   Server (sql/004_builds.sql): dl_build_list / dl_build_like / dl_build_publish / dl_build_unpublish through bk15Rpc. data =
+   { c: cust, p: parts, b: the Workshop build id (so "Take down" works from the gallery and from any device) }.
+   The backend modules are declared AFTER this one: nothing here touches them at load time (only UI handlers, in try/catch).
+   Local: 'dusk_line_ws49_v1' = { a: { account: { build id: { i server id, t when, s look hash, l likes } } },
+                                  c: { build id: { s look hash, by } } (copies of someone's build) }, cleaned on load.
+   API: ws49Render() (the tab), ws49EdTop(b) (the editor's buttons), ws49CardBadge(b) (My builds), WS49
+   ========================================================================= */
+const WS49 = { sort:'new', kind:'', cache:new Map(), busy:new Map(), likeBusy:new Set(), pubBusy:'', downBusy:'', err:'', seen:new Map(),
+               look:new WeakMap(), scrollY:0, refreshAt:0, n:{ list:0, like:0, pub:0, down:0 } };
+const WS49_KEY = 'dusk_line_ws49_v1', WS49_TTL = 30000, WS49_TTL_ERR = 8000, WS49_MAX = 12, WS49_LIMIT = 40, WS49_DATA_MAX = 8000;
+const WS49_SORTS = [['new', 'New'], ['top', 'Top'], ['mine', 'My published']];
+WSU_ICO.globe = '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9S9.4 5.7 12 3z"/>';
+WSU_ICO.redo = '<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/>';
+const WS49_HEART = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20.4l-1.3-1.2C6 15 3 12.3 3 8.9 3 6.2 5.1 4.1 7.7 4.1c1.6 0 3.2.8 4.3 2 1.1-1.2 2.7-2 4.3-2 2.6 0 4.7 2.1 4.7 4.8 0 3.4-3 6.1-7.7 10.3z"/></svg>';
+
+/* ---------------------------------------------------------------- the backend (declared later in the file: runtime only) */
+function ws49Online(){ try { return typeof bk15Online === 'function' && !!bk15Online(); } catch(e){ return false; } }
+function ws49Signed(){ try { return ws49Online() && typeof bk15Signed === 'function' && !!bk15Signed(); } catch(e){ return false; } }
+function ws49Acct(){ try { return ws49Signed() ? String(ACCT.name).toLowerCase() : ''; } catch(e){ return ''; } }
+function ws49Token(){ try { return ws49Signed() ? ACCT.token : null; } catch(e){ return null; } }
+function ws49Me(){ try { return ws49Signed() ? String(ACCT.name || '').slice(0, 16) : ''; } catch(e){ return ''; } }
+function ws49Rpc(fn, args){
+  try {
+    if (!ws49Online() || typeof bk15Rpc !== 'function') return Promise.resolve({ ok:false, error:'offline' });
+    return Promise.resolve(bk15Rpc(fn, args)).then(r=> (r && typeof r === 'object') ? r : { ok:false, error:'net' }, ()=> ({ ok:false, error:'net' }));
+  } catch(e){ return Promise.resolve({ ok:false, error:'net' }); }
+}
+function ws49ErrCode(r){ const e = r && typeof r.error === 'string' ? r.error : 'net'; return /^[a-z_]{1,24}$/.test(e) ? e : 'net'; }
+function ws49ErrText(code, what){
+  if (code === 'offline') return 'Online builds work in the online version of the game.';
+  if (code === 'auth' || code === 'signed_out') return 'You were signed out: sign in again to ' + (what === 'like' ? 'like builds' : 'share builds') + '.';
+  if (code === 'rate_limited') return 'Whoa, slow down! Try again in a few minutes.';
+  if (code === 'own') return 'That one is yours! Likes come from other riders.';
+  if (code === 'gone') return 'That build is not online any more.';
+  if (code === 'bad') return 'That build could not be shared. Change it a little and try again.';
+  if (code === 'full') return 'All ' + WS49_MAX + ' of your online spots are taken.';
+  return 'Could not reach the online builds. Check your connection and try again.';
+}
+/* the sign-in screen opens from the main menu only (from the garage or a paused ride it would pull the game out from under you) */
+function ws49CanSignIn(){ try { return typeof hubOpen === 'function' && typeof GAME !== 'undefined' && GAME === 'menu' && !(typeof GARAGE !== 'undefined' && GARAGE.open); } catch(e){ return false; } }
+function ws49SignIn(){ try { if (!ws49CanSignIn()) return; closeWorkshop(); hubOpen('account'); } catch(e){ WS49.err = 'signin: ' + e.message; } }
+function ws49SignHtml(){ return ws49CanSignIn() ? '<button type="button" class="wsBtn" data-x="signin">Sign in</button>' : '<span class="ws49Note">Sign in on the main menu to like and share builds</span>'; }
+
+/* ---------------------------------------------------------------- text from other players: cleaned, capped, filtered */
+const WS49_STRIP = /[^A-Za-z0-9\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F .,!?'&()#+:/_-]+/g;
+function ws49Text(s, max){
+  let t = String(s === undefined || s === null ? '' : s);
+  try { t = t.normalize('NFC'); } catch(e){}
+  return t.replace(/[\u2018\u2019\u201B\u2032]/g, "'").replace(/[\u2010-\u2015]/g, '-').replace(WS49_STRIP, ' ').replace(/([^A-Za-z0-9\s])\1{2,}/g, '$1$1$1').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+}
+/* a small rude-word filter (the game has none): leetspeak, accents, stretched and spaced-out letters fold first */
+const WS49_LEET = { '0':'o', '1':'i', '3':'e', '4':'a', '5':'s', '7':'t', '8':'b', '@':'a', '$':'s', '!':'i', '|':'i', '+':'t', '\u20ac':'e' };
+const WS49_SUB = ['fuck', 'fuk', 'fck', 'phuck', 'phuk', 'shit', 'cunt', 'bitch', 'biatch', 'bastard', 'asshole', 'arsehole', 'whore', 'slut', 'wanker',
+  'twat', 'dildo', 'penis', 'vagina', 'porn', 'nazi', 'hitler', 'retard', 'faggot', 'nigger', 'nigga', 'pussy', 'titties', 'jizz', 'bollocks',
+  'dickhead', 'cocksuck', 'blowjob', 'handjob', 'boner', 'horny', 'sexy', 'pedophile', 'paedophile', 'kkk'];
+const WS49_SUBC = WS49_SUB.filter(w=> !/(.)\1/.test(w));                      // safe to match with every doubled letter squeezed
+const WS49_WORD = new Set(['ass', 'arse', 'asses', 'asshat', 'cock', 'cocks', 'dick', 'dicks', 'fag', 'fags', 'sex', 'rape', 'raped', 'rapist', 'tit', 'tits',
+  'boob', 'boobs', 'cum', 'anal', 'anus', 'piss', 'pissed', 'wtf', 'stfu', 'kys', 'milf', 'prick', 'hoe', 'hoes', 'thot', 'porno', 'nude', 'nudes',
+  'naked', 'pedo', 'wank', 'nazis']);
+function ws49Rude(s){
+  let t = String(s || '').toLowerCase();
+  try { t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e){}
+  t = t.replace(/[0-9@$!|+\u20ac]/g, c=> WS49_LEET[c] || ' ');
+  const toks = t.split(/[^a-z]+/).filter(Boolean), all = toks.slice();
+  let run = '';                                                                // f u c k / f.u.c.k -> one word
+  toks.concat(['..']).forEach(w=>{ if (w.length === 1) run += w; else { if (run.length > 2) all.push(run); run = ''; } });
+  return all.some(w=>{
+    const r = w.replace(/(.)\1{2,}/g, '$1'), r2 = w.replace(/(.)\1{2,}/g, '$1$1'), c = w.replace(/(.)\1+/g, '$1');   // fuuuck, asssss
+    if (WS49_WORD.has(w) || WS49_WORD.has(r) || WS49_WORD.has(r2) || WS49_WORD.has(c)) return true;
+    return WS49_SUB.some(x=> w.indexOf(x) >= 0 || r.indexOf(x) >= 0 || r2.indexOf(x) >= 0) || WS49_SUBC.some(x=> c.indexOf(x) >= 0);
+  });
+}
+function ws49Name(raw, veh){ const t = ws49Text(raw, 32); return (!t || ws49Rude(raw) || ws49Rude(t)) ? (wuRideName(veh) + ' build').slice(0, 32) : t; }
+function ws49By(raw){ const t = String(raw === undefined || raw === null ? '' : raw).replace(/[^A-Za-z0-9_]/g, '').slice(0, 16); return (t.length < 2 || ws49Rude(t)) ? 'a rider' : t; }
+/* what the server keeps of a name (dl_clean): to know whether the online copy still has this build's name */
+function ws49ServerName(s){ return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>"'`&\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 32) || 'My build'; }
+function ws49Int(v, lo, hi){
+  const n = typeof v === 'number' ? v : (typeof v === 'string' && /^\d{1,16}$/.test(v) ? +v : NaN);
+  return (isFinite(n) && n >= lo) ? Math.min(hi, Math.floor(n)) : 0;
+}
+function ws49Has(o, k){ return !!o && Object.prototype.hasOwnProperty.call(o, k); }
+function ws49Num(n){ n = n | 0; return n < 1000 ? String(n) : n < 999500 ? (n/1000).toFixed(n < 9950 ? 1 : 0).replace(/\.0$/, '') + 'k' : (n/1e6).toFixed(1).replace(/\.0$/, '') + 'M'; }
+function ws49Ago(at){
+  const s = Math.max(0, (Date.now() - at)/1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + ' min ago';
+  if (s < 86400) return Math.floor(s/3600) + ' h ago';
+  if (s < 86400*7){ const d = Math.floor(s/86400); return d + (d === 1 ? ' day ago' : ' days ago'); }
+  try { return new Date(at).toLocaleDateString('en-GB', { day:'numeric', month:'short' }); } catch(e){ return ''; }
+}
+function ws49Av(name){
+  const n = String(name || '?'), h = ws48Hash(n.toLowerCase()) % 360;
+  return '<i class="ws49Av" style="background:hsl(' + h + ',52%,40%)" aria-hidden="true">' + wuEsc(n.charAt(0) || '?') + '</i>';
+}
+function ws49Bytes(s){ try { return new TextEncoder().encode(s).length; } catch(e){ return unescape(encodeURIComponent(s)).length; } }
+
+/* ---------------------------------------------------------------- a build's look as a string (exact copies, "changed since publish") */
+function ws49PartsSig(p){ return JSON.stringify(Object.keys(p || {}).sort().map(k=> [k, p[k]])); }
+function ws49Sig(b){ return b.veh + '|' + wsCustSig(b.cust) + '|' + ws49PartsSig(b.parts); }
+function ws49H(s){ return ws48Hash(s).toString(36); }
+function ws49PubSig(b){ return ws49H(ws49Sig(b) + '|' + ws49ServerName(b.name)); }
+
+/* ---------------------------------------------------------------- one gallery build from the server -> a clean card (or null) */
+function ws49Fits(veh, p){
+  if (p.t === '*') return true;
+  const base = p.id.split('~')[0];
+  return ws48PartsFor(veh, p.slot).some(x=> x.id === base);
+}
+/* a look from a Shop premium with no part for it (set in Customise) comes as the Workshop part that sells it: "to buy" if not yours */
+function ws49Implied(cust, parts){
+  if (!cust) return;
+  const add = (k, id)=>{ if (parts[k]) return; const p = ws48Part(id); if (p && p.id === id && wsPremKey(p)) parts[k] = id; };
+  if (cust.f && !parts.paint) add('paint', 'pa.fin.' + cust.f);
+  if (cust.p && !parts.pattern){ const j = parts.paint ? ws48Part(parts.paint) : null; if (!(j && j.paint && j.paint.p === cust.p[0])) add('pattern', 'pa.pat.' + cust.p[0]); }
+  if (cust.k && !parts.stickers) add('stickers', 'st.' + cust.k[0]);
+  if (cust.a) Object.keys(cust.a).forEach(a=> add('a.' + a, 'ac.' + a));
+}
+function ws49Item(o){
+  try {
+    if (!o || typeof o !== 'object') return null;
+    const id = ws49Int(o.id, 1, Number.MAX_SAFE_INTEGER); if (!id) return null;
+    const veh = (typeof o.veh === 'string' && /^[a-z0-9_-]{1,40}$/.test(o.veh) && ws49Has(FLEET_BY_ID, o.veh)) ? o.veh : '';
+    if (!veh) return null;
+    const d = (o.data && typeof o.data === 'object' && !Array.isArray(o.data)) ? o.data : {};
+    const b = wsBuildClean({ name:'x', veh, cust:d.c, parts:d.p }); if (!b) return null;
+    const parts = {};
+    Object.keys(b.parts).forEach(k=>{ const id2 = b.parts[k], p = ws48Part(id2); if (p && typeof p === 'object' && p.id === id2 && wsPartKey(p) === k && ws49Fits(veh, p)) parts[k] = id2; });
+    const mine = o.mine === true, raw = typeof o.name === 'string' ? o.name.slice(0, 64) : '';
+    if (!mine) ws49Implied(b.cust, parts);
+    const at = typeof o.at === 'number' && isFinite(o.at) && o.at > 0 ? Math.min(o.at, Date.now()) : 0;
+    return { id, veh, type:ws48TypeOf(veh), name:ws49Name(raw, veh), raw:raw.slice(0, 32), cust:b.cust, parts, likes:ws49Int(o.likes, 0, 99999999),
+             liked:o.liked === true, mine, by:ws49By(o.by), at, bid:(mine && typeof d.b === 'string' && WS48_BID.test(d.b)) ? d.b : '' };
+  } catch(e){ WS49.err = 'item: ' + e.message; return null; }
+}
+
+/* ---------------------------------------------------------------- which of my builds are online (per account) + copies */
+let WS49_D = null;
+function ws49D(){
+  if (WS49_D) return WS49_D;
+  const d = { v:1, a:{}, c:{} };
+  try {
+    const o = JSON.parse(localStorage.getItem(WS49_KEY) || 'null'), have = {};
+    wsBuilds().forEach(b=>{ have[b.id] = 1; });
+    if (o && typeof o === 'object'){
+      if (o.a && typeof o.a === 'object') Object.keys(o.a).slice(0, 8).forEach(acct=>{
+        const A = o.a[acct]; if (!/^[a-z0-9_]{3,16}$/.test(acct) || !A || typeof A !== 'object') return;
+        const R = {}; let n = 0;
+        Object.keys(A).forEach(bid=>{
+          const r = A[bid], i = r && typeof r === 'object' ? ws49Int(r.i, 1, Number.MAX_SAFE_INTEGER) : 0;
+          if (n >= 40 || !WS48_BID.test(bid) || !ws49Has(have, bid) || !i) return;
+          R[bid] = { i, t:ws49Int(r.t, 0, 9e15), s:typeof r.s === 'string' ? r.s.slice(0, 16) : '', l:ws49Int(r.l, 0, 99999999) }; n++;
+        });
+        if (n) d.a[acct] = R;
+      });
+      if (o.c && typeof o.c === 'object') Object.keys(o.c).forEach(bid=>{
+        const r = o.c[bid];
+        if (Object.keys(d.c).length >= 80 || !WS48_BID.test(bid) || !ws49Has(have, bid) || !r || typeof r !== 'object' || typeof r.s !== 'string') return;
+        d.c[bid] = { s:r.s.slice(0, 16), by:ws49By(r.by), t:ws49Int(r.t, 0, 9e15) };
+      });
+    }
+  } catch(e){ WS49.err = 'load: ' + e.message; }
+  WS49_D = d;
+  return d;
+}
+function ws49Save(){ try { localStorage.setItem(WS49_KEY, JSON.stringify(ws49D())); } catch(e){ WS49.err = 'save: ' + e.message; } }
+function ws49RecsOf(acct){ const d = ws49D(); return d.a[acct] || (d.a[acct] = {}); }
+function ws49Rec(b){ const a = ws49Acct(); if (!a || !b || !b.id) return null; const R = ws49D().a[a]; return (R && ws49Has(R, b.id)) ? R[b.id] : null; }
+function ws49Local(bid){ return bid ? wsBuilds().find(b=> b.id === bid) || null : null; }
+/* my gallery item -> its Workshop build id (data.b, or what I remember publishing) */
+function ws49BidOf(it){
+  if (it.bid) return it.bid;
+  const R = ws49D().a[ws49Acct()] || {};
+  return Object.keys(R).find(k=> R[k].i === it.id) || '';
+}
+/* whose build is this exactly? (someone else's online build, a Showroom build, or my own one already online) */
+function ws49CopyOf(b){
+  const sig = ws49Sig(b), c = ws49D().c[b.id], lk = WS49.look.get(b);
+  if (c && c.s === ws49H(sig)) return c.by || 'another rider';
+  if (lk && lk.sig === sig) return lk.mine ? 'you' : lk.by;
+  if (WS49.seen.has(sig)) return WS49.seen.get(sig);
+  try { if (ws48Featured().some(f=> ws49Sig(f) === sig)) return 'the Workshop crew'; } catch(e){}
+  return '';
+}
+function ws49CopyMark(b, by){
+  const d = ws49D();
+  d.c[b.id] = { s:ws49H(ws49Sig(b)), by:ws49By(by), t:Date.now() };
+  const ks = Object.keys(d.c); if (ks.length > 80) ks.sort((x, y)=> d.c[x].t - d.c[y].t).slice(0, ks.length - 80).forEach(k=>{ delete d.c[k]; });
+  ws49Save();
+}
+
+/* ---------------------------------------------------------------- lists: fetched on demand, kept 30 s */
+function ws49Key(sort, kind){ return sort + '|' + kind + '|' + ws49Acct(); }
+function ws49Fetch(sort, kind){
+  const key = ws49Key(sort, kind);
+  if (WS49.busy.has(key)) return WS49.busy.get(key);
+  const old = WS49.cache.get(key);
+  WS49.n.list++;
+  const p = ws49Rpc('dl_build_list', { p_sort:sort, p_kind:kind, p_limit:WS49_LIMIT, p_token:ws49Token() }).then(r=>{
+    WS49.busy.delete(key);
+    let e;
+    if (r && r.ok === true && Array.isArray(r.builds)){
+      const builds = r.builds.slice(0, WS49_LIMIT).map(ws49Item).filter(Boolean);
+      e = { at:Date.now(), builds, err:'' };
+      ws49Learn(builds, sort, kind);
+    } else {
+      const err = ws49ErrCode(r);
+      if (old && !old.err && err !== 'auth'){ old.at = Date.now() - WS49_TTL + WS49_TTL_ERR; return Object.assign({}, old, { warn:err }); }   // keep the list we had
+      e = { at:Date.now(), builds:[], err };
+    }
+    WS49.cache.set(key, e);
+    return e;
+  });
+  WS49.busy.set(key, p);
+  return p;
+}
+/* what a list teaches: other riders' looks (exact copies), my builds' likes + server ids, and (the full "mine" list) what is not online any more */
+function ws49Learn(builds, sort, kind){
+  builds.forEach(it=>{ if (!it.mine){ if (WS49.seen.size > 600) WS49.seen.clear(); WS49.seen.set(ws49Sig(it), it.by); } });
+  const acct = ws49Acct(); if (!acct) return;
+  const R = ws49RecsOf(acct);
+  let ch = false;
+  builds.forEach(it=>{
+    if (!it.mine) return;
+    const bid = ws49BidOf(it); if (!bid || !ws49Local(bid)) return;
+    const r = R[bid], s = ws49H(ws49Sig(it) + '|' + ws49ServerName(it.raw));
+    if (!r || r.i !== it.id || r.l !== it.likes || r.s !== s){ R[bid] = { i:it.id, t:it.at || (r && r.t) || Date.now(), s, l:it.likes }; ch = true; }
+  });
+  if (sort === 'mine' && kind === ''){
+    const ids = new Set(builds.map(it=> it.id));
+    Object.keys(R).forEach(k=>{ if (!ids.has(R[k].i)){ delete R[k]; ch = true; } });
+  }
+  if (ch) ws49Save();
+}
+/* my builds changed online: every list asks again the next time it shows */
+function ws49Dirty(){ WS49.cache.forEach(e=>{ e.at = 0; }); }
+function ws49Each(fn){ WS49.cache.forEach(e=> e.builds.forEach(fn)); }
+function ws49Find(id){
+  const L = wuEl('wsOnList'), cur = L && L._key ? WS49.cache.get(L._key) : null;
+  let it = cur ? cur.builds.find(x=> x.id === id) : null;
+  if (!it) WS49.cache.forEach(e=>{ if (!it) it = e.builds.find(x=> x.id === id) || null; });
+  return it;
+}
+function ws49Forget(pred){
+  WS49.cache.forEach(e=>{ e.builds = e.builds.filter(x=> !pred(x)); });
+  const L = wuEl('wsOnList');
+  if (L && WSU.tab === 'online' && L._key){ const e = WS49.cache.get(L._key); if (e) ws49Paint(L._key, e); }
+}
+
+/* ---------------------------------------------------------------- THE TAB */
+function ws49Render(){
+  const bar = wuEl('wsOnBar'), L = wuEl('wsOnList'); if (!bar || !L) return;
+  if (!bar._ws49){ bar._ws49 = 1; bar.addEventListener('click', ws49BarClick); }
+  if (!L._ws49){
+    L._ws49 = 1; L.addEventListener('click', ws49ListClick);
+    L.addEventListener('scroll', ()=>{ if (WSU.tab === 'online' && L._key) WS49.scrollY = L.scrollTop; }, { passive:true });
+  }
+  ws49Bar();
+  ws49Show(false);
+}
+function ws49Bar(){
+  const bar = wuEl('wsOnBar'); if (!bar) return;
+  const on = ws49Online(), signed = on && ws49Signed();
+  let h = '<div class="wsBarTx"><b>' + wuIco('globe', '#8fd3ff', 19) + ' Online builds</b><span>' + (on
+    ? 'Builds by riders all over Dusk Line. Like the ones you love, copy one and make it your own, or share yours: open it in the Build editor and press <b>Publish online</b>.'
+    : 'Builds that riders share with each other.') + '</span></div>';
+  if (on){
+    h += signed ? '<span class="ws49Who">' + ws49Av(ws49Me()) + 'Signed in as <b>' + wuEsc(ws49Me()) + '</b></span>' : ws49SignHtml();
+    h += '<button type="button" class="wsBtn" data-x="refresh" title="Load the newest builds">' + wuIco('redo', null, 15) + ' Refresh</button>';
+    h += '<div class="ws49Filt"><div class="ws49Seg" role="tablist" aria-label="Show">' + WS49_SORTS.map(s=> '<button type="button" role="tab" data-s="' + s[0] + '"' +
+        (WS49.sort === s[0] ? ' class="sel" aria-selected="true"' : ' aria-selected="false"') + '>' + s[1] + '</button>').join('') + '</div>' +
+      '<div class="wsChips ws49Kinds" role="group" aria-label="Ride type">' + [''].concat(WS48_TYPE_ORDER, ['other']).map(t=> '<button type="button" class="wsChip' + (WS49.kind === t ? ' sel' : '') +
+        '" data-k="' + t + '">' + (t ? wuEsc(wuTypeName(t)) : 'All rides') + '</button>').join('') + '</div></div>';
+  }
+  bar.innerHTML = h;
+}
+function ws49BarClick(e){
+  const s = e.target.closest('[data-s]'), k = e.target.closest('[data-k]'), x = e.target.closest('[data-x]');
+  if (s){ const v = s.getAttribute('data-s'); if (v !== WS49.sort && WS49_SORTS.some(o=> o[0] === v)){ WS49.sort = v; wuSfx('tab'); ws49Bar(); ws49Show(false); } return; }
+  if (k){ const v = k.getAttribute('data-k'); if (v !== WS49.kind && (v === '' || v === 'other' || WS48_TYPE_ORDER.indexOf(v) >= 0)){ WS49.kind = v; wuSfx('pick'); ws49Bar(); ws49Show(false); } return; }
+  if (!x) return;
+  const a = x.getAttribute('data-x');
+  if (a === 'signin') ws49SignIn();
+  else if (a === 'refresh'){
+    x.classList.remove('spin'); void x.offsetWidth; x.classList.add('spin');
+    if (Date.now() - WS49.refreshAt < 4000) return;                             // a second tap right away does not ask again
+    WS49.refreshAt = Date.now(); ws49Show(true);
+  }
+}
+/* the list: from the cache when it is fresh, else skeletons (or the old list) while the server answers */
+function ws49Show(force){
+  const L = wuEl('wsOnList'); if (!L) return;
+  if (!ws49Online()){
+    L._key = '';
+    L.innerHTML = ws49Note('Online builds', 'Sharing builds works in the online version of Dusk Line. There you can see what riders everywhere built, like their builds and show off your own.',
+      '<button type="button" class="wsBtn pri" data-x="show">Browse the Showroom</button>');
+    return;
+  }
+  if (WS49.sort === 'mine' && !ws49Signed()){
+    L._key = '';
+    L.innerHTML = ws49Note('Share your builds', 'Sign in to publish your builds online. Other riders can see them, like them and copy them. You can have ' + WS49_MAX + ' builds online at once.',
+      ws49SignHtml().replace('class="wsBtn"', 'class="wsBtn pri"') + '<button type="button" class="wsBtn" data-x="new">See the newest builds</button>');
+    return;
+  }
+  const key = ws49Key(WS49.sort, WS49.kind), c = WS49.cache.get(key);
+  const fresh = !!c && (Date.now() - c.at) < (c.err ? WS49_TTL_ERR : WS49_TTL);
+  if (c && (!c.err || (fresh && !force))) ws49Paint(key, c); else ws49Skel(L);
+  if (fresh && !force) return;
+  ws49Fetch(WS49.sort, WS49.kind).then(e=>{
+    if (!WS48.open || WSU.tab !== 'online' || ws49Key(WS49.sort, WS49.kind) !== key) return;
+    if (e.warn){ wuToast(ws49ErrText(e.warn), 'bad'); return; }
+    ws49Paint(key, e);
+  });
+}
+function ws49Note(title, text, btns){
+  return '<div class="wsEmpty ws49Empty">' + wuIco('globe', '#8fd3ff', 40) + '<b>' + title + '</b>' + text + (btns ? '<div class="row">' + btns + '</div>' : '') + '</div>';
+}
+function ws49Skel(L){
+  L._key = '';
+  L.innerHTML = '<div class="wsCards ws49Cards" aria-busy="true" aria-label="Loading builds">' + '<div class="wsCard ws49Skel"><div class="th"></div><i></i><i></i><i class="s"></i></div>'.repeat(8) + '</div>';
+}
+function ws49Paint(key, e){
+  const L = wuEl('wsOnList'); if (!L) return;
+  const same = L._key === key;
+  if (e.err){
+    L._key = '';
+    if (e.err === 'auth') L.innerHTML = ws49Note('You were signed out', 'Sign in again to see the builds you shared.', ws49SignHtml());
+    else L.innerHTML = ws49Note(e.err === 'rate_limited' ? 'Too many tries' : 'Can’t reach the online builds', e.err === 'rate_limited' ? 'Wait a minute, then try again.' : 'Check your connection and try again.',
+      '<button type="button" class="wsBtn pri" data-x="retry">Try again</button>');
+    return;
+  }
+  const list = e.builds, mine = WS49.sort === 'mine';
+  L._key = key;
+  if (!list.length){
+    const tn = WS49.kind ? wuTypeName(WS49.kind) + ' ' : '';
+    L.innerHTML = mine
+      ? ws49Note(WS49.kind ? 'No ' + tn + 'builds online' : 'Nothing shared yet', 'Open one of your builds in the Build editor and press <b>Publish online</b>. Riders everywhere will see it here.',
+          '<button type="button" class="wsBtn pri" data-x="builds">Go to my builds</button>')
+      : ws49Note('No ' + tn + 'builds yet', 'Nobody has shared ' + (WS49.kind ? 'a ' + tn : 'a ') + 'build yet. Be the first: make one, then press <b>Publish online</b> in the Build editor.',
+          '<button type="button" class="wsBtn pri" data-x="builds">Go to my builds</button><button type="button" class="wsBtn" data-x="show">Browse the Showroom</button>');
+    return;
+  }
+  let h = '';
+  if (mine && !WS49.kind) h += '<div class="ws49Head">You have <b>' + list.length + ' of ' + WS49_MAX + '</b> builds online.' + (list.length >= WS49_MAX ? ' Take one down to share another.' : '') + '</div>';
+  h += '<div class="wsCards ws49Cards">' + list.map(ws49CardHtml).join('') + '</div>';
+  L.innerHTML = h;
+  if (same) L.scrollTop = WS49.scrollY; else { L.scrollTop = 0; WS49.scrollY = 0; }
+  // the snapshot queue only keeps what this list shows (flipping chips must not leave 100 renders waiting; other tabs ask again)
+  try { if (WSU.tab === 'online'){ const on = new Set([].map.call(L.querySelectorAll('img[data-th]'), im=> im.getAttribute('data-th'))); WSU.tq = WSU.tq.filter(q=> on.has(q.key)); } } catch(err){}
+}
+function ws49LikeHtml(it){
+  const t = it.mine ? 'Likes on your build' : (it.liked ? 'You like this build (tap to take it back)' : 'Like this build');
+  return '<button type="button" class="ws49Like' + (it.liked ? ' on' : '') + (it.mine ? ' own' : '') + '" data-a="like" aria-pressed="' + (it.liked ? 'true' : 'false') + '" title="' + t + '" aria-label="' + t + ': ' + it.likes + '">' +
+    WS49_HEART + '<b>' + ws49Num(it.likes) + '</b></button>';
+}
+function ws49CardHtml(it){
+  const miss = wsMissing(it), cost = miss.reduce((a, id)=> a + wsPrice(ws48Part(id)), 0), n = Object.keys(it.parts).length;
+  const local = it.mine ? ws49Local(ws49BidOf(it)) : null, frame = wuOwnsFrame(it.veh) ? 0 : (typeof garagePrice === 'function' ? garagePrice(it.veh) : 0);
+  return '<article class="wsCard ws49Card' + (it.mine ? ' mine' : '') + '" data-o="' + it.id + '">' +
+    '<div class="th" data-a="look" title="Look closer">' + wuThumbImg(it.veh, it.cust) + '<div class="band" style="background:' + wuBuildBand(it) + '"></div></div>' + ws49LikeHtml(it) +
+    '<h4>' + wuEsc(it.name) + '</h4>' +
+    '<div class="ws49By">' + ws49Av(it.mine ? (ws49Acct() || it.by) : it.by) + (it.mine ? '<b>by you</b>' : 'by&nbsp;<b>' + wuEsc(it.by) + '</b>') + (it.at ? '<span>· ' + wuEsc(ws49Ago(it.at)) + '</span>' : '') + '</div>' +
+    '<div class="sub">' + wuEsc(wuRideName(it.veh)) + ' · ' + wuEsc(wuTypeName(it.type)) + ' · ' + n + ' part' + (n === 1 ? '' : 's') + '</div>' +
+    '<div class="row">' + (it.mine ? '<span class="wsBadge ws49Pub">Yours · online</span>' : (miss.length ? '<span class="wsBadge miss">' + miss.length + ' to buy · ' + wuMoney(cost) + '</span>' : '<span class="wsBadge wear">You own every part</span>')) +
+      (frame ? '<span class="wsBadge">Frame ' + wuMoney(frame) + '</span>' : '') + '</div>' +
+    '<div class="row acts">' + (local ? '<button type="button" class="wsBtn pri" data-a="edit">Edit</button>' : '<button type="button" class="wsBtn pri" data-a="copy">Copy to my builds</button>') +
+      (it.mine ? '<button type="button" class="wsBtn bad" data-a="down">Take down</button>' : '<button type="button" class="wsBtn" data-a="look">Look closer</button>') + '</div>' +   // (the snapshot opens a closer look too)
+  '</article>';
+}
+function ws49ListClick(e){
+  const x = e.target.closest('[data-x]');
+  if (x){
+    const a = x.getAttribute('data-x');
+    if (a === 'retry'){ WS49.refreshAt = Date.now(); ws49Show(true); }
+    else if (a === 'builds') wuTab('builds');
+    else if (a === 'show') wuTab('show');
+    else if (a === 'signin') ws49SignIn();
+    else if (a === 'new'){ WS49.sort = 'new'; ws49Bar(); ws49Show(false); }
+    return;
+  }
+  const btn = e.target.closest('[data-a]'), card = e.target.closest('[data-o]'); if (!btn || !card) return;
+  const it = ws49Find(+card.getAttribute('data-o')); if (!it) return;
+  const a = btn.getAttribute('data-a');
+  if (a === 'like') ws49Like(it, btn);
+  else if (a === 'look') ws49Look(it);
+  else if (a === 'copy') ws49Copy(it);
+  else if (a === 'edit'){ const b = ws49Local(ws49BidOf(it)); if (b) wuEditBuild(b); }
+  else if (a === 'down') ws49DownItem(it, btn);
+}
+/* ---- likes: shown at once, put right if the server says no ---- */
+function ws49SetLike(id, liked, likes){
+  ws49Each(x=>{ if (x.id === id){ x.liked = liked; x.likes = likes; } });
+  document.querySelectorAll('#wsOnList [data-o="' + id + '"] .ws49Like').forEach(b=>{
+    const it = { liked, likes, mine:b.classList.contains('own') };
+    const tmp = document.createElement('div'); tmp.innerHTML = ws49LikeHtml(it); b.replaceWith(tmp.firstChild);
+  });
+}
+function ws49Like(it, btn){
+  if (it.mine){ wuToast('That one is yours! Likes come from other riders.'); return; }
+  if (!ws49Signed()){ wuShake(btn); wuSfx('no'); wuToast('Sign in to like builds.' + (ws49CanSignIn() ? '' : ' (Sign in on the main menu.)'), 'bad'); return; }
+  if (WS49.likeBusy.has(it.id)) return;
+  const on = !it.liked, was = { liked:it.liked, likes:it.likes };
+  ws49SetLike(it.id, on, Math.max(0, it.likes + (on ? 1 : -1)));
+  if (on){ const b = document.querySelector('#wsOnList [data-o="' + it.id + '"] .ws49Like'); if (b) b.classList.add('pop'); }
+  WS49.likeBusy.add(it.id); WS49.n.like++;
+  wuSfx(on ? 'pick' : 'off');
+  ws49Rpc('dl_build_like', { p_token:ws49Token(), p_id:it.id, p_on:on }).then(r=>{
+    WS49.likeBusy.delete(it.id);
+    if (r && r.ok === true){ ws49SetLike(it.id, typeof r.liked === 'boolean' ? r.liked : on, r.likes !== undefined ? ws49Int(r.likes, 0, 99999999) : Math.max(0, was.likes + (on ? 1 : -1))); return; }
+    const err = ws49ErrCode(r);
+    ws49SetLike(it.id, was.liked, was.likes);
+    if (err === 'gone'){ ws49Forget(x=> x.id === it.id); wuToast('That build was just taken down.', 'bad'); return; }
+    wuToast(ws49ErrText(err, 'like'), 'bad');
+  });
+}
+/* ---- copy / look ---- */
+function ws49Copy(it){
+  const b = wsBuildNew(it.veh, it.name, { cust:it.cust, parts:it.parts });
+  if (!b){ wuToast('Your build list is full (' + WS48_MAXB + '). Delete one first.', 'bad'); return; }
+  if (!it.mine) ws49CopyMark(b, it.by);
+  wuSfx('fit');
+  const miss = wsMissing(b).length;
+  wuToast('<b>' + wuEsc(b.name) + '</b> is in your builds' + (miss ? ': buy the ' + miss + ' missing part' + (miss === 1 ? '' : 's') + ' to ride it.' : '. Make it your own!'), 'good');
+  wuEditBuild(b);
+}
+function ws49Look(it){
+  const b = { tmp:1, id:'', name:it.name, veh:it.veh, cust:it.cust ? wsCustCopy(it.cust) : null, parts:Object.assign({}, it.parts), t0:Date.now(), t1:Date.now(), fav:0 };
+  WS49.look.set(b, { by:it.mine ? '' : it.by, mine:it.mine, sig:ws49Sig(b) });
+  wuSfx('pick');
+  wuEditBuild(b);
+}
+
+/* ---------------------------------------------------------------- PUBLISHING (the Build editor's top bar) */
+function ws49EdTop(b){
+  const T = wuEl('wsEdTop'); if (T && !T._ws49){ T._ws49 = 1; T.addEventListener('click', ws49EdClick); }
+  return '<span class="ws49Ed" id="ws49Ed">' + ws49EdInner(b) + '</span>';
+}
+function ws49EdInner(b){
+  try {
+    if (!b || !ws49Online()) return '';
+    const lk = WS49.look.get(b);
+    if (b.tmp && lk && lk.by) return '<span class="wsBadge ws49Pub" title="Change anything to make it your own">' + ws49Av(lk.by) + 'By ' + wuEsc(lk.by) + '</span>';
+    if (!ws49Signed()) return '<span class="ws49Note" title="Sign in on the main menu">' + wuIco('globe', null, 14) + ' Sign in to share builds online</span>';
+    const rec = ws49Rec(b), pub = WS49.pubBusy && WS49.pubBusy === b.id, down = WS49.downBusy && WS49.downBusy === b.id;
+    if (!rec) return '<button type="button" class="wsBtn ws49Go" data-ws49="pub"' + (pub ? ' disabled' : '') + ' title="Riders everywhere will see it in Online builds">' +
+      wuIco('globe', null, 15) + (pub ? ' Publishing…' : ' Publish online') + '</button>';
+    const changed = !rec.s || rec.s !== ws49PubSig(b);
+    return '<span class="wsBadge ws49Pub" title="Riders can see it in Online builds">' + wuIco('globe', null, 12) + ' Online' + (rec.l ? ' · ♥ ' + ws49Num(rec.l) : '') + '</span>' +
+      '<button type="button" class="wsBtn' + (changed ? ' ws49Go' : '') + '" data-ws49="pub"' + (pub || down || !changed ? ' disabled' : '') +
+        ' title="' + (changed ? 'Send your changes to the online copy' : 'Nothing changed since you published it') + '">' + (pub ? 'Updating…' : 'Update online') + '</button>' +
+      '<button type="button" class="wsBtn bad" data-ws49="down"' + (pub || down ? ' disabled' : '') + '>' + (down ? 'Taking down…' : 'Take down') + '</button>';
+  } catch(e){ WS49.err = 'ed: ' + e.message; return ''; }
+}
+function ws49EdSync(b){ const el = wuEl('ws49Ed'); if (el && WS48.open && WSU.tab === 'edit' && WSU.ed.b === b) el.innerHTML = ws49EdInner(b); }
+function ws49EdClick(e){
+  const btn = e.target.closest('[data-ws49]'), b = WSU.ed.b; if (!btn || !b || btn.disabled) return;
+  const a = btn.getAttribute('data-ws49');
+  if (a === 'pub') ws49Publish(b, btn);
+  else if (a === 'down'){
+    if (wuArm(btn, 'Sure? Take down')) return;
+    wuDisarm(btn); ws49Unpublish(b.id, b.name);
+  }
+}
+/* why build b can't go online ('' = it can) */
+function ws49CantPublish(b){
+  const miss = wsMissing(b).length;
+  if (miss) return 'This build is a blueprint: buy the ' + miss + ' missing part' + (miss === 1 ? '' : 's') + ' first, then publish it.';
+  if (!/^[a-z0-9_-]{1,40}$/.test(b.veh) || !WS48_BID.test(b.id || 'b0')) return 'This ride can’t be shared online yet.';
+  if (!b.cust && !Object.keys(b.parts || {}).length) return 'This is still the factory <b>' + wuEsc(wuRideName(b.veh)) + '</b>. Add some parts or paint to make it yours, then publish it.';
+  if (ws49Rude(b.name)) return 'Pick another name for this build first: everybody online will see it.';
+  const by = ws49CopyOf(b);
+  if (by === 'you') return 'That build is already online.';
+  if (by) return 'This is still exactly ' + (by === 'the Workshop crew' ? 'the Workshop crew' : '<b>' + wuEsc(by) + '</b>') + '’s build. Change a part or a colour to make it yours, then publish it.';
+  return '';
+}
+function ws49Publish(b, btn){
+  if (!ws49Online()) return;
+  if (!ws49Signed()){ wuToast('Sign in to share builds online.', 'bad'); return; }
+  if (WS49.pubBusy || WS49.downBusy) return;
+  const why = ws49CantPublish(b);
+  if (why){ if (btn) wuShake(btn); wuSfx('no'); wuToast(why, 'bad'); return; }
+  if (b.tmp){ if (!wuAdopt(b)) return; if (WS48.open && WSU.tab === 'edit' && WSU.ed.b === b) wuEdTop(); }   // saved first (like Share)
+  const data = { c:b.cust || null, p:b.parts || {}, b:b.id }, json = JSON.stringify(data);
+  if (ws49Bytes(json) + (json.match(/[:,]/g) || []).length > WS49_DATA_MAX){ wuToast('This build has too much on it to publish. Take a part or two off and try again.', 'bad'); return; }
+  const rec0 = ws49Rec(b), acct = ws49Acct(), sig = ws49PubSig(b), name = b.name;
+  WS49.pubBusy = b.id; WS49.n.pub++; ws49EdSync(b);
+  ws49Rpc('dl_build_publish', { p_token:ws49Token(), p_bid:b.id, p_name:b.name, p_veh:b.veh, p_kind:ws48TypeOf(b.veh), p_data:data }).then(r=>{
+    WS49.pubBusy = '';
+    const id = r && r.ok === true ? ws49Int(r.id, 1, Number.MAX_SAFE_INTEGER) : 0;
+    if (id && acct){
+      ws49RecsOf(acct)[b.id] = { i:id, t:Date.now(), s:sig, l:rec0 ? rec0.l : 0 }; ws49Save();
+      ws49Dirty(); wuSfx('buy');
+      wuToast(rec0 ? '<b>' + wuEsc(name) + '</b> is updated online.' : '<b>' + wuEsc(name) + '</b> is online! Riders everywhere can see it in <b>Online builds</b>.', 'good');
+    } else {
+      const err = r && r.ok === true ? 'net' : ws49ErrCode(r);
+      if (err === 'full') ws49FullDlg(b); else { wuSfx('no'); wuToast(ws49ErrText(err, 'pub'), 'bad'); }
+    }
+    ws49After(b);
+  });
+}
+/* take one of my builds down (bid: its Workshop build id) */
+function ws49Unpublish(bid, name, after){
+  if (!ws49Signed() || WS49.downBusy || WS49.pubBusy || !WS48_BID.test(bid)){ if (after) after(false); return; }
+  const acct = ws49Acct(), b = ws49Local(bid);
+  WS49.downBusy = bid; WS49.n.down++; if (b) ws49EdSync(b);
+  ws49Rpc('dl_build_unpublish', { p_token:ws49Token(), p_bid:bid }).then(r=>{
+    WS49.downBusy = '';
+    const ok = !!(r && r.ok === true);
+    if (ok){
+      const R = ws49D().a[acct]; if (R && ws49Has(R, bid)){ delete R[bid]; ws49Save(); }
+      ws49Dirty(); ws49Forget(x=> x.mine && ws49BidOf(x) === bid);
+      wuSfx('off'); wuToast('<b>' + wuEsc(name) + '</b> is not online any more.' + (b ? ' It is still in your builds.' : ''));
+    } else { wuSfx('no'); wuToast(ws49ErrText(ws49ErrCode(r), 'down'), 'bad'); }
+    if (b) ws49After(b); else ws49After(null);
+    if (after) after(ok);
+  });
+}
+function ws49DownItem(it, btn){
+  const bid = ws49BidOf(it);
+  if (!bid){ wuToast('Open this build in the editor on the device you shared it from to take it down.', 'bad'); return; }
+  if (wuArm(btn, 'Sure? Take down')) return;
+  wuDisarm(btn); btn.disabled = true;
+  ws49Unpublish(bid, it.name, ok=>{ if (!ok) btn.disabled = false; });
+}
+/* after a publish / take down: the editor's buttons, My builds' badges, the gallery */
+function ws49After(b){
+  try {
+    if (!WS48.open) return;
+    if (WSU.tab === 'edit' && b && WSU.ed.b === b) ws49EdSync(b);
+    else if (WSU.tab === 'builds') wuBlList();
+    else if (WSU.tab === 'online') ws49Show(false);
+  } catch(e){ WS49.err = 'after: ' + e.message; }
+}
+/* 'full': my 12 online builds, take one down, then publish */
+function ws49FullDlg(b){
+  wuModal(true, '<h3>' + wuIco('globe', '#8fd3ff', 20) + ' All ' + WS49_MAX + ' online spots are taken</h3>' +
+    '<div class="note">You can have <b>' + WS49_MAX + ' builds</b> online at once. Take one down to make room for <b>' + wuEsc(b.name) + '</b>. ' +
+    'The build you take down stays in your builds: only its online copy goes.</div>' +
+    '<div class="ws49Rows" id="ws49Rows"><div class="ws49Wait">Loading your online builds…</div></div>' +
+    '<div class="row end"><button type="button" class="wsBtn" data-x="close">Cancel</button><button type="button" class="wsBtn ws49Go" data-x="go" disabled>Publish now</button></div>');
+  const D = wuEl('wsDlg');
+  const fill = e=>{
+    const R = wuEl('ws49Rows'); if (!R) return;
+    const mine = (e.builds || []).filter(x=> x.mine);
+    if (e.err || !mine.length){ R.innerHTML = '<div class="ws49Wait">' + (e.err ? wuEsc(ws49ErrText(e.err)) : 'Your online builds did not load. Try again in a moment.') + '</div>'; return; }
+    R.innerHTML = mine.map(x=> '<div class="ws49Row" data-row="' + x.id + '"><i class="dot" style="background:' + wuBuildBand(x) + '"></i><div class="tx"><b>' + wuEsc(x.name) + '</b>' +
+      '<span>' + wuEsc(wuRideName(x.veh)) + ' · ♥ ' + ws49Num(x.likes) + (x.at ? ' · ' + wuEsc(ws49Ago(x.at)) : '') + '</span></div>' +
+      '<button type="button" class="wsBtn bad sm" data-down="' + x.id + '">Take down</button></div>').join('');
+  };
+  ws49Fetch('mine', '').then(fill);
+  D.onclick = ev=>{
+    const x = ev.target.closest('[data-x]'), d = ev.target.closest('[data-down]');
+    if (x && x.getAttribute('data-x') === 'close'){ wuModal(false); return; }
+    if (x && x.getAttribute('data-x') === 'go'){ if (!x.disabled){ wuModal(false); ws49Publish(b, null); } return; }
+    if (!d || d.disabled) return;
+    const it = ws49Find(+d.getAttribute('data-down')), bid = it ? ws49BidOf(it) : '';
+    if (!it || !bid){ wuToast('Take that one down from the device you shared it from.', 'bad'); return; }
+    if (wuArm(d, 'Sure?')) return;
+    wuDisarm(d); d.disabled = true; d.textContent = 'Taking down…';
+    ws49Unpublish(bid, it.name, ok=>{
+      if (!ok){ d.disabled = false; d.textContent = 'Take down'; return; }
+      const row = D.querySelector('[data-row="' + it.id + '"]'); if (row) row.remove();
+      const go = D.querySelector('[data-x="go"]'); if (go){ go.disabled = false; go.textContent = 'Publish ' + b.name.slice(0, 24); }
+    });
+  };
+}
+
+/* ---------------------------------------------------------------- My builds: "Published" on the cards */
+function ws49CardBadge(b){
+  try { const r = ws49Rec(b); return r ? '<span class="wsBadge ws49Pub" title="Riders can see it in Online builds">Published' + (r.l ? ' · ♥ ' + ws49Num(r.l) : '') + '</span>' : ''; }
+  catch(e){ return ''; }
+}
+
+/* =========================================================================
+   RIDE51 -- Release 15.47: "add bmx with suspension" + "make the push scooters feel better and go faster".
+   1. SUSPENSION BMX (the rows are mods/sus51_rows.js, the fork / rocker / shock are drawn by mods/bmx15_build.js):
+      - a Suspension part for EVERY BMX (bx15 builder): None / Sus fork / Full sus -- in Customise -> Parts and as the Workshop's
+        Suspension slot (keys-only parts, like the Stem slot; "No suspension" is free)
+      - physics: a suspension BMX gets its own phys29 / phys30 category (more travel you can SEE: the frame sinks and the wheels
+        ride up their fork / stays on landings and bumps, softer springs, a calmer ride on rough ground, a touch more grip) and a
+        softer landing limit on the live ride (VEH.hard x1.22 with a sus fork, x1.40 full sus)
+   2. PUSH SCOOTERS: faster and livelier. The kick stroke pushes harder and keeps working at higher speeds (held W cruises at
+      ~12.5 m/s instead of ~9.5, kicked in rhythm ~14.5 instead of ~11), a quicker stroke + a shorter glide between strokes,
+      less rolling resistance (coasts further), and on the live ride: top speed x1.22, rolling drag x0.82, grip x1.08, steering x1.04,
+      softer landings (hard >= 27), a little more pump in bowls. The shared records (garage stat bars, shop prices) are untouched.
+   ?ride51=0 turns it all off. API: RIDE51, ride51Sus(id) -> '' | 'sf' (front) | 'fs' (full)
+   (LATE: P29_CAT / P30_CAT / RIDE25_K / R25P_FAM / HND_CATS / WS48_SLOTS are all declared before this runs.)
+   ========================================================================= */
+const RIDE51 = { on: !/[?&]ride51=0\b/.test(location.search), n:0, err:'', hardSF:1.22, hardFS:1.40,
+  scoot:{ top:1.22, drag:0.82, grip:1.08, steer:1.04, hard:27, pump:0.55 },
+  kick:{ J0:2.45, vk:16.5, rr:0.085, reach:0.115, rec:0.23, gap0:0.045, gapK:0.036 } };
+/* the suspension the ride has right now (its row, or the Suspension part fitted to it) */
+function ride51Sus(id){
+  try {
+    id = id || (typeof FLEET_CUR !== 'undefined' ? FLEET_CUR : '');
+    const v = typeof FLEET_BY_ID !== 'undefined' ? FLEET_BY_ID[id] : null;
+    if (!v || v.b !== 'bx15') return '';
+    const p = v.p || {};
+    let f = !!p.susFork, r = !!p.rearShock && !p.loop;
+    const pt = typeof ride25PartsGet === 'function' ? ride25PartsGet(id) : null;
+    if (pt && pt.sf){ f = pt.sf !== 'none'; r = pt.sf === 'full' && !p.loop; }
+    return r ? 'fs' : (f ? 'sf' : '');
+  } catch(e){ return ''; }
+}
+(function ride51Init(){
+  if (!RIDE51.on) return;
+  /* ---- 1a. the Suspension part (every BMX) */
+  try {
+    const F = typeof R25P_FAM !== 'undefined' ? R25P_FAM.bx15 : null;
+    if (F && !F.some(d=> d.k === 'sf')) F.push({ k:'sf', g:'Hardware', n:'Suspension', o:[
+      ['none', 'None', { susFork:false, rearShock:false }],
+      ['fork', 'Sus fork', { susFork:true, rearShock:false }, { off:1.04 }],
+      ['full', 'Full sus', { susFork:true, rearShock:true }, { off:1.05 }]] });
+  } catch(e){ RIDE51.err = 'part: ' + e.message; }
+  /* ---- 1b. the Workshop's Suspension slot for BMX (right after the Fork slot; ids are slot-scoped, so no other part moves) */
+  try {
+    const S = typeof WS48_SLOTS !== 'undefined' ? WS48_SLOTS.bmx : null;
+    if (S && !S.some(s=> s.id === 'susp')){
+      const i = S.findIndex(s=> s.id === 'fork');
+      S.splice(i < 0 ? 1 : i + 1, 0, { id:'susp', name:'Suspension', cat:'susp', keys:['sf'], view:[0.42, 0.16, 0.86] });
+    }
+  } catch(e){ RIDE51.err = 'slot: ' + e.message; }
+  /* ---- 1c. physics categories: travel you can see (m), softer springs, calmer on rough ground */
+  try {
+    P29_CAT.bmxsf = Object.assign({}, P29_CAT.bmx, { tf:0.065, tr:0.026, hz:2.6, z:0.50, mu:1.17, prog:0.30 });
+    P29_CAT.bmxfs = Object.assign({}, P29_CAT.bmx, { tf:0.065, tr:0.055, hz:2.35, z:0.46, mu:1.18, prog:0.31 });
+    P30_CAT.bmxsf = Object.assign({}, P30_CAT.bmx, { shake:0.80 });
+    P30_CAT.bmxfs = Object.assign({}, P30_CAT.bmx, { shake:0.62, hz:2.15 });
+    const _pc = p29Cat;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    p29Cat = function(){
+      const c = _pc.apply(this, arguments);
+      if (c !== 'bmx') return c;
+      const s = ride51Sus();
+      return s ? 'bmx' + s : c;
+    };
+  } catch(e){ RIDE51.err = 'cat: ' + e.message; }
+  /* ---- 2a. the kick stroke + the scooter category */
+  try { Object.assign(RIDE25_K, RIDE51.kick); } catch(e){ RIDE51.err = 'kick: ' + e.message; }
+  try { if (typeof HND_CATS !== 'undefined' && HND_CATS.scooter) HND_CATS.scooter.pump = RIDE51.scoot.pump; } catch(e){}
+  /* ---- 1d + 2b. the live ride (handlingApply's fresh per-apply record) */
+  if (typeof handlingApply === 'function'){
+    const ha = handlingApply;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    handlingApply = function(){
+      const r = ha.apply(this, arguments);
+      try { ride51Apply(); } catch(e){ RIDE51.err = 'apply: ' + e.message; }
+      return r;
+    };
+  }
+})();
+function ride51Apply(){
+  if (typeof VEH === 'undefined' || !VEH || !VEH._hb || VEH._r51 || typeof FLEET_CUR === 'undefined') return;
+  const v = typeof FLEET_BY_ID !== 'undefined' ? FLEET_BY_ID[FLEET_CUR] : null;
+  if (!v) return;
+  VEH._r51 = true;
+  const s = ride51Sus(FLEET_CUR);
+  if (s){ VEH.hard = (VEH.hard || 19.5)*(s === 'fs' ? RIDE51.hardFS : RIDE51.hardSF); RIDE51.n++; }
+  if (v.cls === 'pscooter'){
+    const B = VEH._hb, S = RIDE51.scoot;
+    B.top *= S.top; VEH.top = (VEH.top || 14)*S.top;
+    B.drag *= S.drag; VEH.drag = Math.max(0.05, (VEH.drag || 0.1)*S.drag);
+    B.grip *= S.grip; VEH.grip = (VEH.grip || 12)*S.grip; if (B.__g0 !== undefined) B.__g0 *= S.grip;
+    B.steer *= S.steer; VEH.steer = B.steer;
+    VEH.hard = Math.max(VEH.hard || 0, S.hard);
+    RIDE51.n++;
+  }
+}
 
 /*@@LATE@@*/
 /* =========================================================================
