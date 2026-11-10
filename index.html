@@ -37388,8 +37388,10 @@ function mo31SportBody(C){
     const xo = 0.178*(P.fairW || 1), arc = [];
     for (let a = 196; a >= 98; a -= 7){ const t = a*Math.PI/180, r = Rf + 0.085; if (Rf + Math.sin(t)*r >= yB - 0.01) arc.push([fz + Math.cos(t)*r, Rf + Math.sin(t)*r]); }
     const top = ny(hT[0] + 0.04*s);
-    const side = [[hT[0] + 0.06*s, top[1] - 0.05], [hT[0] - 0.13, yT + 0.035], [PV[0] + 0.25, yT - 0.035], [PV[0] + 0.15, yT - 0.11], [PV[0] + 0.23, yB + 0.16],
-      [PV[0] + 0.14, yB + 0.05], [PV[0] + 0.24, yB - 0.025], [arc[0][0] - 0.03, yB - 0.025]].concat(arc);
+    // (15.52: P.fairBack moves the panel's rear edge back -- more of the engine covered -- so the superbikes are not one shape)
+    const fb = P.fairBack || 0;
+    const side = [[hT[0] + 0.06*s, top[1] - 0.05], [hT[0] - 0.13, yT + 0.035], [PV[0] + 0.25 - fb, yT - 0.035], [PV[0] + 0.15 - fb, yT - 0.11], [PV[0] + 0.23 - fb, yB + 0.16],
+      [PV[0] + 0.14 - fb*0.6, yB + 0.05], [PV[0] + 0.24 - fb*0.4, yB - 0.025], [arc[0][0] - 0.03, yB - 0.025]].concat(arc);
     const sc = mo15cent(side);
     const so = { r:0.018, bev:0.004, bs:2, bz:0.42, by:0.55, bc:sc, piv:sc };
     [-1, 1].forEach(sd=> add(BODY, mo15plateGeo(side, 0.012, Object.assign({}, so, { x:sd*xo, rz:-sd*0.10 }))));
@@ -37398,6 +37400,10 @@ function mo31SportBody(C){
     [-1, 1].forEach(sd=> add(ACC, mo15plateGeo(band, 0.006, Object.assign({}, so, { x:sd*(xo + 0.0045), rz:-sd*0.10, r:0.01 }))));
     [-1, 1].forEach(sd=> add('DARK', mo15plateGeo([[hT[0] + 0.10*s, top[0] + 0.01], [hT[0] - 0.05, yT], [arc[2][0], arc[2][1]], [arc[arc.length - 1][0] - 0.02, arc[arc.length - 1][1] + 0.01]], 0.01,
       { x:sd*(xo*0.62), r:0.01, bev:0.003 })));
+    // (15.52: P.wing = a pair of small winglets on the upper fairing, in the trim colour)
+    if (P.wing) [-1, 1].forEach(sd=>{ const wq = ny(hT[0] + 0.10*s);
+      add(ACC, mo15boxGeo([sd*(xo + 0.030), wq[1] - 0.105, hT[0] + 0.10*s], 0.075, 0.007, 0.115, 0.16));
+      add(ACC, mo15boxGeo([sd*(xo + 0.066), wq[1] - 0.094, hT[0] + 0.095*s], 0.007, 0.03, 0.10, 0.16)); });
     // belly pan under the engine
     add(mo31key(P.belly, BODY), mo15sweepGeo([
       { p:[arc[0][0] - 0.05, yB - 0.025], up:0.15, dn:0.02, w:0.12, wt:0.15, n:3, nb:2.6 },
@@ -37863,16 +37869,21 @@ function fbQuad31(P){
 
   /* ---- rear: swing arm, axle carrier, mono shock ---- */
   const pv = [hipZ + 0.24*S, Rr + 0.12*S];                       // swing arm pivot [z, y]
-  { const cz = rz, cy = Rr;
+  // sus53 (Release 15.52): the swing arm (with the axle carrier) and the mono shock (shaft end / body end / spring) are moving groups
+  // (forks19_kit.js sus53Rear); mods/sus53.js turns the arm with the rear wheels' travel and telescopes the shock
+  const S53 = P.s53 !== false, BSw = S53 ? {} : B, BKa = S53 ? {} : B, BKb = S53 ? {} : B, BKs = S53 ? {} : B;
+  let s53K = null;
+  { const cz = rz, cy = Rr, add = (k, g)=> put(BSw, k, g);
     [-1, 1].forEach(sd=>{ add('ARM', mo15tubeGeo([[sd*0.085, pv[1], pv[0]], [sd*0.10, (pv[1] + cy)/2 + 0.02, (pv[0] + cz)/2], [sd*0.11, cy + 0.03, cz + 0.08]], 0.026, 10, 10)); });
     add('ARM', ROD([-0.09, pv[1], pv[0]], [0.09, pv[1], pv[0]], 0.030, 12));
     add('DARK', mo15xcyl([cz, cy], 0.058, 0.30*S, 0, 16));                                     // the axle carrier
     add('DARK', mo15xcyl([cz + 0.03, cy + 0.04], 0.03, 0.26*S, 0, 10));
     const sb = [0, cy + 0.10, cz + 0.28*S], st = [0, sy - 0.14, hipZ - 0.06];
     const d = [0, st[1] - sb[1], st[2] - sb[2]], L = Math.hypot(d[1], d[2]), u = [0, d[1]/L, d[2]/L], at = t=> [0, sb[1] + u[1]*L*t, sb[2] + u[2]*L*t];
-    add('ALLOY', ROD(sb, at(0.5), 0.011)); add('SHOCK', ROD(at(0.40), st, 0.024, 12));
-    add('COIL', mo15helixGeo(at(0.10), at(0.82), 0.040, 7, 0.0072, 6));
-    add('SHOCK', ROD(at(0.82), at(0.86), 0.046, 14));
+    put(BKa, 'ALLOY', ROD(sb, at(0.5), 0.011)); put(BKa, 'SHOCK', ROD(at(0.06), at(0.10), 0.044, 14)); put(BKb, 'SHOCK', ROD(at(0.40), st, 0.024, 12));
+    put(BKs, 'COIL', mo15helixGeo(at(0.10), at(0.82), 0.040, 7, 0.0072, 6));
+    put(BKb, 'SHOCK', ROD(at(0.82), at(0.86), 0.046, 14));
+    s53K = { a:[sb[2], sb[1]], b:[st[2], st[1]], on:0, sa:0.10*L, sb:0.18*L };
   }
 
   /* ---- engine: a gas single (crankcase, finned cylinder, radiator, high pipe) or an electric motor + battery ---- */
@@ -38051,6 +38062,10 @@ function fbQuad31(P){
   const MF = { DARK:M12.anod, ALLOY:BK.alloy, BARS:BM.bars, GRIP:FX.grip, RUB:M12.rub, GUARD:FX.plas };
   Object.keys(BF).forEach(k=>{ if (BF[k].length) mo15add(fr, BF[k], MF[k] || M12.anod); });
   fmerge(f); fmerge(fr);
+  if (S53 && s53K){
+    const G5 = O=>{ const g = new T.Group(); Object.keys(O).forEach(k=>{ if (O[k].length) mo15add(g, O[k], MATS[k] || M12.anod); }); return g; };
+    sus53Rear(f, { ra:[rz, Rr], k:{ f0:pv, ax:0 }, b:[G5(BSw)], tele:{ a:s53K.a, b:s53K.b, on:0, sa:s53K.sa, sb:s53K.sb, src:[G5(BKb), G5(BKa), G5(BKs)] } });
+  }
 
   /* ---- rider: seated, wide bars, boots on the pegs / floorboards ---- */
   const footY = floorY + (boards ? 0.0 : 0.02) + 0.075;
@@ -38558,6 +38573,43 @@ const SUS51 = { ids:{}, rows:[] };
     SUS51.ids[r.id] = 1; SUS51.rows.push(r.id);
     if (typeof COOL60 !== 'undefined' && COOL60 && COOL60.ids){ COOL60.ids[r.id] = 1; COOL60.price[r.id] = r.price; }     // a fixed price, outside the shop's ranking
   });
+})();
+
+/* =========================================================================
+   HYPER54 rows -- Release 15.52: "do it" (the rides that still had their old models). The five hyper e-scooters move from the old
+   commuter builder (escooter / escooterX: a thin stem on a flat plank) to the e-scooter kit (b:'mo15scoot', mods/motor15_scoot.js)
+   as machines of their own kind -- fat 11 to 13 inch tyres, a long wide battery deck with a raised kick plate, twin / thick / braced
+   stems, hydraulic or twin-spring forks, a swing arm on two coil-overs, wide bars with a big display, twin lamps, a side stand.
+   Three different machines (the two customs keep the shape of the one they were built from, with their own paint):
+     dtxscoot       the flagship: 13 inch road tyres, twin stems tied by a brace, a T bar, hydraulic fork, a flat deck with cooling fins
+     burnescoot     the racer: 11 inch, one thick stem, moto bars with a twist grip, hydraulic fork, a tapered deck   (+ thunderscoot)
+     wolfkingscoot  the off-roader: 12 inch knobblies, a braced twin stem, twin-spring forks, a round dash, a fork lamp   (+ mudscoot)
+   Only b + p change: ids, names, prices, stats, colours and the customs' extras stay. Right before the fleet core.
+   ========================================================================= */
+(function hyper54Rows(){
+  const set = (id, p)=>{ const v = FLEET.find(x=> x.id === id); if (!v) return; v.b = 'mo15scoot'; v.p = p; };
+  const DTX = { Rr:0.18, Rf:0.18, tw:0.105, wb:1.40, dy:0.22, dw:0.28, dt:0.11, deck:'flat', ha:80, bar:1.17, bw:0.76, bars:'tbar', stem:'twin', stemD:0.050, fold:'none',
+    fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'twin', disp:'big', motor:'dual', neon:true, brace:true, fins:true, foot:true, stand:true, spring:'acc', levers:2 };
+  const BRN = { Rr:0.16, Rf:0.16, tw:0.088, wb:1.28, dy:0.20, dw:0.25, dt:0.10, deck:'taper', ha:78, bar:1.18, bw:0.70, bars:'moto', stem:'thick', fold:'none',
+    fsus:'hyd', rsus:'arm', ffend:'high', rfend:'cover', light:'wide', disp:'big', motor:'dual', neon:true, twist:true, foot:true, stand:true, spring:'acc', levers:2 };
+  const WLF = { Rr:0.17, Rf:0.17, tw:0.098, wb:1.30, dy:0.205, dw:0.26, dt:0.10, deck:'flat', ha:79, bar:1.16, bw:0.72, bars:'moto', stem:'braced', fold:'none',
+    fsus:'dual', rsus:'arm', ffend:'high', rfend:'cover', light:'fork', disp:'round', motor:'dual', twist:true, brace:true, tread:true, foot:true, stand:true, spring:'acc', levers:2 };
+  set('dtxscoot', DTX); set('burnescoot', BRN); set('wolfkingscoot', WLF);
+  set('thunderscoot', Object.assign({}, BRN, { lean:0.30 }));
+  set('mudscoot', Object.assign({}, WLF, { lean:0.30 }));
+  /* the street motorcycles shared one body: each now has its own proportions (tank length / width, seat length, how far the tail runs
+     back, how much of the engine the fairing covers, winglets) -- the kit's knobs (mods/moto31_kit.js), no real bike's lines */
+  const tw = (id, o)=>{ const v = FLEET.find(x=> x.id === id); if (v && v.p) Object.assign(v.p, o); };
+  tw('r1moto', { tailE:0.0, fairBack:0.03 });
+  tw('zx10moto', { tailE:0.05, tankW:1.06, seatL:0.26, wing:true });
+  tw('panigalemoto', { tailE:0.09, tankW:0.96, tankL:0.48, fairBack:0.06, wing:true });
+  tw('s1000rrmoto', { tailE:-0.02, tankW:1.02, fairBack:0.04, wing:true });
+  tw('cbrmoto', { tailE:0.03, tankL:0.52, tankW:1.03, fairBack:0.08, wing:true });
+  tw('gsxrmoto', { tailE:-0.05, seatL:0.29, tankW:1.05, fairBack:-0.03 });
+  tw('superdukemoto', { tailE:0.21, tankW:0.97, tankL:0.44 });
+  tw('z900moto', { tailE:0.14, tankW:1.06 });
+  tw('mt09moto', { tailE:0.24, tankL:0.43, seatL:0.27 });
+  tw('speedtriplemoto', { tailE:0.11, seatL:0.33, tankW:1.02 });
 })();
 
 /* =========================================================================
@@ -91554,7 +91606,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.51';
+const DL_VER = '15.52';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -97280,7 +97332,7 @@ const CAM53 = { on: !/[?&]cam53=0\b/.test(location.search), err:'', moved:false 
                coupler hangs between them (every pivot stays bolted together); the shock turns on its frame eye, its shaft slides into
                the body and the coil is squashed between its seats; the chain runs turn and stretch to stay on the cog and the ring
    The local rider's live rig moves with the ride; in the garage viewer a ride settles onto its suspension now and then (a damped
-   bounce, so you can see it work); other riders' copies stay at rest. No physics is touched: this is drawing only. ?sus53=0 = static suspension as before. API: SUS53 (state), sus53Pose(lk, cf, cr) (tests / photo poses)
+   bounce, so you can see it work); other riders' copies squash on their landings (worked out from how they move). No physics is touched: this is drawing only. ?sus53=0 = static suspension as before. API: SUS53 (state), sus53Pose(lk, cf, cr) (tests / photo poses)
    ========================================================================= */
 const SUS53 = { on: !/[?&]sus53=0\b/.test(location.search), n:0, err:'', z:[{ o:null, bz:0, last:0 }, { o:null, bz:0, last:0 }], cf:0, cr:0 };
 const _s53a = [0, 0], _s53b = [0, 0], _s53c = [0, 0], _s53Q = { a0:0, a1:0, ac:0, r0:[0, 0], r1:[0, 0], ok:true };
@@ -97426,6 +97478,40 @@ function sus53Garage(V){
   g.bikeG.rotation.x = Z.bx + a; g.bikeG.position.y = Z.by + dy;
   if (g.riderG) g.riderG.position.y = Z.py + dy;
 }
+/* other riders' copies (multiplayer): their state carries no suspension travel, so it is worked out here from what the copy does -- a
+   landing (air -> ride) squashes it by the speed it came down at, then a spring-damper lets it settle; in the air it hangs a little.
+   Both ends move by the same share of their travel; the copy sinks onto its wheels so the tyres stay on the ground. */
+function sus53Ghost(g, st, dt){
+  if (!g || g.preview || !g.frameC || !g.frontC || !g.rearW || !g.frontW || !g.bikeG || !g.lk || !st) return;
+  let Z = g._s53n;
+  if (Z === undefined){
+    Z = g._s53n = null;
+    const lk = { frame:g.frameC, front:g.frontC }, S = sus53Get(lk);
+    if (S){
+      const tv = sus53Travel(g.id, S);
+      Z = g._s53n = { lk, tf:S.f ? tv[0] : 0, tr:S.r ? tv[1] : 0, c:0, v:0, y:st.y, vy:0, air:false, k:0,
+        ry:g.rearW.position.y, rz:g.rearW.position.z, fy:g.frontW.position.y, fz:g.frontW.position.z, by:g.bikeG.position.y, py:g.riderG ? g.riderG.position.y : 0 };
+    }
+  }
+  if (!Z || !(dt > 0)) return;
+  const d = Math.min(0.05, dt), grounded = st.state === 'ride', vy = (st.y - Z.y)/d;
+  Z.y = st.y;
+  if (grounded && Z.air) Z.v += Math.min(7, Math.max(0, -Z.vy))*4.0;         // the landing: the faster it fell, the deeper it goes
+  if (!grounded) Z.vy = vy;
+  Z.air = !grounded;
+  const tgt = grounded ? 0 : -0.12, w = 15, zt = 0.5, n = d > 0.02 ? 3 : 1, h = d/n;
+  for (let i = 0; i < n; i++){ Z.v += (-w*w*(Z.c - tgt) - 2*zt*w*Z.v)*h; Z.c += Z.v*h; }
+  if (Z.c > 1){ Z.c = 1; if (Z.v > 0) Z.v = 0; } else if (Z.c < -0.25){ Z.c = -0.25; if (Z.v < 0) Z.v = 0; }
+  const k = Math.round(Z.c*250)/250;
+  if (k === Z.k) return;
+  Z.k = k;
+  const cf = Z.tf*k, cr = Z.tr*k, dy = -Math.max(cf, cr);
+  sus53Pose(Z.lk, cf, cr, _s53o);
+  g.rearW.position.y = Z.ry + cr; g.rearW.position.z = Z.rz + _s53o[1];
+  g.frontW.position.y = Z.fy + cf; g.frontW.position.z = Z.fz + _s53o[0];
+  g.bikeG.position.y = Z.by + dy;
+  if (g.riderG) g.riderG.position.y = Z.py + dy;
+}
 (function sus53Init(){
   if (!SUS53.on || typeof syncRig !== 'function') return;
   const _sr = syncRig;
@@ -97443,6 +97529,15 @@ function sus53Garage(V){
     applyVehicle = function(){ rest(); return _av.apply(this, arguments); };
   }
   // copies (the garage viewer, other riders) are cloned from the live look: clone it at rest
+  if (typeof ghostPose === 'function'){
+    const _gp = ghostPose;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    ghostPose = function(g, st, dt){
+      const r = _gp.apply(this, arguments);
+      try { sus53Ghost(g, st, dt); } catch(e){ SUS53.err = 'ghost: ' + (e && e.message || e); }
+      return r;
+    };
+  }
   if (typeof ghostCreate === 'function'){
     const _gc = ghostCreate;
     // eslint-disable-next-line no-global-assign, no-func-assign
