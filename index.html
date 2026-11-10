@@ -30369,6 +30369,13 @@ function fbBX15(P){
   const ttl = Math.hypot(TTr[0] - TTf[0], TTr[1] - TTf[1]);
   const TTx = P.loop ? [TTr[0] + (TTr[0] - TTf[0])/ttl*0.15, TTr[1] + (TTr[1] - TTf[1])/ttl*0.15 - 0.012] : TTr;   // SE looptail: the top tube runs on past the seat tube
   const G1 = { frame:[], acc:[], alloy:[], black:[], chrome:[], rub:[], hg:[], peg:[], pegS:[] }, G2 = { alloy:[], black:[], chrome:[], rub:[], hg:[], peg:[], pegS:[] };
+  // sus53 (Release 15.51): moving suspension. Rear (RSH): the chain stays turn about the main pivot with the axle (fS / G1S), the seat stays
+  // are the link up to the rocker (fT / G1T), the rocker is a bell crank on the seat tube (fL / G1L), the shock telescopes and the chain
+  // (fC) follows the axle; front (SUS): the lower legs with the axle's pegs slide (BSl / G2S). mods/sus53.js moves them (forks19_kit.js)
+  const S53 = P.s53 !== false, MV = S53 && RSH, mkL = ()=> ({ frame:[], acc:[], alloy:[], black:[], chrome:[], rub:[], hg:[], peg:[], pegS:[] });
+  const fS = MV ? new T.Group() : f, fT = MV ? new T.Group() : f, fL = MV ? new T.Group() : f, fC = MV ? new T.Group() : f;
+  const G1S = MV ? mkL() : G1, G1T = MV ? mkL() : G1, G1L = MV ? mkL() : G1, G2S = S53 && SUS ? mkL() : G2, ST53 = [];
+  let BSl = null, s53T = null, s53H = null;
   const flush = (g, L)=>{
     const hgM = bxMat(P.hgMat, FX.plas), pegM = bxMat(P.pegMat === 'alloy' ? null : P.pegMat, FX.plas);
     const mm = { frame:RMt, acc:A, alloy:AL, black:N, chrome:CR, rub:BK.rubber, hg:hgM, peg:AL, pegS:(P.pegMat && P.pegMat !== 'alloy') ? pegM : (P.pegCap ? bxMat(P.pegCap, A) : A) };
@@ -30419,40 +30426,44 @@ function fbBX15(P){
     let s0 = 0; for (let i = 0; i < 120; i++){ const q = Lp(s0); if (q[0] - stZ(q[1]) >= 0.034) break; s0 += 0.002; }
     const sl = Math.max(0.12, Math.min(0.17, lT - s0 - 0.11));                       // eye to eye, kept clear of the head tube
     const Af = Lp(s0), Bf = Lp(s0 + sl);                                             // shaft eye (rocker) -> body eye (under the top tube)
-    const u0 = (Af[1] - 0.012 - BB[1])/sdir[1], P0 = [BB[0] + sdir[0]*u0, BB[1] + sdir[1]*u0];
-    const Rb = [P0[0] - 0.052, P0[1] + 0.012];
-    { const dz = Rb[0] - rz, dy = Rb[1] - Rr, dd = Math.hypot(dz, dy), need = Rr + 0.034; if (dd < need) Rb[1] += need - dd; }   // stays clear of the tyre
-    RK = { P0, Rb, Af, Bf, nD, oL, big, x:stR + 0.0048 };
+    // (15.51: a working bell crank -- the pivot sits on the seat tube well under the shock, the seat stays lift its rear arm and its upper
+    //  arm pushes the shock forward along the top tube; the chain stays pivot just behind the BB)
+    const u0 = (Af[1] - 0.070 - BB[1])/sdir[1], P0 = [BB[0] + sdir[0]*u0, BB[1] + sdir[1]*u0];
+    const Rb = [P0[0] - 0.078, P0[1] + 0.006];
+    { const dz = Rb[0] - rz, dy = Rb[1] - Rr, dd = Math.hypot(dz, dy), need = Rr + 0.034 + 0.055; if (dd < need) Rb[1] += need - dd; }   // stays clear of the tyre at full travel
+    RK = { P0, Rb, Af, Bf, nD, oL, big, x:stR + 0.0048, pv:bxL2(BB, RA, 0.20) };
     SSt = Rb;
   }
   [-1, 1].forEach(sd=>{
-    bxT(f, BB, RA, csR, RMt, sd*0.040, sd*0.060, 1.0);
+    if (RK){ bxT(f, BB, RK.pv, csR, RMt, sd*0.040, sd*0.044, 1.0); bxT(fS, RK.pv, RA, csR, RMt, sd*0.044, sd*0.060, 1.0); }   // a stub on the BB, the stay from the pivot
+    else bxT(f, BB, RA, csR, RMt, sd*0.040, sd*0.060, 1.0);
     if (P.loop){ const q = bxL2(TTx, RA, 0.22); f.add(bkTube([[sd*0.008, TTr[1] + 0.002, TTr[0] + 0.004], [sd*0.022, TTx[1] + 0.010, TTx[0] + 0.012], [sd*0.034, q[1], q[0]], [sd*0.060, RA[1], RA[0]]], ssR*1.25, RMt, 24)); }
-    else if (!P.wb) bxT(f, SSt, RA, ssR, RMt, sd*0.032, sd*0.060);
+    else if (!P.wb) bxT(fT, SSt, RA, ssR, RMt, sd*0.032, sd*0.060);
     { const cl = Math.hypot(-rz, bbY - Rr), cu = [-rz/cl, (bbY - Rr)/cl], sl = Math.hypot(SSt[0] - rz, SSt[1] - Rr), su = [(SSt[0] - rz)/sl, (SSt[1] - Rr)/sl];
       const hull = m12hull([[rz - 0.004, Rr, 0.019], [rz + cu[0]*0.050, Rr + cu[1]*0.050, 0.0115], [rz + su[0]*0.046, Rr + su[1]*0.046, 0.0105]], 6);
-      f.add(bkMesh(m12plateGeo(hull, sd*0.063, 0.0078, [{ c:[rz, Rr], r:0.0056 }], 0.0016), RMt)); }      // forged dropout with the axle slot
+      fS.add(bkMesh(m12plateGeo(hull, sd*0.063, 0.0078, [{ c:[rz, Rr], r:0.0056 }], 0.0016), RMt)); }      // forged dropout with the axle slot
   });
-  if (P.wb){ const W = bxL2(SSt, RA, 0.32); bxT(f, SSt, W, ssR*1.30, RMt); f.add(blob(0, W[1], W[0], ssR*1.5, ssR*1.4, ssR*1.4, RMt)); [-1, 1].forEach(sd=> bxT(f, W, RA, ssR, RMt, sd*0.014, sd*0.060)); }
-  if (P.tri){                                                            // GT triple triangle: a third little triangle in the rear
+  if (P.wb){ const W = bxL2(SSt, RA, 0.32); bxT(fT, SSt, W, ssR*1.30, RMt); fT.add(blob(0, W[1], W[0], ssR*1.5, ssR*1.4, ssR*1.4, RMt)); [-1, 1].forEach(sd=> bxT(fT, W, RA, ssR, RMt, sd*0.014, sd*0.060)); }
+  if (P.tri && !RK){                                                            // GT triple triangle: a third little triangle in the rear
     const m1 = bxUp(BB, sdir, stl*0.50), m2 = bxL2(SSt, RA, 0.50), m3 = bxL2(BB, RA, 0.50);
     [-1, 1].forEach(sd=>{ bxT(f, m1, m2, 0.012, FMt, sd*0.034, sd*0.050); bxT(f, m2, m3, 0.011, FMt, sd*0.050, sd*0.052); });
   }
   // ---- sus51 rear suspension: rocker plates either side of the seat tube, the coil shock under the top tube on a tab, a main pivot
   //      on the chain stays behind the BB (the stays' bolts), pivot bolts through every eye
   if (RK){
-    const B = new Map(), coil = (typeof VCOIL !== 'undefined' && VCOIL[P.coil || 'acc']) || FX.acc, rockM = bxMat(P.rockMat, AL);
+    const B = new Map(), BKa = new Map(), BKs = new Map(), coil = (typeof VCOIL !== 'undefined' && VCOIL[P.coil || 'acc']) || FX.acc, rockM = bxMat(P.rockMat, AL);
     const hull = m12hull([[RK.P0[0], RK.P0[1], 0.0158], [RK.Rb[0], RK.Rb[1], 0.0128], [RK.Af[0], RK.Af[1], 0.0138]], 6);
-    [-1, 1].forEach(sd=> f.add(bkMesh(m12plateGeo(hull, sd*RK.x, 0.0075, [], 0.0018), rockM)));
-    [[RK.P0, 0.0085], [RK.Rb, 0.0068], [RK.Af, 0.0068]].forEach(([p, r])=> G1.chrome.push(bxDiscG(r, 2*RK.x + 0.020, 0, 12).translate(0, p[1], p[0])));
-    pd15Shock(B, RK.Af, RK.Bf, { coil, big:RK.big, x:0, colMat:bxMat(P.coilCol, N) });
-    pd15Flush(B, f);
+    [-1, 1].forEach(sd=> fL.add(bkMesh(m12plateGeo(hull, sd*RK.x, 0.0075, [], 0.0018), rockM)));
+    [[RK.P0, 0.0085], [RK.Rb, 0.0068], [RK.Af, 0.0068]].forEach(([p, r])=> G1L.chrome.push(bxDiscG(r, 2*RK.x + 0.020, 0, 12).translate(0, p[1], p[0])));
+    const shK = pd15Shock(B, RK.Af, RK.Bf, { A:MV ? BKa : null, S:MV ? BKs : null, coil, big:RK.big, x:0, colMat:bxMat(P.coilCol, N) });
+    if (MV) s53T = { a:RK.Af, b:RK.Bf, on:1, sa:shK.sa, sb:shK.sb, src:[B, BKa, BKs] };
+    else pd15Flush(B, f);
     // the body eye's mount: a tab pair from the top tube's underside down to the eye
     const up = [-RK.nD[0], -RK.nD[1]], T0 = [RK.Bf[0] + up[0]*(RK.oL - ttR*0.35), RK.Bf[1] + up[1]*(RK.oL - ttR*0.35)];
     const tab = m12hull([[RK.Bf[0], RK.Bf[1], 0.0125], [T0[0] - 0.012, T0[1], 0.010], [T0[0] + 0.012, T0[1], 0.010]], 6);
     [-1, 1].forEach(sd=> f.add(bkMesh(m12plateGeo(tab, sd*0.0185, 0.006, [], 0.0015), FMt)));
     // main pivot on the chain stays, just behind the BB
-    const pv = bxL2(BB, RA, 0.20), px = 0.044 + csR*0.92 + 0.0035;
+    const pv = RK.pv, px = 0.044 + csR*0.92 + 0.0035;
     [-1, 1].forEach(sd=> G1.alloy.push(bxDiscG(0.0135, 0.007, sd*px, 16).translate(0, pv[1], pv[0])));
     G1.chrome.push(bxDiscG(0.0062, 2*px + 0.010, 0, 10).translate(0, pv[1], pv[0]));
   }
@@ -30465,7 +30476,7 @@ function fbBX15(P){
     if (!P.loop) wl.push(bx15WeldZY(TTf, TTs, 0.965, ttR*1.03));
     [-1, 1].forEach(sd=>{
       wl.push(bx15Weld([sd*0.0412, bbY + (Rr - bbY)*0.06, rz*0.06], [sd*0.020, Rr - bbY, rz], csR*1.02, wb));
-      if (!P.wb && !P.loop) wl.push(bx15Weld([sd*0.0335, SSt[1] + (RA[1] - SSt[1])*0.05, SSt[0] + (RA[0] - SSt[0])*0.05], [sd*0.028, RA[1] - SSt[1], RA[0] - SSt[0]], ssR*1.02, wb));
+      if (!P.wb && !P.loop && !RK) wl.push(bx15Weld([sd*0.0335, SSt[1] + (RA[1] - SSt[1])*0.05, SSt[0] + (RA[0] - SSt[0])*0.05], [sd*0.028, RA[1] - SSt[1], RA[0] - SSt[0]], ssR*1.02, wb));
     });
     f.add(bkMesh(bkMerge(wl), RMt)); }
   // ---- brakes (rear on the stays or under the chain stays, optional front)
@@ -30473,18 +30484,18 @@ function fbBX15(P){
   const rimOut = Rr - 2*(P.tr || 0.030) + 0.006, rbr = rimOut - 0.004;
   let yoke = null;
   const ssU = [SSt[0] - RA[0], SSt[1] - RA[1]], ssL = Math.hypot(ssU[0], ssU[1]); ssU[0] /= ssL; ssU[1] /= ssL;
-  const addBrake = (B, g, L)=>{ B.arms.forEach(x=> (L.brk = L.brk || []).push(x)); B.pads.forEach(x=> L.rub.push(x)); B.bosses.forEach(x=> g === f ? G1.frame.push(x) : L.black.push(x)); };
+  const addBrake = (B, g, L)=>{ B.arms.forEach(x=> (L.brk = L.brk || []).push(x)); B.pads.forEach(x=> L.rub.push(x)); B.bosses.forEach(x=> (L.frame || L.black).push(x)); };
   if (brk === 'u' || brk === 'v'){
     const sxAt = 0.060 - (0.060 - 0.032)*rbr/ssL;
     const B = brk === 'u' ? bxUBrakeG(RA, ssU, rbr, sxAt) : bxVBrakeG(RA, ssU, rbr, sxAt);
-    addBrake(B, f, G1); yoke = B.top;
-    const bp = bxL2(RA, SSt, Math.min(0.80, (rbr + 0.11)/ssL)); bxT(f, bp, bp, 0.0085, RMt, -0.048, 0.048);        // seat stay bridge above the brake
+    addBrake(B, f, G1T); yoke = B.top;
+    const bp = bxL2(RA, SSt, Math.min(0.80, (rbr + 0.11)/ssL)); bxT(fT, bp, bp, 0.0085, RMt, -0.048, 0.048);        // seat stay bridge above the brake
   } else if (brk === 'cs'){
     const csU = [BB[0] - RA[0], BB[1] - RA[1]], csL = Math.hypot(csU[0], csU[1]); csU[0] /= csL; csU[1] /= csL;
-    const B = bxUBrakeG(RA, csU, rbr, 0.060 - (0.060 - 0.040)*rbr/csL, true); addBrake(B, f, G1); yoke = B.top;
-    const bp = bxL2(RA, BB, Math.min(0.85, (rbr + 0.10)/csL)); bxT(f, bp, bp, 0.0085, RMt, -0.046, 0.046);         // chain stay bridge
+    const B = bxUBrakeG(RA, csU, rbr, 0.060 - (0.060 - 0.040)*rbr/csL, true); addBrake(B, f, G1S); yoke = B.top;
+    const bp = bxL2(RA, BB, Math.min(RK ? 0.74 : 0.85, (rbr + 0.10)/csL)); bxT(fS, bp, bp, 0.0085, RMt, -0.046, 0.046);         // chain stay bridge
   } else {
-    const bp = bxL2(RA, SSt, 0.70); bxT(f, bp, bp, 0.0075, RMt, -0.040, 0.040);
+    const bp = bxL2(RA, SSt, 0.70); bxT(fT, bp, bp, 0.0075, RMt, -0.040, 0.040);
   }
   // ---- pegs, hub guards, axle nuts (fixed on the axles; rear on the frame, front on the fork)
   const pg = P.pegs === undefined || P.pegs === true ? 'both' : (P.pegs === false ? 'none' : P.pegs);
@@ -30493,21 +30504,22 @@ function fbBX15(P){
   const hgOn = k=> P.hg === false ? false : (P.hg === 'all' ? true : peg[k]);
   const cog = P.cog || 0.032;
   const putPeg = (L, side, x, y, z)=>{ const q = bxPegG(side, x, y, z, pegL, pegR, plas); L.peg.push(...q.core); L.pegS.push(...q.sleeve); };
-  if (hgOn('rl')) G1.hg.push(...bxHubGuardG(1, Rr, rz, 0.046, 0.051));
-  if (peg.rl) putPeg(G1, 1, 0.068, Rr, rz); else G1.chrome.push(...bxNutG(1, Rr, rz));
-  if (peg.rr || P.hg === 'all'){ G1.hg.push(bxDiscG(cog + 0.012, 0.012, -0.079, 22).translate(0, Rr, rz)); G1.hg.push(bxDiscG(cog + 0.006, 0.020, -0.072, 18).translate(0, Rr, rz)); }
-  if (peg.rr) putPeg(G1, -1, -0.085, Rr, rz); else G1.chrome.push(...bxNutG(-1, Rr, rz).map(x=> x.translate(-0.012, 0, 0)));
+  if (hgOn('rl')) G1S.hg.push(...bxHubGuardG(1, Rr, rz, 0.046, 0.051));
+  if (peg.rl) putPeg(G1S, 1, 0.068, Rr, rz); else G1S.chrome.push(...bxNutG(1, Rr, rz));
+  if (peg.rr || P.hg === 'all'){ G1S.hg.push(bxDiscG(cog + 0.012, 0.012, -0.079, 22).translate(0, Rr, rz)); G1S.hg.push(bxDiscG(cog + 0.006, 0.020, -0.072, 18).translate(0, Rr, rz)); }
+  if (peg.rr) putPeg(G1S, -1, -0.085, Rr, rz); else G1S.chrome.push(...bxNutG(-1, Rr, rz).map(x=> x.translate(-0.012, 0, 0)));
   // (a suspension fork has its own axle feet + thru-axle: no front hub guards or nuts, front pegs sit outside its feet)
   if (!SUS && hgOn('fl')) G2.hg.push(...bxHubGuardG(1, Rf, fz, 0.040, 0.044));
   if (!SUS && hgOn('fr')) G2.hg.push(...bxHubGuardG(-1, Rf, fz, 0.040, -0.044));
-  if (peg.fl) putPeg(G2, 1, SUS ? 0.086 : 0.058, Rf, fz); else if (!SUS) G2.chrome.push(...bxNutG(1, Rf, fz).map(x=> x.translate(-0.008, 0, 0)));
-  if (peg.fr) putPeg(G2, -1, SUS ? -0.086 : -0.058, Rf, fz); else if (!SUS) G2.chrome.push(...bxNutG(-1, Rf, fz).map(x=> x.translate(0.008, 0, 0)));
+  if (peg.fl) putPeg(G2S, 1, SUS ? 0.086 : 0.058, Rf, fz); else if (!SUS) G2.chrome.push(...bxNutG(1, Rf, fz).map(x=> x.translate(-0.008, 0, 0)));
+  if (peg.fr) putPeg(G2S, -1, SUS ? -0.086 : -0.058, Rf, fz); else if (!SUS) G2.chrome.push(...bxNutG(-1, Rf, fz).map(x=> x.translate(0.008, 0, 0)));
   // ---- drivetrain: 3-piece cranks + sprocket (+ guard), half-link chain
   const cr = P.cr || 0.062, crL = P.crankL || 0.17;
   const crank = bx15Cranks({ y:bbY, cr, L:crL, rot:-Math.PI/2, arms:P.crankStyle || (P.chrome || P.bars === 'old' ? 'old' : 'tube'), armMat:bxMat(P.cranks, AL), pedalMat:bxMat(P.pedMat, N),
                            aw:P.aw, ad:P.ad, pw:P.pw, pd:P.pd, spk:P.spk, spkMat:bxMat(P.spkMat, AL), spkSolid:P.spkSolid, guard:P.guard, guardMat:bxMat(P.guardMat, A), guardRing:P.guardRing });
   crank.rotation.x = -Math.PI/2; f.add(crank);                          // level cranks, left foot forward (matches rs.pedalL / pedalR)
-  f.add(bkMesh(bkMerge(bxChainG(bbY, cr, Rr, rz, cog, -0.070)), BM.chain));
+  fC.add(bkMesh(bkMerge(bxChainG(bbY, cr, Rr, rz, cog, -0.070)), BM.chain));
+  if (MV) ST53.push({ a:RA, b:BB, on:0, src:fC });                       // (sus53: the chain turns about the sprocket and follows the axle)
   const SP = fseat(P.noSeat ? new T.Group() : f, ST, sdir, P.pl || 0.075, { sw:P.sw || 0.05, sl:P.sl || 0.11, seatMat:BM.seat, pitch:P.pitch === undefined ? -0.14 : P.pitch, postMat:bxMat(P.postMat, AL) });
   // ---- front end (Release 15.5, forks17 kit): round tapered legs, a forged crown with leg caps, flat dropouts carrying the axle ahead of
   //      the legs (the offset split between the crown and the dropouts), weld beads; the steerer, top cap + bolt
@@ -30517,7 +30529,8 @@ function fbBX15(P){
     // sus51: a short-travel single-crown suspension fork (forks19 kit) on the 20" wheel: lowers in the fork colour, coated stanchions,
     // a black crown; the BMX headset cups + steerer stay this builder's; an optional front disc (P.fdisc) on the left lower
     const B = new Map(), span = P.susSpan || 0.060;
-    SF = fk19Sus(B, G, { kind:'sus', fam:P.forkFam || 'xc', span, stanR:P.stanR || 0.0158, lowK:1.30, lowMat:forkMat, stanMat:fk17Stan(P.stan),
+    if (S53) BSl = new Map();
+    SF = fk19Sus(B, G, { slide:BSl, kind:'sus', fam:P.forkFam || 'xc', span, stanR:P.stanR || 0.0158, lowK:1.30, lowMat:forkMat, stanMat:fk17Stan(P.stan),
       crownMat:bxMat(P.crownMat, N), archMat:forkMat, travel:(P.susExt || 0.085)*0.95, word:P.forkWord === false ? '' : (P.forkWord || 'SUS 80'),
       steerer:false, cups:false, cal:!!P.fdisc, rotor:0.074, rotorX:0.046, tyreW:Math.min(span - 0.024, (P.tf || P.tr || 0.030) + 0.006) });
     pd15Flush(B, fr);
@@ -30598,8 +30611,12 @@ function fbBX15(P){
     }
   }
   if (hasFront && SUS){                                                  // sus51: the disc hose down the back of the left leg to the caliper
-    const l0 = lever(1), h = SF.hose;
-    cab.push(bxTubeG([l0, [gripIn - 0.045, gy - 0.045, l0[2] + 0.012], [0.056, cy - 0.01, cz + 0.035], [h[2][0] + 0.004, h[2][1] + 0.05, h[2][2] - 0.01], h[2], h[1], h[0]], 0.0026, 28, 5));
+    const l0 = lever(1), h = SF.hose, hk = [0.056, cy - 0.01, cz + 0.035];
+    if (BSl){                                                              // (sus53: up the moving leg, then a stretched run to the bars)
+      cab.push(bxTubeG([l0, [gripIn - 0.045, gy - 0.045, l0[2] + 0.012], hk], 0.0026, 14, 5));
+      pd15Put(BSl, N, bxTubeG([h[2], h[1], h[0]], 0.0026, 12, 5));
+      s53H = { a:[h[2][2], h[2][1]], b:[hk[2], hk[1]], src:g=> g.add(bkMesh(bxTubeG([hk, [h[2][0] + 0.004, h[2][1] + 0.05, h[2][2] - 0.01], h[2]], 0.0026, 12, 5), N)) };
+    } else cab.push(bxTubeG([l0, [gripIn - 0.045, gy - 0.045, l0[2] + 0.012], hk, [h[2][0] + 0.004, h[2][1] + 0.05, h[2][2] - 0.01], h[2], h[1], h[0]], 0.0026, 28, 5));
   } else if (hasFront){
     const l0 = lever(1);
     cab.push(bxTubeG([l0, [gripIn - 0.045, gy - 0.045, l0[2] + 0.012], [0.056, cy - 0.01, cz + 0.035], [0.042, G.C[1] + 0.03, G.C[0] + 0.045], [0.03, Rf + rbr + 0.06, fz + 0.02]], 0.0024, 20, 5));
@@ -30619,10 +30636,16 @@ function fbBX15(P){
     if (P.gyro) fc.push(bxTubeG([[-0.044, H1y - 0.008, H1z - 0.022], [-0.02, H1y - 0.035, H1z - 0.06], ttp(0.22)], 0.0024, 10, 4));
     if (brk === 'cs'){
       const dtp = t=>{ const q = bxL2(DTf, BB, t); return [-(dtR + 0.004), q[1], q[0]]; };
-      fc.push(bxTubeG([...start, dtp(0.10), dtp(0.50), dtp(0.88), [-0.030, bbY - 0.035, -0.06], [yoke[0], yoke[1] - 0.005, yoke[2] + 0.02], yoke], 0.0026, 36, 5));
+      const q0 = dtp(0.88), tail = [q0, [-0.030, bbY - 0.035, -0.06], [yoke[0], yoke[1] - 0.005, yoke[2] + 0.02], yoke];
+      if (MV){ fc.push(bxTubeG([...start, dtp(0.10), dtp(0.50), q0], 0.0026, 24, 5));
+        ST53.push({ a:[yoke[2], yoke[1]], b:[q0[2], q0[1]], on:0, src:g=> g.add(bkMesh(bxTubeG(tail, 0.0026, 14, 5), N)) }); }
+      else fc.push(bxTubeG([...start, dtp(0.10), dtp(0.50), ...tail], 0.0026, 36, 5));
     } else {
       const sst = t=>{ const q = bxL2(SSt, RA, t); return [-(0.032 + (0.060 - 0.032)*t) - 0.010, q[1] + 0.012, q[0]]; };
-      fc.push(bxTubeG([...start, ttp(0.22), ttp(0.55), ttp(0.86), sst(0.10), sst(0.30), [yoke[0] - 0.01, yoke[1] + 0.03, yoke[2] + 0.01], yoke], 0.0026, 40, 5));
+      const q0 = ttp(0.86), tail = [q0, sst(0.10), sst(0.30), [yoke[0] - 0.01, yoke[1] + 0.03, yoke[2] + 0.01], yoke];
+      if (MV){ fc.push(bxTubeG([...start, ttp(0.22), ttp(0.55), q0], 0.0026, 24, 5));       // (sus53: the run down the stays follows the brake)
+        ST53.push({ a:[yoke[2], yoke[1]], b:[q0[2], q0[1]], on:2, src:g=> g.add(bkMesh(bxTubeG(tail, 0.0026, 18, 5), N)) }); }
+      else fc.push(bxTubeG([...start, ttp(0.22), ttp(0.55), ...tail], 0.0026, 40, 5));
     }
     f.add(bkMesh(bkMerge(fc), N));
   }
@@ -30647,14 +30670,20 @@ function fbBX15(P){
     [-1, 1].forEach(sd=> G2.black.push(bxSeg([sd*0.06, XB[1] - 0.004, XB[2] + 0.004], [sd*0.06, XB[1] + 0.005, cz + 0.055], 0.006, 0.004)));
   }
   // brake hardware material
-  [[G1, f], [G2, fr]].forEach(([L, g])=>{ if (L.brk && L.brk.length){ g.add(bkMesh(bkMerge(L.brk), bxMat(P.brakeMat, N))); L.brk.length = 0; } });
+  const gSl = (G2S !== G2) ? new T.Group() : fr;                            // (sus53: the hardware on the fork's sliding legs)
+  [[G1, f], [G2, fr], [G1S, fS], [G1T, fT], [G1L, fL], [G2S, gSl]].forEach(([L, g])=>{ if (L.brk && L.brk.length){ g.add(bkMesh(bkMerge(L.brk), bxMat(P.brakeMat, N))); L.brk.length = 0; } });
   flush(f, G1); flush(fr, G2);
+  if (MV){ flush(fS, G1S); flush(fT, G1T); flush(fL, G1L); }
+  if (gSl !== fr) flush(gSl, G2S);
   // ---- wheels
   const wall = bxMat(P.wall, null);
   const wo = (R, t, c)=> ({ R, t, tread:P.tread || 'street', wall, rimMat:BM.rim, rimW:P.rimW || (t > 0.026 ? 0.036 : 0.030), rimD:P.rimD || 0.020,
                             spokes:(P.mags || P.solid) ? 0 : (P.spokes || 36), spokeMat:bxMat(P.spokeMat, CR), mags:P.mags, magW:P.magW, magMat:bxMat(P.magMat, null), solid:P.solid, cog:c, hubMat:P.hubMat ? bxMat(P.hubMat, AL) : M12.anod });
   const rw = bx15Wheel(wo(Rr, P.tr || 0.030, cog)), fw = bx15Wheel(wo(Rf, P.tf || P.tr || 0.030, 0));
   fmerge(f); fmerge(fr);
+  if (BSl && SF) sus53Slide(fr, g=>{ pd15Flush(BSl, g); fmerge(gSl); gSl.children.slice().forEach(m=> g.add(m)); }, G.d, SF.slideMax, s53H ? [s53H] : null);
+  else if (gSl !== fr){ fmerge(gSl); gSl.children.slice().forEach(m=> fr.add(m)); }
+  if (MV) sus53Rear(f, { ra:RA, k:{ f0:RK.pv, r0:RA, f1:RK.P0, r1:RK.Rb, ax:0 }, b:[fS, fL, fT], tele:s53T, st:ST53 });
   return { Rr, Rf, rz, fz, hz, frame:f, front:fr, rear:rw, frontW:fw, seated:false, crank, bbY, bbZ:0, integrated:true,
     rs:{ hipsY:P.hipsY || 1.00, hipsZ:P.hipsZ === undefined ? -0.13 : P.hipsZ, gripL:[gx, gy, gz], gripR:[-gx, gy, gz],
          pedalL:[0.15, bbY + 0.05, crL - 0.03], pedalR:[-0.15, bbY + 0.05, -crL - 0.03], lean:P.lean || 0.78 } };
@@ -31401,9 +31430,14 @@ function mo15shockMoto(g, top, bot, o){
     res.push(mo15rodGeo([a[0], a[1], a[2]], [a[0] + ox, a[1], a[2]], 0.011, 10));
     res.push(mo15rodGeo([b[0] + ox, b[1], b[2]], mo15L3([b[0] + ox, b[1], b[2]], [a[0] + ox, a[1], a[2]], -0.06), 0.012, 10));
   }
-  mo15add(g, body, o.body || M12.anod); mo15add(g, coll.concat(clev, shaft), BK.alloy);
+  // sus53: the shaft end (clevis, shaft, lower spring seat -> o.partA) and the spring (o.partS) can go to groups of their own
+  const gA = o.partA || g, gS = o.partS || g;
+  mo15add(g, body, o.body || M12.anod);
+  if (gA === g) mo15add(g, coll.concat(clev, shaft), BK.alloy);
+  else { mo15add(g, coll.slice(0, 2), BK.alloy); mo15add(gA, coll.slice(2).concat(clev, shaft), BK.alloy); }
   if (res.length) mo15add(g, res, o.res || o.body || M12.anod);
-  mo15add(g, mo15helixGeo(at(0.155), at(0.86), sr, Math.max(5, len*19), o.wire || 0.0054, 5), o.spring || FX.coil);
+  mo15add(gS, mo15helixGeo(at(0.155), at(0.86), sr, Math.max(5, len*19), o.wire || 0.0054, 5), o.spring || FX.coil);
+  return { sb:0.155*len, sa:0.14*len, L:len };
 }
 /* serrated MX foot peg on the side sd (+1 left), top surface centre at [y, z] */
 function mo15pegGeo(sd, y, z, o){
@@ -31565,7 +31599,14 @@ function fbMo15moto(P){
   const SA = mo15mat(q('sa2') || 'alloy', BK.alloy);
   const scale = Math.min(1.08, Math.max(0.70, wb/1.30));                                   // small bikes get proportionally smaller parts
   const B = { CH:[], SUB:[], SA:[], DARK:[], ALLOY:[], STEEL:[], RUB:[], BAT:[], BATHI:[], BODY:[], ACC:[], PLAS:[], WHITE:[], CHAIN:[], LED:[], TAIL:[], LAMP:[], SEAT:[], SEAM:[], CHR:[], COIL:[] };
-  const add = (k, g)=>{ if (g) B[k].push(g); };
+  // sus53 (Release 15.51): the swingarm (with the rear brake), the linkage's rocker and dogbone, the shock (body / shaft end / spring)
+  // and the chain get buckets of their own: they become kept groups (forks19_kit.js sus53Rear) that mods/sus53.js moves with the rear
+  // wheel's travel -- the linkage is solved, the shock telescopes, the chain stays on both sprockets
+  const S53 = P.s53 !== false, mkB = ()=>{ const o = {}; Object.keys(B).forEach(k=>{ o[k] = []; }); return o; };
+  const nB = ()=> S53 ? mkB() : B;
+  const BSw = nB(), BLk = nB(), BRk = nB(), BSh = nB(), BShA = nB(), BShS = nB(), BCh = nB();
+  let Bc = B, s53K = null, s53L = null, gSh = null, gShA = null, gShS = null, s53St = null;
+  const add = (k, g)=>{ if (g) Bc[k].push(g); };
   const C0 = {};
 
   /* ---- key points ---- */
@@ -31662,6 +31703,7 @@ function fbMo15moto(P){
   const cs = mo15sprocketGeo(fsR, 13, 0.008, { holes:0, hub:0.012 }); cs.translate(cx, MZ[1], MZ[0]); add('ALLOY', cs);
   add('DARK', mo15latheGeo([[0, cx + 0.004], [fsR*0.7, cx + 0.004], [fsR*0.7, cx + 0.016], [0, cx + 0.016]], 16).translate(0, MZ[1], MZ[0]));
   // Release 15.28 (realmoto37): a real roller chain (link plates + rollers round both sprockets) instead of the flat bar
+  Bc = BCh; s53St = { a:[rz, Rr], b:[MZ[0], MZ[1]] };                       // sus53: the chain turns about the countershaft and follows the axle
   if (typeof rm37Chain === 'function' && RM37.on) rm37Chain({ add, cx, F:MZ, fr:fsR, R:[rz, Rr], rr:rsR, scale:Math.min(1, scale + 0.1) });
   else { const dz = rz - MZ[0], dy = Rr - MZ[1], dl = Math.hypot(dz, dy), ux = -dy/dl, uy = dz/dl, sgn = uy < 0 ? -1 : 1;
     [1, -1].forEach(s=>{ const a = [MZ[0] + s*sgn*ux*fsR, MZ[1] + s*sgn*uy*fsR], b = [rz + s*sgn*ux*rsR, Rr + s*sgn*uy*rsR];
@@ -31670,6 +31712,7 @@ function fbMo15moto(P){
       const L1 = new T.BoxGeometry(0.016, 0.0055, L0); L1.rotateX(mo15ang(a, b)); L1.translate(cx, (a[1] + b[1])/2, (a[0] + b[0])/2); if (L1.attributes.uv) L1.deleteAttribute('uv'); add('DARK', L1); }); }
 
   /* ---- swingarm: tapered box-section arms, cross member, axle blocks + adjusters, chain slider + guide ---- */
+  Bc = BSw;                                                                 // sus53: everything on the swingarm
   const ax = 0.096*scale + 0.004;
   [-1, 1].forEach(sd=>{
     add('SA', mo15loftGeo([[sd*(xs - 0.014), PV[1], PV[0] + 0.03], [sd*ax, PV[1] - 0.006, PV[0] - 0.13], [sd*ax, Rr + 0.012, rz + 0.06], [sd*ax, Rr + 0.004, rz - 0.035]],
@@ -31691,25 +31734,37 @@ function fbMo15moto(P){
   if (P.twinShock){
     // Release 15.17 (cool60): a vintage twin-shock rear end -- two chrome-bodied coil-overs from the swingarm, close to the axle, up to
     // the subframe; no linkage, no mono-shock
+    // (sus53: the damper bodies ride on the swingarm and slide up over the shafts; the springs squash between their seats)
+    { const a2 = [rz + 0.12, Rr + 0.03], b2 = [PV[0] - 0.25*scale, sy - 0.11], L2 = Math.hypot(a2[0] - b2[0], a2[1] - b2[1]);
+      s53K = { a:a2, b:b2, on:0, sa:0.10*L2, sb:0.20*L2 }; }
     [-1, 1].forEach(sd=>{
       const bot = [sd*(ax + 0.016), Rr + 0.03, rz + 0.12], top = [sd*0.088, sy - 0.11, PV[0] - 0.25*scale], at = t=> mo15L3(bot, top, t);
-      add('CHR', mo15rodGeo(at(0.06), at(0.52), 0.019, 14));
-      add('CHR', mo15rodGeo(at(0.50), at(0.95), 0.008, 10));
+      Bc = BShA; add('CHR', mo15rodGeo(at(0.06), at(0.52), 0.019, 14)); add('CHR', mo15rodGeo(at(0.085), at(0.105), 0.027, 14));
+      add('DARK', mo15xcyl([bot[2], bot[1]], 0.014, 0.034, bot[0], 10));
+      Bc = BSh; add('CHR', mo15rodGeo(at(0.50), at(0.95), 0.008, 10));
       add('CHR', mo15rodGeo(at(0.78), at(0.84), 0.027, 14));
-      add('DARK', mo15xcyl([bot[2], bot[1]], 0.014, 0.034, bot[0], 10)); add('DARK', mo15xcyl([top[2], top[1]], 0.014, 0.034, top[0], 10));
-      add('COIL', mo15helixGeo(at(0.10), at(0.80), 0.026, 11, 0.005, 5));
+      add('DARK', mo15xcyl([top[2], top[1]], 0.014, 0.034, top[0], 10));
+      Bc = BShS; add('COIL', mo15helixGeo(at(0.10), at(0.80), 0.026, 11, 0.005, 5));
     });
+    Bc = BSw;
   } else {
-  const SB = [0, PV[1] - 0.10*scale, PV[0] - 0.125*scale], RP = [PV[0] - 0.165*scale, PV[1] - 0.06*scale], LR = [PV[0] - 0.08*scale, PV[1] - 0.135*scale], FL = [PV[0] + 0.03, PV[1] - 0.115*scale];
+  const SB = [0, PV[1] - 0.10*scale, PV[0] - 0.125*scale], RP = [PV[0] - 0.165*scale, PV[1] - 0.06*scale], LR = [PV[0] - 0.085*scale, PV[1] - 0.160*scale], FL = [PV[0] + 0.03, PV[1] - 0.115*scale];
+  // (sus53: the rocker hangs on the swingarm's bracket at RP, the dogbone ties its other corner LR to the frame at FL, the shock stands on
+  //  its third corner SB -- a real rising-rate linkage: body 0 = the swingarm, the coupler = the rocker, body 1 = the dogbone)
   [-1, 1].forEach(sd=>{
-    add('SA', mo15plateGeo(mo15blobOutline([[SB[2], SB[1], 0.017], [RP[0], RP[1], 0.017], [LR[0], LR[1], 0.018]], 8), 0.011, { x:sd*0.027, bev:0.003 }));
-    add('ALLOY', mo15plateGeo(mo15hull2([LR[0], LR[1]], 0.013, [FL[0], FL[1]], 0.013, 6), 0.010, { x:sd*0.036, bev:0.003 }));
+    Bc = BRk; add('SA', mo15plateGeo(mo15blobOutline([[SB[2], SB[1], 0.017], [RP[0], RP[1], 0.017], [LR[0], LR[1], 0.018]], 8), 0.011, { x:sd*0.027, bev:0.003 }));
+    Bc = BLk; add('ALLOY', mo15plateGeo(mo15hull2([LR[0], LR[1]], 0.013, [FL[0], FL[1]], 0.013, 6), 0.010, { x:sd*0.036, bev:0.003 })); Bc = BSw;   // the dogbone: its own link
   });
-  [[SB[2], SB[1]], RP, LR, FL].forEach(p=> add('STEEL', mo15xcyl(p, 0.008, 0.09, 0, 8)));
+  Bc = BRk; [[SB[2], SB[1]], RP, LR].forEach(p=> add('STEEL', mo15xcyl(p, 0.008, 0.09, 0, 8)));
+  Bc = B; add('STEEL', mo15xcyl(FL, 0.008, 0.09, 0, 8)); Bc = BSw;
+  s53L = { f0:PV, r0:RP, f1:FL, r1:LR, ax:0 };
   add('SA', mo15plateGeo([[RP[0] + 0.03, PV[1] - 0.02], [RP[0] - 0.03, PV[1] - 0.02], [RP[0] - 0.012, RP[1] - 0.012], [RP[0] + 0.02, RP[1] - 0.012]], 0.07, { r:0.008, bev:0.006 }));
-  add('CH', mo15plateGeo([[FL[0] + 0.03, FL[1] + 0.03], [FL[0] - 0.02, FL[1] + 0.01], [FL[0] - 0.01, FL[1] - 0.02], [FL[0] + 0.04, yB - 0.004]], 0.10, { r:0.01, bev:0.006 }));
-  mo15shockMoto(f, [0, ST[1], ST[2]], SB, { body:mo15mat(q('shockBody'), M12.anod), spring:mo15coil(q('spring')), res:mo15mat(q('shockRes'), M12.anod), r:0.021*scale + 0.002, sr:0.028*scale + 0.004, x:0.045 });
+  Bc = B; add('CH', mo15plateGeo([[FL[0] + 0.03, FL[1] + 0.03], [FL[0] - 0.02, FL[1] + 0.01], [FL[0] - 0.01, FL[1] - 0.02], [FL[0] + 0.04, yB - 0.004]], 0.10, { r:0.01, bev:0.006 }));
+  if (S53){ gSh = new T.Group(); gShA = new T.Group(); gShS = new T.Group(); }
+  const shR = mo15shockMoto(gSh || f, [0, ST[1], ST[2]], SB, { partA:gShA, partS:gShS, body:mo15mat(q('shockBody'), M12.anod), spring:mo15coil(q('spring')), res:mo15mat(q('shockRes'), M12.anod), r:0.021*scale + 0.002, sr:0.028*scale + 0.004, x:0.045 });
+  s53K = { a:[SB[2], SB[1]], b:[ST[2], ST[1]], on:2, sa:shR.sa, sb:shR.sb };
   }
+  Bc = B;
 
   /* ---- pegs, stand, skid plate ---- */
   // pegs: where the row's tuned foot landmarks say (P.foot = [x, y, z]), else under the pivot
@@ -31723,6 +31778,7 @@ function fbMo15moto(P){
 
   /* ---- bodywork (family pieces) ---- */
   const C = Object.assign(C0, { P, q, f, fr, G, B, add, M, A, PL, Rf, Rr, rz, fz, sy, hz, PV, yT, yB, FB, fzAt, BZr, MZ, mr, xs, scale, seatF, tailZ, sp0, dn0, bw });
+  C.swing = fn=>{ const b0 = Bc; Bc = BSw; try { fn(); } finally { Bc = b0; } };             // (sus53: parts built by the helpers that ride on the swingarm)
   // Release 15.22 (moto31): P.sport 'sbk' | 'naked' -> the street body (mods/moto31_kit.js)
   if (P.sport && typeof mo31SportBody === 'function') mo31SportBody(C); else mo15body(C);
 
@@ -31758,14 +31814,20 @@ function fbMo15moto(P){
 
   if ((P.cast || P.twinDisc) && typeof mo31CastWheels === 'function') mo31CastWheels(C, rw, fw, { Rr, Rf, hr:Rr*(street ? 0.24 : 0.27), hf:Rf*(street ? 0.22 : 0.25) });   // moto31
 
+  if (S53) C.s53hose = [];                                                                 // (sus53: rm37Detail's rear brake hose becomes a stretched run)
   if (typeof rm37Detail === 'function') rm37Detail(C);                                     // Release 15.28 (realmoto37): lines, pedals, stickers
   /* ---- merge per material ---- */
   const MATS = { CH, SUB, SA, DARK:M12.anod, ALLOY:BK.alloy, STEEL:BK.alloy, RUB:M12.anod, BAT:mo15mat(q('batCover'), BK.batt), BATHI:mo15mat(q('batCase'), BK.battHi), BODY:M, ACC:A, PLAS:PL, WHITE:BK.white, CHAIN:BM.chain, LED:BK.tail, TAIL:BK.tail, LAMP:BK.lamp, SEAT:BM.seat, SEAM:VM.cream, CHR:BK.chrome, COIL:mo15coil(q('spring')) };
   Object.keys(B).forEach(k=>{ if (B[k].length) mo15add(f, B[k], MATS[k]); });
+  const s53G = Bx=>{ const g = new T.Group(); Object.keys(Bx).forEach(k=>{ if (Bx[k].length) mo15add(g, Bx[k], MATS[k]); }); return g; };
+  const s53 = S53 ? { sw:s53G(BSw), lk:s53G(BLk), rk:s53G(BRk), sh:gSh || s53G(BSh), shA:gShA || s53G(BShA), shS:gShS || s53G(BShS), ch:s53G(BCh) } : null;
   if (C.decals) C.decals.forEach(fn=> fn());
-  if (C.rm37stk && typeof rm37StickerFlush === 'function') rm37StickerFlush(f, C.rm37stk);
+  if (C.rm37stk && typeof rm37StickerFlush === 'function'){ rm37StickerFlush(f, C.rm37stk); rm37StickerFlush(s53 ? s53.sw : f, C.rm37stk, 'sw'); }   // (the swingarm's sticker rides on the swingarm)
   if (C.batLogo && P.logo) mo15decal(f, mo15decalMat(P.logo, mo15css(P.batLogoCol === undefined ? 0xc9ced6 : P.batLogoCol)), C.batLogo[2], [C.batLogo[0], C.batLogo[1]], C.batLogo[3]);
   fmerge(f); fmerge(fr);
+  if (s53) sus53Rear(f, { ra:[rz, Rr], k:s53L || { f0:PV, ax:0 }, b:[s53.sw, s53.lk, s53.rk],
+    tele:s53K ? { a:s53K.a, b:s53K.b, on:s53K.on, sa:s53K.sa, sb:s53K.sb, src:[s53.sh, s53.shA, s53.shS] } : null,
+    st:(s53St ? [{ a:s53St.a, b:s53St.b, on:0, src:s53.ch }] : []).concat((C.s53hose || []).map(h=> ({ a:h.a, b:h.b, on:0, src:h.src }))) });
 
   /* ---- rider: hips on the seat, boots on the pegs, hands on the grips ---- */
   const hipZ = P.hipZ !== undefined ? P.hipZ : Math.max(-0.40, Math.min(-0.10, C.seatZ === undefined ? PV[0] + 0.02 : C.seatZ));
@@ -31927,7 +31989,7 @@ function mo15body(C){
     add('DARK', mo15boxGeo([0, sb - 0.20, tailZ - 0.06], 0.15, 0.10, 0.006, -0.12));
     // hugger over the rear tyre
     const hk2 = []; for (let i = 0; i <= 5; i++){ const a = mo15deg(70 + i*16); hk2.push({ p:[rz + Math.cos(a)*(Rr + 0.03), Rr + Math.sin(a)*(Rr + 0.03)], up:0.005, dn:0.002, w:0.06, wt:0.06, arch:0.02, n:2.4, nb:2.4 }); }
-    add('PLAS', mo15sweepGeo(hk2, { sub:3, seg:12, c:[rz, Rr] }));
+    (C.swing || (fn=> fn()))(()=> add('PLAS', mo15sweepGeo(hk2, { sub:3, seg:12, c:[rz, Rr] })));       // (sus53: the hugger rides on the swingarm)
   }
   /* ---- rack (adventure) ---- */
   if (q('rack')){
@@ -31991,7 +32053,8 @@ function mo15front(C){
   }
   /* ---- front fender ---- */
   const ff = q('ffend'), ffm = MB[P.ffMat] || BM.frame, Cc = G.C;
-  const fsh = (pts, ws, mat, c)=> mo15add(fr, mo15sweepGeo(pts.map((p, i)=> ({ p, up:0.007, dn:0.002, w:ws[i]*1.28, wt:ws[i]*1.28, arch:0.052, n:2.4, nb:2.4 })), { sub:4, seg:16, c }), mat);
+  const fS5 = fr.getObjectByName('sus53F') || fr;                               // (sus53: a low fender + its stays ride on the fork's sliding legs)
+  const fsh = (pts, ws, mat, c, g)=> mo15add(g || fr, mo15sweepGeo(pts.map((p, i)=> ({ p, up:0.007, dn:0.002, w:ws[i]*1.28, wt:ws[i]*1.28, arch:0.052, n:2.4, nb:2.4 })), { sub:4, seg:16, c }), mat);
   if (ff === 'mx' || ff === 'beak'){
     const ty = Math.min(Cc[1] - 0.045, 2*Rf + 0.10*s + 0.02);
     fsh([[Cc[0] - 0.16*s, ty - 0.03], [Cc[0] - 0.02, ty + 0.004], [fz - 0.02, Math.max(2*Rf + 0.055, ty - 0.03)], [fz + 0.16*s, 2*Rf + 0.025], [fz + 0.30*s, 2*Rf - 0.03]], [0.045, 0.062, 0.07, 0.064, 0.046].map(w=> w*Math.min(1, s + 0.1)), ffm);
@@ -31999,9 +32062,9 @@ function mo15front(C){
   } else if (ff === 'low' || ff === 'sm'){
     const rr = Rf + (ff === 'sm' ? 0.022 : 0.03), a0 = ff === 'sm' ? 45 : 35, a1 = ff === 'sm' ? 135 : 150, pts = [], ws = [];
     for (let i = 0; i <= 6; i++){ const a = mo15deg(a0 + (a1 - a0)*i/6); pts.push([fz + Math.cos(a)*rr, Rf + Math.sin(a)*rr]); ws.push((0.058 - Math.abs(i - 3)*0.004)*Math.min(1, s + 0.12)); }
-    fsh(pts, ws, ffm, [fz, Rf]);
+    fsh(pts, ws, ffm, [fz, Rf], fS5);
     // stays to the fork feet
-    [-1, 1].forEach(sd=>{ const p0 = pts[1], p1 = fk.LP(0.10); mo15add(fr, mo15rodGeo([sd*0.05, p0[1], p0[0]], [sd*(fk.span - 0.01), p1[1], p1[0] + 0.012], 0.006, 6), M12.anod); });
+    [-1, 1].forEach(sd=>{ const p0 = pts[1], p1 = fk.LP(0.10); mo15add(fS5, mo15rodGeo([sd*0.05, p0[1], p0[0]], [sd*(fk.span - 0.01), p1[1], p1[0] + 0.012], 0.006, 6), M12.anod); });
   }
 }
 
@@ -32026,7 +32089,12 @@ function fbMo15moped(P){
   const frm = P.frame || 'beam', tk = P.tank || 'box', st = P.seat || 'bench', rear = P.rear || 'mono';
   const M = BM.frame, A = FX.acc, PL = FX.plas;
   const B = { FR:[], DARK:[], ALLOY:[], CHROME:[], BAT:[], BATHI:[], BODY:[], ACC:[], PLAS:[], SEAT:[], STITCH:[], CHAIN:[], LED:[], TAIL:[], LAMP:[], MOTOR:[], WHITE:[] };
-  const add = (k, g)=>{ if (g) B[k].push(g); };
+  // sus53 (Release 15.51): the swingarm (with the axle, its plates, the caliper and the chain guard), the shocks (body end / shaft end /
+  // spring) and the chain runs get buckets of their own -- kept groups that mods/sus53.js moves with the rear wheel (forks19_kit.js)
+  const S53 = P.s53 !== false && rear !== 'hard', nB = ()=> S53 ? {} : B;
+  const BSw = nB(), BSh = nB(), BShA = nB(), BShS = nB(), BCh = [nB(), nB()];
+  let Bc = B, s53K = null, gSh = null, gShA = null, gShS = null;
+  const add = (k, g)=>{ if (g) (Bc[k] = Bc[k] || []).push(g); };
   const decals = [];
 
   /* ---- seat geometry first: the frame is built under it ---- */
@@ -32151,30 +32219,35 @@ function fbMo15moped(P){
   }
   crank.position.set(0, bbY, 0); crank.userData.keep = true; f.add(crank);
   { const runs = [[bbY + ring, R + cog], [bbY - ring, R - cog]];
-    runs.forEach(([y0, y1])=>{ const L0 = Math.hypot(rz, y1 - y0), g = new T.BoxGeometry(0.008, 0.007, L0); g.rotateX(mo15ang([0, y0], [rz, y1])); g.translate(cx, (y0 + y1)/2, rz/2); if (g.attributes.uv) g.deleteAttribute('uv'); add('CHAIN', g); }); }
-  if (P.guard) add('PLAS', mo15loftGeo([[cx - 0.014, bbY + ring + 0.022, 0.07], [cx - 0.014, (bbY + ring + R + cog)/2 + 0.024, rz*0.5], [cx - 0.014, R + cog + 0.022, rz*0.82]], [[0, 0.006, 0.05], [1, 0.006, 0.034]], { n:4, rad:10, seg:8 }));
+    runs.forEach(([y0, y1], i)=>{ Bc = BCh[i]; const L0 = Math.hypot(rz, y1 - y0), g = new T.BoxGeometry(0.008, 0.007, L0); g.rotateX(mo15ang([0, y0], [rz, y1])); g.translate(cx, (y0 + y1)/2, rz/2); if (g.attributes.uv) g.deleteAttribute('uv'); add('CHAIN', g); }); Bc = B; }
+  if (P.guard){ Bc = BSw; add('PLAS', mo15loftGeo([[cx - 0.014, bbY + ring + 0.022, 0.07], [cx - 0.014, (bbY + ring + R + cog)/2 + 0.024, rz*0.5], [cx - 0.014, R + cog + 0.022, rz*0.82]], [[0, 0.006, 0.05], [1, 0.006, 0.034]], { n:4, rad:10, seg:8 })); Bc = B; }
 
   /* ---- rear end ---- */
   const spr = mo15coil(P.spring);
-  const shk = (a, b, x)=>{                                        // a compact coil-over (twin shocks)
-    const at = t=> mo15L3(a, b, t);
-    add('DARK', mo15rodGeo(at(0.0), at(0.55), 0.016, 12)); add('ALLOY', mo15rodGeo(at(0.5), at(0.98), 0.0075, 8));
-    add('ALLOY', mo15rodGeo(at(0.10), at(0.13), 0.031, 14)); add('ALLOY', mo15rodGeo(at(0.84), at(0.87), 0.029, 14));
-    B.SPRING = (B.SPRING || []).concat([mo15helixGeo(at(0.13), at(0.84), 0.025, 7, 0.0045, 5)]);
-    [a, b].forEach(p=> add('ALLOY', mo15xcyl([p[2], p[1]], 0.013, 0.04, x, 10)));
+  const shk = (a, b, x)=>{                                        // a compact coil-over (twin shocks): a = on the swingarm, b = on the frame
+    const at = t=> mo15L3(a, b, t), b0 = Bc;
+    // (sus53: the body rides on the swingarm and slides up over the shaft; the spring squashes between its seats)
+    Bc = S53 ? BShA : b0; add('DARK', mo15rodGeo(at(0.0), at(0.55), 0.016, 12)); add('ALLOY', mo15rodGeo(at(0.10), at(0.13), 0.031, 14)); add('ALLOY', mo15xcyl([a[2], a[1]], 0.013, 0.04, x, 10));
+    Bc = S53 ? BSh : b0; add('ALLOY', mo15rodGeo(at(0.5), at(0.98), 0.0075, 8)); add('ALLOY', mo15rodGeo(at(0.84), at(0.87), 0.029, 14)); add('ALLOY', mo15xcyl([b[2], b[1]], 0.013, 0.04, x, 10));
+    Bc = S53 ? BShS : b0; add('SPRING', mo15helixGeo(at(0.13), at(0.84), 0.025, 7, 0.0045, 5));
+    Bc = b0;
+    if (S53){ const L = Math.hypot(a[2] - b[2], a[1] - b[1]); s53K = { a:[a[2], a[1]], b:[b[2], b[1]], on:0, sa:0.13*L, sb:0.16*L }; }
   };
   if (rear !== 'hard'){
     // swingarm: tapered box arms from the pivot to the axle, a brace, axle plates
+    Bc = BSw;
     [-1, 1].forEach(sd=> add('FR', mo15loftGeo([[sd*0.07, PV[1], PV[0] + 0.02], [sd*0.088, PV[1] - 0.01, PV[0] - 0.12], [sd*0.092, R + 0.012, rz + 0.06], [sd*0.092, R, rz - 0.03]], [[0, 0.028, 0.06], [0.3, 0.026, 0.056], [1, 0.024, 0.042]], { n:4, rad:10, seg:14 })));
     add('FR', mo15boxGeo([0, PV[1] - 0.005, PV[0] - 0.13], 0.17, 0.034, 0.034));
-    add('ALLOY', mo15xcyl(PV, 0.014, 0.16, 0, 10));
+    Bc = B; add('ALLOY', mo15xcyl(PV, 0.014, 0.16, 0, 10)); Bc = BSw;
     if (rear === 'twin') [-1, 1].forEach(sd=> shk([sd*0.098, R + 0.04, rz + 0.07], [sd*0.098, yb - 0.035, rz + 0.22], sd*0.098));
     else {
       // mono shock from a rocker on the swingarm brace up to the seat-rail node
       const SL = [0, PV[1] + 0.06, PV[0] - 0.15], SU = [0, yb - 0.04, Math.min(sz + 0.02, SN[0] - 0.24)];
       add('FR', mo15plateGeo([[PV[0] - 0.19, PV[1] + 0.012], [PV[0] - 0.09, PV[1] + 0.012], [SL[2] + 0.015, SL[1] + 0.012], [SL[2] - 0.022, SL[1] + 0.012]], 0.05, { r:0.008, bev:0.006 }));
-      mo15shockMoto(f, SU, SL, { body:M12.anod, spring:spr, res:M12.anod, r:0.017, sr:0.026, x:0.036, wire:0.0048 });
-      add('FR', mo15plateGeo([[SU[2] + 0.06, SU[1] + 0.04], [SU[2] - 0.05, SU[1] + 0.04], [SU[2] - 0.02, SU[1] - 0.025], [SU[2] + 0.03, SU[1] - 0.025]], 0.05, { r:0.01, bev:0.006 }));
+      if (S53){ gSh = new T.Group(); gShA = new T.Group(); gShS = new T.Group(); }
+      const shR = mo15shockMoto(gSh || f, SU, SL, { partA:gShA, partS:gShS, body:M12.anod, spring:spr, res:M12.anod, r:0.017, sr:0.026, x:0.036, wire:0.0048 });
+      if (S53) s53K = { a:[SL[2], SL[1]], b:[SU[2], SU[1]], on:0, sa:shR.sa, sb:shR.sb };
+      Bc = B; add('FR', mo15plateGeo([[SU[2] + 0.06, SU[1] + 0.04], [SU[2] - 0.05, SU[1] + 0.04], [SU[2] - 0.02, SU[1] - 0.025], [SU[2] + 0.03, SU[1] - 0.025]], 0.05, { r:0.01, bev:0.006 }));
     }
   } else {
     // hardtail: chain stays + seat stays to the dropouts
@@ -32182,9 +32255,11 @@ function fbMo15moped(P){
       add('FR', mo15loftGeo([[sd*0.054, yb - 0.035, SN[0] - 0.20], [sd*0.08, R + 0.20, rz + 0.18], [sd*0.092, R + 0.03, rz + 0.035]], 0.024, { rad:10, seg:12 })); });
     if (P.shocks) [-1, 1].forEach(sd=> shk([sd*0.098, R + 0.04, rz + 0.07], [sd*0.098, yb - 0.035, rz + 0.22], sd*0.098));
   }
+  Bc = BSw;                                                                 // (the axle's plates, the axle and the caliper ride on the swingarm)
   [-1, 1].forEach(sd=> add('ALLOY', mo15plateGeo([[rz + 0.05, R + 0.035], [rz - 0.02, R + 0.025], [rz - 0.025, R - 0.025], [rz + 0.05, R - 0.02]], 0.012, { x:sd*0.096, r:0.008, bev:0.003 })));
   add('ALLOY', mo15xcyl(RA, 0.011, 0.24, 0, 10));
   add('DARK', mo15loftGeo([[0.084, R + 0.07, rz + 0.075], [0.084, R + 0.105, rz + 0.035]], [[0, 0.034, 0.05], [1, 0.034, 0.05]], { n:3.4, rad:12, seg:2 }));          // rear caliper (left, on the rotor)
+  Bc = B;
 
   /* ---- seat ---- */
   const kT = 3.0, kB = 7, S = [];
@@ -32224,15 +32299,24 @@ function fbMo15moped(P){
   const fnd = P.fenders || 'hug', fw = tw + 0.016;
   const blade = (zc, yc, rr, a0, a1, mat, grp, w2)=>{ const pts = []; const nS = Math.max(4, Math.round(Math.abs(a1 - a0)*6)); for (let i = 0; i <= nS; i++){ const a = a0 + (a1 - a0)*i/nS; pts.push({ p:[zc + Math.cos(a)*rr, yc + Math.sin(a)*rr], up:0.006, dn:0.002, w:w2 || fw, wt:w2 || fw, arch:0.022, n:2.4, nb:2.4 }); } (grp || f).add(mo15m(mo15sweepGeo(pts, { sub:3, seg:14, c:[zc, yc] }), mat)); return pts; };
   const FM = P.fenderMat === 'body' ? M : PL;
+  // sus53: a hugging rear fender + its stays ride on the swingarm (gFen); a fender on the frame keeps still and its stays to the axle
+  // become stretched runs (ST5), like the rack's struts
+  const gFen = S53 ? new T.Group() : null, ST5 = [];
+  const strut = (b3, a3)=>{                                                   // a pair of rods from the frame (b3) down to the axle (a3), mirrored
+    const rods = [-1, 1].map(sd=> mo15rodGeo([sd*b3[0], b3[1], b3[2]], [sd*a3[0], a3[1], a3[2]], b3[3] || 0.006, 6));
+    if (S53) ST5.push({ a:[a3[2], a3[1]], b:[b3[2], b3[1]], on:0, src:g=> mo15add(g, rods, M12.anod) }); else rods.forEach(r=> add('DARK', r));
+  };
   if (fnd === 'flat'){
     const fy = Math.min(yb - 0.03, 2*R + 0.10);
     add('BODY', mo15sweepGeo([{ p:[Math.min(zT + 0.12, rz + 0.10), fy], up:0.006, dn:0.004, w:fw, wt:fw, arch:0.01, n:4, nb:4 }, { p:[rz - 0.10, fy + 0.002], up:0.006, dn:0.004, w:fw, wt:fw, arch:0.01, n:4, nb:4 }, { p:[Math.min(zT - 0.10, rz - 0.28), fy - 0.02], up:0.006, dn:0.004, w:fw*0.8, wt:fw*0.8, arch:0.01, n:4, nb:4 }], { sub:3, seg:12 }));
-    [-1, 1].forEach(sd=> add('DARK', mo15rodGeo([sd*fw*0.85, fy - 0.006, rz - 0.06], [sd*0.092, R + 0.01, rz + 0.01], 0.007, 6)));
+    strut([fw*0.85, fy - 0.006, rz - 0.06, 0.007], [0.092, R + 0.01, rz + 0.01]);
   } else if (fnd !== 'none'){
     const big = fnd === 'fat', hi = fnd === 'mx';
     const rr = R + (big ? 0.04 : hi ? 0.07 : 0.03), a0 = fnd === 'short' ? mo15deg(70) : mo15deg(30), a1 = fnd === 'short' ? mo15deg(140) : big ? mo15deg(185) : mo15deg(160);
-    blade(rz, R, rr, a0, a1, FM);
-    [-1, 1].forEach(sd=> add('DARK', mo15rodGeo([sd*(fw - 0.004), R + rr*Math.sin(a1 - 0.25), rz + rr*Math.cos(a1 - 0.25)], [sd*0.092, R + 0.02, rz - 0.03], 0.006, 6)));
+    const onSw = S53 && !hi;                                                 // (a high mx fender stays on the frame)
+    blade(rz, R, rr, a0, a1, FM, onSw ? gFen : null);
+    if (onSw) mo15add(gFen, [-1, 1].map(sd=> mo15rodGeo([sd*(fw - 0.004), R + rr*Math.sin(a1 - 0.25), rz + rr*Math.cos(a1 - 0.25)], [sd*0.092, R + 0.02, rz - 0.03], 0.006, 6)), M12.anod);
+    else strut([fw - 0.004, R + rr*Math.sin(a1 - 0.25), rz + rr*Math.cos(a1 - 0.25)], [0.092, R + 0.02, rz - 0.03]);
   }
   // tail light + plate bracket under the seat tail
   add('DARK', mo15loftGeo([[0, yb - 0.02, tail[0] - 0.02], [0, yb - 0.02, tail[0] - 0.12]], [[0, 0.09, 0.04], [1, 0.08, 0.034]], { n:3.5, rad:12, seg:2 }));
@@ -32242,7 +32326,7 @@ function fbMo15moped(P){
     const under = st === 'two', rz0 = under ? zT + sL*0.46 : zT + 0.03, rz1 = under ? zT + 0.03 : zT - 0.20, ry = under ? yb - 0.014 : Math.max(yb - 0.01, R + 0.32);
     add('DARK', mo15tubeGeo([[0.0, ry, rz1], [0.075, ry, rz1 + 0.01], [0.08, ry, rz0 - 0.01], [0.06, ry, rz0]], 0.0085, 14, 6)); add('DARK', mo15tubeGeo([[0.0, ry, rz1], [-0.075, ry, rz1 + 0.01], [-0.08, ry, rz0 - 0.01], [-0.06, ry, rz0]], 0.0085, 14, 6));
     for (let i = 0; i < 3; i++) add('DARK', mo15rodGeo([-0.075, ry, rz1 + 0.08 + i*0.09], [0.075, ry, rz1 + 0.08 + i*0.09], 0.006, 6));
-    [-1, 1].forEach(sd=>{ add('DARK', mo15rodGeo([sd*0.078, ry, rz1 + 0.04], [sd*0.095, R + 0.01, rz - 0.01], 0.007, 6)); });
+    strut([0.078, ry, rz1 + 0.04, 0.007], [0.095, R + 0.01, rz - 0.01]);
   }
   if (P.skid) add(P.skid === 'black' ? 'DARK' : 'ALLOY', mo15plateGeo([[0.22, bbY - 0.035], [0.18, bbY - 0.095], [-0.04, bbY - 0.10], [-0.10, bbY - 0.065], [-0.08, bbY - 0.045]], 0.14, { r:0.02, bev:0.01 }));
   add('DARK', mo15tubeGeo([[0.07, bbY - 0.01, -0.08], [0.10, bbY - 0.06, -0.18], [0.115, Math.max(0.08, bbY - 0.10), -0.30]], 0.0085, 8, 6));
@@ -32275,8 +32359,9 @@ function fbMo15moped(P){
     mo15add(fr, mo15sweepGeo([[c[0] - 0.12, ty - 0.02], [c[0] + 0.0, ty + 0.004], [fz + 0.04, 2*R + 0.05], [fz + 0.17, 2*R + 0.02], [fz + 0.28, 2*R - 0.03]].map((p, i)=> ({ p, up:0.006, dn:0.002, w:[0.05, 0.06, 0.066, 0.06, 0.044][i], wt:[0.05, 0.06, 0.066, 0.06, 0.044][i], arch:0.03, n:2.4, nb:2.4 })), { sub:4, seg:14 }), FM);
   } else if (fnd !== 'none'){
     const ffa = (fnd === 'flat' || fnd === 'short') ? [45, 125] : fnd === 'fat' ? [20, 150] : [35, 140];
-    blade(fz, R, R + (fnd === 'fat' ? 0.04 : 0.03), mo15deg(ffa[0]), mo15deg(ffa[1]), FM, fr);
-    [-1, 1].forEach(sd=> mo15add(fr, mo15rodGeo([sd*(fw - 0.004), R + (R + 0.035)*Math.sin(mo15deg(ffa[0] + 8)), fz + (R + 0.035)*Math.cos(mo15deg(ffa[0] + 8))], [sd*(fsp - 0.012), R + 0.09, fz + 0.02], 0.006, 6), M12.anod));
+    const fS5 = fr.getObjectByName('sus53F') || fr;                             // (sus53: the fender + its stays ride on the fork's sliding legs)
+    blade(fz, R, R + (fnd === 'fat' ? 0.04 : 0.03), mo15deg(ffa[0]), mo15deg(ffa[1]), FM, fS5);
+    [-1, 1].forEach(sd=> mo15add(fS5, mo15rodGeo([sd*(fw - 0.004), R + (R + 0.035)*Math.sin(mo15deg(ffa[0] + 8)), fz + (R + 0.035)*Math.cos(mo15deg(ffa[0] + 8))], [sd*(fsp - 0.012), R + 0.09, fz + 0.02], 0.006, 6), M12.anod));
   }
 
   /* ---- wheels: 20x4 moto tyres on wide spoked rims (or cast mags), a rear hub motor ---- */
@@ -32293,6 +32378,13 @@ function fbMo15moped(P){
   Object.keys(B).forEach(k=>{ if (B[k] && B[k].length) mo15add(f, B[k], MATS[k]); });
   decals.forEach(fn=> fn());
   fmerge(f); fmerge(fr);
+  if (S53){
+    const G5 = Bx=>{ const g = new T.Group(); Object.keys(Bx).forEach(k=>{ if (Bx[k] && Bx[k].length) mo15add(g, Bx[k], MATS[k]); }); return g; };
+    const gSw = G5(BSw); if (gFen) gFen.children.slice().forEach(m=> gSw.add(m));
+    sus53Rear(f, { ra:[rz, R], k:{ f0:PV, ax:0 }, b:[gSw],
+      tele:s53K ? { a:s53K.a, b:s53K.b, on:0, sa:s53K.sa, sb:s53K.sb, src:[gSh || G5(BSh), gShA || G5(BShA), gShS || G5(BShS)] } : null,
+      st:[{ a:[rz, R + cog], b:[0, bbY + ring], on:0, src:G5(BCh[0]) }, { a:[rz, R - cog], b:[0, bbY - ring], on:0, src:G5(BCh[1]) }].concat(ST5) });
+  }
   return { Rr:R, Rf:R, rz, fz, hz, frame:f, front:fr, rear:rw, frontW:fw2, seated:true, crank, bbY, bbZ:0, integrated:true,
     rs:{ hipsY:seatTop + (P.hipH === undefined ? 0.13 : P.hipH), hipsZ, gripL:[grip[0], grip[1], grip[2]], gripR:[-grip[0], grip[1], grip[2]], lean:P.lean !== undefined ? P.lean : (bk === 'flat' ? 0.46 : 0.34), elbowOut:0.9 } };
 }
@@ -32436,10 +32528,12 @@ function fbMo15ebike(P){
   // knobs, axle nuts), an upside-down moto fork in triple clamps, rigid forks per design (carbon with an integrated crown, alloy unicrown,
   // cast / chrome crown with raked steel blades), dropouts with axle nuts + eyelets, and the caliper on a post / flat mount behind the leg
   const fk = q('fork'), span = q('span') || 0.052, A0 = [fz, Rf], disc = q('disc') || 0, FB = pd15Bk();
+  const FBS = P.s53 === false ? null : pd15Bk(); let s53Max = 0;         // sus53: the suspension fork's lower legs slide with the wheel
   if (fk === 'sus' || fk === 'fat'){
     const fat = fk === 'fat', st = fat ? 0.019 : 0.0165;
-    fk19Sus(FB, G, { kind:'sus', city:true, span:fat ? 0.088 : span, stanR:st, lowK:1.45, lowMat:FX.fork, stanMat:FK17.stanS, crownMat:M12.anod, archMat:FX.fork,
-      travel:fat ? 0.10 : 0.075, knobMat:FX.acc, tyreW:(q('tr') || 0.03)*1.10, archClear:q('fenders') ? (q('fenders') === 'fat' ? 0.030 : 0.028) + 0.012 : 0.012, rotor:disc || 0.08, rotorX:0.050, cal:disc > 0, pistons:2, steerer:false, cups:false });
+    s53Max = fk19Sus(FB, G, { slide:FBS, kind:'sus', city:true, span:fat ? 0.088 : span, stanR:st, lowK:1.45, lowMat:FX.fork, stanMat:FK17.stanS, crownMat:M12.anod, archMat:FX.fork,
+      travel:fat ? 0.10 : 0.075, knobMat:FX.acc, tyreW:(q('tr') || 0.03)*1.10, archClear:q('fenders') ? (q('fenders') === 'fat' ? 0.030 : 0.028) + 0.012 : 0.012, rotor:disc || 0.08, rotorX:0.050, cal:disc > 0, pistons:2, steerer:false, cups:false }).slideMax || 0;
+    if (FBS && s53Max) X.frS = new T.Group();                              // (the front fender rides on the sliding legs: MO15_EKIT)
   } else if (fk === 'usd'){
     fk19Moto(fr, G, { fam:'bike', span, ro:0.024, ri:0.0185, ht:q('ht'), outer:FX.fork, inner:BK.chrome, foot:M12.anod, clamp:M12.anod, guard:0, adj:FX.acc, cal:M12.anod, rotorR:disc || 0.09, rotorX:0.050, calAng:150 });
   } else {
@@ -32492,6 +32586,7 @@ function fbMo15ebike(P){
     cas:rear && !belt && (q('gears') || 0) > 1 && q('hub') !== 'igh' ? q('gears') : 0, mags:q('mags'), magMat:BM.rim, ribs:8 });
   const rw = mo15wheelBike(R, wo(true)), fw = mo15wheelBike(Rf, wo(false));
   fmerge(f); fmerge(fr);
+  if (FBS && s53Max) sus53Slide(fr, g=>{ pd15Flush(FBS, g); if (X.frS){ fmerge(X.frS); X.frS.children.slice().forEach(m=> g.add(m)); } }, G.d, s53Max);
   X.decals.forEach(fn=> fn());
   // rider: hips over the saddle (the stance rule the e-bikes were tuned with), hands on the grips
   const reach = q('reach'), hipsY = X.hipsY || Math.max(0.90, Math.min(q('hmax') || 1.03, SP[1] + MO15_EHIP)),
@@ -32805,7 +32900,7 @@ function MO15_EKIT(X){
   if (fd){
     const w = fd === 'fat' ? 0.07 : 0.034, gap = fd === 'fat' ? 0.03 : 0.028;
     mo15fender(f, rz, R, R + gap, mo15deg(fd === 'fat' ? 20 : 15), mo15deg(fd === 'fat' ? 160 : 168), w, fm, {});
-    mo15fender(fr, fz, Rf, Rf + gap, mo15deg(fd === 'fat' ? 45 : 40), mo15deg(fd === 'fat' ? 140 : 150), w, fm, {});
+    mo15fender(X.frS || fr, fz, Rf, Rf + gap, mo15deg(fd === 'fat' ? 45 : 40), mo15deg(fd === 'fat' ? 140 : 150), w, fm, {});   // (X.frS: on a suspension fork's sliding legs)
   }
   if (q('rack')){
     const ry = R + (q('rackH') || 0.16), z0 = rz + 0.16, z1 = rz - (q('rackL') || 0.17), w = q('rackW') || 0.13, stay = X.rackStay || [rz + 0.25, R + 0.30], L = [];
@@ -34057,17 +34152,20 @@ function pd15RD(B, rz, Rr, o){
   return { J1, J2, jr, x };
 }
 /* chain routing: ring (radius) at the BB, cog radius at the axle, the RD's jockeys */
-function pd15ChainRun(B, bbY, ring, rz, Rr, cog, rd, x, idler){
-  const segs = [];
+function pd15ChainRun(B, bbY, ring, rz, Rr, cog, rd, x, idler, R){
+  // sus53 (R): on a suspended rear end the runs between the frame and the axle are stretched elements of their own (R.st(a, b) -> bucket;
+  // a = the end on the axle's body, b = the end on the frame) and the derailleur's runs ride with the axle (R.ax)
+  const segs = [], put = (bk, a, b)=>{ if (bk === B) segs.push([a, b]); else pd15Put(bk, BM.chain, pd15ChainGeo([[a, b]], x)); };
+  const mov = (a, b)=> R ? R.st(a, b) : B, AX = R ? R.ax : B;
   const top0 = [0.004, bbY + ring], top1 = [rz, Rr + cog];
-  if (idler){ segs.push([top1, [idler.c[0], idler.c[1] + idler.r]]); segs.push([[idler.c[0] + idler.r*0.6, idler.c[1] + idler.r*0.8], top0]); }
-  else segs.push([top0, top1]);
+  if (idler){ const it = [idler.c[0], idler.c[1] + idler.r]; put(mov(top1, it), top1, it); put(B, [idler.c[0] + idler.r*0.6, idler.c[1] + idler.r*0.8], top0); }
+  else put(mov(top1, top0), top0, top1);
   if (rd){
-    segs.push([[rz + 0.004, Rr - cog], [rd.J1[0] + rd.jr*0.9, rd.J1[1] + rd.jr*0.3]]);
-    segs.push([[rd.J1[0] + rd.jr*0.7, rd.J1[1] - rd.jr*0.7], [rd.J2[0] - rd.jr*0.9, rd.J2[1] + rd.jr*0.2]]);
-    segs.push([[rd.J2[0], rd.J2[1] - rd.jr], [0.004, bbY - ring]]);
-  } else segs.push([[rz, Rr - cog], [0.004, bbY - ring]]);
-  pd15Put(B, BM.chain, pd15ChainGeo(segs, x));
+    put(AX, [rz + 0.004, Rr - cog], [rd.J1[0] + rd.jr*0.9, rd.J1[1] + rd.jr*0.3]);
+    put(AX, [rd.J1[0] + rd.jr*0.7, rd.J1[1] - rd.jr*0.7], [rd.J2[0] - rd.jr*0.9, rd.J2[1] + rd.jr*0.2]);
+    const j = [rd.J2[0], rd.J2[1] - rd.jr], rb = [0.004, bbY - ring]; put(mov(j, rb), j, rb);
+  } else { const cb = [rz, Rr - cog], rb = [0.004, bbY - ring]; put(mov(cb, rb), cb, rb); }
+  if (segs.length) pd15Put(B, BM.chain, pd15ChainGeo(segs, x));
 }
 
 /* ---------------------------------------------------------------- disc brakes
@@ -34106,9 +34204,9 @@ function pd15Fork(B, G, o){
     // Release 15.8: the forks19 kit (fk19Sus): coated stanchions, cast lowers + arch, forged crown, dials / knobs, decal band (o.fam picks the family)
     const r = fk19Sus(B, G, { kind, fam:o.fam, span:o.span, stanR:o.stanR, lowK:o.lowK, lowMat:o.lowMat, stanMat:o.stanMat, crownMat:o.crownMat, archMat:o.archMat,
       travel:o.travel || fk17Travel(o.word, kind === 'dual' ? 0.20 : 0.14), word:o.word, wordMat:o.wordMat, wordStyle:o.wordStyle, knobMat:o.knobMat, dialMat:o.dialMat, bandMat:o.bandMat,
-      htR:o.htR, htR2:o.htR2, rotor:o.rotor, rotorX:o.rotorX, cal:o.cal, calMat:o.calMat, tyreW:o.tyreW, archClear:o.archClear });
+      htR:o.htR, htR2:o.htR2, rotor:o.rotor, rotorX:o.rotorX, cal:o.cal, calMat:o.calMat, tyreW:o.tyreW, archClear:o.archClear, slide:o.slide });
     if (r.port){ o._port = r.port; o._hose = r.hose; }
-    return { top:r.top, crownS:r.crownS };
+    return { top:r.top, crownS:r.crownS, slideMax:r.slideMax };
   }
   const style = kind === 'rigidSteel' ? 'steel' : kind === 'fat' ? 'fat' : 'road';
   const r = fk17Rigid(B, G, { style, mat:o.lowMat || FX.fork, crownMat:o.crownMat, aero:o.aero, span0:o.span0, span1:o.span1, r0:style === 'road' ? o.blade0 : undefined, r1:style === 'road' ? o.blade1 : undefined,
@@ -34124,23 +34222,27 @@ function pd15Fork(B, G, o){
 function pd15Shock(B, a, b, o){
   o = o || {};
   const x = o.x || 0, A3 = [x, a[1], a[0]], B3 = [x, b[1], b[0]], body = o.body || M12.anod, at = t=> pd15Lerp(A3, B3, t), L = pd15Len(a, b), big = o.big || 1;
-  const S = (t0, t1, r, m, cap)=> pd15Put(B, m, pd15Sweep([at(t0), at(t1)], typeof r === 'number' ? r*big : r, { r:18, n:2, cap:cap === undefined ? true : cap, ref:_pdX }).geo);
+  // sus53: the shaft-side parts (o.A) and the spring (o.S) can go to buckets of their own -- they slide / squash when the shock works
+  const BA = o.A || B, BSp = o.S || B;
+  const S = (t0, t1, r, m, cap, bk)=> pd15Put(bk || B, m, pd15Sweep([at(t0), at(t1)], typeof r === 'number' ? r*big : r, { r:18, n:2, cap:cap === undefined ? true : cap, ref:_pdX }).geo);
   // eyelets with bushings across x
-  [A3, B3].forEach(p=>{ pd15Put(B, body, pd15Disc(0.0125, 0.024, x, 14).translate(0, p[1], p[2])); pd15Put(B, PD15.silver, pd15Disc(0.0065, 0.032, x, 10).translate(0, p[1], p[2])); });
+  [[A3, BA], [B3, B]].forEach(([p, bk])=>{ pd15Put(bk, body, pd15Disc(0.0125, 0.024, x, 14).translate(0, p[1], p[2])); pd15Put(bk, PD15.silver, pd15Disc(0.0065, 0.032, x, 10).translate(0, p[1], p[2])); });
+  let sa = 0, sb = 0;
   if (o.coil){
-    S(0.04, 0.16, 0.012, body);                                     // shaft-end eyelet stem + bottom-out bumper
-    S(0.10, 0.13, 0.026, body);                                     // spring retainer
-    S(0.13, 0.62, 0.0085, PD15.silver);                             // shaft
+    S(0.04, 0.16, 0.012, body, true, BA);                           // shaft-end eyelet stem + bottom-out bumper
+    S(0.10, 0.13, 0.026, body, true, BA);                           // spring retainer
+    S(0.13, 0.62, 0.0085, PD15.silver, true, BA);                   // shaft
     S(0.50, 0.90, 0.0175, body);                                    // damper body
     S(0.80, 0.86, 0.0265, o.colMat || body);                        // preload collar
     S(0.86, 0.97, 0.021, body);                                     // damper head
+    sa = 0.13*L; sb = 0.20*L;
     { const a = at(0.13), b = at(0.80), turns = Math.max(5, L*28), A0 = new T.Vector3(...a), ax = new T.Vector3(...b).sub(A0), len = ax.length(); ax.normalize();
       const u = new T.Vector3(1, 0, 0); if (Math.abs(u.dot(ax)) > 0.9) u.set(0, 1, 0); u.addScaledVector(ax, -u.dot(ax)).normalize(); const v = new T.Vector3().crossVectors(ax, u), pts = [], N = Math.ceil(turns*8);
       for (let i = 0; i <= N; i++){ const t = i/N, an = t*turns*Math.PI*2; pts.push(A0.clone().addScaledVector(ax, t*len).addScaledVector(u, Math.cos(an)*0.0262*big).addScaledVector(v, Math.sin(an)*0.0262*big)); }
-      pd15Put(B, o.coil, new T.TubeGeometry(new T.CatmullRomCurve3(pts), N, 0.0046*big, 4, false)); }
+      pd15Put(BSp, o.coil, new T.TubeGeometry(new T.CatmullRomCurve3(pts), N, 0.0046*big, 4, false)); }
   } else {
-    S(0.03, 0.12, 0.011, body);                                     // shaft eye stem
-    S(0.10, 0.55, 0.0142, o.stan || M12.steel, false);                // the exposed damper body (stanchion) the can slides on
+    S(0.03, 0.12, 0.011, body, true, BA);                           // shaft eye stem
+    S(0.10, 0.55, 0.0142, o.stan || M12.steel, false, BA);            // the exposed damper body (stanchion) the can slides on
     S(0.53, 0.56, 0.0175, M12.rub);                                 // seal
     S(0.56, 0.88, 0.0218, body);                                    // air can
     S(0.66, 0.70, 0.0226, o.can || FX.acc, false);                  // can band
@@ -34154,6 +34256,7 @@ function pd15Shock(B, a, b, o){
   }
   // climb switch lever on the head
   { const k = at(0.93); pd15Put(B, o.knob || PD15.silver, pd15Box(0.006, 0.010, 0.030, [x - 0.022, k[1], k[2]], pd15Ang(a, b))); }
+  return { sa, sb, L };
 }
 
 /* ---------------------------------------------------------------- linkage parts */
@@ -34161,8 +34264,8 @@ function pd15Shock(B, a, b, o){
 function pd15Link(B, cs, w, th, mat, o){
   o = o || {};
   const hull = pd15Hull(cs, 4);
-  let pocket = null;
-  if (cs.length >= 2 && o.pocket){
+  let pocket = o.holes || null;                                               // (o.holes: explicit cut-outs [{ c:[z,y], r }])
+  if (!pocket && cs.length >= 2 && o.pocket){
     const c0 = cs[0], c1 = cs[1], m = [(c0[0] + c1[0])/2, (c0[1] + c1[1])/2], l = Math.hypot(c1[0] - c0[0], c1[1] - c0[1]);
     if (l > 0.05) pocket = [{ c:m, r:Math.min(c0[2], c1[2])*0.55 }];
   }
@@ -34342,11 +34445,13 @@ function pd15Guard(B, S, t0, t1, side, mat){
    PEDAL15 mountain bikes: one builder for every full-suspension MTB / e-MTB (b:'pd15fs') and every hardtail (b:'pd15ht':
    XC race, dirt jump, fat, hardtail e-MTB), on the pedal15 kit. Each row picks its own frame:
      tubes   'carbon' (big flared hydro-shapes) | 'alloy' (rounder tubes, weld beads) | 'steel' (thin round tubes, gussets)
-     link    'horst' (four-bar, Horst pivot ahead of the axle, rocker on the seat tube, shock to the down tube or under the top tube: mount 'dt'|'tt')
-             'twin' (twin short links, the lower link drives an upright shock to the top tube)   'twinU' (twin links, upper-link driven DH shock)
-             'single' (single pivot + rocker)   'hp' (high main pivot + chain idler)   'low' (shock lying low over the cranks)
-             'vert' (upright shock in front of the seat tube from a rocker at the top tube)   'lever' (long lever, steep shock)
-             'flex' (flex stays, no rear pivot, shock under the top tube)   'dtshock' (twin links, shock lying along the down tube)
+     link    'horst' (four-bar, Horst pivot ahead of the axle; a bell-crank rocker on the seat tube; shock to the down tube or along under
+             the top tube: mount 'dt'|'tt')   'twin' (twin short links, the upper link drives a shock under the top tube)
+             'twinU' (twin links, the upper link drives an upright DH shock)   'dtshock' (twin links, the shock lying along the down tube)
+             'single' (single pivot + rocker)   'hp' (high main pivot + chain idler)   'low' (a low rocker, the shock low over the cranks)
+             'vert' (upright shock in front of the seat tube from a rocker under the top tube)   'lever' (long lever, steep shock)
+             'flex' (flex stays, no rear pivot, shock under the top tube)
+             (15.51: all of them are working linkages, fitted by the solver -- see S53F below; s53:false = a static rear end)
      ttk (top-tube bow), ttf (where the top tube meets the seat tube), gus (head-tube gusset), web (BB web), stb (seat tube kink)
    front: fork 'sus'|'dual'|'rigid'|'rigidSteel'|'fat', stan (stanchion r), stanMat, span, travel word; cockpit hw rise back stem spacers cross
    drive: ring, guard (bash), guide (chain guide), pedal 'flat'|'clip'; shock: coil (spring colour) pig can stan; e-bike: e, motor 'full'|'slim'|'box',
@@ -34379,6 +34484,13 @@ function pd15Mtb(P, hard){
   const Rr = P.Rr || 0.375, Rf = P.Rf || Rr, e = !!P.e, tk = P.tk || 1, style = P.tubes || 'carbon';
   const bbY = P.bbY || (Rr - (P.bbd === undefined ? 0.03 : P.bbd)), rz = -P.cs, fz = P.fc;
   const f = new T.Group(), fr = new T.Group(), B = pd15Bk(), F = pd15Bk();
+  // sus53 (Release 15.51): moving suspension -- the rear end is a linkage of three bodies (forks19_kit.js sus53Rear): B0 turns about its
+  // frame pivot, B1 (the rocker / upper link) about its own, B2 (the coupler) hangs between them; the shock is three pieces (body BH,
+  // shaft BHa, spring BHs), the chain runs stretch; the fork's lower legs (FS) slide. mods/sus53.js moves them with the wheels' travel.
+  // BA / BCS / BSS = the bodies that carry the axle, the chain stays and the seat stays in this layout; K4 = the linkage's pivots
+  const S53 = !hard && P.s53 !== false, nb = ()=> S53 ? pd15Bk() : B;
+  const B0 = nb(), B1 = nb(), B2 = nb(), BH = nb(), BHa = nb(), BHs = nb(), FS = P.s53 === false ? null : pd15Bk(), ST53 = [];
+  let K4 = null, shOn = 1, BA = B0, BCS = B0, BSS = B2, shK = null;
   const M = BM.frame, A = FX.acc, K = M12.anod, rearM = P.rearAcc ? A : M, linkM = P.linkMat ? pd15Ink(P.linkMat) : (P.linkAcc ? A : K);
   const G = fgeoFront({ fz, Rf, ha:P.ha, fl:P.fl, off:P.off === undefined ? 0.044 : P.off, ht:P.ht || 0.115 });
   const d = G.d, n = G.n, BB = [0, bbY], RA = [rz, Rr], hz = (G.H0[0] + G.H1[0])/2;
@@ -34456,99 +34568,117 @@ function pd15Mtb(P, hard){
   const lay = hard ? 'ht' : (P.link || 'horst');
   const xF = P.fatRim ? 0.050 : 0.040, xR = P.fatRim ? 0.090 : 0.068, csW = (steel ? 0.0105 : 0.0135)*tk, ssW = (steel ? 0.0085 : 0.0108)*tk;
   let MP = e ? [-0.064, bbY + 0.088] : [-0.044, bbY + 0.060], HP = null, SS1 = null, idler = null, yoke = null, shockA = null, shockB = null, mount = 'dt', coilShock = !!P.coil;
-  const rockerPlates = (RF, RR, RS, w)=> pd15Link(B, [[RF[0], RF[1], 0.017], [RR[0], RR[1], 0.0145], [RS[0], RS[1], 0.0145]], w || 0.034, 0.008, linkM);
+  /* sus53 (Release 15.51): every layout is a WORKING linkage. A family says where the rocker (a twin-link bike's upper link) sits on the
+     seat tube (rk), its rear arm (rr long, at ra degrees: 0 = straight up, + = forward, - = back) that the seat stays / the rear triangle
+     hang on, the angle sa of its shock arm and where the shock points (aim 'tt' along under the top tube | 'dt' at the down tube | 'bb'
+     down at the BB). The pivot then slides down the seat tube until the shock eye clears the top tube, and the shock arm's length is
+     FITTED with the linkage solver (forks19_kit.js sus53Eval) so the shock squashes steadily to ~80 % of its length at full travel. */
+  const S53F = {
+    tt:    { rk:0.50, rr:0.085, ra:-75, sa:-3, aim:'tt', at:0.60, drop:0.08, L:0.20, rs:0.090 },
+    flex:  { rk:0.52, rr:0.075, ra:-75, sa:-3, aim:'tt', at:0.60, drop:0.07, L:0.19, rs:0.080 },
+    dt:    { rk:0.50, rr:0.085, ra:-75, sa:14, aim:'dt', at:0.40, rs:0.085 },
+    hp:    { rk:0.50, rr:0.058, ra:-75, sa:14, aim:'dt', at:0.40, rs:0.090 },
+    low:   { rk:0.38, rr:0.085, ra:-72, sa:14, aim:'dt', at:0.34, rs:0.075 },
+    vert:  { rk:0.68, rr:0.080, ra:-78, sa:75, aim:'bb', rs:0.058 },
+    bb:    { rk:0.66, rr:0.070, ra:-72, sa:62, aim:'bb', rs:0.052 },
+    lever: { rk:0.74, rr:0.085, ra:-75, sa:88, aim:'bb', rs:0.090, rsMin:0.085, tgt:0.72, w:0.036 },
+    twinU: { rk:0.62, rr:0.069, ra:-80, sa:62, aim:'bb', rs:0.050, w:0.036 },
+    dtlong:{ rk:0.50, rr:0.085, ra:-75, sa:10, aim:'dt', at:0.44, rs:0.100 }
+  };
+  const pol = (c, r, deg)=> [c[0] + r*Math.sin(fdeg(deg)), c[1] + r*Math.cos(fdeg(deg))];
+  const twinL = lay === 'twin' || lay === 'dtshock' || lay === 'twinU';
+  let sfam = null, LF = null, LR = null;
   switch (lay){
     case 'ht': SS1 = stp(P.ssf || 0.86); MP = [-0.030, bbY + 0.030]; break;
-    case 'horst': {
-      const RF = pd15Up(stp(P.rk || 0.64), [1, 0], 0.016), RR = [RF[0] - 0.060, RF[1] + 0.024], RS = [RF[0] + 0.050, RF[1] + 0.030];
-      HP = [rz + 0.074, Rr - 0.012]; SS1 = RR; rockerPlates(RF, RR, RS); shockA = RS; mount = P.mount || 'dt'; break; }
-    case 'vert': {
-      const RF = pd15Up(stp(0.84), [1, 0], 0.018), RR = [RF[0] - 0.066, RF[1] + 0.006], RS = [RF[0] + 0.050, RF[1] - 0.030];
-      HP = [rz + 0.074, Rr - 0.012]; SS1 = RR; rockerPlates(RF, RR, RS); shockA = RS; mount = 'bb'; break; }
+    case 'horst': mount = P.mount || 'dt'; sfam = mount === 'tt' ? 'tt' : 'dt'; HP = [rz + 0.074, Rr - 0.012]; break;      // four-bar, Horst pivot ahead of the axle
+    case 'vert': mount = 'bb'; sfam = 'vert'; HP = [rz + 0.074, Rr - 0.012]; break;
     case 'single': case 'hp': case 'lever': {
       const hp = lay === 'hp', lv = lay === 'lever';
-      if (hp){ MP = [-0.034, bbY + 0.180]; idler = { c:[MP[0] + 0.004, MP[1] - 0.002], r:0.026 }; }
+      if (hp){ MP = [-0.034, bbY + 0.180]; idler = { c:[MP[0] + 0.004, MP[1] - 0.002], r:0.026 }; pd15Pivot(B, MP, 0.022, 0.13, K); }
       else MP = e ? [-0.064, bbY + 0.092] : [-0.040, bbY + 0.088];
-      const RF = pd15Up(stp(lv ? 0.80 : (P.rk || 0.66)), [1, 0], 0.016), RR = [RF[0] - (lv ? 0.050 : 0.056), RF[1] + (lv ? 0.006 : 0.020)];
-      const RS = lv ? [RF[0] + 0.105, RF[1] - 0.010] : [RF[0] + 0.048, RF[1] + 0.026];
-      SS1 = RR; rockerPlates(RF, RR, RS, lv ? 0.036 : 0.034); shockA = RS; mount = lv ? 'bb' : (P.mount || 'dt');
-      if (hp) pd15Pivot(B, MP, 0.022, 0.13, K);
+      mount = lv ? 'bb' : (P.mount || 'dt'); sfam = lv ? 'lever' : (mount === 'bb' ? 'bb' : (mount === 'tt' ? 'tt' : (hp ? 'hp' : 'dt')));
       break; }
-    case 'low': {
-      const RF = pd15Up(stp(P.rk || 0.42), [1, 0], 0.016), RR = [RF[0] - 0.060, RF[1] + 0.018], RS = [RF[0] + 0.026, RF[1] - 0.046];
-      HP = [rz + 0.074, Rr - 0.012]; SS1 = RR; rockerPlates(RF, RR, RS); shockA = RS; mount = 'dtlow'; break; }
-    case 'flex': {
-      MP = [-0.034, bbY + 0.050];
-      const RF = pd15Up(stp(0.90), [1, 0], 0.012), RR = [RF[0] - 0.050, RF[1] - 0.012], RS = [RF[0] + 0.052, RF[1] + 0.008];
-      SS1 = RR; rockerPlates(RF, RR, RS); shockA = RS; mount = 'tt'; break; }
-    case 'twin': case 'dtshock': {
-      // lower link behind the BB; the rear triangle hangs off it and off an upper link on the seat tube
-      const LF = e ? [-0.020, bbY + 0.118] : [0.006, bbY + 0.070], LR = [LF[0] - 0.072, LF[1] - 0.018], LS = [LF[0] + 0.052, LF[1] + 0.030];
-      const UF = pd15Up(stp(lay === 'dtshock' ? 0.74 : 0.52), [1, 0], 0.016), UR = [UF[0] - 0.066, UF[1] + 0.018];
-      pd15Link(B, lay === 'dtshock' ? [[LF[0], LF[1], 0.019], [LR[0], LR[1], 0.017]] : [[LF[0], LF[1], 0.019], [LR[0], LR[1], 0.017], [LS[0], LS[1], 0.016]], 0.046, 0.010, linkM);
-      if (lay === 'dtshock'){ const US = [UF[0] + 0.050, UF[1] + 0.024]; pd15Link(B, [[UF[0], UF[1], 0.016], [UR[0], UR[1], 0.014], [US[0], US[1], 0.014]], 0.034, 0.008, linkM); shockA = US; mount = 'dtlong'; }
-      else { pd15Link(B, [[UF[0], UF[1], 0.016], [UR[0], UR[1], 0.014]], 0.034, 0.008, linkM); shockA = LS; mount = 'tt'; }
-      MP = LR; SS1 = UR; yoke = [LR, UR]; break; }
-    case 'twinU': {
-      const LF = [0.004, bbY + 0.066], LR = [LF[0] - 0.068, LF[1] - 0.016];
-      const UF = pd15Up(stp(0.62), [1, 0], 0.016), UR = [UF[0] - 0.068, UF[1] + 0.012], US = [UF[0] + 0.058, UF[1] + 0.030];
-      pd15Link(B, [[LF[0], LF[1], 0.019], [LR[0], LR[1], 0.017]], 0.046, 0.010, linkM);
-      pd15Link(B, [[UF[0], UF[1], 0.017], [UR[0], UR[1], 0.015], [US[0], US[1], 0.015]], 0.036, 0.009, linkM);
-      shockA = US; mount = 'bb'; MP = LR; SS1 = UR; yoke = [LR, UR]; break; }
+    case 'low': mount = 'dtlow'; sfam = 'low'; HP = [rz + 0.074, Rr - 0.012]; break;
+    case 'flex': MP = [-0.034, bbY + 0.050]; mount = 'tt'; sfam = 'flex'; break;
+    // twin short links: the lower link behind the BB; the one-piece rear triangle hangs off it and off the upper link, which drives the shock
+    case 'twin': case 'dtshock': LF = e ? [-0.020, bbY + 0.118] : [0.006, bbY + 0.070]; LR = [LF[0] - 0.072, LF[1] - 0.018];
+      mount = lay === 'twin' ? 'tt' : 'dtlong'; sfam = lay === 'twin' ? 'tt' : 'dtlong'; break;
+    case 'twinU': LF = [0.004, bbY + 0.066]; LR = [LF[0] - 0.068, LF[1] - 0.016]; mount = 'bb'; sfam = 'twinU'; break;
   }
-  // the shock: shaft eye on the link, body eye on a mount boss on the frame
-  if (shockA){
-    let dir, tgt;
-    if (mount === 'tt'){ dir = lay === 'twin' ? pd15Dir([0, 0], [0.05 - Math.cos(sa)*0.25, 1]) : pd15Dir(shockA, pd15Lerp(TTr, TTf, 0.62)); tgt = [TTr, TTf, ttH + 0.004]; }
-    else if (mount === 'bb'){ dir = pd15Dir(shockA, [0.085, bbY + (e ? 0.12 : 0.075)]); tgt = [DTb, DTf, dH + 0.004]; }
-    else if (mount === 'dtlow'){ dir = pd15Dir(shockA, pd15Lerp(DTb, DTf, 0.30)); tgt = [DTb, DTf, dH + 0.004]; }
-    else if (mount === 'dtlong'){ dir = pd15Dir(shockA, pd15Lerp(DTb, DTf, 0.40)); tgt = [DTb, DTf, dH + 0.004]; }
-    else { dir = pd15Dir(shockA, pd15Lerp(DTb, DTf, 0.56)); tgt = [DTb, DTf, dH + 0.004]; }
-    const hit = pd15Ray(shockA, dir, tgt[0], tgt[1], tgt[2]);
-    const want = P.shockL || (P.dual || P.fork === 'dual' ? 0.25 : 0.21);
-    let L = hit ? hit.s : want; L = Math.max(0.15, Math.min(0.30, L));
-    shockB = [shockA[0] + dir[0]*L, shockA[1] + dir[1]*L];
-    pd15Shock(B, shockA, shockB, { coil:coilShock ? (PD15_COIL[P.coil] || FX.coil) : null, pig:!!P.pig || coilShock, can:P.can ? pd15Ink(P.can) : undefined, stan:P.shockStan ? pd15Ink(P.shockStan) : undefined, big:P.dual || P.fork === 'dual' ? 1.08 : 1, colMat:P.coilCol ? pd15Ink(P.coilCol) : undefined });
-    // mount boss (two tabs) from the frame surface to the body eye
-    if (hit){
-      const tp = pd15Near(shockB, tgt[0], tgt[1]).p;
-      [-1, 1].forEach(s=> pd15Put(B, M, pd15Plate(pd15Hull([[shockB[0], shockB[1], 0.016], [tp[0], tp[1], 0.020]], 5), s*0.019, 0.007, null, 0.002)));
+  if (sfam){
+    const Fd = Object.assign({}, S53F[sfam], P.s53fam || null), TR = P.s53tr || 0.085;
+    const ttn = pd15Nrm(pd15Dir(TTr, TTf));                                   // (the top tube's upper normal)
+    const TGT = Fd.aim === 'tt' ? [TTr, TTf, ttH + 0.004] : [DTb, DTf, dH + 0.004];
+    // one candidate: the rocker's three pivots, the linkage, the shock's two eyes
+    const cand = (rk, rs)=>{
+      const RF = pd15Up(stp(rk), [1, 0], 0.016), RR = pol(RF, Fd.rr, Fd.ra), RS = pol(RF, rs, Fd.sa);
+      const k4 = twinL ? { f0:LF, r0:LR, f1:RF, r1:RR, ax:2 } : (HP ? { f0:MP, r0:HP, f1:RF, r1:RR, ax:2 } : { f0:MP, r0:RA, f1:RF, r1:RR, ax:0 });
+      let aim;
+      if (Fd.aim === 'tt'){ aim = pd15Lerp(TTr, TTf, Fd.at); aim = [aim[0], aim[1] - Fd.drop]; }
+      else if (Fd.aim === 'bb') aim = [0.085, bbY + (e ? 0.12 : 0.075)];
+      else aim = pd15Lerp(DTb, DTf, Fd.at);
+      const dir = pd15Dir(RS, aim), hit = pd15Ray(RS, dir, TGT[0], TGT[1], TGT[2]);
+      const L = Math.max(0.15, Math.min(0.26, P.shockL || Fd.L || (hit ? hit.s : 0.20)));
+      return { RF, RR, RS, SB:[RS[0] + dir[0]*L, RS[1] + dir[1]*L], k4, clr:-((RS[0] - TTr[0])*ttn[0] + (RS[1] - TTr[1])*ttn[1]) - ttH };
+    };
+    let rk = P.rk53 || Fd.rk;
+    for (let i = 0; i < 14 && cand(rk, Fd.rs).clr < 0.022; i++) rk -= 0.02;     // the shaft eye's room under the top tube
+    const want = Fd.tgt || (P.dual || P.fork === 'dual' ? 0.78 : 0.80);
+    let best = null;
+    for (let rs = Fd.rsMin || 0.050; rs <= 0.1101; rs += 0.005){
+      const c = cand(rk, rs), ev = sus53Eval(c.k4, RA, { a:c.RS, b:c.SB, on:1 }, TR), err = Math.abs(ev.s[3] - want) + (ev.ok ? 0 : 10);
+      if (!best || err < best.err) best = { err, c, ev };
     }
+    const c = best.c;
+    K4 = best.ev.ok ? c.k4 : null;                                             // (a linkage that cannot work stays still)
+    shockA = c.RS; shockB = c.SB; SS1 = c.RR;
+    if (twinL){ BA = BCS = BSS = B2; MP = LR; yoke = [LR, c.RR];               // the whole rear triangle is the coupler
+      pd15Link(B0, [[LF[0], LF[1], 0.019], [LR[0], LR[1], 0.017]], 0.046, 0.010, linkM); }
+    else if (HP) BA = B2;                                                      // four-bar: the seat stays carry the axle
+    // the rocker: a triangular plate either side of the seat tube with a lightening cut-out in its middle (round its incentre)
+    { const A = c.RF, Bq = c.RR, Cq = c.RS, la = pd15Len(Bq, Cq), lb = pd15Len(A, Cq), lc = pd15Len(A, Bq), per = la + lb + lc;
+      const inc = [(la*A[0] + lb*Bq[0] + lc*Cq[0])/per, (la*A[1] + lb*Bq[1] + lc*Cq[1])/per];
+      const inr = Math.abs((Bq[0] - A[0])*(Cq[1] - A[1]) - (Bq[1] - A[1])*(Cq[0] - A[0]))/per;
+      pd15Link(B1, [[A[0], A[1], 0.017], [Bq[0], Bq[1], 0.0145], [Cq[0], Cq[1], 0.0145]], Fd.w || 0.034, 0.008, linkM, inr > 0.016 ? { holes:[{ c:inc, r:inr*0.74 }] } : null); }
+    // the shock: shaft eye on the rocker, body eye on a mount boss (two tabs) on the frame
+    shK = pd15Shock(BH, shockA, shockB, { A:BHa, S:BHs, coil:coilShock ? (PD15_COIL[P.coil] || FX.coil) : null, pig:!!P.pig || coilShock, can:P.can ? pd15Ink(P.can) : undefined, stan:P.shockStan ? pd15Ink(P.shockStan) : undefined, big:P.dual || P.fork === 'dual' ? 1.08 : 1, colMat:P.coilCol ? pd15Ink(P.coilCol) : undefined });
+    const tp = pd15Near(shockB, TGT[0], TGT[1]).p;
+    if (pd15Len(tp, shockB) < 0.14) [-1, 1].forEach(s=> pd15Put(B, M, pd15Plate(pd15Hull([[shockB[0], shockB[1], 0.016], [tp[0], tp[1], 0.020]], 5), s*0.019, 0.007, null, 0.002)));
   }
   // stays
   const csFront = yoke ? yoke[0] : MP, csRear = HP || RA;
   const csMid = pd15Lerp(csFront, csRear, 0.42);
-  pd15TubePair(B, rearM, [X3(csFront, xF - 0.002), X3([csMid[0], csMid[1] + (P.csDrop || 0.006)], xR - 0.010), X3(csRear, xR)], [[0, csW, csW*1.75, pw], [0.45, csW*0.92, csW*1.30, pw], [1, csW*0.74, csW*1.0, pw]], { r:14, n:12, cap:true });
-  if (HP) pd15TubePair(B, rearM, [X3(HP, xR), X3(RA, xR + 0.002)], [csW*0.70, csW*1.05, 2.4], { r:12, n:2, cap:true });
+  pd15TubePair(BCS, rearM, [X3(csFront, xF - 0.002), X3([csMid[0], csMid[1] + (P.csDrop || 0.006)], xR - 0.010), X3(csRear, xR)], [[0, csW, csW*1.75, pw], [0.45, csW*0.92, csW*1.30, pw], [1, csW*0.74, csW*1.0, pw]], { r:14, n:12, cap:true });
+  if (HP) pd15TubePair(BA, rearM, [X3(HP, xR), X3(RA, xR + 0.002)], [csW*0.70, csW*1.05, 2.4], { r:12, n:2, cap:true });
   if (SS1 && P.wish){
     const W = pd15Lerp(SS1, RA, 0.30);
-    pd15Tube(B, rearM, [pd15Up(SS1, [1, 0], 0.006), W], [[0, 0.013*tk, 0.016*tk], [1, 0.016*tk, 0.016*tk]], { r:14, n:3, cap:true });
-    pd15Put(B, rearM, pd15Sweep([[-0.016, W[1], W[0]], [0.016, W[1], W[0]]], [0.016*tk, 0.017*tk], { r:14, n:2, cap:true, ref:_pdY }).geo);
-    pd15TubePair(B, rearM, [X3(W, 0.012), X3(pd15Lerp(W, RA, 0.5), (0.012 + xR)/2 + 0.006), X3(RA, xR)], [[0, ssW*1.15, ssW*1.15], [1, ssW*0.85, ssW*0.95]], { r:12, n:10, cap:true });
+    pd15Tube(BSS, rearM, [pd15Up(SS1, [1, 0], 0.006), W], [[0, 0.013*tk, 0.016*tk], [1, 0.016*tk, 0.016*tk]], { r:14, n:3, cap:true });
+    pd15Put(BSS, rearM, pd15Sweep([[-0.016, W[1], W[0]], [0.016, W[1], W[0]]], [0.016*tk, 0.017*tk], { r:14, n:2, cap:true, ref:_pdY }).geo);
+    pd15TubePair(BSS, rearM, [X3(W, 0.012), X3(pd15Lerp(W, RA, 0.5), (0.012 + xR)/2 + 0.006), X3(RA, xR)], [[0, ssW*1.15, ssW*1.15], [1, ssW*0.85, ssW*0.95]], { r:12, n:10, cap:true });
   } else if (SS1){
     const flex = lay === 'flex' || lay === 'ht', ssMid = pd15Lerp(RA, SS1, 0.5), bow = flex ? 0.012 : 0.0;
     const ssTopX = lay === 'ht' ? 0.024 : 0.044;
-    const ss = pd15TubePair(B, rearM, [X3(RA, xR), X3([ssMid[0] - bow, ssMid[1] + bow], (xR + ssTopX)/2 + 0.004), X3(SS1, ssTopX)], [[0, ssW*0.85, ssW*1.05, pw], [0.5, ssW*(flex ? 0.82 : 1), ssW*(flex ? 1.25 : 1.15), pw], [1, ssW*1.08, ssW*1.45, pw]], { r:14, n:12, cap:true });
+    const ss = pd15TubePair(BSS, rearM, [X3(RA, xR), X3([ssMid[0] - bow, ssMid[1] + bow], (xR + ssTopX)/2 + 0.004), X3(SS1, ssTopX)], [[0, ssW*0.85, ssW*1.05, pw], [0.5, ssW*(flex ? 0.82 : 1), ssW*(flex ? 1.25 : 1.15), pw], [1, ssW*1.08, ssW*1.45, pw]], { r:14, n:12, cap:true });
     // bridge between the seat stays
     const bp = pd15Lerp(RA, SS1, lay === 'ht' ? 0.72 : 0.78);
-    pd15Put(B, rearM, pd15Sweep([[0.050, bp[1], bp[0]], [0, bp[1] + 0.006, bp[0] + 0.004], [-0.050, bp[1], bp[0]]], [0.008, 0.011, 2.4], { r:12, n:8, ref:_pdY }).geo);
+    pd15Put(BSS, rearM, pd15Sweep([[0.050, bp[1], bp[0]], [0, bp[1] + 0.006, bp[0] + 0.004], [-0.050, bp[1], bp[0]]], [0.008, 0.011, 2.4], { r:12, n:8, ref:_pdY }).geo);
   }
   if (yoke){                                                                   // the tall front of a one-piece rear triangle (twin links)
-    pd15TubePair(B, rearM, [X3(yoke[0], 0.046), X3(pd15Up(pd15Lerp(yoke[0], yoke[1], 0.5), [-1, 0], 0.012), 0.050), X3(yoke[1], 0.046)], [[0, 0.012, 0.020, pw], [1, 0.011, 0.016, pw]], { r:14, n:10, cap:true });
-    const bp = pd15Lerp(yoke[0], yoke[1], 0.35); pd15Put(B, rearM, pd15Sweep([[0.050, bp[1], bp[0]], [-0.050, bp[1], bp[0]]], [0.009, 0.013, 2.4], { r:12, n:2, ref:_pdY }).geo);
+    pd15TubePair(BSS, rearM, [X3(yoke[0], 0.046), X3(pd15Up(pd15Lerp(yoke[0], yoke[1], 0.5), [-1, 0], 0.012), 0.050), X3(yoke[1], 0.046)], [[0, 0.012, 0.020, pw], [1, 0.011, 0.016, pw]], { r:14, n:10, cap:true });
+    const bp = pd15Lerp(yoke[0], yoke[1], 0.35); pd15Put(BSS, rearM, pd15Sweep([[0.050, bp[1], bp[0]], [-0.050, bp[1], bp[0]]], [0.009, 0.013, 2.4], { r:12, n:2, ref:_pdY }).geo);
   }
   // main pivot hardware (or the hardtail's chainstay yoke)
   if (lay !== 'ht' && !yoke) pd15Pivot(B, MP, e ? 0.020 : 0.018, 0.110, K);
   if (lay !== 'ht' && !yoke) pd15Put(B, M, pd15Sweep([[-0.034, MP[1], MP[0]], [0.034, MP[1], MP[0]]], [0.022, 0.024, 2.2], { r:16, n:2, cap:true, ref:_pdY }).geo);
-  if (HP) pd15Pivot(B, HP, 0.011, xR*2 + 0.026, K);
+  if (HP) pd15Pivot(BCS, HP, 0.011, xR*2 + 0.026, K);
   // dropouts, axle, derailleur hanger
   { const cs = [[RA[0], RA[1], 0.021], [RA[0] + 0.040, RA[1] + 0.028, 0.012]]; if (HP) cs.push([HP[0], HP[1], 0.015]); else cs.push([RA[0] + 0.044, RA[1] - 0.006, 0.012]);
-    const dh = pd15Hull(cs, 6); [-1, 1].forEach(s=> pd15Put(B, rearM, pd15Plate(dh, s*(xR + 0.004), 0.010, null, 0.003))); }
-  pd15Put(B, PD15.silver, pd15Disc(0.0105, P.fatRim ? 0.218 : 0.176, 0, 14).translate(0, Rr, rz));
-  pd15Put(B, K, pd15Box(0.008, 0.012, 0.062, [-(xR + 0.016), Rr - 0.002, rz + 0.022], 0.40));
+    const dh = pd15Hull(cs, 6); [-1, 1].forEach(s=> pd15Put(BA, rearM, pd15Plate(dh, s*(xR + 0.004), 0.010, null, 0.003))); }
+  pd15Put(BA, PD15.silver, pd15Disc(0.0105, P.fatRim ? 0.218 : 0.176, 0, 14).translate(0, Rr, rz));
+  pd15Put(BA, K, pd15Box(0.008, 0.012, 0.062, [-(xR + 0.016), Rr - 0.002, rz + 0.022], 0.40));
   // chain-stay protector (drive side, on top of the stay) + seat-stay slap guard
   { const a = pd15Lerp(csFront, csRear, 0.10), b = pd15Lerp(csFront, csRear, 0.62);
-    pd15Put(B, M12.rub, pd15Sweep([X3(pd15Up(a, [0, 1], csW*1.25), -(xF + 0.002)), X3(pd15Up(b, [0, 1], csW*1.05), -(xR - 0.010))], t=>{ const r = 0.0105 + 0.0012*Math.cos(t*Math.PI*10); return [r, 0.0045, 2.4]; }, { r:8, n:14, cap:true }).geo); }
+    pd15Put(BCS, M12.rub, pd15Sweep([X3(pd15Up(a, [0, 1], csW*1.25), -(xF + 0.002)), X3(pd15Up(b, [0, 1], csW*1.05), -(xR - 0.010))], t=>{ const r = 0.0105 + 0.0012*Math.cos(t*Math.PI*10); return [r, 0.0045, 2.4]; }, { r:8, n:14, cap:true }).geo); }
 
   /* ---------------- drivetrain + rear brake */
   const ring = P.ring || (e ? 0.072 : 0.065), chainX = P.fatRim ? -0.074 : (e ? -0.058 : -0.052);
@@ -34556,8 +34686,9 @@ function pd15Mtb(P, hard){
   if (P.stand) crank.rotation.x = -Math.PI/2;
   f.add(crank);
   const single = !!P.single;                                                  // dirt jump: one cog, no derailleur
-  const cogR = single ? 0.032 : 0.050, rd = single ? null : pd15RD(B, rz, Rr, { big:0.105, x:chainX - 0.002 });
-  pd15ChainRun(B, bbY, ring, rz, Rr, cogR, rd, chainX, idler);
+  const cogR = single ? 0.032 : 0.050, rd = single ? null : pd15RD(BA, rz, Rr, { big:0.105, x:chainX - 0.002 });
+  // (sus53: the runs between the ring and the axle are stretched elements; the derailleur's runs ride with the axle)
+  pd15ChainRun(B, bbY, ring, rz, Rr, cogR, rd, chainX, idler, S53 && K4 ? { ax:BA, st:(a, b)=>{ const bk = pd15Bk(); ST53.push({ a, b, on:K4.ax, src:bk }); return bk; } } : null);
   if (idler){
     pd15Put(B, K, pd15Disc(idler.r - 0.003, 0.008, chainX, 20).translate(0, idler.c[1], idler.c[0]));
     for (let k = 0; k < 16; k++){ const t = new T.BoxGeometry(0.004, 0.005, 0.005); t.translate(chainX, idler.r - 0.001, 0); t.rotateX(k/16*Math.PI*2); t.translate(0, idler.c[1], idler.c[0]); pd15Put(B, K, t); }
@@ -34567,10 +34698,10 @@ function pd15Mtb(P, hard){
     pd15Put(B, K, pd15Plate(pd15Hull([[0.0, bbY + ring + 0.010, 0.012], [-0.050, bbY + ring - 0.004, 0.012], [-0.020, bbY + 0.020, 0.018]], 5), chainX + 0.012, 0.004, null, 0.0015));
     pd15Put(B, M12.rub, pd15Sweep([[chainX, bbY + ring + 0.010, -0.044], [chainX, bbY + ring + 0.012, 0.004]], [0.010, 0.006, 3], { r:10, n:2, cap:true }).geo);
   }
-  if (single) pd15Put(B, M12.steel, pd15Disc(0.034, 0.004, chainX, 20).translate(0, Rr, rz));
-  const rrot = P.rotorR || 0.10, rcal = pd15Caliper(B, RA, rrot, P.calAng || 0.62, 0.058, {});
-  pd15Hose(B, [[0.072, rcal[1], rcal[0]], [0.062, ...rv(pd15Up(pd15Lerp(csRear, csFront, 0.4), [0, 1], csW*1.4))], [0.050, ...rv(pd15Up(pd15Lerp(csRear, csFront, 0.85), [0, 1], csW*1.5))], [0.03, bbY + 0.10, 0.06]], 0.0026);
-  if (rd) pd15Hose(B, [[-(xR - 0.004), Rr + 0.020, rz + 0.070], [-(xR + 0.004), Rr + 0.010, rz + 0.020], [rd.x - 0.024, Rr - 0.018, rz - 0.040], [rd.x - 0.022, Rr - 0.036, rz - 0.052]], 0.0026);
+  if (single) pd15Put(BA, M12.steel, pd15Disc(0.034, 0.004, chainX, 20).translate(0, Rr, rz));
+  const rrot = P.rotorR || 0.10, rcal = pd15Caliper(BA, RA, rrot, P.calAng || 0.62, 0.058, {});
+  pd15Hose(BCS, [[0.072, rcal[1], rcal[0]], [0.062, ...rv(pd15Up(pd15Lerp(csRear, csFront, 0.4), [0, 1], csW*1.4))], [0.050, ...rv(pd15Up(pd15Lerp(csRear, csFront, 0.85), [0, 1], csW*1.5))], [0.03, bbY + 0.10, 0.06]], 0.0026);
+  if (rd) pd15Hose(BA, [[-(xR - 0.004), Rr + 0.020, rz + 0.070], [-(xR + 0.004), Rr + 0.010, rz + 0.020], [rd.x - 0.024, Rr - 0.018, rz - 0.040], [rd.x - 0.022, Rr - 0.036, rz - 0.052]], 0.0026);
 
   /* ---------------- seat */
   const SP = pd15Seat(B, f, ST, sdir, { pl:P.pl || 0.13, drop:P.drop !== false && !P.stand, kind:P.sad || (P.stand ? 'race' : 'mtb'), sw:P.sw || 0.056, sl:P.sl || 0.128, pitch:P.pitch });
@@ -34581,22 +34712,31 @@ function pd15Mtb(P, hard){
     pd15Put(B, pd15Ink(P.bag), pd15Plate(poly, 0, 0.058, null, 0.012));
     pd15Put(B, PD15.ink, pd15Sweep([[0.0295, poly[0][1] - 0.010, poly[0][0] + 0.02], [0.0295, poly[1][1] - 0.010, poly[1][0] - 0.01]], [0.002, 0.003, 2], { r:6, n:2 }).geo);
   }
-  if (P.rfender) ffenderAt(f, rz, Rr, Rr + 0.034, 0.040, Math.PI*0.36, FX.plas, -0.62);
+  if (P.rfender){                                                              // (sus53: the hugging fender rides with the axle)
+    if (S53 && K4){ const tg = new T.Group(); ffenderAt(tg, rz, Rr, Rr + 0.034, 0.040, Math.PI*0.36, FX.plas, -0.62); sus53Take(BA, tg); }
+    else ffenderAt(f, rz, Rr, Rr + 0.034, 0.040, Math.PI*0.36, FX.plas, -0.62);
+  }
 
   /* ---------------- front end: fork, stem, bars, hoses */
   const fk = P.fork || (P.dual ? 'dual' : 'sus');
   const fam = P.forkFam || (fk === 'dual' ? 'ridge' : (hard && (P.stan || 0.019) <= 0.0165 ? 'xc' : 'ridge'));
   const fo = { kind:fk, fam, lowK:fam === 'xc' ? 1.27 : (e || fk === 'dual' || (P.stan || 0.019) >= 0.019 ? 1.33 : 1.30),
                span:P.span || (fk === 'dual' ? 0.072 : 0.066), stanR:P.stan || 0.019, stanMat:fk17Stan(P.stanMat), lowMat:FX.fork, rotor:P.rotorF || 0.10, rotorX:P.fatRim ? 0.066 : undefined, tyreW:(P.tw || 0.031)*1.06, archClear:P.ffender ? 0.040 : 0.012,
-               htR:hr0, htR2:hr1, word:P.forkWord, wordMat:P.forkInk ? pd15Ink(P.forkInk) : PD15.white, knobMat:A, expose:P.expose, cages:P.cages, bagMat:P.bag ? pd15Ink(P.bag) : undefined, stack:0.012 };
+               htR:hr0, htR2:hr1, slide:FS, word:P.forkWord, wordMat:P.forkInk ? pd15Ink(P.forkInk) : PD15.white, knobMat:A, expose:P.expose, cages:P.cages, bagMat:P.bag ? pd15Ink(P.bag) : undefined, stack:0.012 };
   const fres = pd15Fork(F, G, fo);
   const ck = pd15CockpitMTB(F, fres.top, d, n, { stem:P.stem || (fk === 'dual' ? 0.050 : 0.045), hw:P.hw || 0.39, rise:P.rise === undefined ? 0.025 : P.rise, back:P.back, up:P.up, cross:P.cross,
     spacers:fk === 'dual' ? 0.0 : (P.spacers === undefined ? 0.015 : P.spacers), shifter:!single, dropper:P.drop !== false && !P.stand, display:e && P.disp === 'bar', remote:e, leverMat:K, barMat:BM.bars, stemMat:BM.bars });
   // hoses: front brake from the caliper up the fork to the left lever; the rest into the head-tube ports
   const port = (s)=>{ const q = fup(G.H1, d, -0.050); return [s*(hr1 + 0.002), q[1], q[0] - 0.006]; };
   // bikefix39: the front hose climbs from the fork's guide close in front of the head tube, then along under the bar to the lever (no wide loop)
+  let hoseSt = null;
   if (fo._hose){ const h = fo._hose, p = ck.ports[1], ht = fup(G.H1, d, -0.030), hm = [0.034, ht[1], ht[0] + hr1 + 0.022];
-    pd15Hose(F, [h[0], h[1], h[2], [(h[2][0] + hm[0])/2, (h[2][1] + hm[1])/2, Math.max(h[2][2], hm[2]) + 0.006], hm, [p[0]*0.5, p[1] - 0.030, p[2] + 0.012], p], 0.0026); }
+    const hq = [(h[2][0] + hm[0])/2, (h[2][1] + hm[1])/2, Math.max(h[2][2], hm[2]) + 0.006], hu = [p[0]*0.5, p[1] - 0.030, p[2] + 0.012];
+    if (FS && fres.slideMax){                                                // (sus53: up the moving leg, then a stretched run to the head tube)
+      pd15Hose(FS, [h[0], h[1], h[2]], 0.0026);
+      const HB = pd15Bk(); pd15Hose(HB, [h[2], hq, hm], 0.0026); hoseSt = { a:[h[2][2], h[2][1]], b:[hm[2], hm[1]], src:HB };
+      pd15Hose(F, [hm, hu, p], 0.0026);
+    } else pd15Hose(F, [h[0], h[1], h[2], hq, hm, hu, p], 0.0026); }
   pd15Hose(F, [ck.ports[-1], [ck.ports[-1][0]*0.5, ck.ports[-1][1] - 0.035, ck.ports[-1][2] + 0.012], [-0.045, G.H1[1] - 0.012, G.H1[0] + 0.030], port(-1)], 0.0026);
   const pL = ck.ports[1], pR = ck.ports[-1], pdn = (q, dy)=> [q[0], q[1] + dy, q[2]];
   // realpedal38: shifter + dropper housings follow under the bar beside the brake hose, then tuck in tight in front of the head tube
@@ -34605,7 +34745,10 @@ function pd15Mtb(P, hard){
   if (!single) pd15Hose(F, tuck(pR, -1), 0.0024);
   if (P.drop !== false && !P.stand) pd15Hose(F, tuck(pL, 1), 0.0024);
   if (P.plate) { const c = pd15Up(pd15Up(fres.top, d, 0.03), n, 0.10); pd15Put(F, PD15.white, pd15Box(0.17, 0.125, 0.006, [0, c[1], c[0]], -0.30)); pd15FlatWord(F, A, String(P.plateNo || 7), 'heavy', [c[0] + 0.004, c[1]], 0, -0.30, 0.07, 0.12, 1); }
-  if (P.ffender) ffenderAt(fr, fz, Rf, Rf + 0.030, 0.034, Math.PI*0.40, FX.plas, 0.40);
+  if (P.ffender){                                                              // (sus53: on the fork's sliding legs)
+    if (FS && fres.slideMax){ const tg = new T.Group(); ffenderAt(tg, fz, Rf, Rf + 0.030, 0.034, Math.PI*0.40, FX.plas, 0.40); sus53Take(FS, tg); }
+    else ffenderAt(fr, fz, Rf, Rf + 0.030, 0.034, Math.PI*0.40, FX.plas, 0.40);
+  }
 
   /* ---------------- wheels */
   const tread = P.tread || (fk === 'dual' ? 'dh' : 'enduro'), tw = P.tw || 0.031, kh = P.kh || (tread === 'dh' ? 0.0052 : tread === 'xc' ? 0.0028 : tread === 'fat' ? 0.0060 : 0.0045);
@@ -34617,7 +34760,11 @@ function pd15Mtb(P, hard){
   if (single){ const c = pd15Disc(0.032, 0.005, chainX, 20); const g2 = new T.Group(); g2.add(bkMesh(c, M12.steel)); rw.add(g2); }
 
   pd15Flush(B, f); pd15Flush(F, fr);
+  if (S53 && !K4) [B0, B1, B2, BH, BHa, BHs].forEach(b=> pd15Flush(b, f));       // (an unknown layout: nothing moves)
   fmerge(f); fmerge(fr);
+  if (FS && fres.slideMax) sus53Slide(fr, FS, d, fres.slideMax, hoseSt ? [hoseSt] : null);
+  if (S53 && K4) sus53Rear(f, { ra:RA, k:K4, b:[B0, B1, B2], st:ST53,
+    tele:shockA && shockB ? { a:shockA, b:shockB, on:shOn, sa:shK ? shK.sa : 0, sb:shK ? shK.sb : 0, src:[BH, BHa, BHs] } : null });
   /* ---------------- rider landmarks */
   const gz = ck.grip[2];
   const rs = P.stand
@@ -35570,44 +35717,45 @@ function fk19Sus(B, G, o){
   const uBot = sH1 + 0.016, uH = 0.025, uTop = uBot + uH;                     // dual: the upper crown above the head tube
   const stTop = dual ? uTop + 0.006 : cTop + 0.002;
   const lowS = {};
+  const LB = o.slide || B;                                                  // sus53: the lower legs (they slide with the wheel) get their own bucket
   /* ---- lowers (cast, tapering into the feet), seal heads, dust wipers, stanchions */
   [-1, 1].forEach(sd=>{
     const x = sd*span, top = lowTop - 0.012;
     const sec = [[0, lR*0.70, lR*0.80, 2.5], [0.08, lR*0.76, lR*0.86, 2.4], [0.28, lR*0.84, lR*0.91, 2.2], [0.68, lR*0.95, lR*0.975, 2.05], [0.86, lR, lR, 2]]
       .concat(bulge ? [[0.93, lR*1.055, lR*1.055, 2], [1, lR*1.02, lR*1.02, 2]] : [[1, lR, lR, 2]]);
     const S = pd15Sweep([X3(leg(-0.016), x), X3(leg(top*0.5), x), X3(leg(top), x)], sec, { r:16, n:12, cap:'a' });
-    pd15Put(B, LM, S.geo); lowS[sd] = S;
+    pd15Put(LB, LM, S.geo); lowS[sd] = S;
     const r1 = bulge ? 1.02 : 1;
-    pd15Put(B, LM, pd15Sweep([X3(leg(top - 0.0005), x), X3(leg(lowTop), x)], [[0, lR*r1, lR*r1], [0.45, lR*1.075, lR*1.075], [1, lR*1.05, lR*1.05]], { r:18, n:3, cap:'b' }).geo);
-    pd15Put(B, RB, pd15Sweep([X3(leg(lowTop - 0.001), x), X3(leg(lowTop + 0.011), x)], [[0, lR*1.03, lR*1.03], [0.28, sR*1.36, sR*1.36], [0.72, sR*1.17, sR*1.17], [1, sR*1.035, sR*1.035]], { r:18, n:4 }).geo);
-    pd15Put(B, SM, pd15Sweep([X3(leg(lowTop + 0.004), x), X3(leg(stTop), x)], sR, { r:20, n:2 }).geo);
+    pd15Put(LB, LM, pd15Sweep([X3(leg(top - 0.0005), x), X3(leg(lowTop), x)], [[0, lR*r1, lR*r1], [0.45, lR*1.075, lR*1.075], [1, lR*1.05, lR*1.05]], { r:18, n:3, cap:'b' }).geo);
+    pd15Put(LB, RB, pd15Sweep([X3(leg(lowTop - 0.001), x), X3(leg(lowTop + 0.011), x)], [[0, lR*1.03, lR*1.03], [0.28, sR*1.36, sR*1.36], [0.72, sR*1.17, sR*1.17], [1, sR*1.035, sR*1.035]], { r:18, n:4 }).geo);
+    pd15Put(B, SM, pd15Sweep([X3(leg(o.slide ? lowTop - 0.045 : lowTop + 0.004), x), X3(leg(stTop), x)], sR, { r:20, n:2 }).geo);   // (sus53: runs on down inside the lower)
     // axle boss: a machined face round the axle, a touch proud of the foot
-    pd15Put(B, LM, pd15Disc(Math.max(0.0145, lR*0.66), lR*1.62, x, 16).translate(0, A[1], A[0]));
+    pd15Put(LB, LM, pd15Disc(Math.max(0.0145, lR*0.66), lR*1.62, x, 16).translate(0, A[1], A[0]));
     // bleed button on the back of the lower, under the seal head
-    if (!city){ const b0 = pd15Up(leg(lowTop - 0.030), n, -lR*0.90), b1 = pd15Up(leg(lowTop - 0.030), n, -lR*1.07); pd15Put(B, HW, mo15rodGeo(X3(b0, x), X3(b1, x), 0.0034, 8)); }
+    if (!city){ const b0 = pd15Up(leg(lowTop - 0.030), n, -lR*0.90), b1 = pd15Up(leg(lowTop - 0.030), n, -lR*1.07); pd15Put(LB, HW, mo15rodGeo(X3(b0, x), X3(b1, x), 0.0034, 8)); }
   });
   /* travel o-ring on the left stanchion (a quarter of the travel used) */
   if (!city) pd15Put(B, RB, bx15Weld(X3(leg(lowTop + 0.012 + trav*0.24), span), d3, sR, 0.0011));
   /* ---- the bottom of the legs: rebound knob under the right leg, the air-shaft nut under the left (city: axle nuts only) */
   if (!city){
-    pd15Put(B, K2, pd15Sweep([X3(leg(-0.0145), -span), X3(leg(-0.026), -span)], [[0, 0.0052, 0.0052], [0.3, 0.0062, 0.0062], [1, 0.0060, 0.0060]], { r:10, n:3, cap:true }).geo);
-    pd15Put(B, K, pd15Sweep([X3(leg(-0.0145), span), X3(leg(-0.0215), span)], 0.0062, { r:6, n:2, cap:true, keepR:true }).geo);
+    pd15Put(LB, K2, pd15Sweep([X3(leg(-0.0145), -span), X3(leg(-0.026), -span)], [[0, 0.0052, 0.0052], [0.3, 0.0062, 0.0062], [1, 0.0060, 0.0060]], { r:10, n:3, cap:true }).geo);
+    pd15Put(LB, K, pd15Sweep([X3(leg(-0.0145), span), X3(leg(-0.0215), span)], 0.0062, { r:6, n:2, cap:true, keepR:true }).geo);
   }
   /* ---- axle: thru-axle lever on the drive side + flush end cap (city: nuts on a solid axle) */
   const xo = span + lR*0.81;
   if (city){
-    [-1, 1].forEach(sd=>{ pd15Put(B, K, fk17Hex(0.0105, 0.008, sd*(xo + 0.004), A[1], A[0])); pd15Put(B, HW, pd15Disc(0.0052, 0.010, sd*(xo + 0.010), 8).translate(0, A[1], A[0])); });
+    [-1, 1].forEach(sd=>{ pd15Put(LB, K, fk17Hex(0.0105, 0.008, sd*(xo + 0.004), A[1], A[0])); pd15Put(LB, HW, pd15Disc(0.0052, 0.010, sd*(xo + 0.010), 8).translate(0, A[1], A[0])); });
   } else {
-    pd15Put(B, HW, pd15Disc(0.0112, 0.0045, xo + 0.002, 14).translate(0, A[1], A[0]));
-    pd15Put(B, K, pd15Disc(0.0044, 0.005, xo + 0.0042, 6).translate(0, A[1], A[0]));                    // hex socket
-    pd15Put(B, K, pd15Disc(0.0128, 0.010, -(xo + 0.004), 16).translate(0, A[1], A[0]));                  // lever pivot
+    pd15Put(LB, HW, pd15Disc(0.0112, 0.0045, xo + 0.002, 14).translate(0, A[1], A[0]));
+    pd15Put(LB, K, pd15Disc(0.0044, 0.005, xo + 0.0042, 6).translate(0, A[1], A[0]));                    // hex socket
+    pd15Put(LB, K, pd15Disc(0.0128, 0.010, -(xo + 0.004), 16).translate(0, A[1], A[0]));                  // lever pivot
     const l0 = pd15Up(A, n, -0.004), l1 = pd15Up(pd15Up(A, d, 0.064), n, -0.017);
-    pd15Put(B, K, pd15Sweep([[-(xo + 0.010), l0[1], l0[0]], [-(xo + 0.011), (l0[1] + l1[1])/2, (l0[0] + l1[0])/2], [-(xo + 0.009), l1[1], l1[0]]],
+    pd15Put(LB, K, pd15Sweep([[-(xo + 0.010), l0[1], l0[0]], [-(xo + 0.011), (l0[1] + l1[1])/2, (l0[0] + l1[0])/2], [-(xo + 0.009), l1[1], l1[0]]],
       [[0, 0.0036, 0.0088, 3], [0.5, 0.0031, 0.0070, 3], [1, 0.0036, 0.0080, 3]], { r:10, n:6, cap:true }).geo);
   }
   /* ---- arch: a cast bridge in front of the stanchions, its ends sweeping down the front of the lowers */
   const tw = Math.min(span - lR*0.75, o.tyreW || span*0.48);
-  fk19Arch(B, AM, G, { span, sR, lR, lowTop, tw, hC:city ? 0.0105 : xc ? 0.0115 : bulge ? 0.0150 : 0.0135, dep:city ? 0.011 : xc ? 0.012 : bulge ? 0.017 : 0.0150,
+  fk19Arch(LB, AM, G, { span, sR, lR, lowTop, tw, hC:city ? 0.0105 : xc ? 0.0115 : bulge ? 0.0150 : 0.0135, dep:city ? 0.011 : xc ? 0.012 : bulge ? 0.017 : 0.0150,
     clear:o.archClear, emb:city ? 0.045 : xc ? 0.055 : bulge ? 0.080 : 0.070, round:bulge ? 2.3 : 3.0 });
   /* ---- crowns: a forged bridge round the stanchion barrels + the steerer boss; 'ridge' / 'xc' single crowns are hollow underneath (the
      pocket shows from the front); dual crowns carry pinch bolts */
@@ -35660,10 +35808,10 @@ function fk19Sus(B, G, o){
     [-1, 1].forEach(sd=>{
       const S = lowS[sd], ac = sd > 0 ? 0 : Math.PI;
       if (o.bandMat !== false){
-        pd15Put(B, o.bandMat || FX.acc, fk19Patch(S, 0.775, 0.835, ac - 1.30, ac + 1.30, 1, 10, 0.0005));
-        if (!xc && !city) pd15Put(B, o.bandMat || FX.acc, fk19Patch(S, 0.150, 0.172, ac - 1.10, ac + 1.10, 1, 8, 0.0005));
+        pd15Put(LB, o.bandMat || FX.acc, fk19Patch(S, 0.775, 0.835, ac - 1.30, ac + 1.30, 1, 10, 0.0005));
+        if (!xc && !city) pd15Put(LB, o.bandMat || FX.acc, fk19Patch(S, 0.150, 0.172, ac - 1.10, ac + 1.10, 1, 8, 0.0005));
       }
-      pd15TubeWord(B, o.wordMat || PD15.white, S, o.word, o.wordStyle || 'heavy', city ? 0.50 : 0.47, lR*0.98, lowTop*(city ? 0.50 : 0.46), { sides:sd, at:0.25 });
+      pd15TubeWord(LB, o.wordMat || PD15.white, S, o.word, o.wordStyle || 'heavy', city ? 0.50 : 0.47, lR*0.98, lowTop*(city ? 0.50 : 0.46), { sides:sd, at:0.25 });
     });
   }
   /* ---- post mount on the back of the left leg + the caliper on the rotor behind it; the hose climbs the back of the leg */
@@ -35671,18 +35819,18 @@ function fk19Sus(B, G, o){
   if (o.cal !== false){
     const rr = o.rotor || 0.10, rx = o.rotorX || 0.050, legA = Math.atan2(d[1], d[0]);
     const ca = legA + (o.calOff || 0.86);
-    port = pd15Caliper(B, A, rr, ca, rx, { mat:o.calMat, pistons:o.pistons || 4, tabMat:LM });
+    port = pd15Caliper(LB, A, rr, ca, rx, { mat:o.calMat, pistons:o.pistons || 4, tabMat:LM });
     const cc = [A[0] + Math.cos(ca)*(rr - 0.010), A[1] + Math.sin(ca)*(rr - 0.010)], tg = [-Math.sin(ca), Math.cos(ca)];
     [-1, 1].forEach(k=>{
       const e = [cc[0] + tg[0]*k*0.022 - Math.cos(ca)*0.010, cc[1] + tg[1]*k*0.022 - Math.sin(ca)*0.010];
       const s = Math.max(0.02, (e[0] - A[0])*d[0] + (e[1] - A[1])*d[1]), b = pd15Up(leg(s), n, -lR*0.55);
-      pd15Put(B, LM, pd15Sweep([[span - 0.006, b[1], b[0]], [rx + 0.016, e[1], e[0]]], [0.0078, 0.0088, 2.6], { r:10, n:2, cap:true }).geo);
+      pd15Put(LB, LM, pd15Sweep([[span - 0.006, b[1], b[0]], [rx + 0.016, e[1], e[0]]], [0.0078, 0.0088, 2.6], { r:10, n:2, cap:true }).geo);
     });
     hose = [[rx + 0.012, port[1], port[0]], X3(pd15Up(leg(lowTop*0.55), n, -lR*1.12), span + lR*0.35), X3(pd15Up(leg(lowTop + 0.05), n, -lR*1.25), span + sR*1.4)];
     // hose guide on the back of the left arch end
-    pd15Put(B, M12.anod, pd15Box(0.010, 0.012, 0.008, X3(pd15Up(leg(lowTop - 0.05), n, -lR*1.02), span + lR*0.30), -Math.atan2(d[1], d[0])));
+    pd15Put(LB, M12.anod, pd15Box(0.010, 0.012, 0.008, X3(pd15Up(leg(lowTop - 0.05), n, -lR*1.02), span + lR*0.30), -Math.atan2(d[1], d[0])));
   }
-  return { top, crownS:cTop, port, hose, lowTop };
+  return { top, crownS:cTop, port, hose, lowTop, slideMax:Math.max(0.02, cBot - 0.006 - (lowTop + 0.011)) };
 }
 
 /* ---------------------------------------------------------------- moto forks
@@ -35697,7 +35845,7 @@ function fk19Moto(fr, G, o){
   const span = o.span || 0.094, ro = o.ro || 0.025, ri = o.ri || ro*0.78, ht = o.ht || 0.13;
   const LP = t=> mo15up(A, d, t), SP = t=> mo15up(G.Q, d, t), X3 = (p, x)=> [x, p[1], p[0]], rv = p=> [p[1], p[0]];
   const tb0 = L - 0.030, tb1 = L + 0.006, tbB = L - (conv ? 0.040 : 0.046), tt0 = L + 0.014 + ht + 0.004, tt1 = tt0 + 0.026, tTop = tt1 + 0.020;
-  const B = pd15Bk(), OM = o.outer || FX.fork, IM = o.inner || BK.chrome, FM = o.foot || M12.anod, CM = o.clamp || BK.alloy, HW = BK.alloy, RB = M12.rub;
+  const B = pd15Bk(), S5 = o.s53 === false ? B : pd15Bk(), OM = o.outer || FX.fork, IM = o.inner || BK.chrome, FM = o.foot || M12.anod, CM = o.clamp || BK.alloy, HW = BK.alloy, RB = M12.rub;
   const AJ = o.adj || BK.gold, GM = o.guard === undefined ? FK19.guard : o.guard, moped = fam === 'moped' || fam === 'bike';
   const tO = conv ? L*0.50 : L*0.44;                                       // USD: the bottom of the outer tube (the seal); conv: the slider top
   const rr = (conv ? ri : ro) + 0.012;                                      // clamp boss radius round the tubes
@@ -35705,36 +35853,36 @@ function fk19Moto(fr, G, o){
     const x = sd*span;
     if (!conv){
       /* ---- USD: coated stanchion below, dust seal + a machined seal housing at the bottom of the thick outer tube */
-      pd15Put(B, IM, pd15Sweep([X3(LP(0.050), x), X3(LP(tO + 0.050), x)], ri, { r:20, n:2 }).geo);
+      pd15Put(S5, IM, pd15Sweep([X3(LP(0.050), x), X3(LP(tO + 0.050), x)], ri, { r:20, n:2 }).geo);
       pd15Put(B, RB, pd15Sweep([X3(LP(tO - 0.012), x), X3(LP(tO + 0.003), x)], [[0, ri*1.03, ri*1.03], [0.40, ri*1.19, ri*1.19], [1, ro*0.96, ro*0.96]], { r:20, n:3 }).geo);
       pd15Put(B, OM, pd15Sweep([X3(LP(tO), x), X3(LP(tO + 0.044), x)], [[0, ro*0.95, ro*0.95], [0.10, ro*1.06, ro*1.06], [0.86, ro*1.06, ro*1.06], [1, ro, ro]], { r:22, n:5, cap:'a' }).geo);
       pd15Put(B, OM, pd15Sweep([X3(LP(tO + 0.044), x), X3(LP(tTop - 0.004), x)], ro, { r:22, n:2 }).geo);
       /* ---- forged axle foot: clamps the stanchion, wraps the axle boss, carries the guard + caliper lugs */
       const fw = ri*1.30;
-      pd15Put(B, FM, pd15Sweep([X3(LP(-0.031), x), X3(LP(0.018), x), X3(LP(0.090), x)],
+      pd15Put(S5, FM, pd15Sweep([X3(LP(-0.031), x), X3(LP(0.018), x), X3(LP(0.090), x)],
         [[0, fw*0.84, 0.0215, 2.7], [0.26, fw, 0.0285, 2.5], [0.62, fw*0.98, ri*1.44, 2.3], [1, ri*1.22, ri*1.22, 2]], { r:16, n:6, cap:true }).geo);
-      pd15Put(B, FM, pd15Disc(0.0215, fw*2 + 0.004, x, 18).translate(0, A[1], A[0]));
-      pd15Put(B, HW, pd15Disc(0.0150, 0.003, x + sd*(fw + 0.0035), 16).translate(0, A[1], A[0]));              // machined axle face
+      pd15Put(S5, FM, pd15Disc(0.0215, fw*2 + 0.004, x, 18).translate(0, A[1], A[0]));
+      pd15Put(S5, HW, pd15Disc(0.0150, 0.003, x + sd*(fw + 0.0035), 16).translate(0, A[1], A[0]));              // machined axle face
       // axle pinch bolts on the rear of the foot (heads outward)
-      [-0.011, 0.009].forEach(k=>{ const p = pd15Up(LP(k), n, -0.024); pd15Put(B, HW, pd15Disc(0.0046, 0.010, x + sd*(fw - 0.001), 6).translate(0, p[1], p[0])); });
+      [-0.011, 0.009].forEach(k=>{ const p = pd15Up(LP(k), n, -0.024); pd15Put(S5, HW, pd15Disc(0.0046, 0.010, x + sd*(fw - 0.001), 6).translate(0, p[1], p[0])); });
       /* ---- the guard: a moulded C-shell over the front + outer side of the stanchion, bolted to the foot; its decal along the outer face */
       if (GM){
         const g0 = 0.082, g1 = g0 + (tO - 0.020 - g0)*0.62, rg = t=> ri + 0.0085 + 0.0030*t, aC = -Math.PI/2 + sd*0.42, half = fam === 'street' ? 1.30 : 1.50;
         const sh = fk19Shell(X3(LP(g0), x), X3(LP(g1), x), rg, 0.0030, aC - half, aC + half, 12, 6, { nose:0.0040, aN:-Math.PI/2 + sd*0.15, flare:0.003 });
-        pd15Put(B, GM, sh.geo);
+        pd15Put(S5, GM, sh.geo);
         [[0.10, aC - half*0.78], [0.92, aC + sd*0.2]].forEach(([t, a])=>{ const q = sh.at(t, a);
-          pd15Put(B, HW, mo15rodGeo([q[0] - q[3]*0.0006, q[1] - q[4]*0.0006, q[2] - q[5]*0.0006], [q[0] + q[3]*0.0024, q[1] + q[4]*0.0024, q[2] + q[5]*0.0024], 0.0042, 6)); });
-        if (o.word !== '') fk19Word(B, o.wordMat || BK.white, sh.at, sh.len, o.word || ('DL' + Math.round(ri*2000)), 'heavy', 0.50, 0.019, (g1 - g0)*0.62, sd > 0 ? -0.62 : Math.PI + 0.62, sd, ri + 0.012, 0.0004);
+          pd15Put(S5, HW, mo15rodGeo([q[0] - q[3]*0.0006, q[1] - q[4]*0.0006, q[2] - q[5]*0.0006], [q[0] + q[3]*0.0024, q[1] + q[4]*0.0024, q[2] + q[5]*0.0024], 0.0042, 6)); });
+        if (o.word !== '') fk19Word(S5, o.wordMat || BK.white, sh.at, sh.len, o.word || ('DL' + Math.round(ri*2000)), 'heavy', 0.50, 0.019, (g1 - g0)*0.62, sd > 0 ? -0.62 : Math.PI + 0.62, sd, ri + 0.012, 0.0004);
       }
     } else {
       /* ---- conventional: chrome stanchions from the clamps down into fat cast sliders (polished or painted), a seal head + wiper on top */
-      pd15Put(B, IM, pd15Sweep([X3(LP(tO - 0.030), x), X3(LP(tTop - 0.004), x)], ri, { r:18, n:2 }).geo);
-      pd15Put(B, OM, pd15Sweep([X3(LP(-0.030), x), X3(LP(tO*0.45), x), X3(LP(tO - 0.012), x)],
+      pd15Put(B, IM, pd15Sweep([X3(LP(tO - (S5 !== B ? 0.085 : 0.030)), x), X3(LP(tTop - 0.004), x)], ri, { r:18, n:2 }).geo);
+      pd15Put(S5, OM, pd15Sweep([X3(LP(-0.030), x), X3(LP(tO*0.45), x), X3(LP(tO - 0.012), x)],
         [[0, ro*0.86, ro*1.30, 2.4], [0.10, ro*0.92, ro*1.14, 2.3], [0.30, ro*0.97, ro, 2.1], [1, ro, ro, 2]], { r:18, n:10, cap:'a' }).geo);
-      pd15Put(B, OM, pd15Sweep([X3(LP(tO - 0.0125), x), X3(LP(tO), x)], [[0, ro, ro], [0.5, ro*1.06, ro*1.06], [1, ro*1.03, ro*1.03]], { r:18, n:3, cap:'b' }).geo);
-      pd15Put(B, RB, pd15Sweep([X3(LP(tO - 0.001), x), X3(LP(tO + 0.011), x)], [[0, ro*1.0, ro*1.0], [0.35, ri*1.38, ri*1.38], [1, ri*1.05, ri*1.05]], { r:18, n:3 }).geo);
-      pd15Put(B, OM, pd15Disc(ro*0.95, ro*2.25, x, 16).translate(0, A[1], A[0]));                            // axle boss
-      [-0.012, 0.010].forEach(k=>{ const p = pd15Up(LP(k), n, -ro*1.05); pd15Put(B, HW, pd15Disc(0.0044, 0.010, x + sd*(ro*0.95), 6).translate(0, p[1], p[0])); });
+      pd15Put(S5, OM, pd15Sweep([X3(LP(tO - 0.0125), x), X3(LP(tO), x)], [[0, ro, ro], [0.5, ro*1.06, ro*1.06], [1, ro*1.03, ro*1.03]], { r:18, n:3, cap:'b' }).geo);
+      pd15Put(S5, RB, pd15Sweep([X3(LP(tO - 0.001), x), X3(LP(tO + 0.011), x)], [[0, ro*1.0, ro*1.0], [0.35, ri*1.38, ri*1.38], [1, ri*1.05, ri*1.05]], { r:18, n:3 }).geo);
+      pd15Put(S5, OM, pd15Disc(ro*0.95, ro*2.25, x, 16).translate(0, A[1], A[0]));                            // axle boss
+      [-0.012, 0.010].forEach(k=>{ const p = pd15Up(LP(k), n, -ro*1.05); pd15Put(S5, HW, pd15Disc(0.0044, 0.010, x + sd*(ro*0.95), 6).translate(0, p[1], p[0])); });
       // gaiters: rubber bellows from the slider top to under the bottom clamp
       if (o.boots){ const gb = tO + 0.004, gt = Math.min(tbB - 0.012, gb + 0.15), nr = Math.max(6, Math.round((gt - gb)/0.016)), pr = [];
         pr.push([ri + 0.0055, 0]); for (let i = 0; i <= nr*2; i++) pr.push([ri + (i%2 ? 0.0115 : 0.0060) + 0.004*(1 - i/(nr*2)), (i + 0.5)/(nr*2 + 1)]); pr.push([ri + 0.004, 1]);
@@ -35755,9 +35903,9 @@ function fk19Moto(fr, G, o){
   });
   /* ---- axle: its hex head sunk in the left foot, a nut on the right */
   const fwA = conv ? ro*1.13 : ri*1.30;
-  pd15Put(B, HW, pd15Disc(0.0105, span*2 + fwA*2 + 0.008, 0, 12).translate(0, A[1], A[0]));
-  pd15Put(B, M12.anod, pd15Disc(0.0062, 0.004, span + fwA + 0.0045, 6).translate(0, A[1], A[0]));
-  pd15Put(B, HW, pd15Disc(0.0140, 0.009, -(span + fwA + 0.0045), 6).translate(0, A[1], A[0]));
+  pd15Put(S5, HW, pd15Disc(0.0105, span*2 + fwA*2 + 0.008, 0, 12).translate(0, A[1], A[0]));
+  pd15Put(S5, M12.anod, pd15Disc(0.0062, 0.004, span + fwA + 0.0045, 6).translate(0, A[1], A[0]));
+  pd15Put(S5, HW, pd15Disc(0.0140, 0.009, -(span + fwA + 0.0045), 6).translate(0, A[1], A[0]));
   /* ---- triple clamps: a tall forged bottom clamp and a top clamp round the tubes + the steering stem, pinch bolts behind each tube, the
      steering stem nut on top; a hose guide on the bottom clamp */
   const clampG = mo15clampGeo(G, [[span, off, rr], [-span, off, rr], [0, 0, 0.035], [0, off + 0.006, 0.031]], tb1 - tbB, tbB);
@@ -35776,27 +35924,237 @@ function fk19Moto(fr, G, o){
   const cr = rr0 - 0.021, cc = [A[0] + Math.cos(ca)*cr, A[1] + Math.sin(ca)*cr], tg = [-Math.sin(ca), Math.cos(ca)], rd = [Math.cos(ca), Math.sin(ca)];
   const CP = (s, q)=> [cc[0] + tg[0]*s + rd[0]*q, cc[1] + tg[1]*s + rd[1]*q];
   const CL = o.cal || M12.anod, clen = moped ? 0.072 : 0.088, chg = moped ? 0.036 : 0.044;
-  pd15Put(B, CL, pd15Sweep([[rx + 0.0135, ...rv(CP(-clen/2, 0))], [rx + 0.0135, ...rv(CP(0, 0.002))], [rx + 0.0135, ...rv(CP(clen/2, 0))]], [[0, 0.0115, chg*0.38, 3.4], [0.5, 0.0125, chg*0.50, 3.4], [1, 0.0115, chg*0.38, 3.4]], { r:14, n:6, cap:true }).geo);
-  pd15Put(B, CL, pd15Sweep([[rx - 0.0105, ...rv(CP(-clen*0.42, 0))], [rx - 0.0105, ...rv(CP(clen*0.42, 0))]], [0.0090, chg*0.42, 3.4], { r:12, n:2, cap:true }).geo);
-  pd15Put(B, CL, pd15Sweep([[rx + 0.0015, ...rv(CP(-clen*0.36, chg*0.36))], [rx + 0.0015, ...rv(CP(clen*0.36, chg*0.36))]], [0.020, 0.0105, 3.4], { r:12, n:2, cap:true }).geo);
-  [-1, 1].forEach(s=>{ const p = CP(s*clen*0.22, -0.002); pd15Put(B, HW, pd15Disc(0.0080, 0.003, rx + 0.0255, 12).translate(0, p[1], p[0])); });   // piston caps
+  pd15Put(S5, CL, pd15Sweep([[rx + 0.0135, ...rv(CP(-clen/2, 0))], [rx + 0.0135, ...rv(CP(0, 0.002))], [rx + 0.0135, ...rv(CP(clen/2, 0))]], [[0, 0.0115, chg*0.38, 3.4], [0.5, 0.0125, chg*0.50, 3.4], [1, 0.0115, chg*0.38, 3.4]], { r:14, n:6, cap:true }).geo);
+  pd15Put(S5, CL, pd15Sweep([[rx - 0.0105, ...rv(CP(-clen*0.42, 0))], [rx - 0.0105, ...rv(CP(clen*0.42, 0))]], [0.0090, chg*0.42, 3.4], { r:12, n:2, cap:true }).geo);
+  pd15Put(S5, CL, pd15Sweep([[rx + 0.0015, ...rv(CP(-clen*0.36, chg*0.36))], [rx + 0.0015, ...rv(CP(clen*0.36, chg*0.36))]], [0.020, 0.0105, 3.4], { r:12, n:2, cap:true }).geo);
+  [-1, 1].forEach(s=>{ const p = CP(s*clen*0.22, -0.002); pd15Put(S5, HW, pd15Disc(0.0080, 0.003, rx + 0.0255, 12).translate(0, p[1], p[0])); });   // piston caps
   // radial mount: lugs from the back of the foot to the caliper ears + the two radial bolts
   const fxL = conv ? span : span - ri*0.2;
   [-1, 1].forEach(s=>{ const e = CP(s*clen*0.36, -chg*0.46), f0 = pd15Up(LP(conv ? 0.03 : 0.012 + s*0.018), n, -(conv ? ro*0.8 : ri*1.1));
-    pd15Put(B, conv ? OM : FM, pd15Sweep([[fxL, f0[1], f0[0]], [rx + 0.016, e[1], e[0]]], [0.0075, 0.0095, 2.8], { r:10, n:2, cap:true }).geo);
-    pd15Put(B, HW, mo15rodGeo([rx + 0.016, ...rv(CP(s*clen*0.36, -chg*0.62))], [rx + 0.016, ...rv(CP(s*clen*0.36, chg*0.10))], 0.0040, 6)); });
-  const bj = CP(-clen*0.30, chg*0.56); pd15Put(B, HW, pd15Disc(0.0062, 0.013, rx + 0.012, 10).translate(0, bj[1], bj[0]));
+    pd15Put(S5, conv ? OM : FM, pd15Sweep([[fxL, f0[1], f0[0]], [rx + 0.016, e[1], e[0]]], [0.0075, 0.0095, 2.8], { r:10, n:2, cap:true }).geo);
+    pd15Put(S5, HW, mo15rodGeo([rx + 0.016, ...rv(CP(s*clen*0.36, -chg*0.62))], [rx + 0.016, ...rv(CP(s*clen*0.36, chg*0.10))], 0.0040, 6)); });
+  const bj = CP(-clen*0.30, chg*0.56); pd15Put(S5, HW, pd15Disc(0.0062, 0.013, rx + 0.012, 10).translate(0, bj[1], bj[0]));
+  let hoseSt = null;                                                        // (sus53: the hose's stretched run, set by the sus53 patch)
   const legBack = (t, k)=> mo15P(mo15up(LP(t), n, -(conv ? ro : ri + 0.012)*k), span + (conv ? ro*0.55 : ri*0.55));
   // bikefix39: up the outside of the leg, then tucked under the bottom clamp into the guide beside the leg (no diagonal across the wheel)
   const hgx = 0.05, hside = span + ro + 0.007;
   const hp = [[rx + 0.018, bj[1] + 0.012, bj[0] + 0.004], legBack(L*0.22, 1.25), legBack(tO - 0.03, 1.15), mo15P(LP(tO + 0.07), hside), mo15P(mo15up(SP(tb0 - 0.04), n, off + ro*0.3), hside),
     mo15P(mo15up(SP(tb0 - 0.012), n, off + ro + 0.012), (hside + hgx)/2 + 0.012), mo15P(mo15up(SP(tb0), n, off + 0.055), hgx)];
-  pd15Put(B, M12.rub, pd15Sweep(hp, 0.0040, { r:6, n:24 }).geo);
-  if (!conv && GM){ const q = legBack(L*0.24, 1.05); pd15Put(B, M12.anod, pd15Box(0.010, 0.016, 0.010, q, -Math.atan2(d[1], d[0]))); }   // hose clip on the guard
+  if (S5 !== B){ const HB = pd15Bk();
+    pd15Put(S5, M12.rub, pd15Sweep(hp.slice(0, 2), 0.0040, { r:6, n:6 }).geo);
+    pd15Put(HB, M12.rub, pd15Sweep(hp.slice(1, 5), 0.0040, { r:6, n:16 }).geo);
+    pd15Put(B, M12.rub, pd15Sweep(hp.slice(4), 0.0040, { r:6, n:8 }).geo);
+    hoseSt = { a:[hp[1][2], hp[1][1]], b:[hp[4][2], hp[4][1]], src:HB };
+  } else pd15Put(B, M12.rub, pd15Sweep(hp, 0.0040, { r:6, n:24 }).geo);
+  if (!conv && GM){ const q = legBack(L*0.24, 1.05); pd15Put(S5, M12.anod, pd15Box(0.010, 0.016, 0.010, q, -Math.atan2(d[1], d[0]))); }   // hose clip on the guard
   { const q = mo15up(SP(tbB + 0.010), n, off + rr*0.30); pd15Put(B, M12.anod, pd15Box(0.016, 0.010, 0.020, [hgx, q[1], q[0]], -Math.atan2(n[1], n[0]))); }   // hose guide
   pd15Flush(B, fr);
-  return { top:SP(tTop), tTop, tt1, tb0, LP, SP, span, ro, ri };
+  // sus53: the stanchions / sliders, feet, guards, axle and caliper travel with the wheel (a kept sub-group of the front end)
+  const slideMax = Math.max(0.02, conv ? (tbB - 0.014) - (tO + 0.011) : (tO - 0.012) - 0.094);
+  if (S5 !== B) sus53Slide(fr, S5, d, slideMax, hoseSt ? [hoseSt] : null);
+  return { top:SP(tTop), tTop, tt1, tb0, LP, SP, span, ro, ri, slideMax };
 }
+
+/* ---------------------------------------------------------------- sus53 (Release 15.51): moving suspension groups
+   Builders put the parts that travel with a wheel into KEPT sub-groups (fmerge leaves them alone). Their geometry stays in bike space, so
+   paint patterns, decals and the customisation's triangle picking line up with the rest of the ride; mods/sus53.js moves the groups every
+   frame from the suspension travel phys29 already works out (the garage viewer and other riders' copies stay at rest). Everything in
+   userData is plain numbers (clones keep it). Points are [z, y] in bike space.
+     sus53Slide(fr, src, d, max, st)   the fork's lower legs: slide along the fork axis d = [dz, dy]; max = free stanchion (m);
+                                   st [{ a, b, src }] = stretched runs from the sliding legs (a) up to the fixed front end (b): the brake hose
+     sus53Rear(f, o)               the rear end as a linkage:
+        o.ra                       the rear axle
+        o.k { f0, r0, f1, r1, ax } body 0 turns about the frame pivot f0; body 1 (a rocker / link) about the frame pivot f1; body 2 (the
+                                   coupler: seat stays, a rear triangle, a moto's rocker) hangs between r0 (a pivot on body 0) and r1 (a pivot
+                                   on body 1). No f1 / r1 = a plain swingarm. ax = the body that carries the axle (0 | 2)
+        o.b [src0, src1, src2]     the bodies' parts (a pd15 bucket | a Group | null)
+        o.tele { a, b, on, sa, sb, src:[body, shaft, spring] }   the shock: the eye a rides on body `on`, the eye b is on the frame; the
+                                   body-side parts turn about b, the shaft-side parts also slide along the line, the spring (its seats sb
+                                   from b and sa from a) is squashed between them
+        o.st [{ a, b, on, src }]   stretched runs (a chain, a cable): b on the frame, a on body `on` -- turned about b and scaled to reach a
+   src may be a bucket (Map), a Group, or a function(group) that fills the group */
+function sus53Fill(g, src){
+  if (!src) return g;
+  if (typeof src === 'function') src(g);
+  else if (src.isObject3D){ fmerge(src); src.children.slice().forEach(m=> g.add(m)); }
+  else pd15Flush(src, g);
+  return g;
+}
+/* the meshes of a group (a fender built by an older helper ...) -> a pd15 bucket, in the bucket's space */
+function sus53Take(B, grp){
+  grp.updateMatrixWorld(true);
+  grp.traverse(o=>{
+    if (!o.isMesh || !o.geometry || Array.isArray(o.material)) return;
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    g.applyMatrix4(o.matrixWorld); pd15Put(B, o.material, g);
+  });
+  return B;
+}
+function sus53Slide(fr, src, d, max, st){
+  try {
+    const g = sus53Fill(new T.Group(), src);
+    if (!g.children.length) return null;
+    g.name = 'sus53F'; g.userData.keep = true;
+    fr.add(g);
+    fr.userData.s53f = [+d[0].toFixed(5), +d[1].toFixed(5), +Math.max(0.01, max || 0.06).toFixed(4)];
+    // stretched runs between the sliding legs (a) and the fixed front end (b): the brake hose
+    const X = [];
+    (st || []).forEach(E=>{
+      try {
+        if (!E || !E.src || !E.a || !E.b) return;
+        const psi = Math.atan2(E.a[0] - E.b[0], E.a[1] - E.b[1]), i = X.length;
+        const inner = sus53Local(E.src, 'sus53Y' + i + 'i', E.b, psi, 0); if (!inner.children.length) return;
+        const mid = new T.Group(); mid.name = 'sus53Y' + i + 'm'; mid.userData.keep = true; mid.add(inner);
+        const outer = new T.Group(); outer.name = 'sus53Y' + i; outer.userData.keep = true; outer.position.set(0, E.b[1], E.b[0]); outer.rotation.x = psi; outer.add(mid);
+        fr.add(outer); X.push([+E.a[0].toFixed(5), +E.a[1].toFixed(5), +E.b[0].toFixed(5), +E.b[1].toFixed(5)]);
+      } catch(e){ try { console.warn('[sus53] hose', e); } catch(e2){} }
+    });
+    if (X.length) fr.userData.s53x = X;
+    return g;
+  } catch(e){ try { console.warn('[sus53] slide', e); } catch(e2){} return null; }
+}
+/* a kept group whose (bike-space) parts are laid along the line from b at the angle psi: it sits in a parent placed at b and turned by psi
+   (identity at rest); dy shifts it back along the line (the spring hangs from its seat) */
+function sus53Local(src, name, b, psi, dy){
+  const g = sus53Fill(new T.Group(), src); g.name = name; g.userData.keep = true;
+  const c = Math.cos(-psi), s = Math.sin(-psi), y = -b[1], z = -b[0];
+  g.rotation.x = -psi; g.position.set(0, y*c - z*s - (dy || 0), y*s + z*c);
+  return g;
+}
+function sus53Rear(f, o){
+  const U = { v:2, ra:null, k:null, te:null, st:[] };
+  const r4 = p=> p ? [+p[0].toFixed(5), +p[1].toFixed(5)] : null;
+  let n = 0;
+  // the bodies (always shown, even if the numbers below turn out unusable: they just stay still then)
+  (o.b || []).forEach((src, i)=>{
+    try {
+      if (!src || i > 2) return;
+      const g = sus53Fill(new T.Group(), src); if (!g.children.length) return;
+      g.name = 'sus53B' + i; g.userData.keep = true; f.add(g); n++;
+    } catch(e){ try { console.warn('[sus53] body', i, e); } catch(e2){} }
+  });
+  const T0 = o.tele;
+  if (T0 && T0.src){
+    try {
+      const a = T0.a, b = T0.b, psi = Math.atan2(a[0] - b[0], a[1] - b[1]), L = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      const outer = new T.Group(); outer.name = 'sus53K'; outer.userData.keep = true; outer.position.set(0, b[1], b[0]); outer.rotation.x = psi;
+      const gb = sus53Local(T0.src[0], 'sus53Kb', b, psi, 0); if (gb.children.length) outer.add(gb);
+      const ga = sus53Local(T0.src[1], 'sus53Kai', b, psi, 0);
+      if (ga.children.length){ const A = new T.Group(); A.name = 'sus53Ka'; A.userData.keep = true; A.add(ga); outer.add(A); }
+      const sb = Math.max(0, T0.sb || 0), sa = Math.max(0, T0.sa || 0);
+      const gs = sus53Local(T0.src[2], 'sus53Ksi', b, psi, sb);
+      if (gs.children.length && L - sa - sb > 0.02){ const S = new T.Group(); S.name = 'sus53Ks'; S.userData.keep = true; S.position.y = sb; S.add(gs); outer.add(S); }
+      else if (gs.children.length){ const g2 = sus53Local(null, 'sus53Kb2', b, psi, 0); gs.children.slice().forEach(m=> g2.add(m)); outer.add(g2); }
+      if (outer.children.length){ f.add(outer); U.te = { a:r4(a), b:r4(b), on:T0.on === 0 || T0.on === 2 ? T0.on : 1, sa:+sa.toFixed(4), sb:+sb.toFixed(4) }; }
+    } catch(e){ try { console.warn('[sus53] shock', e); } catch(e2){} }
+  }
+  (o.st || []).forEach(E=>{
+    try {
+      if (!E || !E.src || !E.a || !E.b) return;
+      const psi = Math.atan2(E.a[0] - E.b[0], E.a[1] - E.b[1]), i = U.st.length;
+      const inner = sus53Local(E.src, 'sus53X' + i + 'i', E.b, psi, 0); if (!inner.children.length) return;
+      const mid = new T.Group(); mid.name = 'sus53X' + i + 'm'; mid.userData.keep = true; mid.add(inner);
+      const outer = new T.Group(); outer.name = 'sus53X' + i; outer.userData.keep = true; outer.position.set(0, E.b[1], E.b[0]); outer.rotation.x = psi; outer.add(mid);
+      f.add(outer); U.st.push({ a:r4(E.a), b:r4(E.b), on:E.on === 2 ? 2 : (E.on === 1 ? 1 : 0) });
+    } catch(e){ try { console.warn('[sus53] run', e); } catch(e2){} }
+  });
+  try {
+    const K = o.k || {};
+    U.ra = r4(o.ra); U.k = { f0:r4(K.f0), r0:r4(K.r0), f1:r4(K.f1), r1:r4(K.r1), ax:K.ax === 2 ? 2 : 0 };
+    if (!n || !U.k.f0 || !U.ra) return null;
+    if (!U.k.f1 || !U.k.r1 || !U.k.r0){ U.k.f1 = U.k.r1 = U.k.r0 = null; U.k.ax = 0; }
+    f.userData.s53r = U;
+    return U;
+  } catch(e){ try { console.warn('[sus53] rear', e); } catch(e2){} return null; }
+}
+
+/*<<S53KIN -- pure linkage maths (no three.js, no module state): shared by the builders (they FIT their linkages with it) and by
+   mods/sus53.js (which poses them). Points are [z, y]; angles are rotation.x angles (from +y toward +z). K = { f0, r0, f1, r1, ax }:
+   body 0 turns about f0, body 1 about f1, the coupler (body 2) hangs between r0 (on body 0) and r1 (on body 1); ax = the axle's body */
+function sus53Wrap(a){ return a > Math.PI ? a - Math.PI*2 : (a < -Math.PI ? a + Math.PI*2 : a); }
+/* a point turned about c0 by a -> out */
+function sus53Pt(p, c0, a, out){
+  const y = p[1] - c0[1], z = p[0] - c0[0], c = Math.cos(a), s = Math.sin(a);
+  out[0] = c0[0] + y*s + z*c; out[1] = c0[1] + y*c - z*s; return out;
+}
+/* the linkage's fixed numbers */
+function sus53Lk(K, ra){
+  const R = { k:K, ra, four:!!(K.f1 && K.r1 && K.r0), l1:0, lc:0, hand:1, b1:0, bc:0, tab:null, lo:0, hi:0 };
+  if (R.four){
+    R.l1 = Math.hypot(K.r1[0] - K.f1[0], K.r1[1] - K.f1[1]); R.lc = Math.hypot(K.r1[0] - K.r0[0], K.r1[1] - K.r0[1]);
+    R.hand = ((K.r0[0] - K.f1[0])*(K.r1[1] - K.f1[1]) - (K.r0[1] - K.f1[1])*(K.r1[0] - K.f1[0])) >= 0 ? 1 : -1;
+    R.b1 = Math.atan2(K.r1[0] - K.f1[0], K.r1[1] - K.f1[1]); R.bc = Math.atan2(K.r1[0] - K.r0[0], K.r1[1] - K.r0[1]);
+    if (R.l1 < 0.005 || R.lc < 0.005) R.four = false;
+  }
+  return R;
+}
+/* body 0 turned by a0: fills Q { a0, a1 (body 1's turn), ac (the coupler's turn), r0, r1 (the moved pivots), ok }; false = out of reach */
+function sus53Solve(R, a0, Q){
+  const K = R.k;
+  Q.a0 = a0; Q.a1 = 0; Q.ac = 0; Q.ok = true;
+  if (!R.four) return true;
+  sus53Pt(K.r0, K.f0, a0, Q.r0);
+  const dz = Q.r0[0] - K.f1[0], dy = Q.r0[1] - K.f1[1], d = Math.hypot(dz, dy);
+  if (d < 1e-6 || d > R.l1 + R.lc - 1e-6 || d < Math.abs(R.l1 - R.lc) + 1e-6){ Q.ok = false; return false; }
+  const a = (R.l1*R.l1 - R.lc*R.lc + d*d)/(2*d), h = Math.sqrt(Math.max(0, R.l1*R.l1 - a*a)), uz = dz/d, uy = dy/d;
+  // the two crossings of the circles are P + a*u +- h*n (n = u turned a quarter): keep the side the linkage was built on
+  Q.r1[0] = K.f1[0] + a*uz - R.hand*h*uy; Q.r1[1] = K.f1[1] + a*uy + R.hand*h*uz;
+  Q.a1 = sus53Wrap(Math.atan2(Q.r1[0] - K.f1[0], Q.r1[1] - K.f1[1]) - R.b1);
+  Q.ac = sus53Wrap(Math.atan2(Q.r1[0] - Q.r0[0], Q.r1[1] - Q.r0[1]) - R.bc);
+  return true;
+}
+function sus53Q(){ return { a0:0, a1:0, ac:0, r0:[0, 0], r1:[0, 0], ok:true }; }
+/* a rest point p on body i (0 | 1 | 2) -> where it is now */
+function sus53On(R, Q, i, p, out){
+  const K = R.k;
+  if (i === 1 && R.four) return sus53Pt(p, K.f1, Q.a1, out);
+  if (i === 2 && R.four){ sus53Pt(p, K.r0, Q.ac, out); out[0] += Q.r0[0] - K.r0[0]; out[1] += Q.r0[1] - K.r0[1]; return out; }
+  return sus53Pt(p, K.f0, Q.a0, out);
+}
+/* the travel table [[axle rise, body 0's turn, axle fore-aft shift], ...] sorted by rise: walked out from rest both ways while the linkage
+   reaches and the rise keeps growing. Sets R.tab / R.lo / R.hi */
+function sus53Table(R){
+  const Q = sus53Q(), p = [0, 0], rows = [[0, 0, 0]], step = 0.01, K = R.k;
+  [1, -1].forEach(dir=>{
+    let last = 0;
+    for (let i = 1; i <= 110; i++){
+      const a0 = dir*i*step;
+      if (!sus53Solve(R, a0, Q)) break;
+      if (R.four && (Math.abs(Q.a1) > 1.9 || Math.abs(Q.ac) > 1.2)) break;
+      sus53On(R, Q, K.ax, R.ra, p);
+      const rise = p[1] - R.ra[1];
+      if (i > 1 && ((rise - last)*last < 0 || Math.abs(rise) < Math.abs(last) + 1e-6)) break;     // the rise turned back
+      rows.push([rise, a0, p[0] - R.ra[0]]); last = rise;
+      if (Math.abs(rise) > 0.45) break;
+    }
+  });
+  rows.sort((u, v)=> u[0] - v[0]);
+  R.tab = rows; R.lo = rows[0][0]; R.hi = rows[rows.length - 1][0];
+  return rows;
+}
+/* solve for the axle risen by c (clamped to the table); returns the axle's fore-aft shift */
+function sus53At(R, c, Q){
+  const T0 = R.tab; c = Math.max(R.lo, Math.min(R.hi, c));
+  let lo = 0, hi = T0.length - 1;
+  while (hi - lo > 1){ const m = (lo + hi) >> 1; if (T0[m][0] < c) lo = m; else hi = m; }
+  const p = T0[lo], q = T0[hi], t = Math.max(0, Math.min(1, (c - p[0])/Math.max(1e-9, q[0] - p[0])));
+  sus53Solve(R, p[1] + (q[1] - p[1])*t, Q);
+  return p[2] + (q[2] - p[2])*t;
+}
+/* how a design works: sh = { a (on body sh.on), b (frame) }, tr = the wheel's full travel. Returns { ok, lo, hi, s:[the shock's length / its
+   rest length at 25, 50, 75, 100 % travel], droop (at -25 %), a1, ac (degrees at full travel) }; ok = reaches both ends with margin and
+   the shock squashes steadily */
+function sus53Eval(K, ra, sh, tr){
+  const R = sus53Lk(K, ra), Q = sus53Q(), p = [0, 0]; sus53Table(R);
+  const L = Math.max(1e-6, Math.hypot(sh.a[0] - sh.b[0], sh.a[1] - sh.b[1]));
+  const len = c=>{ sus53At(R, c, Q); sus53On(R, Q, sh.on, sh.a, p); return Math.hypot(p[0] - sh.b[0], p[1] - sh.b[1])/L; };
+  const o = { ok:false, lo:R.lo, hi:R.hi, L, s:[len(tr*0.25), len(tr*0.5), len(tr*0.75), len(tr)], droop:len(-0.25*tr), a1:0, ac:0 };
+  o.a1 = Q.a1*57.2958; o.ac = Q.ac*57.2958; sus53At(R, tr, Q); o.a1 = Q.a1*57.2958; o.ac = Q.ac*57.2958;
+  const s = o.s;
+  o.ok = R.tab.length > 4 && R.lo <= -0.25*tr - 0.004 && R.hi >= tr + 0.008 && s[0] < 1 && s[1] < s[0] && s[2] < s[1] && s[3] < s[2] && o.droop < 1.13 && o.droop > 1;
+  return o;
+}
+/*S53KIN>>*/
 
 /* =========================================================================
    NAMES18 -- Release 15.6: every ride shows the name of the real machine it is modelled on (the user: "make the bikes have
@@ -37920,9 +38278,11 @@ function rm37Sheet(){
 }
 /* queue a sticker: fn(group, mat) draws a decal with any of the kit's decal helpers (mo15decal / mo15decalOnPlate / ...); the quads are
    harvested, their UVs moved into sticker cell `cell` of the sheet, and every sticker of the ride is merged into one mesh */
-function rm37Sticker(C, fn, cell){ if (!C || !RM37.on) return; (C.rm37stk || (C.rm37stk = [])).push({ fn, cell:cell | 0 }); }
-function rm37StickerFlush(g, list){
+function rm37Sticker(C, fn, cell, tag){ if (!C || !RM37.on) return; (C.rm37stk || (C.rm37stk = [])).push({ fn, cell:cell | 0, tag:tag || '' }); }
+/* (sus53: stickers on a moving part carry a tag -- 'sw' = the swingarm -- and are flushed into that part's group) */
+function rm37StickerFlush(g, list, tag){
   const mat = rm37Sheet(); if (!mat || !list || !list.length) return 0;
+  list = list.filter(e=> (e.tag || '') === (tag || '')); if (!list.length) return 0;
   const pos = [], nrm = [], uv = [];
   list.forEach(e=>{
     const tg = new T.Group();
@@ -38050,7 +38410,11 @@ function rm37Detail(C){
     const armY = z=>{ const k0 = [PV[0] - 0.13, PV[1] - 0.006], k1 = [rz + 0.06, Rr + 0.012], t = Math.max(0, Math.min(1, (z - k0[0])/(k1[0] - k0[0]))); return k0[1] + (k1[1] - k0[1])*t; };
     const cp = [rz + 0.03 + Math.cos(mo15deg(-70))*(0.095*s + 0.004)*0.2, Rr - 0.072*s];
     const z1 = PV[0] - 0.20, z2 = rz + 0.24;
-    H([[mx, pegY + 0.026, pegZ - 0.050], [mx + 0.004, pegY - 0.01, pegZ - 0.10], [-(ax + 0.006), armY(z1) - 0.034*s, z1], [-(ax + 0.006), armY(z2) - 0.034*s, z2], [-(0.072), cp[1] + 0.034, cp[0] + 0.028]], 0.0036, braid === BK.alloy ? BK.alloy : M12.anod, f);
+    { const hp = [[mx, pegY + 0.026, pegZ - 0.050], [mx + 0.004, pegY - 0.01, pegZ - 0.10], [-(ax + 0.006), armY(z1) - 0.034*s, z1], [-(ax + 0.006), armY(z2) - 0.034*s, z2], [-(0.072), cp[1] + 0.034, cp[0] + 0.028]];
+      const hm = braid === BK.alloy ? BK.alloy : M12.anod;
+      // (sus53: the hose runs to the caliper on the swingarm -- a stretched run from the master cylinder that follows it)
+      if (C.s53hose) C.s53hose.push({ a:[hp[4][2], hp[4][1]], b:[hp[0][2], hp[0][1]], src:g=> H(hp, 0.0036, hm, g) });
+      else H(hp, 0.0036, hm, f); }
     if (P.gas){
       // gear lever: from the shift shaft (left, ahead of the sprocket) forward over the toe
       const sh = [0.095, MZ[1] + 0.03, MZ[0] + 0.035], tp = [Math.max(pegX - 0.02, xs + 0.08), pegY + 0.03, pegZ + 0.15*Math.min(1, s + 0.15)];
@@ -38076,7 +38440,7 @@ function rm37Detail(C){
     /* ---- stickers: the swingarm (every ride) ---- */
     const k0 = [PV[0] - 0.13, PV[1] - 0.006], k1 = [rz + 0.06, Rr + 0.012], sc = [k0[0] + (k1[0] - k0[0])*0.42, k0[1] + (k1[1] - k0[1])*0.42], sw = (street ? 0.125 : 0.102)*s;
     const cell = rm37Pick(P, 1);
-    rm37Sticker(C, (g, m)=> mo15decal(g, m, ax + 0.0158, sc, sw, { h:sw*0.5, dir:[k1[0] - k0[0], k1[1] - k0[1]] }), cell);
+    rm37Sticker(C, (g, m)=> mo15decal(g, m, ax + 0.0158, sc, sw, { h:sw*0.5, dir:[k1[0] - k0[0], k1[1] - k0[1]] }), cell, 'sw');
     RM37.n++;
   } catch(e){ RM37.err = 'detail ' + (e && e.message || e); }
 }
@@ -91190,7 +91554,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.50';
+const DL_VER = '15.51';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -96902,6 +97266,201 @@ const CAM53 = { on: !/[?&]cam53=0\b/.test(location.search), err:'', moved:false 
         if (!cur || cur === 'chase'){ if (typeof xsetSet === 'function') xsetSet('pov', 'street'); else if (typeof povApply === 'function') povApply('street', false); CAM53.moved = true; }
       } catch(e){ CAM53.err = 'move: ' + (e && e.message || e); }
     });
+  }
+})();
+
+/* =========================================================================
+   SUS53 -- Release 15.51: MOVING SUSPENSION. The builders now keep the parts that travel with a wheel in their own groups
+   (forks19_kit.js sus53Slide / sus53Rear): the fork's lower legs (with the arch, axle, caliper and guards), the rear end's bodies (the
+   swingarm or chain stays, the seat stays / rear triangle, the rocker or links), the shock in three pieces (body, shaft, spring) and
+   the chain runs. Every frame, after phys29 has moved the wheels by the suspension travel it already simulates (P29.cf / P29.cr:
+   landings, braking dive, bumps, pumping), this moves them:
+     fork      the lowers slide up the stanchions along the fork axis (the wheel follows the axis: the wheelbase shortens a touch)
+     rear      the linkage is SOLVED for the wheel's travel: body 0 turns about its frame pivot, the rocker / link about its own, the
+               coupler hangs between them (every pivot stays bolted together); the shock turns on its frame eye, its shaft slides into
+               the body and the coil is squashed between its seats; the chain runs turn and stretch to stay on the cog and the ring
+   The local rider's live rig moves with the ride; in the garage viewer a ride settles onto its suspension now and then (a damped
+   bounce, so you can see it work); other riders' copies stay at rest. No physics is touched: this is drawing only. ?sus53=0 = static suspension as before. API: SUS53 (state), sus53Pose(lk, cf, cr) (tests / photo poses)
+   ========================================================================= */
+const SUS53 = { on: !/[?&]sus53=0\b/.test(location.search), n:0, err:'', z:[{ o:null, bz:0, last:0 }, { o:null, bz:0, last:0 }], cf:0, cr:0 };
+const _s53a = [0, 0], _s53b = [0, 0], _s53c = [0, 0], _s53Q = { a0:0, a1:0, ac:0, r0:[0, 0], r1:[0, 0], ok:true };
+/* (the linkage maths -- sus53Lk / sus53Solve / sus53On / sus53Table / sus53At -- live in forks19_kit.js: the builders fit their linkages with them) */
+/* turn a group about the x axis through p = [z, y] by a (its geometry is in bike space) */
+function sus53Turn(g, p, a){
+  const c = Math.cos(a), s = Math.sin(a), y = p[1], z = p[0];
+  g.rotation.x = a; g.position.y = y - (y*c - z*s); g.position.z = z - (y*s + z*c);
+}
+/* the moving groups of a built ride + its linkage numbers (cached on the look; null = none) */
+function sus53Get(lk){
+  if (lk._s53 !== undefined) return lk._s53;
+  const S = { f:null, r:null };
+  try {
+    const fu = lk.front && lk.front.userData ? lk.front.userData.s53f : null;
+    if (fu){ const g = lk.front.getObjectByName('sus53F');
+      if (g){ S.f = { g, dz:fu[0], dy:Math.max(0.3, fu[1]), max:fu[2], st:[] };
+        (lk.front.userData.s53x || []).forEach((E, i)=>{ const o = lk.front.getObjectByName('sus53Y' + i), m = lk.front.getObjectByName('sus53Y' + i + 'm');
+          if (o && m) S.f.st.push({ o, m, az:E[0], ay:E[1], bz:E[2], by:E[3], L:Math.max(0.02, Math.hypot(E[0] - E[2], E[1] - E[3])) }); }); } }
+    const ru = lk.frame && lk.frame.userData ? lk.frame.userData.s53r : null;
+    if (ru && ru.k && ru.k.f0){
+      const gn = n=> lk.frame.getObjectByName(n) || null, K = ru.k;
+      const R = S.r = sus53Lk(K, ru.ra);
+      R.g = [gn('sus53B0'), gn('sus53B1'), gn('sus53B2')]; R.te = null; R.st = [];
+      sus53Table(R);
+      const rows = R.tab;
+      if (ru.te){
+        const o = gn('sus53K');
+        if (o){ const E = ru.te, L = Math.hypot(E.a[0] - E.b[0], E.a[1] - E.b[1]);
+          R.te = { o, ga:gn('sus53Ka'), gs:gn('sus53Ks'), a:E.a, b:E.b, on:E.on, L, sp:Math.max(0.02, L - E.sa - E.sb), sa:E.sa, sb:E.sb }; }
+      }
+      (ru.st || []).forEach((E, i)=>{ const o = gn('sus53X' + i), m = gn('sus53X' + i + 'm'); if (o && m) R.st.push({ o, m, a:E.a, b:E.b, on:E.on, L:Math.max(0.02, Math.hypot(E.a[0] - E.b[0], E.a[1] - E.b[1])) }); });
+      if (rows.length < 3) S.r = null;
+    }
+  } catch(e){ SUS53.err = 'get: ' + (e && e.message || e); S.r = null; }
+  lk._s53 = (S.f || S.r) ? S : null;
+  return lk._s53;
+}
+/* pose a look's suspension for cf / cr metres of wheel travel (front / rear; + = squashed). out (optional) gets [fork z slide, rear axle z shift] */
+function sus53Pose(lk, cf, cr, out){
+  const S = sus53Get(lk);
+  if (out){ out[0] = 0; out[1] = 0; }
+  if (!S) return 0;
+  let slideZ = 0;
+  if (S.f){
+    const F = S.f, v = Math.max(-0.06, Math.min(0.30, cf));               // (the legs always follow the wheel, even past a short fork's free stanchion)
+    F.g.position.y = v; F.g.position.z = v*F.dz/F.dy; slideZ = F.g.position.z;
+    if (out) out[0] = slideZ;
+    for (let j = 0; j < F.st.length; j++){
+      const E = F.st[j], dz = E.az + slideZ - E.bz, dy = E.ay + v - E.by;
+      E.o.rotation.x = Math.atan2(dz, dy); E.m.scale.y = Math.max(0.45, Math.min(1.3, Math.hypot(dz, dy)/E.L));
+    }
+  }
+  if (S.r){
+    const R = S.r, K = R.k, Q = _s53Q;
+    const dzA = sus53At(R, cr, Q), a0 = Q.a0;                              // the linkage solved for this rise
+    if (out) out[1] = dzA;
+    if (!Q.ok) return slideZ;
+    if (R.g[0]) sus53Turn(R.g[0], K.f0, a0);
+    if (R.four){
+      if (R.g[1]) sus53Turn(R.g[1], K.f1, Q.a1);
+      const g = R.g[2];
+      if (g){ const cs = Math.cos(Q.ac), sn = Math.sin(Q.ac), y = K.r0[1], z = K.r0[0];
+        g.rotation.x = Q.ac; g.position.y = Q.r0[1] - (y*cs - z*sn); g.position.z = Q.r0[0] - (y*sn + z*cs); }
+    }
+    if (R.te){
+      const E = R.te; sus53On(R, Q, E.on, E.a, _s53b);
+      const dz = _s53b[0] - E.b[0], dy = _s53b[1] - E.b[1], len = Math.max(E.L*0.60, Math.min(E.L*1.12, Math.hypot(dz, dy)));
+      E.o.rotation.x = Math.atan2(dz, dy);
+      if (E.ga) E.ga.position.y = len - E.L;
+      if (E.gs) E.gs.scale.y = Math.max(0.25, (len - E.sa - E.sb)/E.sp);
+    }
+    for (let j = 0; j < R.st.length; j++){
+      const E = R.st[j]; sus53On(R, Q, E.on, E.a, _s53c);
+      const dz = _s53c[0] - E.b[0], dy = _s53c[1] - E.b[1];
+      E.o.rotation.x = Math.atan2(dz, dy); E.m.scale.y = Math.max(0.7, Math.min(1.3, Math.hypot(dz, dy)/E.L));
+    }
+  }
+  return slideZ;
+}
+/* the wheels follow the fork axis / the axle's arc: put them back where the rig left them (before anything measures them) ... */
+function sus53Restore(){
+  for (let i = 0; i < 2; i++){
+    const Z = SUS53.z[i];
+    if (Z.o && Math.abs(Z.o.position.z - Z.last) < 1e-7) Z.o.position.z = Z.bz;
+    Z.o = null;
+  }
+}
+/* ... and after phys29 has moved the wheels: pose the suspension from the same travel */
+const _s53o = [0, 0];
+function sus53Apply(){
+  const lk = (typeof FLEET_LOOKS !== 'undefined' && typeof FLEET_CUR !== 'undefined') ? FLEET_LOOKS[FLEET_CUR] : null;
+  if (!lk) return;
+  if (!sus53Get(lk)) return;
+  const W = (typeof P29 !== 'undefined' && P29.w) ? P29.w : null;
+  const cf = (W && W[0].o) ? P29.cf : 0, cr = (W && W[1].o) ? P29.cr : 0;
+  SUS53.cf = cf; SUS53.cr = cr;
+  sus53Pose(lk, cf, cr, _s53o);
+  for (let i = 0; i < 2; i++){
+    const dz = _s53o[i];
+    if (dz && W && W[i].o){
+      const Z = SUS53.z[i], o = W[i].o;
+      Z.o = o; Z.bz = o.position.z; o.position.z = Z.bz + dz/(W[i].s || 1); Z.last = o.position.z;
+    }
+  }
+  SUS53.n++;
+}
+/* the wheel travel a ride's category shows [front, rear] (phys29's table; a BMX's follows the suspension it was built with) */
+function sus53Travel(id, S){
+  try {
+    const v = FLEET_BY_ID[id], r = (typeof VEHICLES !== 'undefined' && VEHICLES[id]) || {};
+    let c = v.cat;
+    if (!P29_CAT[c] && r.cls) c = P29_CLS_CAT[r.cls] || '';
+    if (!P29_CAT[c]) c = (v.dirt || r.moto) ? 'edirt' : 'bmx';
+    if (c === 'bmx' && S && S.f){ const k = S.r ? 'bmxfs' : 'bmxsf'; if (P29_CAT[k]) c = k; }
+    return [P29_CAT[c].tf, P29_CAT[c].tr];
+  } catch(e){ return [0.06, 0.05]; }
+}
+/* the garage viewer: a ride with suspension settles onto it now and then (a push on the saddle, a damped bounce) -- the copy's own
+   groups are posed, its wheels stay on the floor (the bike sinks and tips by the two ends' travel) */
+function sus53Garage(V){
+  const g = V.g;
+  if (!g || V.mini || !g.frameC || !g.frontC || !g.rearW || !g.frontW || !g.bikeG || !g.lk) return;
+  let Z = g._s53g;
+  if (Z === undefined){
+    Z = g._s53g = null;
+    const lk = { frame:g.frameC, front:g.frontC }, S = sus53Get(lk);
+    if (S){
+      const tv = sus53Travel(g.id, S);
+      Z = g._s53g = { lk, tf:S.f ? tv[0] : 0, tr:S.r ? tv[1] : 0, t0:V.t, k:0, ry:g.rearW.position.y, rz:g.rearW.position.z, fy:g.frontW.position.y, fz:g.frontW.position.z,
+        by:g.bikeG.position.y, bx:g.bikeG.rotation.x, py:g.riderG ? g.riderG.position.y : 0, wb:Math.max(0.5, g.lk.fz - g.lk.rz), rz0:g.lk.rz };
+    }
+  }
+  if (!Z) return;
+  const u = ((V.t - Z.t0) % 5.2) - 0.45;
+  const k = (u < 0 || u > 1.5) ? 0 : 0.78*Math.exp(-3.0*u)*Math.pow(Math.sin(Math.PI*u/0.46), 2);
+  if (k === Z.k) return;
+  Z.k = k;
+  const cf = Z.tf*k, cr = Z.tr*k, a = (cf - cr)/Z.wb, dy = -cr + Z.rz0*a;
+  sus53Pose(Z.lk, cf, cr, _s53o);
+  g.rearW.position.y = Z.ry + cr; g.rearW.position.z = Z.rz + _s53o[1];
+  g.frontW.position.y = Z.fy + cf; g.frontW.position.z = Z.fz + _s53o[0];
+  g.bikeG.rotation.x = Z.bx + a; g.bikeG.position.y = Z.by + dy;
+  if (g.riderG) g.riderG.position.y = Z.py + dy;
+}
+(function sus53Init(){
+  if (!SUS53.on || typeof syncRig !== 'function') return;
+  const _sr = syncRig;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  syncRig = function(dt){
+    try { sus53Restore(); } catch(e){}
+    const r = _sr.apply(this, arguments);
+    try { sus53Apply(); } catch(e){ SUS53.err = 'apply: ' + (e && e.message || e); }
+    return r;
+  };
+  const rest = ()=>{ try { sus53Restore(); const lk = FLEET_LOOKS[FLEET_CUR]; if (lk && lk._s53) sus53Pose(lk, 0, 0); } catch(e){} };
+  if (typeof applyVehicle === 'function'){
+    const _av = applyVehicle;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    applyVehicle = function(){ rest(); return _av.apply(this, arguments); };
+  }
+  // copies (the garage viewer, other riders) are cloned from the live look: clone it at rest
+  if (typeof ghostCreate === 'function'){
+    const _gc = ghostCreate;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    ghostCreate = function(){ rest(); return _gc.apply(this, arguments); };
+  }
+  try {
+    if (typeof FleetView === 'function' && FleetView.prototype && typeof FleetView.prototype.render === 'function'){
+      const _fr = FleetView.prototype.render;
+      FleetView.prototype.render = function(){
+        try { sus53Garage(this); } catch(e){ SUS53.err = 'garage: ' + (e && e.message || e); }
+        return _fr.apply(this, arguments);
+      };
+    }
+  } catch(e){}
+  if (typeof fleetClone === 'function'){
+    const _fc = fleetClone;
+    // eslint-disable-next-line no-global-assign, no-func-assign
+    fleetClone = function(){ rest(); return _fc.apply(this, arguments); };
   }
 })();
 
