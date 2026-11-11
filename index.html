@@ -4196,6 +4196,103 @@ html.touchUI #ws48 .ws49Kinds .wsChip{ padding:8px 13px; font-size:13px; }
 .snd53Fab svg{ width:22px; height:22px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .snd53Fab.snd53Off{ background:rgba(150,30,36,.82); border-color:rgba(255,140,140,.45); }
 #pause .snd53PauseBtn.snd53Off{ border-color:rgba(255,120,120,.55); color:#ffb4b4; }
+/* =========================================================================
+   WS56 -- Release 15.55: "the workshop sucks". The Workshop made BIG, SIMPLE and QUICK:
+   three big tabs (Build / Shop / My builds) + "More"; the Build screen opens straight away on the ride you are on; a short row of
+   big buttons (Random, Undo, Save, ... , RIDE IT); bigger slots, part cards, colour swatches and buy buttons everywhere -- bigger
+   still on a touch screen. All in one layer over ws48 (class ws56 on #ws48; ?ws56=0 turns it off).
+   ========================================================================= */
+#ws48.ws56{ font-size:15px; }
+#ws48.ws56 .wsHead{ gap:12px; padding:8px 14px; padding-top:max(8px, env(safe-area-inset-top)); }
+#ws48.ws56 .wsBrand span{ display:none; }
+#ws48.ws56 .wsBrand b{ font-size:22px; }
+#ws48.ws56 .wsTabs{ flex-wrap:nowrap; gap:8px; align-items:center; position:relative; }
+#ws48.ws56 .wsTabs button{ padding:0 20px; min-height:46px; font-size:18px; border-radius:14px; border-width:2px; white-space:nowrap; }
+#ws48.ws56 .wsTabs button.ws56Sec{ display:none; }
+#ws48.ws56 .wsTabs.ws56More button.ws56Sec{ display:inline-flex; align-items:center; }
+#ws48.ws56 .wsTabs .ws56MoreB{ color:#cfd6df; background:#10151c; }
+#ws48.ws56 .wsTabs.ws56More .ws56MoreB{ border-color:#ffc46b; color:#ffc46b; }
+#ws48.ws56 .wsCash{ font-size:22px; padding:10px 14px; border-radius:14px; }
+#ws48.ws56 .wsX{ min-height:46px; padding:0 20px; font-size:17px !important; border-radius:14px; }
+/* buttons */
+#ws48.ws56 .wsBtn{ min-height:44px; padding:0 16px; font-size:16px !important; border-radius:12px; }
+#ws48.ws56 .wsBtn.sm{ min-height:36px; padding:0 12px; font-size:13px !important; }
+#ws48.ws56 .wsBtn.go{ min-height:52px; padding:0 30px; font-size:21px !important; border-radius:14px; box-shadow:0 6px 18px -8px rgba(43,211,106,.8); }
+#ws48.ws56 .wsBtn.pri{ min-height:48px; font-size:17px !important; }
+/* the build screen */
+#ws48.ws56 .wsPane[data-pane="edit"]{ grid-template-columns:268px minmax(0, 1fr) 392px; }
+#ws48.ws56 .wsTop{ padding:8px 14px; gap:8px 10px; flex-wrap:nowrap; }
+#ws48.ws56 .wsTopL{ flex:1 1 220px; gap:3px; }
+#ws48.ws56 .wsTop .nm{ font-size:20px; width:min(300px, 100%); padding:8px 10px; }
+#ws48.ws56 .wsTop .meta{ font-size:12.5px; flex-wrap:nowrap; overflow:hidden; white-space:nowrap; }
+#ws48.ws56 .wsTopB{ flex-wrap:nowrap; gap:8px; position:relative; }
+#ws48.ws56 .wsTop .wsBtn{ padding:0 14px; font-size:15px !important; }
+#ws48.ws56 .wsTop .wsBtn.go{ padding:0 30px; font-size:21px !important; }
+#ws48.ws56 .wsTopB .ws56Sec, #ws48.ws56 .wsTopB .ws49Pub, #ws48.ws56 .wsTopB .ws49Note{ display:none; }
+#ws48.ws56 .wsTopB.ws56More .ws56Sec{ display:inline-flex; }
+#ws48.ws56 .wsTopB .ws56Dots{ min-width:46px; justify-content:center; font-size:22px !important; letter-spacing:0; padding:0 10px; }
+#ws48.ws56 .wsTopB.ws56More .ws56Dots{ border-color:#ffc46b; color:#ffc46b; }
+#ws48.ws56 .wsSlots{ padding:10px; gap:6px; }
+#ws48.ws56 .wsSlot{ padding:10px 12px; min-height:56px; border-radius:14px; border-width:2px; grid-template-columns:14px minmax(0, 1fr); gap:3px 11px; }
+#ws48.ws56 .wsSlot .dot{ width:14px; height:14px; }
+#ws48.ws56 .wsSlot b{ font-size:18px; gap:7px; }
+#ws48.ws56 .wsSlot b svg{ width:17px; height:17px; }
+#ws48.ws56 .wsSlot span{ font-size:12.5px; }
+#ws48.ws56 .wsPickHead{ padding:12px 14px 10px; gap:8px; }
+#ws48.ws56 .wsPickHead h3{ font-size:24px; }
+#ws48.ws56 .wsPickHead .sub{ font-size:13px; }
+#ws48.ws56 .wsPickHead select{ padding:8px 10px; font-size:14px; min-height:40px; }
+#ws48.ws56 .wsChip{ padding:9px 15px; font-size:14px; }
+#ws48.ws56 .wsPickList{ padding:10px 12px 24px; gap:8px; }
+#ws48.ws56 .wsPart{ grid-template-columns:50px minmax(0, 1fr) auto; gap:4px 12px; padding:10px 12px; min-height:68px; border-radius:16px; border-width:2px; }
+#ws48.ws56 .wsPart .sw{ width:50px; height:50px; border-radius:14px; }
+#ws48.ws56 .wsPart .sw svg{ width:26px; height:26px; }
+#ws48.ws56 .wsPart b{ font-size:16px; }
+#ws48.ws56 .wsPart .pd{ font-size:13px; }
+#ws48.ws56 .wsPart .pr{ font-size:17px; }
+#ws48.ws56 .wsPart .pr i{ font-size:11px; }
+#ws48.ws56 .wsAct{ padding:12px 14px; padding-bottom:max(12px, env(safe-area-inset-bottom)); gap:10px; }
+#ws48.ws56 .wsAct .wsBtn{ min-height:54px; font-size:19px !important; flex:1 1 auto; justify-content:center; border-radius:14px; }
+#ws48.ws56 .wsAct .wsBtn.pri{ flex:3 1 auto; font-size:21px !important; }
+#ws48.ws56 .wsAct .note{ font-size:13.5px; }
+#ws48.ws56 .wsPal{ gap:8px; }
+#ws48.ws56 .wsPal button{ width:40px; height:40px; border-radius:12px; border-width:2px; }
+#ws48.ws56 .wsPal button.sel{ outline-width:3px; }
+#ws48.ws56 .wsViews{ bottom:14px; padding:5px; }
+#ws48.ws56 .wsViews button{ padding:11px 15px; font-size:14px !important; }
+#ws48.ws56 .wsZoom button{ width:48px; height:48px; font-size:26px; }
+#ws48.ws56 .wsRiderT{ padding:11px 15px; font-size:14px !important; top:164px; }
+/* lists (my builds, shop) */
+#ws48.ws56 .wsBar{ gap:10px; }
+#ws48.ws56 .wsBar input, #ws48.ws56 .wsBar select, #ws48.ws56 .wsMkTop select, #ws48.ws56 .wsFilt input, #ws48.ws56 .wsFilt select{ min-height:44px; font-size:15px; }
+#ws48.ws56 .wsFilt .cat{ min-height:40px; font-size:15px; }
+#ws48.ws56 .wsProd{ border-radius:16px; border-width:2px; }
+#ws48.ws56 .wsProd b{ font-size:15.5px; }
+/* a touch screen: bigger again */
+html.touchUI #ws48.ws56 .wsTabs button{ min-height:52px; font-size:19px; padding:0 22px; }
+html.touchUI #ws48.ws56 .wsX{ min-height:52px; }
+html.touchUI #ws48.ws56 .wsBtn{ min-height:50px; }
+html.touchUI #ws48.ws56 .wsBtn.go{ min-height:58px; }
+html.touchUI #ws48.ws56 .wsSlot{ min-height:62px; }
+html.touchUI #ws48.ws56 .wsPart{ min-height:76px; }
+html.touchUI #ws48.ws56 .wsPal button{ width:46px; height:46px; }
+html.touchUI #ws48.ws56 .wsTop .meta{ display:none; }
+/* narrower screens: the tabs scroll sideways instead of wrapping into three rows */
+@media (max-width: 1100px){
+  #ws48.ws56 .wsPane[data-pane="edit"]{ grid-template-columns:230px minmax(0, 1fr) 340px; }
+  #ws48.ws56 .wsBrand b{ font-size:0; gap:0; }
+  #ws48.ws56 .wsTabs button{ padding:0 14px; font-size:16px; }
+}
+@media (max-width: 980px){
+  #ws48.ws56 .wsHead{ flex-wrap:nowrap; }
+  #ws48.ws56 .wsTabs{ overflow-x:auto; flex:1 1 auto; scrollbar-width:none; }
+  #ws48.ws56 .wsPane[data-pane="edit"]{ grid-template-columns:minmax(0, 1fr); }
+  #ws48.ws56 .wsTop{ flex-wrap:wrap; }
+  #ws48.ws56 .wsTopB{ flex-wrap:wrap; justify-content:flex-start; }
+  #ws48.ws56 .wsSlot{ min-width:170px; }
+}
+/* the floating Sound button sat on top of the slots */
+html.ws56Open #snd53Fab{ display:none !important; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -13984,14 +14081,20 @@ function w3Building(x, z, w, d, h, F, opts){
       if (R() < 0.18 && w > 10 && d > 10){ const p = spot(2.6, 1.8); if (p) w2Put(w3tSkylight(), tiny, p[0], roofy, p[1], ((R()*2) | 0)*Math.PI/2, 1, 1, 1); }
       if (MAP.key === 'palm' && h < 20 && R() < 0.35){ const p = spot(4.4, 2); if (p) w2Put(w2tSolar(), tiny, p[0], roofy, p[1], ((R()*2) | 0)*Math.PI/2, 1, 1, 1); }
     }
-    if (!tier && h > 10 && h < 45 && w > 12 && d > 12 && R() < 0.06*dens){      // roof billboard, lit at night
-      const f = (R()*4) | 0;
+    if (!tier && h > 10 && h < 45 && w > 12 && d > 12){      // roof billboard, lit at night
+      // bill56 (Release 15.54, "billboards with ad spaces, add a ton"): more roofs carry a board, showing an ad from the billboard atlas.
+      // The extra ones are picked by a hash of the building's place, so the city's own random sequence (and every other prop) is unchanged.
+      const r56 = R() < 0.06*dens, h56 = (!r56 && typeof bill56Roof === 'function') ? bill56Roof(x, z) : 0;
+      if (r56 || h56){
+      const f = r56 ? (R()*4) | 0 : (h56 >>> 3) & 3;
       if (isSt(f)){
         const Fc = faces[f], ry = Math.atan2(Fc.nx, Fc.nz) + Math.PI;
         const dx = (Fc.bx - Fc.ax)/Fc.L, dz = (Fc.bz - Fc.az)/Fc.L, u = Fc.L*0.5;
         const p = [Fc.ax + dx*u - Fc.nx*3.2, Fc.az + dz*u - Fc.nz*3.2];
         w2Put(w2tBillboard(), paint, p[0], h + 0.02, p[1], ry, 1, 1, 1);
-        w2Put(W2T.sign[(R()*16) | 0], W2_SIGN.mat, p[0] - Fc.nx*0.2, h + 3.18, p[1] - Fc.nz*0.2, ry + Math.PI, 6.0, 2.7, 1);
+        if (r56) w2Put(W2T.sign[(R()*16) | 0], W2_SIGN.mat, p[0] - Fc.nx*0.2, h + 3.18, p[1] - Fc.nz*0.2, ry + Math.PI, 6.0, 2.7, 1);
+        else { try { w2Put(bill56CityGeo([17, 18, 19, 15, 28, 29][(h56 >>> 5) % 6]), bill56Mat(), p[0] - Fc.nx*0.2, h + 3.18, p[1] - Fc.nz*0.2, ry + Math.PI, 6.0, 2.9, 1); BILL56.stats.roof++; } catch(e){} }
+      }
       }
     }
   }
@@ -20856,11 +20959,16 @@ const PC_KEYS = Object.keys(CH_BASE).filter(k=> k !== 'az' && k !== 'orb');
 const FPV_CFG = {
   // helmet: lens `up` above and `fwd` ahead of the head joint.   bars: `dy` / `dz` from the middle of the grips.
   // rear: boom `back` behind the rear axle and `high` above the road (both x the bike's scale)
-  helmet: { fov:90, fovK:0.30, fovMax:102, pitch:-0.28, kMan:0.5, kFlip:0.75, kRoll:0.42, kBank:0.5, yawK:11, pk:9,  rk:8,  shake:1.0, bob:1.0, up:0.06, fwd:0.06 },
-  bars:   { fov:92, fovK:0.30, fovMax:106, pitch:-0.16, kMan:1.0, kFlip:0.70, kRoll:0.55, kBank:0.6, yawK:15, pk:12, rk:10, shake:1.7, bob:0.4, dy:0.17, dz:-0.24 },
+  // cam56 (Release 15.54, "make the helmet cam better, same for bar cam"): helmet -- the rider's own head is hidden in these two views
+  //   (mods/cam56.js), so the lens sits back at the eyes with the hands + bars low in the frame; the horizon stays nearly level in a
+  //   corner (a rider keeps the head upright: kRoll 0.42 -> 0.15), the head turns INTO the corner (look / lookMax) and looks down
+  //   at the landing while falling (kFall), calmer bob;   bars -- a little less lean and buzz, the same head hiding (it used to fill
+  //   the picture in every jump), and the lens slides forward if the rider tucks over it (FPV.push)
+  helmet: { fov:88, fovK:0.32, fovMax:102, pitch:-0.30, kMan:0.5, kFlip:0.75, kRoll:0.15, kBank:0.3, yawK:11, pk:9,  rk:8,  shake:0.8, bob:0.55, up:0.07, fwd:0.02, look:0.20, lookMax:0.34, kFall:0.028 },
+  bars:   { fov:92, fovK:0.30, fovMax:106, pitch:-0.16, kMan:1.0, kFlip:0.70, kRoll:0.42, kBank:0.6, yawK:15, pk:12, rk:10, shake:1.2, bob:0.3, dy:0.17, dz:-0.24, look:0.06, lookMax:0.12 },
   rear:   { fov:82, fovK:0.28, fovMax:98,  pitch:-0.10, kMan:1.0, kFlip:0.60, kRoll:0.30, kBank:0.4, yawK:9,  pk:9,  rk:7,  shake:0.9, bob:0.0, back:1.25, high:1.18 }
 };
-const FPV = { yaw:0, pitch:0, roll:0, init:false, bob:0, coll:1 };
+const FPV = { yaw:0, pitch:0, roll:0, init:false, bob:0, coll:1, look:0, py:0, yr:0, push:0 };
 
 const POVX = {
   id:'chase', last:'chase', fam:'chase', blend:1, dur:0.45, pcInit:false, orbit:0,
@@ -21064,8 +21172,11 @@ function fpvCam(dt, kind){
   let tY = ground ? bike.yaw : (vh > 3.5 ? Math.atan2(bike.vel.x, bike.vel.z) : FPV.yaw);
   if (st === 'grind' && vh > 0.5) tY = Math.atan2(bike.vel.x, bike.vel.z);
   if (!FPV.init){
-    FPV.yaw = ground ? bike.yaw : camYaw; FPV.pitch = C.pitch; FPV.roll = 0; FPV.coll = 1; FPV.init = true;
+    FPV.yaw = ground ? bike.yaw : camYaw; FPV.pitch = C.pitch; FPV.roll = 0; FPV.coll = 1; FPV.init = true; FPV.look = 0; FPV.py = bike.yaw; FPV.yr = 0;
   }
+  // cam56: how fast the bike is turning (smoothed) -> the head looks into the corner
+  if (dt > 0){ const yr = clamp(angleDiff(bike.yaw, FPV.py)/dt, -4, 4); FPV.py = bike.yaw; FPV.yr = damp(FPV.yr, ground ? yr : 0, 6, dt); }
+  FPV.look = damp(FPV.look, clamp(FPV.yr*(C.look || 0), -(C.lookMax || 0), C.lookMax || 0)*clamp(vh/4, 0, 1), 4.5, dt);
   let d = angleDiff(tY, FPV.yaw);
   if (!ground && Math.abs(d) > Math.PI/2) d = angleDiff(tY + Math.PI, FPV.yaw);
   const yk = ground ? C.yawK : (st === 'grind' ? 8 : 1.8), mr = (ground ? 6.5 : 3.0) * dt;
@@ -21077,7 +21188,8 @@ function fpvCam(dt, kind){
   _pvA.set(-1, 0, 0).applyQuaternion(rig.quaternion);
   const bank = Math.asin(clamp(_pvA.y, -1, 1));
   const man = clamp(-(bike.manual + bike.hopPitch), -0.9, 0.95);            // + = nose up
-  const pT = clamp(C.pitch + 0.8*slope + C.kMan*man - C.kFlip*Math.sin(bike.flip*0.5), -1.0, 1.0);
+  const fall = (!ground && C.kFall) ? clamp(bike.vel.y*C.kFall, -0.30, 0.10) : 0;                   // cam56: eyes on the landing
+  const pT = clamp(C.pitch + 0.8*slope + C.kMan*man - C.kFlip*Math.sin(bike.flip*0.5) + fall, -1.0, 1.0);
   const rT = clamp(-C.kRoll*bike.roll + C.kBank*bank, -0.45, 0.45);
   FPV.pitch = damp(FPV.pitch, pT, C.pk, dt);
   FPV.roll  = damp(FPV.roll,  rT, C.rk, dt);
@@ -21089,7 +21201,7 @@ function fpvCam(dt, kind){
     jp = Math.sin(CAMX.t*43.1) * Math.sin(CAMX.t*17.3 + 1.0) * sh;
     jr = Math.sin(CAMX.t*37.7 + 2.0) * Math.sin(CAMX.t*11.9) * sh * 0.8;
   }
-  const yawV = FPV.yaw + camCtl.yaw;
+  const yawV = FPV.yaw + FPV.look + camCtl.yaw;
   const pitchV = clamp(FPV.pitch - camCtl.pitch + jp, -1.3, 1.3);
   const sy = Math.sin(yawV), cy = Math.cos(yawV), sp = Math.sin(pitchV), cp = Math.cos(pitchV);
 
@@ -21111,6 +21223,12 @@ function fpvCam(dt, kind){
     flipG.localToWorld(out);
     FPV.bob += dt * (2.4 + vh*0.8);
     if (ground) out.y += Math.sin(FPV.bob*2.0) * 0.007 * clamp(vh/8, 0, 1) * C.bob;
+    // cam56: when the rider tucks forward over the bars the lens slides ahead of the neck (it used to end up inside the rider)
+    { const hb = (typeof HUMAN !== 'undefined' && HUMAN.ready && HUMAN.bones) ? HUMAN.bones.Head : null;
+      let want = 0;
+      if (hb){ hb.getWorldPosition(_pvA); const d = (_pvA.x - out.x)*(sy*cp) + (_pvA.y - out.y)*sp + (_pvA.z - out.z)*(cy*cp); want = clamp(d + 0.16, 0, 0.6); }
+      FPV.push = want > FPV.push ? damp(FPV.push, want, 18, dt) : damp(FPV.push, want, 5, dt);
+      if (FPV.push > 0.002){ out.x += (sy*cp)*FPV.push; out.y += sp*FPV.push; out.z += (cy*cp)*FPV.push; } }
   } else {   // rear: on a short boom behind the planted wheel, pitching with the frame
     const sc = (VEH && VEH.scale) || 1, cd = (VEH && VEH.camDist) || 1;
     const rz = (typeof CUR_RZ === 'number' ? CUR_RZ : -0.52) - C.back*sc*cd, ry = C.high*sc;
@@ -51848,19 +51966,25 @@ const HELM14 = (function(){
   const half = (f, s, b)=> ph=>{ const c = Math.cos(ph); return PI*(c >= 0 ? s + (f - s)*Math.pow(c, 1.2) : s + (b - s)*Math.pow(-c, 1.1)); };
   /* dome: the outer shell's own ellipsoid [centre, radii] (a real lid is rounder than the skull); off: extra relief over the dome; minOff: clearance */
   const SPEC = {
-    dirt:{ edge:half(0.405, 0.548, 0.640), segP:32, segT:10, dome:[[0, 0.126, -0.012], [0.101, 0.121, 0.117]], minOff:0.016,
-      off:()=> 0, trim:0x101114, pad:0x2b2d31, straps:true },
-    trail:{ edge:half(0.398, 0.545, 0.690), segP:32, segT:10, dome:[[0, 0.121, -0.018], [0.096, 0.119, 0.124]], minOff:0.014,
-      off:(ph, th)=>{ const b = Math.max(0, -Math.cos(ph)); return 0.010*Math.pow(b, 1.6)*sst(0.34*PI, 0.64*PI, th) + 0.0035*Math.cos(th)*Math.cos(ph*7)*sst(0.6, 0.0, Math.cos(th)); },
-      trim:0x15161a, pad:0x232529, straps:true, peak:{ ph:0.86, th0:-0.050, len:0.052, up:0.12, sw:4 }, dial:true },
-    full:{ edge:ph=>{ const a = Math.abs(ph); return PI*(0.372 + 0.508*sst(0.80, 1.14, a) + 0.02*sst(2.2, 3.1, a)); }, segP:32, segT:12, dome:[[0, 0.110, -0.006], [0.106, 0.140, 0.130]], minOff:0.020,
-      off:()=> 0, focus:[0.97, 0.26], trim:0x121316, pad:0x26282c, peak:{ ph:0.86, th0:-0.105, len:0.068, up:0.20, sw:-1, under:-1 }, chin:true, goggles:true },
-    road:{ edge:half(0.418, 0.528, 0.622), segP:32, segT:10, dome:[[0, 0.116, -0.030], [0.091, 0.119, 0.134]], minOff:0.012,
-      off:(ph, th)=>{ const b = Math.max(0, -Math.cos(ph)); return 0.034*Math.pow(b, 3.2)*sst(0.24*PI, 0.62*PI, th) - 0.004*Math.pow(Math.max(0, Math.cos(ph)), 2)*Math.sin(th); },
+    dirt:{ edge:half(0.405, 0.548, 0.640), segP:44, segT:14, dome:[[0, 0.126, -0.012], [0.101, 0.121, 0.117]], minOff:0.016,
+      off:(ph, th)=>{ const dx = Math.sin(th)*Math.sin(ph), cz = Math.sin(th)*Math.cos(ph); return 0.0032*Math.exp(-(dx*dx)/0.012)*sst(0.9, 0.2, Math.abs(cz)) + 0.0028*sst(0.30*PI, 0.40*PI, th)*sst(0.5, 0.95, cz); },
+      trim:0x101114, pad:0x2b2d31, straps:true },
+    trail:{ edge:half(0.398, 0.545, 0.690), segP:48, segT:14, dome:[[0, 0.121, -0.018], [0.096, 0.119, 0.124]], minOff:0.014,
+      off:(ph, th)=>{ const b = Math.max(0, -Math.cos(ph)); return 0.010*Math.pow(b, 1.6)*sst(0.34*PI, 0.64*PI, th) + 0.0058*Math.cos(th)*Math.cos(ph*7)*sst(0.6, 0.0, Math.cos(th)) + 0.003*Math.exp(-Math.pow(Math.sin(th)*Math.sin(ph)/0.11, 2))*sst(0.05, 0.3, th); },
+      trim:0x15161a, pad:0x232529, straps:true, peak:{ ph:0.90, th0:-0.050, len:0.068, up:0.10, sw:4, thick:0.006 }, dial:true },
+    full:{ edge:ph=>{ const a = Math.abs(ph); return PI*(0.372 + 0.508*sst(0.80, 1.14, a) + 0.02*sst(2.2, 3.1, a)); }, segP:48, segT:16, dome:[[0, 0.110, -0.008], [0.104, 0.138, 0.133]], minOff:0.020,
+      off:(ph, th)=>{ const dx = Math.sin(th)*Math.sin(ph), cz = Math.sin(th)*Math.cos(ph), up = Math.cos(th), ax = Math.abs(dx);
+        return 0.0068*Math.exp(-(dx*dx)/0.022)*sst(-0.25, 0.3, up)*sst(1.0, 0.55, cz)                 // the spine over the top, from the brow to the back
+             - 0.0042*Math.exp(-Math.pow((ax - 0.58)/0.17, 2))*sst(-0.1, 0.45, up)*sst(0.75, 0.2, Math.abs(cz))   // a scallop along each side
+             + 0.0075*sst(0.45, 0.95, -cz)*sst(0.25, -0.35, up)*sst(0.9, 0.3, ax); },                  // the duck tail at the back
+      focus:[0.97, 0.26], trim:0x121316, pad:0x26282c, peak:{ ph:0.98, th0:-0.105, len:0.112, up:0.13, sw:-1, under:-1, thick:0.008 }, chin:true, goggles:true },
+    road:{ edge:half(0.418, 0.528, 0.622), segP:48, segT:14, dome:[[0, 0.116, -0.030], [0.091, 0.119, 0.134]], minOff:0.012,
+      off:(ph, th)=>{ const b = Math.max(0, -Math.cos(ph)); return 0.034*Math.pow(b, 3.2)*sst(0.24*PI, 0.62*PI, th) - 0.004*Math.pow(Math.max(0, Math.cos(ph)), 2)*Math.sin(th)
+          + 0.0036*Math.cos(Math.sin(th)*Math.sin(ph)*21)*sst(0.10*PI, 0.24*PI, th)*sst(0.58*PI, 0.42*PI, th); },
       trim:0x17181c, pad:0x1d1f23, straps:true, thin:true },
-    commuter:{ edge:half(0.395, 0.560, 0.680), segP:32, segT:10, dome:[[0, 0.125, -0.014], [0.102, 0.121, 0.120]], minOff:0.016,
+    commuter:{ edge:half(0.395, 0.560, 0.680), segP:44, segT:14, dome:[[0, 0.125, -0.014], [0.102, 0.121, 0.120]], minOff:0.016,
       off:()=> 0, trim:0x1c1d21, pad:0x2e3034, straps:true, peak:{ ph:0.78, th0:-0.016, len:0.034, up:-0.10, sw:-1 } },
-    retro:{ edge:ph=>{ const a = Math.abs(ph); return PI*(0.368 + 0.420*sst(0.55, 0.96, a) + 0.018*sst(2.0, 3.1, a)); }, segP:36, segT:12, dome:[[0, 0.120, -0.012], [0.106, 0.130, 0.120]], minOff:0.018,
+    retro:{ edge:ph=>{ const a = Math.abs(ph); return PI*(0.368 + 0.420*sst(0.55, 0.96, a) + 0.018*sst(2.0, 3.1, a)); }, segP:44, segT:16, dome:[[0, 0.120, -0.012], [0.106, 0.130, 0.120]], minOff:0.018,
       off:()=> 0, focus:[0.78, 0.30], trim:0x4a2b18, pad:0x6e4c30, bubble:true, snaps:true }
   };
   /* metres from the skull to the outer shell along the ray of unit direction d: the dome, plus relief, never less than minOff */
@@ -51875,7 +51999,9 @@ const HELM14 = (function(){
   }
 
   /* ---------------------------------------------------------------- the texture: shell paint (rows 0..223) + swatches (224..255) */
-  const TW = 256, TH = 256, SH = 224;
+  // helm56 (Release 15.54, "make the helmets look better"): 512 x 512 (was 256) -- every stripe, vent and logo twice as sharp; phones keep 256
+  const HELM_K = (typeof screen !== 'undefined' && Math.min(screen.width || 9999, screen.height || 9999) < 600) ? 1 : 2;
+  const TW = 256*HELM_K, TH = 256*HELM_K, SH = 224*HELM_K;
   const SW = { trim:0, pad:1, strap:2, buckle:3, peak:4, under:5, lens:6, metal:7 };
   const swUV = k=> [(k*32 + 16)/TW, (SH + 16)/TH];
   function dirUV(d, o){
@@ -51930,7 +52056,7 @@ const HELM14 = (function(){
     const sp = SPEC[style], col = h.hex !== undefined ? { hex:h.hex, metal:false } : COLORS[h.c], des = DESIGNS[h.d].id, matte = !!h.f;
     const base = rgb(col.hex), acc = accentFor(base), dark = [18, 19, 22];
     const rough = matte ? (col.metal ? 0.50 : 0.66) : (col.metal ? 0.26 : 0.17), metal = col.metal ? 0.55 : 0.0;
-    const aa = 0.016, c = [0, 0, 0], d = [0, 0, 0], tmp = [0, 0, 0];
+    const aa = 0.016*(256/TW)*1.25, c = [0, 0, 0], d = [0, 0, 0], tmp = [0, 0, 0];
     const vents = VENTS[style] || [], snaps = [[0, 0.335], [0.42, 0.355], [-0.42, 0.355], [0.97, 0.47], [-0.97, 0.47]];
     const flameA = [255, 226, 86], flameB = [255, 128, 22], flameC = [205, 26, 18];
     const boltC = lum(base) > 0.6 && base[2] < 120 ? [20, 21, 26] : [255, 214, 40], boltO = lum(base) > 0.6 && base[2] < 120 ? [250, 250, 245] : [16, 16, 18];
@@ -52050,6 +52176,10 @@ const HELM14 = (function(){
         const o = (r*TW + x)*4;
         rgba[o] = s[0][0]; rgba[o+1] = s[0][1]; rgba[o+2] = s[0][2]; rgba[o+3] = 255;
         rm[o] = 0; rm[o+1] = s[1]*255; rm[o+2] = s[2]*255; rm[o+3] = 255;
+        if (k === SW.lens && r < SH + 32){                                  // helm56: the lens cell is a graded mirror (lighter sky above, a glare streak)
+          const tv = (r - SH)/32, tu = (x - k*32)/32, gl = Math.max(0, 1 - Math.abs(tu - 0.26 - tv*0.34)/0.085), f = 1.42 - 0.85*tv;
+          rgba[o] = cl(s[0][0]*f + 150*gl, 0, 255); rgba[o+1] = cl(s[0][1]*f + 150*gl, 0, 255); rgba[o+2] = cl(s[0][2]*f + 150*gl, 0, 255);
+        }
       }
     }
   }
@@ -52206,9 +52336,9 @@ const HELM14 = (function(){
       grid(top, 2, cols, (i, j, o, uv)=>{ pkPt(j, i/2, o); if (pk.sw < 0){ dirOf(o, q); dirUV(q, uv); } else { uv[0] = swTop[0]; uv[1] = swTop[1]; } });
       if (pk.sw < 0) top.wrap = true;
       // the underside: dark plastic, or (under:-1, the full-face's moto peak) the same paint as the top so it never reads as a black plate
-      grid(bot, 2, cols, (i, j, o, uv)=>{ pkPt(j, i/2, o); if (pk.under < 0){ dirOf(o, q); dirUV(q, uv); } else { uv[0] = swBot[0]; uv[1] = swBot[1]; } o[1] -= 0.0045; });
+      grid(bot, 2, cols, (i, j, o, uv)=>{ pkPt(j, i/2, o); if (pk.under < 0){ dirOf(o, q); dirUV(q, uv); } else { uv[0] = swBot[0]; uv[1] = swBot[1]; } o[1] -= (pk.thick || 0.0045)*(1 - 0.5*i/2); });           // (helm56: thicker at the root, half that at the tip)
       if (pk.under < 0) bot.wrap = true;
-      grid(lip, 1, cols, (i, j, o, uv)=>{ pkPt(j, 1, o); if (i) o[1] -= 0.0045; uv[0] = swBot[0]; uv[1] = swBot[1]; });
+      grid(lip, 1, cols, (i, j, o, uv)=>{ pkPt(j, 1, o); if (i) o[1] -= (pk.thick || 0.0045)*(pk.thick ? 0.5 : 1); uv[0] = swBot[0]; uv[1] = swBot[1]; });
       parts.push(top, bot, lip);
     }
     /* ---- chin strap: a Y each side, joined under the chin ---- */
@@ -52276,8 +52406,8 @@ const HELM14 = (function(){
       // the port's lower edge: just under the nose in the middle, rising over the cheekbones, then tucked under the shell at the sides
       const top = ph=>{ const a = Math.abs(ph); return PI*(0.598 - 0.050*sst(0.10, 0.80, a)) - 0.30*sst(0.92, 1.34, a); };
       // the bar juts forward like a moto chin bar (most at the mouth, rolling back under the chin), less towards the cheeks
-      const botT = PI*0.885, jut = (ph, th)=>{ const k = Math.pow(Math.max(0, Math.cos(ph*1.05)), 1.3), t = (th - top(ph))/Math.max(0.05, botT - top(ph));
-        return k*(0.012 + 0.030*Math.sin(Math.min(1, t*1.15)*PI*0.62) - 0.010*t*t); };
+      const botT = PI*0.885, jut = (ph, th)=>{ const k = Math.pow(Math.max(0, Math.cos(ph*1.05)), 1.75), k2 = Math.pow(Math.max(0, Math.cos(ph*1.05)), 0.9), t = (th - top(ph))/Math.max(0.05, botT - top(ph));
+        return k2*0.008 + k*(0.010 + 0.040*Math.sin(Math.min(1, t*1.15)*PI*0.62) - 0.012*t*t); };      // (helm56: 0.012 + 0.030 -- a moto chin bar comes to a point)      // (helm56: 0.012 + 0.030 -- a moto chin bar comes to a point)
       const cbT = (ph, th)=>{ dirA(ph, th, d); return shellT(sp, ph, th, d) + jut(ph, th) - 0.0025*sst(1.00, 1.34, Math.abs(ph)); };
       grid(cb, rows, cols, (i, j, o, uv)=>{
         const ph = (j/cols*2 - 1)*W, t0 = top(ph), th = t0 + (botT - t0)*i/rows;
@@ -52306,10 +52436,11 @@ const HELM14 = (function(){
         const tt = [thTop - 0.035, thTop, thBot(ph), thBot(ph) + 0.035][i];
         dirA(ph, tt, d); ptA(d, (i === 0 || i === 3) ? 0.012 : 0.031, o); uv[0] = sF[0]; uv[1] = sF[1];
       });
-      grid(ln, 1, cols, (i, j, o, uv)=>{
-        const s = j/cols*2 - 1, ph = s*0.78;
-        const tt = i === 0 ? thTop + 0.014 : thBot(ph) - 0.014;
-        dirA(ph, tt, d); ptA(d, 0.0335 + 0.005*(1 - s*s), o); uv[0] = sL[0]; uv[1] = sL[1];
+      grid(ln, 3, cols, (i, j, o, uv)=>{                                   // (helm56: 3 rows -- the lens bulges; its UVs run over the graded lens cell)
+        const s = j/cols*2 - 1, ph = s*0.78, k = i/3;
+        const t0 = thTop + 0.014, t1 = thBot(ph) - 0.014, tt = t0 + (t1 - t0)*k;
+        dirA(ph, tt, d); ptA(d, 0.0335 + 0.005*(1 - s*s) + 0.004*Math.sin(k*PI), o);
+        uv[0] = (SW.lens*32 + 4 + 24*(s*0.5 + 0.5))/TW; uv[1] = (SH + 3 + 26*k)/TH; void sL;
       });
       // strap: from the frame ends round the back of the shell
       grid(gs, 1, 24, (i, j, o, uv)=>{
@@ -52382,7 +52513,7 @@ const HELM14 = (function(){
     const base = rgb(h.hex !== undefined ? h.hex : COLORS[h.c].hex), ink = lum(base) > 0.55 ? '#16171b' : '#f4f2ec';
     const sideU = 0.47, sideV = 0.20, put = (u, v, rot, flip, txt, size)=>{
       g.save(); g.translate(u*TW, v*SH); g.rotate(rot); if (flip) g.scale(-1, 1);
-      g.font = '800 ' + size + 'px "Arial Black", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '800 ' + Math.round(size*TW/256) + 'px "Arial Black", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillStyle = ink; g.globalAlpha = 0.92; g.fillText(txt, 0, 0); g.restore();
     };
     // the sides: u runs front -> back along the side. On the left side (v > 0.5) canvas "up" (-v) points up the shell; on the
@@ -88362,6 +88493,13 @@ function ind39PlanHall(H){
   const feat = (id, name, K, a, extra)=>{ const q = K.W(a, 0), w = ind39W(H, q[0], q[1]); IND39.feats.push(Object.assign({ id:H.id + '-' + id + (CI ? '-' + CI : ''), name, hall:H.id, x:w[0], z:w[1], yaw:K.yaw + H.th }, extra || {})); };
   const bagHill = (K, a, w, l1, h, top, l2, mat, kind)=>{ const b1 = bank(K, a, 0, w, l1, h, mat, { deck:top }), b2 = down(K, a + l1 + top, 0, w, l2, h, mat); b1.bag = b2.bag = true; b1.isl33bag = b2.isl33bag = kind; return [b1, b2]; };
   H.deco = { pits:[], copings:[], rails:[], skinnies:[], bowls:[], lanes:[] };
+  // halls56 ("everywhere has jumps"): a line of jumps along K (mods/halls56.js h56Jumps builds it out of these)
+  const J56 = typeof h56Jumps === 'function' && typeof H56 !== 'undefined' && H56 && H56.on;
+  const jl = K=> ({ bank:(a, w, len, h, mat, deck)=> bank(K, a, 0, w, len, h, mat, deck ? { deck, h56:1 } : { h56:1 }),
+    down:(a, w, len, h, mat)=> down(K, a, 0, w, len, h, mat, { h56:1 }),
+    flat:(a0, a1, w, h, mat)=> flat(K, a0, a1, 0, w, h, mat, { h56:1 }),
+    wave:(a, w, lam, n, amp, mat)=>{ const q = K.W(a, 0); return put({ type:'wave', u:q[0], v:q[1], rot:K.yaw, w, lam, n, amp, mat, h56:1 }); },
+    cop:(a, w, y)=> H.deco.copings.push({ K, a, s:0, w, y:F + y }) });
   // foundation (solid down into the ground: no gap under any wall) + the floor on top of it
   if (!H.open){
   put({ type:'flat', u:0, v:0, w:HW + 0.3, d:HD + 0.3, h:F - 0.12 - B0, base:B0, mat:M.pad, ind39found:1 });
@@ -88453,10 +88591,23 @@ function ind39PlanHall(H){
       H.deco.copings.push({ K:Kf(20, 13, E), a:3.6*Math.sin(84*Math.PI/180), s:0, w:4, y:F + 3.6*(1 - Math.cos(84*Math.PI/180)) });
       H.deco.lanes.push({ K, a0:1, a1:47, hw:4.4 });
       feat('wall', 'Wall Ride', K, 2, { wall:true }); }
+    if (J56){                                                              // halls56: the mountain-bike block had no jumps at all
+      { const K = Kf(-28, -8.0, E); h56Jumps(jl(K), 6, 'tTt', 1.5, { main:dirt, wood }, { run:5.5 });       // dirt tabletops between the pump track and the skinnies
+        H.deco.lanes.push({ K, a0:1, a1:48, hw:2.0 }); feat('djump', 'Dirt Jumps', K, 2); }
+      { const K = Kf(-28, 5.0, E); h56Jumps(jl(K), 6, 'hUh', 1.4, { main:dirt, wood }, { run:6 });          // humps + a step-up between the skinnies and the wall ride
+        H.deco.lanes.push({ K, a0:1, a1:47, hw:1.9 }); feat('humps', 'Humps + Step-Up', K, 2); }
+    }
   }
   CI++;
   }
   OU = OV = 0;
+  // halls56: three long jump lines in every hall -- down the boulevard and along both long walls (the wall lines run back west)
+  if (J56){
+    const JM = { main:dirt, wood };
+    { const K = Kf(-66, -2.2, E); h56Jumps(jl(K), 4, 'tThTBhTUt', 1.7, JM, { run:7 }); H.deco.lanes.push({ K, a0:1, a1:156, hw:2.3 }); feat('blvd', 'Boulevard Jump Line', K, 2); }
+    { const K = Kf(-72, -52.5, E); h56Jumps(jl(K), 4, 'TtBhTUhTt', 1.7, JM, { run:7 }); H.deco.lanes.push({ K, a0:1, a1:158, hw:2.3 }); feat('nwall', 'North Wall Jump Line', K, 2); }
+    { const K = Kf(88, 50.5, -E); h56Jumps(jl(K), 4, 'TBhtUTthT', 1.7, JM, { run:7 }); H.deco.lanes.push({ K, a0:1, a1:158, hw:2.3 }); feat('swall', 'South Wall Jump Line', K, 2); }
+  }
   // bleachers in the south-west corner (solid: you can't ride through the crowd)
   if (!H.open) for (const B of IND39_BLEACH) put({ type:'flat', u:B[0], v:HD - 2.4, w:B[1], d:1.6, h:1.3, mat:M.pad, novis:true, bld:true, bleach:1 });
   H.P = P;
@@ -91717,7 +91868,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.53';
+const DL_VER = '15.54';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
@@ -92643,6 +92794,7 @@ function p46Bright(on){
    ========================================================================= */
 const WARM47 = { on: !/[?&]warm47=0\b/.test(location.search), w:0, cur:null, halls:{}, built:0, slots:0, mat:null, err:'' };
 const W47_COL = C(0xffb469), W47_SKY = C(0xffd3a1), W47_GND = C(0x8c5a34);
+const W47_PICK = new Int32Array(10), W47_PICKD = new Float64Array(10), _w47F = new T.Vector3();
 /* a hall as the lights see it: { id, lamps:[[x, y, z]...], F (floor), inside(x, y, z), strings:[...] } */
 function w47Defs(){
   const out = [];
@@ -92657,7 +92809,7 @@ function w47Defs(){
       const big = WH > 20;
       d = WARM47.halls[H.id] = { id:H.id, kind:'ind39', H, F:H.F, lamps, rot:H.th || 0,
         P:(u, v)=> ind39W(H, u, v), uLen:big ? 92 : 28, vs:big ? [-38, -16, 16, 38] : [-17.5, -6.5, 6.5, 17.5], sy:H.F + (big ? 16 : 7.45), sag:big ? 1.4 : 0.6,
-        range:big ? 40 : undefined, inten:big ? 7.2 : undefined, cone:big ? 0.3 : undefined,
+        range:big ? 40 : undefined, inten:big ? 7.2 : undefined, cone:big ? 0.3 : undefined, pool:big ? 13 : 7, slots:big ? 10 : 7, amb:big ? 1.15 : undefined,
         inside:(x, y, z)=> Math.abs(x - H.x) < H.ax && Math.abs(z - H.z) < H.az && y < H.F + WH + 0.3 && y > H.F - 3 };
     }
     out.push(d);
@@ -92695,7 +92847,7 @@ function w47Fixtures(d){
   for (const v of d.vs){
     const anchors = []; for (let u = -d.uLen; u <= d.uLen + 1e-6; u += 14) anchors.push(u);
     for (let a = 0; a + 1 < anchors.length; a++){
-      const u0 = anchors[a], u1 = anchors[a + 1], n = Math.round((u1 - u0)/1.1);
+      const u0 = anchors[a], u1 = anchors[a + 1], n = Math.round((u1 - u0)/(d.bulbStep || 1.1));       // (halls56: the Mega Dome hangs a bulb every 2.2 m -- half the boxes, 44 m up nobody counts them)
       let prev = null;
       for (let k = 0; k <= n; k++){
         const t = k/n, u = u0 + (u1 - u0)*t, y = d.sy - d.sag*4*t*(1 - t), q = d.P(u, v);
@@ -92715,6 +92867,8 @@ function* w47Gen(ch){
     const H = d.H, ci = d.kind === 'isl33' ? ISL33.ci : H.ci, cj = d.kind === 'isl33' ? ISL33.cj : H.cj;
     if (ci !== ch.i || cj !== ch.j) continue;
     try { ch.addMesh(w47Fixtures(d)); WARM47.built++; } catch(e){ if (!WARM47.err) WARM47.err = 'fixtures: ' + e.message; }
+    // halls56: a soft pool of light on the floor under every lamp (so the far end of a hall reads as lit too)
+    try { if (typeof h56Pools === 'function'){ const pm = h56Pools(d); if (pm) ch.addMesh(pm); } } catch(e){ if (!WARM47.err) WARM47.err = 'pools: ' + e.message; }
     yield;
   }
 }
@@ -92733,7 +92887,7 @@ function w47Frame(dt){
   if (typeof rim !== 'undefined') rim.intensity *= 1 - 0.5*w;
   if (typeof hemi !== 'undefined'){
     hemi.color.lerp(W47_SKY, 0.6*w); hemi.groundColor.lerp(W47_GND, 0.6*w);
-    hemi.intensity += (Math.max(hemi.intensity, 1.05) - hemi.intensity)*w;           // the hall's own lights: bright at night too
+    hemi.intensity += (Math.max(hemi.intensity, (WARM47.cur && WARM47.cur.amb) || 1.05) - hemi.intensity)*w;   // the hall's own lights: bright at night too (halls56: per hall)
   }
   if (typeof bounce !== 'undefined') bounce.intensity += (Math.max(bounce.intensity, 0.32) - bounce.intensity)*w;
 }
@@ -92742,17 +92896,27 @@ function w47Lamps(){
   const w = WARM47.w, d = WARM47.cur;
   if (w < 0.01 || !d || typeof LF === 'undefined' || (typeof LF_ON !== 'undefined' && !LF_ON)) return;
   let k = LF.meta[0] | 0;
-  const lite = (typeof GFX !== 'undefined' && GFX === 'off'), n = Math.min(LF_N - k, lite ? 5 : 7);
+  // halls56: up to ten lamps at once in a big hall (the lamp field has twelve slots and nothing else wants them indoors), picked
+  // without building + sorting a list every frame (the Mega Dome hangs 250 lamps)
+  const lite = (typeof GFX !== 'undefined' && GFX === 'off'), n = Math.min(LF_N - k, lite ? Math.min(6, d.slots || 5) : (d.slots || 7), W47_PICK.length);
   if (n <= 0) return;
-  const cp = camera.position, f = new T.Vector3(); camera.getWorldDirection(f);
+  const cp = camera.position, f = _w47F; camera.getWorldDirection(f);
   const fl = Math.hypot(f.x, f.z) || 1, fx = cp.x + f.x/fl*9, fz = cp.z + f.z/fl*9;
-  const L = d.lamps.map(p=> [p, (p[0] - fx)*(p[0] - fx) + (p[2] - fz)*(p[2] - fz)]).sort((a, b)=> a[1] - b[1]);
-  for (let i = 0; i < n && i < L.length; i++){
-    const p = L[i][0];
+  const L = d.lamps, PK = W47_PICK, PD = W47_PICKD;
+  let m = 0;
+  for (let i = 0; i < L.length; i++){
+    const p = L[i], dd = (p[0] - fx)*(p[0] - fx) + (p[2] - fz)*(p[2] - fz);
+    if (m === n && dd >= PD[m - 1]) continue;
+    let q = m < n ? m++ : n - 1;
+    while (q > 0 && PD[q - 1] > dd){ PD[q] = PD[q - 1]; PK[q] = PK[q - 1]; q--; }
+    PD[q] = dd; PK[q] = i;
+  }
+  for (let i = 0; i < m; i++){
+    const p = L[PK[i]];
     lfWriteSlot(k++, p[0], p[1] - 0.1, p[2], 0, -1, 0, d.cone || 0.26, 0.80, W47_COL, (d.inten || 5.2)*w, d.range || 17);   // per hall (mega49: higher lamps)
   }
   LF.meta[0] = k;
-  WARM47.slots = n;
+  WARM47.slots = m;
 }
 (function warm47Hooks(){
   if (!WARM47.on) return;
@@ -95025,6 +95189,34 @@ function g52Pieces(P, Z, D){
   for (let k = 0; k < 70; k++){ const u = -300 + k*11.5, v = 70;
     put({ type:'bank', u, v, rot:E, w:2.4, len:3, h:1.1, mat:dirt, deck:0.8, giga:1 }); put({ type:'bank', u:u + 6.8, v, rot:Wd, w:2.4, len:3, h:1.1, mat:dirt, giga:1 }); }
   D.lanes.push({ u0:-302, u1:508, v:70, hw:3.0 });
+  // ---- halls56 ("everywhere has jumps"): lanes of jumps over the whole empty floor -- along both long walls, both sides of the middle,
+  //      and through the middle round the kickers, the foam pit and the giga bowl. Lanes alternate east / west; the ones on the
+  //      quarters' lines run straight into a giga quarter.
+  if (typeof h56Jumps === 'function' && typeof H56 !== 'undefined' && H56 && H56.on){
+    const JM = { main:dirt, wood:(MAT.wood || M.deckWood) }, PAT = 'TBhMTUHtB';
+    let li = 0;
+    const lane = (ua, ub, v)=>{                                           // rides from ua to ub
+      const dir = ub > ua ? 1 : -1, yaw = dir > 0 ? E : Wd, len = Math.abs(ub - ua), U = a=> ua + dir*a, R = isl33Rnd(5600 + li*37), w = 2.2;
+      const api = { bank:(a, w2, l, h, mat, deck)=> put({ type:'bank', u:U(a), v, rot:yaw, w:w2, len:l, h, mat, deck:deck || 0, giga:1, h56:1 }),
+        down:(a, w2, l, h, mat)=> put({ type:'bank', u:U(a + l), v, rot:yaw + Math.PI, w:w2, len:l, h, mat, giga:1, h56:1 }),
+        flat:(a0, a1, w2, h, mat)=> put({ type:'flat', u:U((a0 + a1)/2), v, rot:yaw, w:w2, d:(a1 - a0)/2, h, mat, giga:1, h56:1 }),
+        wave:(a, w2, lam, n, amp, mat)=> put({ type:'wave', u:U(a), v, rot:yaw, w:w2, lam, n, amp, mat, giga:1, h56:1 }) };
+      let a = 12 + R()*10, k = li*2;
+      for (let n = 0; n < 40 && a < len - 26; n++, k++) a = h56Jumps(api, a, PAT[k % PAT.length], w, JM, { run:30 + R()*16, max:len - 8 });
+      li++;
+    };
+    for (const [v, d] of [[86, 1], [100, -1], [114, 1], [128, -1], [142, 1], [-104, 1], [-118, -1], [-132, 1], [-146, -1],          // both sides of the middle
+                          [288, 1], [302, -1], [316, 1], [-288, -1], [-302, 1], [-316, -1]]) lane(d > 0 ? -540 : 530, d > 0 ? 530 : -540, v);   // along the long walls
+    // through the middle: clear of the core (u < -345), the kickers + foam pit (u -305..-155, v -100..-28) and the bowl's deck
+    lane(-145, 522, -84); lane(522, -145, -66);
+    lane(-145, 44, -48); lane(76, 522, -48);
+    lane(522, 104, -30); lane(16, -145, -30);
+    lane(-335, 2, -14); lane(112, 522, -14);
+    lane(522, 112, 14); lane(2, -335, 14);
+    lane(-335, 16, 30); lane(104, 522, 30);
+    lane(522, 80, 46); lane(40, -335, 46);
+    lane(-335, 522, 58);
+  }
   // ---- three GIGA QUARTERS on the east wall (12 m), the run-up marked
   for (const v of [-80, 0, 80]){ put({ type:'quarter', u:G52_HW - 16.2, v, rot:E, w:14, R:12, maxDeg:84, deck:4, mat:conc, giga:1 }); D.cop.push({ u:G52_HW - 16.2 + 12*Math.sin(84*Math.PI/180), v, w:14, y:F + 12*(1 - Math.cos(84*Math.PI/180)) }); }
 }
@@ -95132,15 +95324,19 @@ function g52Props(S, Gw, GT, D){
     for (let u = p.u0 + 0.6; u < p.u1; u += 1.3) for (let v = p.v0 + 0.6; v < p.v1; v += 1.3){ const w = g52W(u + (R() - 0.5)*0.25, v + (R() - 0.5)*0.25); m49Box(S, w[0], p.top - 0.55 + R()*0.2, w[1], 1.15, 0.65, 1.15, R()*1.5, FO[Math.floor(R()*FO.length)]); }
   }
   // the light rig: long trusses across the hall at 64 m with lamp housings; cables down to the core's own pendant lamps
-  for (let u = -HW + 60; u < HW; u += 120){ bx(S, u, 0, F + 64, 1.2, 1.2, HD*2 - 4, 0x5b6470); for (const v of [-HD + 10, HD - 10]) bx(S, u, v, F + 64, 0.6, WH - 64, 0.6, 0x5b6470); }
-  for (const p of g52Lamps()) m49Box(S, p[0], p[1] + 0.2, p[2], 4.0, 0.7, 4.0, 0, 0x1c1f24);
+  // (halls56: a truss over every lamp row -- every 55 m -- and a rod down to each lamp)
+  for (let u = -HW + 27.5; u < HW; u += 55){ bx(S, u, 0, F + 64, 1.2, 1.2, HD*2 - 4, 0x5b6470); for (const v of [-HD + 10, HD - 10]) bx(S, u, v, F + 64, 0.6, WH - 64, 0.6, 0x5b6470); }
+  for (const p of g52Lamps()){ m49Box(S, p[0], p[1] + 0.2, p[2], 4.0, 0.7, 4.0, 0, 0x1c1f24); m49Box(S, p[0], p[1] + 0.9, p[2], 0.1, 33.1, 0.1, 0, 0x16181c); }
   if (typeof m49Lamps === 'function' && typeof M49 !== 'undefined' && M49.H && M49.H.F !== undefined) for (const p of m49Lamps(M49.H)) m49Box(S, p[0], p[1] + 0.8, p[2], 0.06, F + 64 - p[1] - 0.8, 0.06, 0, 0x16181c);
   G52.stats.soup = S.boxes;
 }
 /* the lamp grid: hung from the trusses at 30 m (warm47 lights the 7 nearest) */
 function g52Lamps(){
   const out = [], F = G52.F;
-  for (let u = -HW_G52() + 60; u < HW_G52(); u += 120) for (let v = -270; v <= 270; v += 90){ const q = g52W(u, v); out.push([q[0], F + 30, q[1]]); }
+  // halls56: "lights everywhere" -- a 55 m grid (was 120 x 90 m: 63 lamps, big dark gaps); none over the core, it hangs its own
+  for (let u = -HW_G52() + 27.5; u < HW_G52(); u += 55) for (let v = -302.5; v <= 302.5; v += 55){
+    if (u < -340 && Math.abs(v) < 66) continue;
+    const q = g52W(u, v); out.push([q[0], F + 30, q[1]]); }
   return out;
 }
 function HW_G52(){ return G52_HW; }
@@ -95179,7 +95375,7 @@ function g52W47Def(){
   let lamps = g52Lamps();
   if (typeof m49Lamps === 'function' && typeof M49 !== 'undefined' && M49.H && M49.H.F !== undefined) lamps = m49Lamps(M49.H).concat(lamps);
   d = G52.w47 = { id:'giga52', kind:'mega49', H:G52.H, F:G52.F, lamps, rot:0, P:(u, v)=> g52W(u, v), uLen:520, vs:[-300, -120, 120, 300], sy:G52.F + 44, sag:3.0,
-    range:44, inten:8.0, cone:0.32, fixW:5.6, fixD:2.2, inside:(x, y, z)=> g52InHall(x, y, z) };
+    range:48, inten:8.0, cone:0.32, fixW:5.6, fixD:2.2, pool:19, slots:10, amb:1.22, bulbStep:2.2, inside:(x, y, z)=> g52InHall(x, y, z) };
   return d;
 }
 
@@ -97668,6 +97864,559 @@ function sus53Ghost(g, st, dt){
     // eslint-disable-next-line no-global-assign, no-func-assign
     fleetClone = function(){ rest(); return _fc.apply(this, arguments); };
   }
+})();
+
+/* =========================================================================
+   CAM56 -- Release 15.54: "make the camera mode helmet cam better, same for bar cam".
+     THE RIDER'S OWN HEAD IS OUT OF THE SHOT   in the helmet cam and the handlebar cam the local rider's head (hair, hat, helmet, goggles)
+                         collapses into its joint: it used to fill the picture in every jump (the lens sat inside the hair) and it
+                         blocked the handlebar cam whenever the rider tucked. Other riders and every other view are untouched.
+     A HELMET YOU CAN SEE in the helmet cam the helmet you wear frames the view: the peak along the top edge (trail lid, full-face),
+                         the chin bar and the goggle frame (full-face), a brim (commuter), in the helmet's own colour -- one small
+                         DOM layer under the HUD (no 3D, nothing per frame but a class switch).
+   The lens itself (eye position, level horizon, the look into the corner, eyes on the landing) is in mods/camera.js (FPV_CFG / fpvCam).
+   ?cam56=0 = off. API: CAM56
+   ========================================================================= */
+const CAM56 = { on: !/[?&]cam56=0\b/.test(location.search), hid:false, bone:null, sc:null, el:null, key:'', shown:false, err:'' };
+function cam56Head(){
+  const fx = typeof povEffective === 'function' ? povEffective() : '';
+  const hb = (typeof HUMAN !== 'undefined' && HUMAN.ready && HUMAN.bones) ? HUMAN.bones.Head : null;
+  const want = CAM56.on && !!hb && (fx === 'helmet' || fx === 'bars') && POVX.blend > 0.55 && (GAME === 'play' || GAME === 'pause');
+  if (CAM56.hid && (!want || CAM56.bone !== hb)){ try { CAM56.bone.scale.copy(CAM56.sc); } catch(e){} CAM56.hid = false; CAM56.bone = null; }
+  if (want){
+    if (!CAM56.hid){ CAM56.sc = hb.scale.clone(); CAM56.bone = hb; CAM56.hid = true; }
+    hb.scale.setScalar(0.0002);
+  }
+  cam56Frame(fx === 'helmet' && want);
+}
+/* the helmet's frame round the view */
+function cam56Css(hex, k){ const r = Math.round(((hex >> 16) & 255)*k), g = Math.round(((hex >> 8) & 255)*k), b = Math.round((hex & 255)*k); return 'rgb(' + Math.min(255, r) + ',' + Math.min(255, g) + ',' + Math.min(255, b) + ')'; }
+function cam56Build(code){
+  let el = CAM56.el;
+  if (!el){
+    el = CAM56.el = document.createElement('div'); el.id = 'cam56Helm';
+    el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .25s;';
+    (document.body || document.documentElement).appendChild(el);
+  }
+  const h = (typeof HELM14 !== 'undefined' && code) ? HELM14.parse(code) : null;
+  if (!h){ el.innerHTML = ''; return false; }
+  const hex = HELM14.COLORS[h.c].hex, c1 = cam56Css(hex, 1), c2 = cam56Css(hex, 0.55), c3 = cam56Css(hex, 1.25), rub = '#101114';
+  const peak = (y, d)=> '<path d="M' + (50 - d) + ' 0 L' + (50 + d) + ' 0 L' + (50 + d - 5) + ' ' + (y*0.55).toFixed(2) + ' Q50 ' + (y*1.5).toFixed(2) + ' ' + (50 - d + 5) + ' ' + (y*0.55).toFixed(2) + ' Z" fill="url(#c56g)"/>'
+    + '<path d="M' + (50 - d + 5) + ' ' + (y*0.55).toFixed(2) + ' Q50 ' + (y*1.5).toFixed(2) + ' ' + (50 + d - 5) + ' ' + (y*0.55).toFixed(2) + '" fill="none" stroke="' + rub + '" stroke-width="0.7"/>';
+  let s = '<svg viewBox="0 0 100 56" preserveAspectRatio="none" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs>'
+    + '<linearGradient id="c56g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c2 + '"/><stop offset="0.7" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c3 + '"/></linearGradient>'
+    + '<linearGradient id="c56c" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="' + c2 + '"/><stop offset="0.75" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c3 + '"/></linearGradient></defs>';
+  if (h.s === 'full'){
+    // goggle frame: soft dark corners, then the peak and the vented chin bar
+    s += '<path d="M0 0 L22 0 Q4 6 3 22 L0 26 Z" fill="' + rub + '" opacity="0.82"/><path d="M100 0 L78 0 Q96 6 97 22 L100 26 Z" fill="' + rub + '" opacity="0.82"/>';
+    s += '<path d="M0 56 L0 38 Q3 47 16 51 L24 56 Z" fill="' + rub + '" opacity="0.82"/><path d="M100 56 L100 38 Q97 47 84 51 L76 56 Z" fill="' + rub + '" opacity="0.82"/>';
+    s += peak(5.2, 34);
+    s += '<path d="M22 56 L26 53.2 Q50 49.6 74 53.2 L78 56 Z" fill="url(#c56c)"/><path d="M26 53.2 Q50 49.6 74 53.2" fill="none" stroke="' + rub + '" stroke-width="0.6"/>';
+    for (let k = -2; k <= 2; k++) s += '<rect x="' + (49 + k*4.2).toFixed(1) + '" y="52.9" width="2" height="1.5" rx="0.5" fill="' + rub + '" opacity="0.85"/>';
+  } else if (h.s === 'trail') s += peak(3.6, 26);
+  else if (h.s === 'commuter') s += peak(2.2, 22);
+  else if (h.s === 'retro'){ s += '<rect x="0" y="0" width="100" height="56" fill="#3a2a1c" opacity="0.10"/><path d="M14 0 L86 0 Q50 3.2 14 0 Z" fill="' + c1 + '"/>'; }
+  else s += '<path d="M24 0 L76 0 Q50 2.2 24 0 Z" fill="' + c1 + '"/>';
+  el.innerHTML = s + '</svg>';
+  return true;
+}
+function cam56Frame(show){
+  const code = (typeof HELM14U !== 'undefined' && HELM14U.eqCode) || '';
+  if (show && code !== CAM56.key){ CAM56.key = code; CAM56.has = false; try { CAM56.has = cam56Build(code); } catch(e){ CAM56.err = 'frame: ' + (e && e.message || e); } }
+  const on = !!(show && CAM56.has);
+  if (on !== CAM56.shown && CAM56.el){ CAM56.el.style.opacity = on ? '1' : '0'; CAM56.shown = on; }
+}
+(function cam56Init(){
+  if (typeof updateCamera !== 'function') return;
+  const u0 = updateCamera;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  updateCamera = function(dt){
+    const r = u0.apply(this, arguments);
+    try { cam56Head(); } catch(e){ if (!CAM56.err) CAM56.err = String(e && e.message || e); }
+    return r;
+  };
+})();
+
+/* =========================================================================
+   HALLS56 -- Release 15.54: "make the indoor park have lights everywhere and make it so everywhere has jumps in the indoor
+   mountain bike park".
+     JUMPS EVERYWHERE   h56Jumps(): a line of jumps from a string of kinds (small / medium / big / mega tabletops, step-ups onto a
+                        platform, smooth humps and roller sets) -- every one rideable from both ends (no blind drops). The halls
+                        call it: indoor39 (each barn-theme block gets a dirt-jump line and a hump line between its pump track,
+                        skinnies and wall ride; every hall gets a jump line down its boulevard and along both long walls) and
+                        giga52 (the Mega Dome's empty floor: lanes of jumps along both walls, through the middle and round the
+                        giga bowl, each ending in a turn-round or a giga quarter).
+     LIGHTS EVERYWHERE  h56Pools(): a soft warm pool of light on the floor under EVERY ceiling lamp of a hall (one additive mesh per
+                        hall), so the whole floor reads as lit however far you look -- warm47's real lamp light (now up to ten
+                        lamps at once, was seven) still follows you. The Mega Dome's lamp grid is four times denser (giga52).
+   ?halls56=0 = no new jumps / pools. API: H56
+   ========================================================================= */
+var H56 = { on: !(typeof location !== 'undefined' && /[?&]halls56=0\b/.test(location.search || '')), mat:null, err:[], stats:{ jumps:0, lines:0, pools:0, pieces:0 } };
+/* a line of jumps. api = { bank(a, w, len, h, mat, deck), down(a, w, len, h, mat), flat(a0, a1, w, h, mat), wave(a, w, lam, n, amp, mat), cop(a, w, y) };
+   `a` = where the first jump starts along the line; kinds = one letter per jump; M = { main, alt, wood }; o = { run (flat between jumps),
+   jit(i) (extra run), max (stop before this arc length) }. Returns the arc length after the last jump. */
+function h56Jumps(api, a, kinds, w, M, o){
+  o = o || {};
+  const run = o.run === undefined ? 9 : o.run, LEN = { t:7.8, T:10.2, B:14.0, M:18.8, U:13.0, h:7, H:10, r:13.8 };
+  for (let i = 0; i < kinds.length; i++){
+    const c = kinds[i], m = (M.alt && i % 3 === 2) ? M.alt : M.main, L = LEN[c];
+    if (!L) continue;
+    if (o.max !== undefined && a + L > o.max) break;
+    if (c === 't'){ api.bank(a, w, 2.4, 0.7, m, 2.6); api.down(a + 5.0, w, 2.8, 0.7, m); }
+    else if (c === 'T'){ api.bank(a, w, 3.0, 1.1, m, 3.6); api.down(a + 6.6, w, 3.6, 1.1, m); }
+    else if (c === 'B'){ api.bank(a, w + 0.3, 4.0, 1.7, m, 5.0); api.down(a + 9.0, w + 0.3, 5.0, 1.7, m); }
+    else if (c === 'M'){ api.bank(a, w + 0.8, 5.2, 2.5, m, 7.0); api.down(a + 12.2, w + 0.8, 6.6, 2.5, m); }
+    else if (c === 'U'){ const mw = M.wood || m; api.bank(a, w, 3.2, 1.4, mw); api.flat(a + 3.2, a + 8.6, w, 1.4, mw); api.down(a + 8.6, w, 4.4, 1.4, mw); if (api.cop){ api.cop(a + 3.2, w, 1.4); api.cop(a + 8.6, w, 1.4); } }
+    else if (c === 'h') api.wave(a, w, 7, 1, 0.9, m);
+    else if (c === 'H') api.wave(a, w + 0.2, 10, 1, 1.5, m);
+    else if (c === 'r') api.wave(a, w, 4.6, 3, 0.5, m);
+    a += L + run + (o.jit ? o.jit(i) : 0);
+    H56.stats.jumps++;
+  }
+  H56.stats.lines++;
+  return a;
+}
+/* the pools of light under a hall's lamps (d = a warm47 hall def with d.pool = the pool's radius) */
+function h56PoolMat(){
+  if (!H56.mat) H56.mat = new T.MeshBasicMaterial({ vertexColors:true, transparent:true, depthWrite:false, blending:T.AdditiveBlending, fog:true });
+  return H56.mat;
+}
+function h56Pools(d){
+  if (!H56.on || !d || !d.lamps || !d.lamps.length || !d.pool) return null;
+  const R = d.pool, N = 18, pos = [], col = [], idx = [], y = d.F + (d.poolY || 0.10), c0 = d.poolC || [0.150, 0.098, 0.044];
+  const RING = [[0.34, 0.80], [0.68, 0.30], [1, 0]];
+  for (const L of d.lamps){
+    const b = pos.length/3; pos.push(L[0], y, L[2]); col.push(c0[0], c0[1], c0[2]);
+    for (let r = 0; r < RING.length; r++) for (let k = 0; k < N; k++){ const a = k/N*Math.PI*2, rr = R*RING[r][0], f = RING[r][1]; pos.push(L[0] + Math.sin(a)*rr, y, L[2] + Math.cos(a)*rr); col.push(c0[0]*f, c0[1]*f, c0[2]*f); }
+    for (let k = 0; k < N; k++){ const k1 = (k + 1) % N; idx.push(b, b + 1 + k, b + 1 + k1);
+      for (let r = 0; r + 1 < RING.length; r++){ const i0 = b + 1 + r*N, i1 = i0 + N; idx.push(i0 + k, i1 + k, i1 + k1, i0 + k, i1 + k1, i0 + k1); } }
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx);
+  const m = new T.Mesh(g, h56PoolMat());
+  m.castShadow = false; m.receiveShadow = false; m.renderOrder = 3; m.userData.noMerge = true; m.userData.h56Pools = d.id;
+  H56.stats.pools += d.lamps.length;
+  return m;
+}
+
+/* =========================================================================
+   BILL56 -- Release 15.54: "we need to add billboards around the map with ad spaces, add a ton".
+     A TON OF BILLBOARDS  along every asphalt road of the world outside the city blocks: big unipole boards beside the highway, two-post
+                          boards on the arterials, poster boards on the small roads -- one every few hundred metres, alternating
+                          sides, each angled at the riders coming towards it, two-faced. Deterministic (the same for every player).
+                          Clear of other roads, water, bridges, interchanges, towns' houses; the ground cover and the forest keep
+                          a gap round each one. Dusk City gets extra roof boards (bill56Roof, called by bldg12_city.js).
+     AD SPACES            32 ads in ONE atlas: the game's own made-up brands (the Workshop's part makers, the corner-shop snacks),
+                          places you can ride to (Mega Dome, Raven Ridge, Stunt Island ...), and plenty of open boards -- "YOUR AD
+                          HERE", "AD SPACE AVAILABLE" -- no real brands anywhere. bill56SetAds([{ t, s }...]) repaints the open
+                          boards with your own words.
+     CHEAP                per chunk the structures are one vertex-coloured soup on the parks' cloth material (merged with the
+                          rest) and the faces one mesh on the atlas material (the city's sign program: lit, glowing after dark).
+   ?bill56=0 = none. API: BILL56, bill56Plan(), bill56Roof(x, z), bill56SetAds(list)
+   ========================================================================= */
+var BILL56 = { on: !(typeof location !== 'undefined' && /[?&]bill56=0\b/.test(location.search || '')), planned:false, boards:[], byChunk:null, mat:null, tex:null, cv:null,
+  cols:4, rows:8, cell:[512, 256], geo:null, custom:null, err:[], stats:{ boards:0, built:0, roof:0, byKind:{} } };
+function bill56Try(name, fn){ try { return fn(); } catch(e){ if (BILL56.err.length < 6){ BILL56.err.push(name + ': ' + (e && e.message || e)); try { console.error('[bill56] ' + name, e); } catch(e2){} } } }
+/* ---------------------------------------------------------------- the ads */
+const BILL56_ADS = [
+  { t:'KICKFORM', s:'Scooters that send it.', bg:['#101a3a', '#1d3fae'], fg:'#ffffff', ac:'#ffd21f', art:'scoot' },
+  { t:'WHIPCRAFT', s:'Bars · Forks · Tailwhips', bg:['#f4c20d', '#f08a00'], fg:'#14110a', ac:'#14110a', art:'bars' },
+  { t:'RATTLECAGE', s:'BMX since day one.', bg:['#0b0b0d', '#2a2a30'], fg:'#ff3b30', ac:'#ffffff', art:'wheel' },
+  { t:'STREET VANDAL', s:'Pegs. Rails. Repeat.', bg:['#d6402f', '#8f1d14'], fg:'#fff4e0', ac:'#101010', art:'stripe' },
+  { t:'ROOTLINE', s:'Ride the roots.', bg:['#17361f', '#2f7d3c'], fg:'#f2f0d8', ac:'#ffb347', art:'mtn' },
+  { t:'GRANITE PEAK', s:'Built for the drop.', bg:['#27303b', '#5c6b7c'], fg:'#ffffff', ac:'#7fe0ff', art:'mtn' },
+  { t:'LOAMWORKS', s:'Dirt is good.', bg:['#5a3a1c', '#a8733a'], fg:'#fff3d6', ac:'#2b1a0a', art:'wheel' },
+  { t:'TALON FORGE', s:'Grip it.', bg:['#111111', '#383838'], fg:'#ff9f0a', ac:'#ff9f0a', art:'bolt' },
+  { t:'VELO ASTER', s:'Light. Fast. Gone.', bg:['#f5f5f2', '#d8dde3'], fg:'#12224a', ac:'#e23d3d', art:'speed' },
+  { t:'DIRTFORGE', s:'Throttle up.', bg:['#ff6a00', '#c93a00'], fg:'#ffffff', ac:'#1a0a00', art:'bolt' },
+  { t:'THROTTLE KINGS', s:'Kings of the hill.', bg:['#2a0d4a', '#6b2bd1'], fg:'#ffd60a', ac:'#ffd60a', art:'crown' },
+  { t:'VOLTRIDER', s:'Silent. Then gone.', bg:['#03262b', '#0a7f86'], fg:'#d6fffb', ac:'#c7ff3d', art:'bolt' },
+  { t:'VOLTKICK', s:'Charge. Kick. Go.', bg:['#c7ff3d', '#7fd21a'], fg:'#0b1a05', ac:'#0b1a05', art:'scoot' },
+  { t:'CITYSPARK', s:'Your city, electric.', bg:['#0e1b2e', '#274b7a'], fg:'#ffffff', ac:'#ffcf3d', art:'city' },
+  { t:'BELLAMOTO', s:'La dolce ride.', bg:['#e9e2cf', '#c9b991'], fg:'#7a1f1f', ac:'#1f5a3a', art:'wheel' },
+  { t:'VOLT', s:'ENERGY DRINK · Full send in a can', bg:['#0a0a0a', '#1b1b1b'], fg:'#c7ff3d', ac:'#c7ff3d', art:'can' },
+  { t:'COMBO GUM', s:'Chew. Combo. Repeat.', bg:['#ff5fa8', '#ff2d78'], fg:'#ffffff', ac:'#fff06a', art:'star' },
+  { t:'DUSK LINE', s:'RIDE EVERYTHING', bg:['#1a1030', '#ff6a3d'], fg:'#ffffff', ac:'#ffd21f', art:'sun' },
+  { t:'MEGA DOME', s:'The biggest indoor bike park · Dusk Greenbelt', bg:['#12305e', '#1f6fd6'], fg:'#ffffff', ac:'#ffcc00', art:'dome' },
+  { t:'THE WORKSHOP', s:'Build your dream ride.', bg:['#16171b', '#30333a'], fg:'#ffb347', ac:'#ffb347', art:'gear' },
+  { t:'RAVEN RIDGE', s:'BIKE PARK · Four trails, one ridge', bg:['#0f2a1a', '#1f5a36'], fg:'#ffffff', ac:'#ff9f0a', art:'mtn' },
+  { t:'STUNT ISLAND', s:'Giant ramps · Air bags · Take the bridge', bg:['#04364a', '#0aa0c8'], fg:'#ffffff', ac:'#ffe14d', art:'ramp' },
+  { t:'DUSK FM 99.5', s:'Beats for the streets', bg:['#2b0b3a', '#b3247a'], fg:'#ffffff', ac:'#7fe0ff', art:'wave' },
+  { t:'SPROCKET & CO', s:'Chains · Sprockets · Since forever', bg:['#f1ead9', '#d9cfb6'], fg:'#1c2a3a', ac:'#c63f2e', art:'gear' },
+  { t:'SLICE CITY', s:'Hot slices till late', bg:['#b3231a', '#e8442e'], fg:'#fff6dc', ac:'#ffd21f', art:'slice' },
+  { t:'WEAR A LID', s:'Dusk City rides safe.', bg:['#f2c230', '#f2c230'], fg:'#15171a', ac:'#15171a', art:'lid' },
+  { t:'HANGAR', s:'HARBOR POINT · Foam pits + resi', bg:['#22324a', '#3f6fb5'], fg:'#ffffff', ac:'#ff6a1e', art:'ramp' },
+  { t:'OLD MILL', s:'Hand-built BMX frames', bg:['#3a2a1c', '#6d5236'], fg:'#f4e6c8', ac:'#f4e6c8', art:'wheel' },
+  { space:1, t:'YOUR AD HERE', s:'DUSK OUTDOOR · 555-0142', bg:['#ffffff', '#e9edf1'], fg:'#15171a', ac:'#e23d3d' },
+  { space:1, t:'AD SPACE', s:'AVAILABLE · This board could be yours', bg:['#15171a', '#15171a'], fg:'#ffd21f', ac:'#ffd21f' },
+  { space:1, t:'THIS SPACE', s:'FOR RENT · DUSK OUTDOOR 555-0142', bg:['#1f6fd6', '#1f6fd6'], fg:'#ffffff', ac:'#ffffff' },
+  { space:1, t:'ADVERTISE HERE', s:'Thousands of riders pass every day', bg:['#f08a00', '#f4c20d'], fg:'#14110a', ac:'#14110a' }
+];
+function bill56Font(g, text, px, maxW, weight){
+  let f = px; g.font = (weight || '900') + ' ' + f + 'px "Arial Black", "Barlow Condensed", Impact, Arial, sans-serif';
+  while (g.measureText(text).width > maxW && f > 10){ f -= 2; g.font = (weight || '900') + ' ' + f + 'px "Arial Black", "Barlow Condensed", Impact, Arial, sans-serif'; }
+  return f;
+}
+/* small vector pictures (in a box x, y, w, h) */
+function bill56Art(g, kind, x, y, w, h, c1, c2){
+  const cx = x + w/2, cy = y + h/2, r = Math.min(w, h)/2;
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = c1; g.fillStyle = c1; g.lineWidth = Math.max(3, r*0.09);
+  const wheel = (wx, wy, wr)=>{ g.beginPath(); g.arc(wx, wy, wr, 0, 6.2832); g.stroke(); g.save(); g.lineWidth = Math.max(1, wr*0.05); for (let k = 0; k < 10; k++){ const a = k/10*6.2832; g.beginPath(); g.moveTo(wx, wy); g.lineTo(wx + Math.cos(a)*wr, wy + Math.sin(a)*wr); g.stroke(); } g.restore(); g.beginPath(); g.arc(wx, wy, wr*0.14, 0, 6.2832); g.fill(); };
+  if (kind === 'wheel') wheel(cx, cy, r*0.82);
+  else if (kind === 'scoot'){ wheel(x + w*0.2, y + h*0.8, r*0.2); wheel(x + w*0.8, y + h*0.8, r*0.2); g.lineWidth = r*0.12; g.beginPath(); g.moveTo(x + w*0.2, y + h*0.74); g.lineTo(x + w*0.72, y + h*0.74); g.lineTo(x + w*0.62, y + h*0.18); g.stroke(); g.beginPath(); g.moveTo(x + w*0.5, y + h*0.18); g.lineTo(x + w*0.76, y + h*0.18); g.stroke(); }
+  else if (kind === 'bars'){ g.lineWidth = r*0.14; g.beginPath(); g.moveTo(x + w*0.08, y + h*0.3); g.lineTo(x + w*0.3, y + h*0.3); g.lineTo(x + w*0.42, y + h*0.72); g.lineTo(x + w*0.58, y + h*0.72); g.lineTo(x + w*0.7, y + h*0.3); g.lineTo(x + w*0.92, y + h*0.3); g.stroke(); g.beginPath(); g.moveTo(x + w*0.36, y + h*0.5); g.lineTo(x + w*0.64, y + h*0.5); g.stroke(); }
+  else if (kind === 'mtn'){ g.beginPath(); g.moveTo(x, y + h*0.92); g.lineTo(x + w*0.36, y + h*0.2); g.lineTo(x + w*0.56, y + h*0.56); g.lineTo(x + w*0.7, y + h*0.36); g.lineTo(x + w, y + h*0.92); g.closePath(); g.fill(); g.fillStyle = c2; g.beginPath(); g.moveTo(x + w*0.36, y + h*0.2); g.lineTo(x + w*0.27, y + h*0.4); g.lineTo(x + w*0.36, y + h*0.36); g.lineTo(x + w*0.44, y + h*0.42); g.closePath(); g.fill(); }
+  else if (kind === 'bolt'){ g.beginPath(); g.moveTo(cx + r*0.2, y + h*0.04); g.lineTo(cx - r*0.5, cy + r*0.1); g.lineTo(cx - r*0.02, cy + r*0.1); g.lineTo(cx - r*0.3, y + h*0.96); g.lineTo(cx + r*0.55, cy - r*0.2); g.lineTo(cx + r*0.06, cy - r*0.2); g.closePath(); g.fill(); }
+  else if (kind === 'speed'){ for (let k = 0; k < 5; k++){ g.lineWidth = r*(0.16 - k*0.02); g.beginPath(); g.moveTo(x + w*(0.05 + k*0.06), y + h*(0.2 + k*0.15)); g.lineTo(x + w*(0.95 - k*0.1), y + h*(0.2 + k*0.15)); g.stroke(); } }
+  else if (kind === 'crown'){ g.beginPath(); g.moveTo(x + w*0.1, y + h*0.8); g.lineTo(x + w*0.06, y + h*0.28); g.lineTo(x + w*0.3, y + h*0.55); g.lineTo(cx, y + h*0.15); g.lineTo(x + w*0.7, y + h*0.55); g.lineTo(x + w*0.94, y + h*0.28); g.lineTo(x + w*0.9, y + h*0.8); g.closePath(); g.fill(); }
+  else if (kind === 'city'){ const B = [0.5, 0.8, 0.35, 0.95, 0.6, 0.42, 0.7]; for (let k = 0; k < B.length; k++){ g.fillRect(x + w*(0.04 + k*0.135), y + h*(1 - B[k]*0.9), w*0.11, h*B[k]*0.9); } g.fillStyle = c2; for (let k = 0; k < B.length; k++) for (let j = 0; j < 4; j++) if ((k + j) % 2) g.fillRect(x + w*(0.065 + k*0.135), y + h*(1 - B[k]*0.9) + 8 + j*16, w*0.06, 7); }
+  else if (kind === 'can'){ g.fillRect(cx - r*0.36, y + h*0.12, r*0.72, h*0.76); g.fillStyle = c2; g.fillRect(cx - r*0.36, y + h*0.34, r*0.72, h*0.2); g.fillStyle = c1; g.beginPath(); g.ellipse(cx, y + h*0.12, r*0.36, r*0.1, 0, 0, 6.2832); g.fill(); }
+  else if (kind === 'star'){ g.beginPath(); for (let k = 0; k < 10; k++){ const a = -1.5708 + k*0.6283, rr = k % 2 ? r*0.4 : r*0.92; g.lineTo(cx + Math.cos(a)*rr, cy + Math.sin(a)*rr); } g.closePath(); g.fill(); }
+  else if (kind === 'sun'){ g.beginPath(); g.arc(cx, y + h*0.86, r*0.78, Math.PI, 0); g.fill(); g.lineWidth = r*0.07; for (let k = 0; k < 7; k++){ const a = Math.PI + (k + 0.5)/7*Math.PI; g.beginPath(); g.moveTo(cx + Math.cos(a)*r*0.9, y + h*0.86 + Math.sin(a)*r*0.9); g.lineTo(cx + Math.cos(a)*r*1.12, y + h*0.86 + Math.sin(a)*r*1.12); g.stroke(); } }
+  else if (kind === 'dome'){ g.beginPath(); g.moveTo(x + w*0.04, y + h*0.86); g.quadraticCurveTo(cx, y - h*0.1, x + w*0.96, y + h*0.86); g.closePath(); g.fill(); g.fillStyle = c2; g.fillRect(cx - w*0.07, y + h*0.6, w*0.14, h*0.26); }
+  else if (kind === 'gear'){ g.beginPath(); for (let k = 0; k < 24; k++){ const a = k/24*6.2832, rr = (k % 2 ? 0.9 : 0.68)*r; g.lineTo(cx + Math.cos(a - 0.06)*rr, cy + Math.sin(a - 0.06)*rr); g.lineTo(cx + Math.cos(a + 0.06)*rr, cy + Math.sin(a + 0.06)*rr); } g.closePath(); g.fill(); g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(cx, cy, r*0.3, 0, 6.2832); g.fill(); g.globalCompositeOperation = 'source-over'; }
+  else if (kind === 'ramp'){ g.beginPath(); g.moveTo(x + w*0.04, y + h*0.9); g.lineTo(x + w*0.5, y + h*0.9); g.quadraticCurveTo(x + w*0.5, y + h*0.4, x + w*0.14, y + h*0.34); g.lineTo(x + w*0.04, y + h*0.34); g.closePath(); g.fill(); g.lineWidth = r*0.08; g.setLineDash([r*0.16, r*0.14]); g.beginPath(); g.moveTo(x + w*0.5, y + h*0.36); g.quadraticCurveTo(x + w*0.72, y + h*0.02, x + w*0.95, y + h*0.5); g.stroke(); g.setLineDash([]); }
+  else if (kind === 'wave'){ g.lineWidth = r*0.1; for (let k = 0; k < 9; k++){ const hh = h*(0.2 + 0.7*Math.abs(Math.sin(k*1.7 + 0.6))); g.beginPath(); g.moveTo(x + w*(0.08 + k*0.105), cy - hh/2); g.lineTo(x + w*(0.08 + k*0.105), cy + hh/2); g.stroke(); } }
+  else if (kind === 'slice'){ g.beginPath(); g.moveTo(x + w*0.1, y + h*0.16); g.lineTo(x + w*0.9, y + h*0.3); g.lineTo(x + w*0.36, y + h*0.94); g.closePath(); g.fill(); g.fillStyle = c2; for (const p of [[0.4, 0.38], [0.6, 0.42], [0.42, 0.62]]){ g.beginPath(); g.arc(x + w*p[0], y + h*p[1], r*0.11, 0, 6.2832); g.fill(); } }
+  else if (kind === 'lid'){ g.beginPath(); g.arc(cx, cy + r*0.16, r*0.84, Math.PI, 0); g.lineTo(cx + r*1.0, cy + r*0.3); g.lineTo(cx - r*0.84, cy + r*0.3); g.closePath(); g.fill(); g.fillStyle = c2; for (let k = -1; k <= 1; k++) g.fillRect(cx + k*r*0.36 - r*0.08, cy - r*0.44, r*0.16, r*0.34); }
+  else if (kind === 'stripe'){ g.lineWidth = r*0.22; for (let k = 0; k < 4; k++){ g.beginPath(); g.moveTo(x + w*(0.1 + k*0.24), y + h*0.95); g.lineTo(x + w*(0.3 + k*0.24), y + h*0.05); g.stroke(); } }
+  g.restore();
+}
+function bill56PaintAd(g, A, k, W, H){
+  g.save(); g.beginPath(); g.rect(0, 0, W, H); g.clip();
+  const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, A.bg[0]); gr.addColorStop(1, A.bg[1]); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.textBaseline = 'middle';
+  if (A.space){
+    // an open board: a plain sheet with a dashed "your ad goes here" frame
+    g.strokeStyle = A.ac; g.lineWidth = 5; g.setLineDash([22, 12]); g.strokeRect(20, 20, W - 40, H - 40); g.setLineDash([]);
+    g.fillStyle = A.fg; g.textAlign = 'center'; bill56Font(g, A.t, 86, W - 90); g.fillText(A.t, W/2, H*0.43);
+    bill56Font(g, A.s, 27, W - 100, '700'); g.globalAlpha = 0.85; g.fillText(A.s, W/2, H*0.74); g.globalAlpha = 1;
+  } else {
+    const lay = k % 3;
+    if (lay === 0){ // art on the right, words on the left
+      g.globalAlpha = 0.18; g.fillStyle = A.ac; g.beginPath(); g.moveTo(W*0.56, 0); g.lineTo(W, 0); g.lineTo(W, H); g.lineTo(W*0.44, H); g.closePath(); g.fill(); g.globalAlpha = 1;
+      bill56Art(g, A.art, W*0.62, H*0.14, W*0.33, H*0.72, A.ac, A.bg[0]);
+      g.fillStyle = A.fg; g.textAlign = 'left'; bill56Font(g, A.t, 70, W*0.56); g.fillText(A.t, 26, H*0.4);
+      g.fillStyle = A.ac; g.fillRect(26, H*0.58, W*0.16, 6);
+      g.fillStyle = A.fg; bill56Font(g, A.s, 25, W*0.56, '700'); g.globalAlpha = 0.92; g.fillText(A.s, 26, H*0.74); g.globalAlpha = 1;
+    } else if (lay === 1){ // a band across, art on the left
+      g.fillStyle = A.ac; g.globalAlpha = 0.16; g.fillRect(0, H*0.2, W, H*0.6); g.globalAlpha = 1;
+      bill56Art(g, A.art, W*0.04, H*0.16, W*0.28, H*0.68, A.ac, A.bg[1]);
+      g.fillStyle = A.fg; g.textAlign = 'left'; bill56Font(g, A.t, 66, W*0.6); g.fillText(A.t, W*0.36, H*0.42);
+      bill56Font(g, A.s, 24, W*0.6, '700'); g.globalAlpha = 0.92; g.fillText(A.s, W*0.36, H*0.72); g.globalAlpha = 1;
+    } else { // centred, big
+      g.globalAlpha = 0.22; bill56Art(g, A.art, W*0.3, H*0.05, W*0.4, H*0.9, A.ac, A.bg[1]); g.globalAlpha = 1;
+      g.fillStyle = A.fg; g.textAlign = 'center'; bill56Font(g, A.t, 84, W - 60); g.fillText(A.t, W/2, H*0.42);
+      g.fillStyle = A.ac; g.fillRect(W/2 - 60, H*0.6, 120, 6);
+      g.fillStyle = A.fg; bill56Font(g, A.s, 26, W - 80, '700'); g.fillText(A.s, W/2, H*0.78);
+    }
+  }
+  // the sheet's edge + a little weathering
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
+  g.restore();
+}
+function bill56Atlas(){
+  if (BILL56.tex) return BILL56.tex;
+  const small = (typeof MOB !== 'undefined' && MOB && MOB.on) || (typeof GFX !== 'undefined' && GFX === 'off');
+  const CW = small ? 256 : 512, CH = small ? 128 : 256, cv = document.createElement('canvas'); cv.width = BILL56.cols*CW; cv.height = BILL56.rows*CH;
+  BILL56.cv = cv; BILL56.cell = [CW, CH];
+  bill56Repaint();
+  const tx = new T.CanvasTexture(cv); tx.encoding = T.sRGBEncoding; tx.anisotropy = typeof MAXANISO === 'number' ? Math.min(8, MAXANISO) : 4;
+  BILL56.tex = tx;
+  return tx;
+}
+function bill56Repaint(){
+  const cv = BILL56.cv; if (!cv) return;
+  const g = cv.getContext('2d'), CW = BILL56.cell[0], CH = BILL56.cell[1];
+  let ci = 0;
+  for (let k = 0; k < BILL56.cols*BILL56.rows; k++){
+    let A = BILL56_ADS[k % BILL56_ADS.length];
+    if (A.space && BILL56.custom && BILL56.custom.length){ const c = BILL56.custom[ci++ % BILL56.custom.length]; A = Object.assign({}, A, { space:0, t:String(c.t || '').slice(0, 22).toUpperCase(), s:String(c.s || '').slice(0, 44), art:c.art || 'star', bg:c.bg || A.bg, fg:c.fg || A.fg, ac:c.ac || A.ac }); }
+    g.save(); g.translate((k % BILL56.cols)*CW, Math.floor(k/BILL56.cols)*CH); g.scale(CW/512, CH/256);
+    bill56Try('ad ' + k, ()=> bill56PaintAd(g, A, k, 512, 256));
+    g.restore();
+  }
+  if (BILL56.tex) BILL56.tex.needsUpdate = true;
+}
+/* your own words on the open boards: bill56SetAds([{ t:'TAYLAN BIKES', s:'Fastest in Dusk City' }, ...]) ; bill56SetAds(null) = open again */
+function bill56SetAds(list){ BILL56.custom = Array.isArray(list) && list.length ? list.slice(0, 8) : null; bill56Repaint(); return BILL56.custom ? BILL56.custom.length : 0; }
+function bill56Mat(){
+  if (BILL56.mat) return BILL56.mat;
+  const tx = bill56Atlas();
+  const m = S({ map:tx, emissiveMap:tx, emissive:C(0xffffff), emissiveIntensity:0.22, roughness:0.6, metalness:0.05, side:T.DoubleSide });
+  patchWorldShading(m, {});
+  BILL56.mat = m;
+  return m;
+}
+/* uv rect of ad k (a 2 px inset: no bleeding between sheets) */
+function bill56UV(k){
+  const c = BILL56.cols, r = BILL56.rows, W = c*BILL56.cell[0], H = r*BILL56.cell[1], cx = k % c, cy = Math.floor(k/c) % r;
+  return [cx/c + 2/W, 1 - (cy + 1)/r + 2/H, (cx + 1)/c - 2/W, 1 - cy/r - 2/H];
+}
+function bill56Hash(a, b){ let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; }
+/* ---------------------------------------------------------------- the plan: boards along the roads */
+const BILL56_KIND = {
+  big:   { w:12, h:6,   clear:8.2, off:15, step:215 },      // unipole, highways
+  mid:   { w:8,  h:4,   clear:4.6, off:9,  step:170 },      // two posts, arterials
+  small: { w:5,  h:2.5, clear:2.5, off:6,  step:190 }       // poster board, small roads
+};
+function bill56Plan(){
+  if (BILL56.planned) return BILL56.boards;
+  if (!BILL56.on || typeof ROADS === 'undefined' || !ROADS.length || typeof rgRoadAt !== 'function') return BILL56.boards;
+  BILL56.planned = true;
+  const out = BILL56.boards, ic = (typeof REGION_PLAN !== 'undefined' && REGION_PLAN.highway && REGION_PLAN.highway.interchanges) || [];
+  const NA = BILL56_ADS.length, spaces = [], brands = [];
+  for (let k = 0; k < NA; k++) (BILL56_ADS[k].space ? spaces : brands).push(k);
+  let seq = 0;
+  for (let ri = 0; ri < ROADS.length; ri++){
+    const r = ROADS[ri];
+    if (!r || r.surface !== 'asphalt' || !r.pl || !r.pts || r.kind === 'ramp' || r.kind === 'trail' || r.kind === 'path' || r.kind === 'bike') continue;
+    const len = r.pl.len; if (!(len > 240)) continue;
+    const K = BILL56_KIND[r.kind === 'highway' ? 'big' : r.kind === 'arterial' ? 'mid' : 'small'], kn = r.kind === 'highway' ? 'big' : r.kind === 'arterial' ? 'mid' : 'small';
+    const R = isl33Rnd(5600 + ri*131);
+    let dir = R() < 0.5 ? 1 : -1;
+    for (let s = 110 + R()*140; s < len - 100; s += K.step*(0.75 + R()*0.5)){
+      dir = -dir;                                                        // the riders this board looks at: it stands on THEIR right, so the boards alternate sides
+      let p = null;
+      for (const ds of [0, 30, -30, 60, -60, 95]){
+        const ss = s + ds; if (ss < 60 || ss > len - 60) continue;
+        const q = rgRoadAt(r, ss, (r.half || (r.width/2 + (r.shoulder || 0))) + K.off, dir);
+        if (q.bridge) continue;
+        if (typeof waterDepthAt === 'function' && waterDepthAt(q.x, q.z) > 0) continue;
+        if (ic.some(c=> Math.hypot(c.x - q.x, c.z - q.z) < 230)) continue;
+        if (typeof rgClearOfRoads === 'function' && !rgClearOfRoads(q.x, q.z, r, K.w*0.5 + 4)) continue;
+        const a = typeof regionAt === 'function' ? regionAt(q.x, q.z) : null;
+        if (a && (a.kind === 'water' || a.kind === 'city' || a.kind === 'town' || a.kind === 'suburb' || a.id === 'city' || a.id === 'sea' || a.id === 'river')) continue;
+        if (typeof mega49InHall === 'function' && (Math.abs(q.x - 3750) < 640 && Math.abs(q.z - 1000) < 420)) continue;      // the Mega Dome's site
+        if (typeof IND39 !== 'undefined' && IND39.halls && IND39.halls.some(H=> Math.abs(q.x - H.x) < 150 && Math.abs(q.z - H.z) < 150)) continue;
+        if (out.some(b=> Math.abs(b.x - q.x) < 48 && Math.abs(b.z - q.z) < 48)) continue;
+        // level enough ground for the legs
+        const y0 = landY(q.x, q.z); if (Math.abs(landY(q.x + 4, q.z) - y0) > 2.2 || Math.abs(landY(q.x, q.z + 4) - y0) > 2.2) continue;
+        p = q; p.s = ss; p.y = y0; p.reg = a ? a.kind : ''; break;
+      }
+      if (!p) continue;
+      // the front face looks back down the road at the riders coming (direction dir), turned a little towards the road
+      const tx = Math.sin(p.head), tz = Math.cos(p.head), ca = Math.cos(0.32), sa = Math.sin(0.32);      // the way those riders travel; the road is on the board's (tz, -tx) side
+      const yaw = Math.atan2(-tx*ca + tz*sa, -tz*ca - tx*sa);
+      const h1 = bill56Hash(Math.round(p.x), Math.round(p.z));
+      const open = (h1 % 100) < 30;                                      // three boards in ten are open ad space
+      const f = open ? spaces[(h1 >>> 8) % spaces.length] : brands[(h1 >>> 8) % brands.length];
+      const h2 = bill56Hash(Math.round(p.z) + 7, Math.round(p.x) - 3), open2 = (h2 % 100) < 30;
+      let b = open2 ? spaces[(h2 >>> 8) % spaces.length] : brands[(h2 >>> 8) % brands.length];
+      if (b === f) b = brands[(b + 5) % brands.length];
+      out.push({ id:seq++, x:p.x, z:p.z, y:p.y, yaw, kind:kn, f, b, reg:p.reg, road:r.id });
+      BILL56.stats.byKind[kn] = (BILL56.stats.byKind[kn] || 0) + 1;
+    }
+  }
+  BILL56.stats.boards = out.length;
+  // by chunk
+  const M = BILL56.byChunk = new Map(), S0 = RG.chunk;
+  for (const b of out){ const key = Math.floor(b.x/S0) + ',' + Math.floor(b.z/S0); let L = M.get(key); if (!L) M.set(key, L = []); L.push(b); }
+  // the ground cover + the forest keep clear
+  bill56Try('mask', ()=>{ if (typeof regionAddGroundMask === 'function') regionAddGroundMask((ch, x, z)=>{ const L = ch && M.get(ch.i + ',' + ch.j); if (!L) return false; for (let i = 0; i < L.length; i++){ const b = L[i], d = BILL56_KIND[b.kind].w*0.5 + 3; if (Math.abs(x - b.x) < d && Math.abs(z - b.z) < d) return true; } return false; }); });
+  return out;
+}
+function bill56NoTrees(){
+  if (BILL56.noTree || !BILL56.planned) return;
+  try { if (typeof FR === 'undefined' || !FR.planned || typeof FR_NOTREE === 'undefined') return;
+    for (const b of BILL56.boards) if (b.reg === 'forest' || b.reg === 'mountain'){ const d = BILL56_KIND[b.kind].w*0.5 + 5; FR_NOTREE.push([b.x - d, b.z - d, b.x + d, b.z + d]); }
+    BILL56.noTree = true; } catch(e){}
+}
+/* ---------------------------------------------------------------- building one chunk's boards */
+function bill56Struct(S0, b){
+  const K = BILL56_KIND[b.kind], W = K.w, H = K.h, c = Math.cos(b.yaw), s = Math.sin(b.yaw), y0 = b.y - 0.4, top = b.y + K.clear + H;
+  const bx = (lx, ly, lz, w, h, d, hex)=> isl33Box(S0, b.x + lx*c + lz*s, ly, b.z - lx*s + lz*c, w, h, d, b.yaw, hex);
+  const steel = 0x7d8791, dark = 0x23272c, trim = 0xd9dee4;
+  if (b.kind === 'big'){
+    bx(0, y0, 0, 1.0, K.clear + H*0.55 + 0.4, 1.0, steel);                                   // the unipole
+    bx(0, b.y + K.clear + H*0.35, 0, W*0.7, 0.5, 0.7, steel);                                // the head beam
+    for (const lx of [-W*0.33, 0, W*0.33]) bx(lx, b.y + K.clear, 0, 0.22, H, 0.5, 0x5d6670);
+  } else if (b.kind === 'mid'){
+    for (const lx of [-W*0.34, W*0.34]) bx(lx, y0, 0, 0.36, K.clear + H + 0.4, 0.36, steel);
+    bx(0, b.y + K.clear*0.55, 0, W*0.68, 0.16, 0.16, 0x5d6670);
+  } else {
+    for (const lx of [-W*0.4, W*0.4]) bx(lx, y0, 0, 0.2, K.clear + H + 0.4, 0.2, 0x4c535b);
+  }
+  // the panel (two faces 0.32 m apart) + its frame
+  const hd = b.kind === 'small' ? 0.1 : 0.16;
+  bx(0, b.y + K.clear, 0, W, H, hd*2, dark);
+  for (const sz of [-1, 1]){
+    bx(0, top - 0.02, sz*hd, W + 0.3, 0.16, 0.1, trim); bx(0, b.y + K.clear - 0.14, sz*hd, W + 0.3, 0.16, 0.1, trim);
+    for (const lx of [-W/2 - 0.07, W/2 + 0.07]) bx(lx, b.y + K.clear - 0.14, sz*hd, 0.16, H + 0.28, 0.1, trim);
+    if (b.kind !== 'small'){
+      const cy = b.y + K.clear - 0.55, cz = sz*(hd + 0.62);
+      bx(0, cy, cz, W*0.96, 0.07, 0.8, 0x3a4047);                                              // the catwalk
+      bx(0, cy + 0.95, sz*(hd + 0.98), W*0.96, 0.05, 0.05, 0x8b939c);                          // its rail
+      for (let k = 0; k <= 4; k++) bx(-W*0.48 + k*W*0.24, cy, sz*(hd + 0.98), 0.05, 0.95, 0.05, 0x8b939c);
+      const n = b.kind === 'big' ? 4 : 3;
+      for (let k = 0; k < n; k++){ const lx = -W*0.36 + k*(W*0.72/(n - 1)); bx(lx, cy + 0.08, sz*(hd + 1.25), 0.07, 0.07, 1.1, 0x2a2f34); bx(lx, cy + 0.1, sz*(hd + 1.85), 0.5, 0.16, 0.28, 0x15171a); }   // light arms
+    }
+  }
+}
+function bill56Faces(P, b){
+  const K = BILL56_KIND[b.kind], W = K.w, H = K.h, c = Math.cos(b.yaw), s = Math.sin(b.yaw), yb = b.y + K.clear, e = (b.kind === 'small' ? 0.1 : 0.16) + 0.012;
+  for (const [sz, ad] of [[1, b.f], [-1, b.b]]){
+    const uv = bill56UV(ad), n0 = P.p.length/3;
+    for (const [lx, ly, u, v] of [[-W/2*sz, 0, uv[0], uv[1]], [W/2*sz, 0, uv[2], uv[1]], [W/2*sz, H, uv[2], uv[3]], [-W/2*sz, H, uv[0], uv[3]]]){
+      P.p.push(b.x + lx*c + sz*e*s, yb + ly, b.z - lx*s + sz*e*c); P.n.push(sz*s, 0, sz*c); P.uv.push(u, v);
+    }
+    P.i.push(n0, n0 + 1, n0 + 2, n0, n0 + 2, n0 + 3);
+  }
+}
+function* bill56Gen(ch){
+  if (!BILL56.on) return;
+  if (!BILL56.planned) bill56Try('plan', ()=> bill56Plan());
+  bill56NoTrees();
+  const L = BILL56.byChunk && BILL56.byChunk.get(ch.i + ',' + ch.j);
+  if (!L || !L.length) return;
+  const S0 = isl33Soup(), P = { p:[], n:[], uv:[], i:[] };
+  for (const b of L){ bill56Try('board', ()=>{ bill56Struct(S0, b); bill56Faces(P, b); }); BILL56.stats.built++; }
+  yield;
+  bill56Try('mesh', ()=>{
+    const m1 = isl33SoupMesh(S0, PK_MAT.cloth); m1.castShadow = true; ch.addMesh(m1);
+    const G = new T.BufferGeometry();
+    G.setAttribute('position', new T.Float32BufferAttribute(P.p, 3)); G.setAttribute('normal', new T.Float32BufferAttribute(P.n, 3)); G.setAttribute('uv', new T.Float32BufferAttribute(P.uv, 2)); G.setIndex(P.i);
+    const m2 = new T.Mesh(G, bill56Mat()); m2.castShadow = false; m2.receiveShadow = false; ch.addMesh(m2);
+  });
+}
+/* Dusk City's roofs: a few more boards (bldg12_city.js asks per building; 0 = no, else a hash for the face + the ad) */
+function bill56Roof(x, z){
+  if (typeof BILL56 === 'undefined' || !BILL56 || !BILL56.on) return 0;
+  const h = bill56Hash(Math.round(x*2), Math.round(z*2));
+  return (h % 100) < 16 ? (h >>> 7) | 1 : 0;
+}
+/* the plane geometry of an ad for the city's instanced props (lazy: the atlas is painted on first use) */
+function bill56CityGeo(k){
+  const G = BILL56.geo || (BILL56.geo = []);
+  if (!G[k]){ const uv = bill56UV(k), g2 = new T.PlaneGeometry(1, 1), a = g2.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, uv[0] + a.getX(i)*(uv[2] - uv[0]), uv[1] + a.getY(i)*(uv[3] - uv[1])); G[k] = g2; }
+  return G[k];
+}
+(function bill56Init(){
+  if (!BILL56.on) return;
+  if (typeof streamAddBuilder === 'function') streamAddBuilder('bill56', bill56Gen, { order:17 });
+  // lit after dark like the city's signs (their glow follows the street lamps)
+  if (typeof addFrameHook === 'function') addFrameHook(function bill56Glow(){
+    const m = BILL56.mat; if (!m) return;
+    const src = (typeof W2_SIGN !== 'undefined' && W2_SIGN.mat) ? W2_SIGN.mat.emissiveIntensity : 0.3;
+    const v = 0.2 + Math.max(0, src - 0.3)*0.5; if (Math.abs(m.emissiveIntensity - v) > 0.01) m.emissiveIntensity = v;
+  });
+})();
+
+/* =========================================================================
+   WS56 -- Release 15.55: "the workshop sucks" -> big, simple, quick (see mods/ws56.css for the look).
+     - opens straight on the BUILD screen of the ride you are on (it used to open on a list)
+     - three big tabs: Build, Shop, My builds; Showroom / Online / Parts bin sit behind "More"
+     - the build screen's button row: Random, Undo, Save, a "..." for the rest (other frame, share, publish), and a big RIDE IT
+     - the first empty slot of a stock ride is picked for you (wheels), so there is something to tap at once
+   Nothing of the Workshop's data or logic changes: this only re-labels, re-orders and re-sizes ws48's own controls.
+   ?ws56=0 = the old layout. API: WS56
+   ========================================================================= */
+const WS56 = { on: !/[?&]ws56=0\b/.test(location.search), err:'', more:false, dots:false };
+function ws56Tabs(){
+  const root = typeof WSU !== 'undefined' ? WSU.dom : null; if (!root || root.ws56Tabs) return;
+  root.ws56Tabs = true; root.classList.add('ws56');
+  const bar = root.querySelector('.wsTabs'); if (!bar) return;
+  const by = {}; bar.querySelectorAll('[data-tab]').forEach(b=> by[b.getAttribute('data-tab')] = b);
+  const LBL = { edit:'Build', market:'Shop', builds:'My builds', show:'Showroom', online:'Online', bin:'Parts bin' };
+  ['edit', 'market', 'builds'].forEach(k=>{ if (by[k]){ by[k].textContent = LBL[k]; bar.appendChild(by[k]); } });
+  const more = document.createElement('button'); more.type = 'button'; more.className = 'ws56MoreB'; more.textContent = 'More'; more.setAttribute('aria-expanded', 'false');
+  bar.appendChild(more);
+  ['show', 'online', 'bin'].forEach(k=>{ if (by[k]){ by[k].textContent = LBL[k]; by[k].classList.add('ws56Sec'); bar.appendChild(by[k]); } });
+  more.onclick = ()=>{ WS56.more = !WS56.more; bar.classList.toggle('ws56More', WS56.more); more.setAttribute('aria-expanded', WS56.more ? 'true' : 'false'); try { if (typeof wuSfx === 'function') wuSfx('tab'); } catch(e){} };
+}
+/* the build screen's button row */
+function ws56Top(){
+  const T = document.getElementById('wsEdTop'); if (!T) return;
+  const B = T.querySelector('.wsTopB'); if (!B || B.ws56) return;
+  B.ws56 = true;
+  const g = id=> document.getElementById(id);
+  const shuf = g('wsEdShuf'), undo = g('wsEdUndo'), save = g('wsEdSave'), ride = g('wsEdRide');
+  if (shuf){ shuf.textContent = 'Random'; shuf.title = 'Random parts you own'; }
+  if (save && /as new/i.test(save.textContent)) save.textContent = 'Save copy';
+  // everything that is not Random / Undo / Save / Buy / Wear / Ride goes behind the dots
+  const keep = new Set(['wsEdShuf', 'wsEdUndo', 'wsEdSave', 'wsEdBuyF', 'wsEdBuyAll', 'wsEdWear', 'wsEdRide']);
+  let hidden = 0;
+  Array.prototype.slice.call(B.children).forEach(el=>{ if (!keep.has(el.id)){ el.classList.add('ws56Sec'); hidden++; } });
+  if (hidden){
+    const d = document.createElement('button'); d.type = 'button'; d.className = 'wsBtn ws56Dots'; d.title = 'More: other frame, share, publish'; d.setAttribute('aria-label', 'More'); d.textContent = '⋯';
+    d.onclick = ()=>{ WS56.dots = !WS56.dots; B.classList.toggle('ws56More', WS56.dots); };
+    if (ride) B.insertBefore(d, ride); else B.appendChild(d);
+    B.classList.toggle('ws56More', WS56.dots);
+  }
+  if (shuf && undo && shuf.nextSibling !== undo) B.insertBefore(shuf, B.firstChild);
+}
+(function ws56Init(){
+  if (!WS56.on) return;
+  try {
+    if (typeof openWorkshop === 'function'){
+      const o0 = openWorkshop;
+      // eslint-disable-next-line no-global-assign, no-func-assign
+      openWorkshop = function(o){
+        o = o || {};
+        // straight to the build screen of the ride you are on
+        if (!o.build && !o.veh && !o.tab && typeof FLEET_CUR !== 'undefined' && FLEET_CUR) o = Object.assign({}, o, { veh:FLEET_CUR });
+        const r = o0.call(this, o);
+        try { ws56Tabs(); document.documentElement.classList.add('ws56Open'); if (o.veh || o.build) ws56Top(); } catch(e){ WS56.err = 'open: ' + (e && e.message || e); }
+        return r;
+      };
+    }
+    if (typeof closeWorkshop === 'function'){
+      const c0 = closeWorkshop;
+      // eslint-disable-next-line no-global-assign, no-func-assign
+      closeWorkshop = function(){ const r = c0.apply(this, arguments); try { document.documentElement.classList.remove('ws56Open'); } catch(e){} return r; };
+    }
+    if (typeof wuEdTop === 'function'){
+      const t0 = wuEdTop;
+      // eslint-disable-next-line no-global-assign, no-func-assign
+      wuEdTop = function(){ const r = t0.apply(this, arguments); try { ws56Top(); } catch(e){ WS56.err = 'top: ' + (e && e.message || e); } return r; };
+    }
+  } catch(e){ WS56.err = String(e && e.message || e); }
+})();
+
+/* =========================================================================
+   COOL56 -- Release 15.54: "make it so it does not make your laptop overheat".
+   A computer drew as many frames as its screen could show, all the time: 144 a second on a 144 Hz laptop, and full speed behind the
+   pause screen, on the main menu, and with the game left in the background. Now (the setting "Keep my computer cool", on by default):
+     riding            at most 60 frames a second (a 60 Hz screen shows no difference; a 144 Hz gaming laptop does well under half the work)
+     not riding        the main menu, the pause screen, the results, or the window not in front: 30 a second
+     "Coolest"         30 a second while riding too, 20 otherwise (for a laptop that still runs hot)
+   A frame cap you picked in the graphics settings still counts when it is lower. Nothing about the picture changes: no resolution
+   or detail is taken away. ?cool56=0 = off. API: COOL56, cool56Cap()
+   ========================================================================= */
+const COOL56 = { on: !/[?&]cool56=0\b/.test(location.search), mode:'auto', next:0, cap:0, err:'' };
+function cool56Cap(){
+  const user = (typeof GFXP !== 'undefined' && GFXP.fpsCap > 0) ? GFXP.fpsCap | 0 : 0;
+  if (!COOL56.on || COOL56.mode === 'off') return user;
+  let idle = typeof GAME === 'undefined' || GAME !== 'play';
+  if (!idle){ try { if (typeof document.hasFocus === 'function' && !document.hasFocus()) idle = true; } catch(e){} }
+  // the garage and the Workshop are for looking closely at a turning bike: they keep the riding rate
+  if (idle){ try { if ((typeof GARAGE !== 'undefined' && GARAGE.open) || (typeof WS48 !== 'undefined' && WS48.open)) idle = false; } catch(e){} }
+  const cool = COOL56.mode === 'cool', cap = idle ? (cool ? 20 : 30) : (cool ? 30 : 60);
+  return user > 0 ? Math.min(user, cap) : cap;
+}
+(function cool56Init(){
+  if (!COOL56.on) return;
+  try {
+    if (typeof registerSetting === 'function') registerSetting({ id:'cool56', label:'Keep my computer cool', group:'view', type:'choice', def:'auto',
+      options:[{ v:'auto', label:'On', hint:'Up to 60 frames a second riding, 30 on menus and the pause screen: less heat and fan noise, the same picture' },
+               { v:'cool', label:'Coolest', hint:'30 frames a second riding, 20 on menus: for a laptop that still runs hot' },
+               { v:'off', label:'Off', hint:'As many frames as the screen can show, all the time' }],
+      onChange(v){ COOL56.mode = (v === 'cool' || v === 'off') ? v : 'auto'; COOL56.next = 0; } });
+  } catch(e){ COOL56.err = 'setting: ' + (e && e.message || e); }
+  if (typeof gfxSkipFrame !== 'function') return;
+  const g0 = gfxSkipFrame;
+  // eslint-disable-next-line no-global-assign, no-func-assign
+  gfxSkipFrame = function(now){
+    let cap = 0;
+    try { cap = cool56Cap(); } catch(e){ return g0.apply(this, arguments); }
+    COOL56.cap = cap;
+    if (!(cap > 0)){ COOL56.next = 0; return false; }
+    const iv = 1000/cap;
+    if (!COOL56.next || Math.abs(now - COOL56.next) > iv*3) COOL56.next = now;        // first frame / after a stall or a hidden tab
+    if (now < COOL56.next - 1.0) return true;                                        // 1 ms of slack for vsync timestamp jitter
+    COOL56.next += iv;
+    return false;
+  };
 })();
 
 /*@@LATE@@*/
