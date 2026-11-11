@@ -42945,22 +42945,46 @@ const PG = (function(){
      Hair, hats and helmets sit on this same surface so they follow its contours.                    */
   function headSurf(dx, dy, dz, out, o){
     o = o || {};
-    const wide = o.wide || 1, M = o.male || 0;                              // M: 0 = the original soft head .. 1 = a male head
-    let yy = dy; if (dy < -0.45) yy = -0.45 + (dy + 0.45)*(0.72 + 0.10*M);   // flatter underside = squarer jaw
+    const wide = o.wide || 1, M = o.male || 0;                              // M: 0 = a soft head .. 1 = a male head
+    let yy = dy; if (dy < -0.45) yy = -0.45 + (dy + 0.45)*(0.76 + 0.08*M);   // flatter underside = the jaw's plane
     let x = dx*HEAD.rx*wide, y = HEAD.cy + yy*HEAD.ry, z = HEAD.cz + dz*HEAD.rz;
+    const ax = Math.abs(dx), fr = clamp(dz, 0, 1), fr2 = sstep(0.25, 0.85, dz);
     const low = sstep(-0.10, -0.95, dy);                                  // 0 above the cheekbones .. 1 at the chin
-    x *= 1 - (0.20 - 0.115*M)*low*low - 0.02*low;                       // male: the jaw hardly tapers
+    // people56 (Release 15.53, "make the people look better like the boys chin"): a jaw LINE -- the face narrows from the cheekbones
+    // to the chin (girls more; boys keep a wider, squarer jaw) instead of a box with a lump on it
+    x *= 1 - (0.27 - 0.12*M)*low*low - 0.03*low;
+    // (the skull above the ears keeps its size: hats, hair and the garage's helmets are fitted to it)
     z -= 0.010*low*(1 - Math.max(0, dz))*0.7;
-    const fr = clamp(dz, 0, 1);
-    const brow = Math.exp(-Math.pow((dy - 0.30)/0.13, 2)) * fr * (1 - Math.min(1, Math.abs(dx)*0.7));
-    z += (0.0065 + 0.0075*M)*brow;                                        // brow ridge
-    const nose = Math.exp(-(dx*dx)/(0.020 + 0.006*M) - Math.pow((dy + 0.24)/0.17, 2)) * sstep(0.45, 0.95, dz);
-    z += (0.024 + 0.006*M)*nose; y -= 0.003*nose;
-    const chin = Math.exp(-(dx*dx)/(0.06 + 0.07*M) - Math.pow((dy + 0.80)/0.15, 2)) * fr;
-    z += (0.012 + 0.007*M)*chin; y -= 0.002*chin;                         // a strong, wide chin
-    const cheek = Math.exp(-Math.pow((Math.abs(dx) - 0.52)/0.22, 2) - Math.pow((dy + 0.28)/0.22, 2)) * fr;
-    z += 0.004*cheek;
-    const jawM = ((o.jaw || 0) + 0.95*M)*Math.exp(-Math.pow((Math.abs(dx) - 0.72)/0.2, 2) - Math.pow((dy + 0.62)/0.2, 2));
+    // brow ridge
+    const brow = Math.exp(-Math.pow((dy - 0.30)/0.13, 2)) * fr * (1 - Math.min(1, ax*0.7));
+    z += (0.0060 + 0.0070*M)*brow;
+    // eye sockets: set back under the brow
+    const sock = Math.exp(-Math.pow((ax - 0.46)/0.21, 2) - Math.pow((dy - 0.10)/0.12, 2)) * fr2;
+    z -= (0.0042 + 0.0012*M)*sock;
+    // nose: a narrow bridge that grows to the tip, then the wings round the nostrils (it was one round blob)
+    const nf = sstep(0.45, 0.95, dz);
+    if (nf > 0){
+      const t = clamp((0.22 - dy)/0.52, 0, 1);                           // 0 at the brow .. 1 at the tip
+      let pr = 0.003 + (0.018 + 0.004*M)*Math.pow(t, 1.7);
+      if (dy < -0.30) pr *= Math.exp(-Math.pow((dy + 0.30)/0.07, 2));   // under the tip
+      else if (dy > 0.22) pr *= Math.exp(-Math.pow((dy - 0.22)/0.10, 2));
+      z += pr*Math.exp(-(dx*dx)/(0.006 + 0.013*t))*nf; y -= 0.002*pr/0.02*nf*Math.exp(-(dx*dx)/0.02);
+      const wing = Math.exp(-Math.pow((ax - 0.115)/0.065, 2) - Math.pow((dy + 0.345)/0.065, 2));
+      z += (0.0050 + 0.0015*M)*wing*nf;
+    }
+    // lips, and the dip under the lower lip
+    const lips = Math.exp(-(dx*dx)/0.085 - Math.pow((dy + 0.555)/0.085, 2)) * fr;
+    z += 0.0042*lips;
+    const dip = Math.exp(-(dx*dx)/0.05 - Math.pow((dy + 0.675)/0.045, 2)) * fr;
+    z -= 0.0022*dip;
+    // the chin: a rounded point under the lips
+    const chin = Math.exp(-(dx*dx)/(0.045 + 0.05*M) - Math.pow((dy + 0.82)/0.13, 2)) * fr;
+    z += (0.0105 + 0.0045*M)*chin; y -= 0.0025*chin;
+    // cheekbones
+    const cheek = Math.exp(-Math.pow((ax - 0.55)/0.20, 2) - Math.pow((dy + 0.14)/0.20, 2)) * fr;
+    z += 0.0045*cheek; x += Math.sign(dx)*0.0012*cheek;
+    // the jaw's corner
+    const jawM = ((o.jaw || 0) + 0.70*M)*Math.exp(-Math.pow((ax - 0.72)/0.2, 2) - Math.pow((dy + 0.62)/0.2, 2));
     x += Math.sign(dx)*0.006*jawM;
     return out.set(x, y, z);
   }
@@ -42983,7 +43007,7 @@ const PG = (function(){
 
   /* the skin head: ellipsoid grid deformed by headSurf, UV = planar projection of the face */
   function headGeo(o){
-    const W = 40, Hs = 30, pos = [], uv = [], idx = [];
+    const W = 50, Hs = 40, pos = [], uv = [], idx = [];                 // (people56: a finer grid -- the nose, lips and chin have shape now)
     for (let i=0;i<=Hs;i++){
       const th = i/Hs*Math.PI, dy = Math.cos(th), r = Math.sin(th);
       for (let j=0;j<=W;j++){
@@ -43011,8 +43035,9 @@ const PG = (function(){
   /* ---------------------------------------------------------- the painted face */
   function hex2css(h, a){ const c = new T.Color(h); return 'rgba(' + Math.round(c.r*255) + ',' + Math.round(c.g*255) + ',' + Math.round(c.b*255) + ',' + (a === undefined ? 1 : a) + ')'; }
   function faceTexture(o){
-    const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
-    const g = c.getContext('2d');
+    // (people56: a 512 px face, painted in the same 256-unit coordinates as before -- everything below is twice as sharp)
+    const S = 256, c = document.createElement('canvas'); c.width = c.height = 512;
+    const g = c.getContext('2d'); g.scale(2, 2);
     const skin = o.skin, dark = shadeHex(skin, 0.72), light = shadeHex(skin, 1.10), M = o.male || 0;
     const hairHex = o.brow !== undefined ? o.brow : (o.hair || 0x2a1d14);
     // base + form shading
@@ -43037,24 +43062,43 @@ const PG = (function(){
       blob(128 + sd*10, 174, 6, 4.5, 'rgba(25,8,5,A)', 0.40);
     });
     blob(128, 166, 9, 5, 'rgba(255,245,235,A)', 0.14);
+    // people56: the planes of a face -- the hollow under each cheekbone, the temples, a light down the nose's bridge, the shade under
+    // the nose and under the lower lip, a little warmth on the nose and cheeks
+    [-1, 1].forEach(sd=>{
+      blob(128 + sd*60, 182, 24, 32, 'rgba(60,25,15,A)', 0.10 + 0.05*M);
+      blob(128 + sd*88, 112, 20, 48, 'rgba(40,18,10,A)', 0.10);
+      blob(128 + sd*50, 150, 20, 12, 'rgba(255,240,228,A)', 0.07);
+    });
+    blob(128, 142, 5, 22, 'rgba(255,245,235,A)', 0.10);
+    blob(128, 182, 14, 4.5, 'rgba(40,15,10,A)', 0.20);
+    blob(128, 214, 17, 5, 'rgba(40,15,10,A)', 0.16);
+    blob(128, 166, 15, 11, 'rgba(210,90,75,A)', 0.06);
     // eyes
     const eyeCol = o.eye === undefined ? 0x4a2f1c : o.eye;
     [-1, 1].forEach(sd=>{
-      const ex = 128 + sd*43, ey = 123;
-      g.save(); g.translate(ex, ey); g.rotate(-sd*0.06); g.scale(1 - 0.07*M, 1 - 0.16*M);
-      g.fillStyle = 'rgba(30,12,8,0.35)'; g.beginPath(); g.ellipse(0, -1, 19, 8.8, 0, 0, TAU2); g.fill();
-      g.fillStyle = '#f1eee8'; g.beginPath(); g.ellipse(0, 0, 17, 7.6, 0, 0, TAU2); g.fill();
-      g.save(); g.beginPath(); g.ellipse(0, 0, 17, 7.6, 0, 0, TAU2); g.clip();
-      g.fillStyle = hex2css(eyeCol); g.beginPath(); g.arc(sd*-1.5, 0.5, 7.2, 0, TAU2); g.fill();
-      g.fillStyle = hex2css(shadeHex(eyeCol, 0.45)); g.beginPath(); g.arc(sd*-1.5, 0.5, 4.2, 0, TAU2); g.fill();
-      g.fillStyle = '#0a0706'; g.beginPath(); g.arc(sd*-1.5, 0.5, 2.9, 0, TAU2); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.92)'; g.beginPath(); g.arc(sd*-3.4, -2.2, 1.9, 0, TAU2); g.fill();
-      g.fillStyle = 'rgba(30,10,5,0.40)'; g.fillRect(-20, -9, 40, 5.5);                       // lid shadow
+      // people56: rounder, livelier eyes -- a bigger iris with a darker rim, two catch lights, a lid crease above, lashes
+      const ex = 128 + sd*43, ey = 123, ew = 17.5, eh = 9.4;
+      g.save(); g.translate(ex, ey); g.rotate(-sd*0.05); g.scale(1 - 0.04*M, 1 - 0.08*M);
+      g.fillStyle = 'rgba(30,12,8,0.30)'; g.beginPath(); g.ellipse(0, -1, ew + 2.5, eh + 1.6, 0, 0, TAU2); g.fill();
+      g.fillStyle = '#f3f0ea'; g.beginPath(); g.ellipse(0, 0, ew, eh, 0, 0, TAU2); g.fill();
+      g.save(); g.beginPath(); g.ellipse(0, 0, ew, eh, 0, 0, TAU2); g.clip();
+      const ix = sd*-1.2, iy = 0.4;
+      g.fillStyle = hex2css(shadeHex(eyeCol, 0.55)); g.beginPath(); g.arc(ix, iy, 8.6, 0, TAU2); g.fill();
+      g.fillStyle = hex2css(eyeCol); g.beginPath(); g.arc(ix, iy, 7.6, 0, TAU2); g.fill();
+      g.fillStyle = hex2css(shadeHex(eyeCol, 1.45), 0.55); g.beginPath(); g.arc(ix, iy + 2.2, 5.2, 0, TAU2); g.fill();
+      g.fillStyle = '#0a0706'; g.beginPath(); g.arc(ix, iy, 3.5, 0, TAU2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.95)'; g.beginPath(); g.arc(ix - 2.4, iy - 2.8, 2.2, 0, TAU2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.arc(ix + 2.8, iy + 2.6, 1.1, 0, TAU2); g.fill();
+      g.fillStyle = 'rgba(30,10,5,0.34)'; g.fillRect(-22, -eh - 1, 44, 5.6);                    // the upper lid's shadow
+      g.fillStyle = 'rgba(120,60,50,0.16)'; g.beginPath(); g.arc(-sd*(ew - 1), 0.5, 3.2, 0, TAU2); g.fill();   // the inner corner
       g.restore();
-      g.strokeStyle = hex2css(shadeHex(hairHex, 0.55), 0.95); g.lineWidth = 2.6 - 1.0*M;       // upper lash line
-      g.beginPath(); g.moveTo(-18, 1.5); g.quadraticCurveTo(0, -11.5, 18, 1.5); g.stroke();
-      g.strokeStyle = 'rgba(60,25,15,0.32)'; g.lineWidth = 1.5;                                // lower lid
-      g.beginPath(); g.moveTo(-14, 5.2); g.quadraticCurveTo(0, 9.5, 14, 5.2); g.stroke();
+      g.strokeStyle = hex2css(shadeHex(hairHex, 0.50), 0.96); g.lineWidth = 3.0 - 1.1*M;        // upper lash line
+      g.beginPath(); g.moveTo(-ew - 1, 1.6); g.quadraticCurveTo(0, -eh - 4.6, ew + 1, 1.6); g.stroke();
+      if (!M){ g.lineWidth = 1.5; [0.55, 0.78, 1].forEach(k=>{ g.beginPath(); g.moveTo(sd*ew*k, -eh*(1.02 - 0.75*k*k)); g.lineTo(sd*(ew*k + 3.2), -eh*(1.02 - 0.75*k*k) - 3.0); g.stroke(); }); }   // lashes
+      g.strokeStyle = 'rgba(60,25,15,0.26)'; g.lineWidth = 1.4;                                // the crease above the lid
+      g.beginPath(); g.moveTo(-ew + 2, -eh*0.5 - 4); g.quadraticCurveTo(0, -eh - 9.5, ew - 2, -eh*0.5 - 4); g.stroke();
+      g.strokeStyle = 'rgba(60,25,15,0.30)'; g.lineWidth = 1.4;                                // lower lid
+      g.beginPath(); g.moveTo(-14, 6.0); g.quadraticCurveTo(0, eh + 1.8, 14, 6.0); g.stroke();
       g.restore();
     });
     // brows
@@ -43070,15 +43114,21 @@ const PG = (function(){
     // mouth
     const lip = mixHex(skin, 0xa8473f, 0.45 - 0.22*M), lipD = shadeHex(lip, 0.62);
     const my = 196, mw = o.mouthW || (30 + 4*M), smile = o.smile === undefined ? 3 : o.smile;
+    // people56: two lips -- the upper one thinner with a bow, the lower one fuller with a light on it -- and soft corners
+    const cy0 = my - smile*0.4;
+    g.fillStyle = hex2css(shadeHex(lip, 0.88), 0.95);
+    g.beginPath(); g.moveTo(128 - mw, cy0);
+    g.quadraticCurveTo(128 - mw*0.55, my - 7.6, 128 - mw*0.17, my - 7.4); g.quadraticCurveTo(128, my - 4.0, 128 + mw*0.17, my - 7.4);
+    g.quadraticCurveTo(128 + mw*0.55, my - 7.6, 128 + mw, cy0);
+    g.quadraticCurveTo(128, my + 3 + (o.open || 0), 128 - mw, cy0); g.fill();
     g.fillStyle = hex2css(lip, 0.95);
-    g.beginPath(); g.moveTo(128 - mw, my - smile*0.4);
-    g.quadraticCurveTo(128 - mw*0.4, my - 8, 128, my - 5);
-    g.quadraticCurveTo(128 + mw*0.4, my - 8, 128 + mw, my - smile*0.4);
-    g.quadraticCurveTo(128 + mw*0.55, my + 11, 128, my + 11);
-    g.quadraticCurveTo(128 - mw*0.55, my + 11, 128 - mw, my - smile*0.4); g.fill();
-    g.strokeStyle = hex2css(lipD, 0.95); g.lineWidth = 2.4;
-    g.beginPath(); g.moveTo(128 - mw, my - smile*0.4); g.quadraticCurveTo(128, my + 3 + (o.open || 0), 128 + mw, my - smile*0.4); g.stroke();
+    g.beginPath(); g.moveTo(128 - mw*0.94, cy0 + 0.6); g.quadraticCurveTo(128, my + 3 + (o.open || 0), 128 + mw*0.94, cy0 + 0.6);
+    g.quadraticCurveTo(128 + mw*0.52, my + 12, 128, my + 12); g.quadraticCurveTo(128 - mw*0.52, my + 12, 128 - mw*0.94, cy0 + 0.6); g.fill();
+    g.strokeStyle = hex2css(lipD, 0.95); g.lineWidth = 2.2;
+    g.beginPath(); g.moveTo(128 - mw, cy0); g.quadraticCurveTo(128, my + 3 + (o.open || 0), 128 + mw, cy0); g.stroke();
+    [-1, 1].forEach(sd=> blob(128 + sd*(mw + 1), cy0, 4.5, 4.5, 'rgba(40,15,10,A)', 0.30));
     if (o.open){ g.fillStyle = '#2a0e0e'; g.beginPath(); g.ellipse(128, my + 4, mw*0.7, o.open, 0, 0, TAU2); g.fill(); g.fillStyle = '#f3efe8'; g.fillRect(128 - mw*0.55, my + 1, mw*1.1, 3.2); }
+    blob(128, my + 6.5, 12, 3.2, 'rgba(255,238,228,A)', 0.20 - 0.08*M);
     blob(128, my - 7, 18, 5, 'rgba(255,230,220,A)', 0.10*(1 - M));
     // facial hair
     const rnd = rng(o.seed || 7), fh = hex2css(hairHex, 1);
@@ -43172,19 +43222,21 @@ const PG = (function(){
     // short hair: a cap with a hairline that sits on the forehead, rises over the ears and drops to the nape
     const hl = o.hairline === undefined ? 0.37 : o.hairline;
     const nape = o.nape === undefined ? 0.68 : o.nape, ear = o.ear === undefined ? 0.56 : o.ear;
-    return shell({ thick:o.thick || 0.007, segP:44, segT:12,
+    // people56: combed strands -- shallow grooves and lighter / darker locks running out from the crown (it was one smooth cap)
+    const lock = (ph, th)=> Math.sin(19*(ph + 0.5*th) + 2.2*Math.sin(3*ph + 1.3) + 1.1*Math.sin(7*ph)), comb = o.comb === undefined ? ((o.thick || 0.007) >= 0.006 ? 1 : 0) : o.comb;   // (stubble and shaved sides stay smooth)
+    return shell({ thick:o.thick || 0.007, segP:comb ? 76 : 44, segT:comb ? 14 : 12,
       edge: ph=>{ const f = Math.cos(ph - FRONT);
         if (f >= 0) return Math.PI*lerp(ear + 0.015, hl, Math.pow(f, 1.5));
         return Math.PI*lerp(ear, nape, Math.pow(-f, 1.4)); },
-      color: (ph, th, t)=> mix3(hc.base, hc.dark, Math.pow(t, 3)*(o.fade === undefined ? 0.55 : o.fade)),
-      disp: o.disp, scale:o.scale, offset:o.offset, jaw:0 });
+      color: (ph, th, t)=>{ const c = mix3(hc.base, hc.dark, Math.pow(t, 3)*(o.fade === undefined ? 0.55 : o.fade)); if (!comb) return c; const k = lock(ph, th)*comb*sstep(0.04, 0.3, t); return k > 0 ? mix3(c, hc.light, 0.16*k) : mix3(c, hc.dark, -0.30*k); },
+      disp: (dx, dy, dz, ph, th)=> (o.disp ? o.disp(dx, dy, dz, ph, th) : 0) + (comb ? 0.0011*comb*lock(ph, th)*sstep(0.05, 0.35, th) : 0), scale:o.scale, offset:o.offset, jaw:0 });
   }
   const HAIR = {
     bald(){ return null; },
     crop(hc, o){ const grp = new T.Group(); grp.add(mesh(hairShell(hc, Object.assign({ fade:0.7, thick:0.006, ear:0.43, nape:0.58 }, o)), matVC(0.9, 0))); return grp; },
     buzz(hc, o){                               // clippers: hair so short the scalp shows through
       const grp = new T.Group(), sk = lin(o.skin === undefined ? 0xc08a5f : o.skin), c = { base:mix3(hc.base, sk, 0.07), dark:mix3(hc.dark, sk, 0.10), light:hc.light, tip:hc.base };
-      grp.add(mesh(hairShell(c, Object.assign({ thick:0.0065, fade:0.25, hairline:0.355, ear:0.42, nape:0.55 }, o)), matVC(0.95, 0))); return grp;
+      grp.add(mesh(hairShell(c, Object.assign({ thick:0.0065, fade:0.25, hairline:0.355, ear:0.42, nape:0.55, comb:0.3 }, o)), matVC(0.95, 0))); return grp;
     },
     short(hc, o){                              // classic short back-and-sides with a little length on top
       const grp = new T.Group();
@@ -43513,12 +43565,18 @@ const PG = (function(){
     const skin = o.skin;
     const tex = faceTexture({ skin, eye:o.eye, brow:o.browColor !== undefined ? o.browColor : o.hair, hair:o.hair, beard:o.beard, stache:o.stache, freckles:o.freckles, scar:o.scar,
       mouthW:o.mouthW, smile:o.smile, open:o.open, browW:o.browW, browArch:o.browArch, browTilt:o.browTilt, blush:o.blush, seed:o.seed, paint:o.facePaint, male:o.male || 0, shadow:o.shadow });
-    const hm = new T.MeshStandardMaterial({ map:tex, roughness:0.62, metalness:0 }); if (typeof patchWorldShading === 'function') patchWorldShading(hm, {});
+    const hm = new T.MeshStandardMaterial({ map:tex, roughness:0.72, metalness:0 });     // (people56: 0.62 -- less white glare on a face) if (typeof patchWorldShading === 'function') patchWorldShading(hm, {});
     const head = new T.Mesh(headGeo({ jaw:o.jaw || 0, wide:o.wide || 1, male:o.male || 0 }), hm); head.castShadow = true; head.receiveShadow = false; grp.add(head);
-    const flat = new T.MeshStandardMaterial({ color:C(skin), roughness:0.66 }); if (typeof patchWorldShading === 'function') patchWorldShading(flat, {});
-    // neck: from inside the torso to the jaw
-    const neck = new T.Mesh(new T.CylinderGeometry(0.047*(o.neckW || 1), 0.056*(o.neckW || 1), 0.16, 16), flat); neck.position.set(0, -0.045, -0.014); neck.castShadow = true; grp.add(neck);   // male: neckW ~1.25 = a thick neck
-    [-1, 1].forEach(sd=>{ const e = new T.Mesh(new T.SphereGeometry(1, 10, 8), flat); e.scale.set(0.0105*(1 + 0.12*(o.male || 0)), 0.027*(1 + 0.12*(o.male || 0)), 0.018*(1 + 0.12*(o.male || 0))); e.position.set(sd*0.0715, HEAD.cy - 0.004, HEAD.cz + 0.0); e.rotation.z = sd*0.12; grp.add(e); });
+    const flat = new T.MeshStandardMaterial({ color:C(skin), roughness:0.74 }); if (typeof patchWorldShading === 'function') patchWorldShading(flat, {});
+    // neck: from inside the torso to the jaw (people56: riders get a real neck on the Neck bone instead -- o.neck === false)
+    if (o.neck !== false){ const neck = new T.Mesh(new T.CylinderGeometry(0.047*(o.neckW || 1), 0.056*(o.neckW || 1), 0.16, 16), flat); neck.position.set(0, -0.045, -0.014); neck.castShadow = true; grp.add(neck); }
+    // ears (people56: a smaller ear turned back against the head with a darker hollow, not a flat paddle -- both ears are ONE mesh)
+    { const k = 1 + 0.10*(o.male || 0), cs = lin(skin), ci = lin(shadeHex(skin, 0.66)), parts = [];
+      [-1, 1].forEach(sd=>{
+        parts.push(xf(ellG(0.0072*k, 0.0225*k, 0.0140*k, 12, cs), sd*0.0705, HEAD.cy - 0.002, HEAD.cz - 0.005, -0.16, sd*0.40, sd*0.12));
+        parts.push(xf(ellG(0.0036*k, 0.0125*k, 0.0070*k, 9, ci), sd*0.0752, HEAD.cy - 0.004, HEAD.cz - 0.001, -0.16, sd*0.40, sd*0.12));
+      });
+      grp.add(mesh(mergeGeos(parts), matVC(0.74, 0), false)); }
     const hc = hairColor(o.hair === undefined ? 0x24170f : o.hair, o.hairTip);
     const hws = Array.isArray(o.headwear) ? o.headwear : (o.headwear ? [o.headwear] : []);
     const types = hws.map(w=> w.type);
@@ -43540,7 +43598,14 @@ const PG = (function(){
     return grp;
   }
 
-  return { HEAD, headSurf, headGeo, faceTexture, shell, HAIR, HW, EYE, buildHead, mergeGeos, paint, xf, ellG, boxG, cylG, tubeG, roundBoxG, mesh, matVC, matVC1, matGlow, matLens, mat, lin, shadeHex, mixHex, rng, logoTex, hex2css, mix3, sstep };
+  /* people56: light skin tones washed out to white under the sun and the garage lights -- a touch deeper and warmer (HSL; dark tones stay) */
+  function skinTone(hex){
+    // (a curve on each channel -- light tones get deeper AND keep their colour; from tan down nothing changes)
+    const c = new T.Color(hex), w = sstep(0.50, 0.78, (Math.max(c.r, c.g, c.b) + Math.min(c.r, c.g, c.b))/2), gm = 1 + 0.35*w, k = 1 - 0.08*w;
+    c.setRGB(k*Math.pow(c.r, gm), k*Math.pow(c.g, gm), k*Math.pow(c.b, gm)); return c.getHex();
+  }
+  function skinMat(skin, vcol){ const m = new T.MeshStandardMaterial({ color:C(skin), roughness:0.74, vertexColors:!!vcol }); if (typeof patchWorldShading === 'function') patchWorldShading(m, {}); return m; }
+  return { skinTone, skinMat, HEAD, headSurf, headGeo, faceTexture, shell, HAIR, HW, EYE, buildHead, mergeGeos, paint, xf, ellG, boxG, cylG, tubeG, roundBoxG, mesh, matVC, matVC1, matGlow, matLens, mat, lin, shadeHex, mixHex, rng, logoTex, hex2css, mix3, sstep };
 })();
 /* =========================================================================
    PEOPLE RIDERS — dress the shared skinned body (Michelle's mesh) as other people.
@@ -43691,6 +43756,9 @@ const PR = (function(){
                 by = (y - (shY - (b.bustY === undefined ? 0.10 : b.bustY)))/(b.bustSY || 0.062);
           z -= bust*Math.exp(-bx*bx - by*by);
           z -= chest*sst(0.0, 0.09, z)*sst(P.Spine.y, P.Spine1.y + 0.04, y)*(1 - sst(shY - 0.02, shY + 0.03, y));
+          // people56: the flat chest ran square out to the sides and stopped there in a shelf (the under-side of the bust it was made from):
+          // it rounds off towards the ribs now (b.round, strongest at the sides), and the whole plate sits a little further back (b.plate)
+          if (b.round){ const u = sst(0.045, 0.14, Math.abs(x)/(b.wide || 1)); z -= (b.round*u*u*Math.sqrt(u) + (b.plate || 0)*(1 - u))*sst(shY - 0.19, shY - 0.12, y)*(1 - sst(shY - 0.06, shY, y))*sst(0.0, 0.07, z); }
         }
         if (bulk && c !== CL.HAND && c !== CL.FINGER){
           const f = bulk*(1 - sst(shY + 0.02, shY + 0.07, y))*(c === CL.FOREARM ? (1 - sst(P.LeftForeArm.x + 0.10, P.LeftHand.x - 0.02, ax)*0.8) : 1);
@@ -43849,6 +43917,10 @@ const PR = (function(){
     const out = { glow:0 };
     const sleeveEnd = sleeves === 'short' ? armX0 + (elbowX - armX0)*(T0.sleeveLen === undefined ? 0.55 : T0.sleeveLen) : (sleeves === 'long' ? wristX - 0.045 : 0);
     const decalList = decals || [];
+    // people56: the painted collar band. Its edge was ragged (the texture is stretched over the neck's base, and the band stopped at every
+    // SHOULDER-class triangle), so dressed riders wear a real rib ring instead (d.collarRing, see dress()) and the cloth runs plain up to it
+    const collarR = 0.088 + (kind === 'hoodie' ? 0.01 : 0) - (kind === 'tee' || kind === 'tank' ? 0.008 : 0);
+    const collarC = kind === 'suit' ? dk(topC, 0.8) : kind === 'tee' || kind === 'tank' ? trimC : kind === 'bomber' || kind === 'track' ? U3(T0.rib === undefined ? T0.trim === undefined ? shadeInt(T0.color, 0.7) : T0.trim : T0.rib) : kind === 'hoodie' ? dk(topC, 0.88) : null;
     const line = (v, v0, w, aa)=> 1 - sst(w*0.5 - (aa || 0.0016), w*0.5 + (aa || 0.0016), Math.abs(v - v0));
     const paintDecals = (col, x, y, z, nx, ny, nz, zone)=>{
       for (let k=0;k<decalList.length;k++){
@@ -43913,6 +43985,7 @@ const PR = (function(){
           if (kind === 'track' && T0.stripe2 !== undefined && ny > 0.55 && Math.abs(Math.abs(z) - 0.035) < 0.007 && ax > armX0 + 0.05 && ax < sleeveEnd - cuff - 0.01) setc(U3(T0.stripe2));
           if (T0.cuffStripe !== undefined && Math.abs(ax - (sleeveEnd - cuff - 0.03)) < 0.008) setc(U3(T0.cuffStripe));
           if (T0.armGlow && (Math.abs(ax - (armX0 + (elbowX - armX0)*0.5)) < 0.008)) { setc(glC); out.glow = pk(glC); }
+          if (collarC && !d.collarRing && c === CL.SHOULDER && y > neckY - 0.045 && Math.hypot(x, (z - P.Neck.z)*1.1) < collarR) setc(collarC);
           if (decalList.length) paintDecals(col, x, y, z, nx, ny, nz, 'sleeve');
           return pack(col, c, nx, ny, nz);
         }
@@ -43958,7 +44031,7 @@ const PR = (function(){
         if (kind === 'hoodie' && T0.strings !== false && nz > 0.4 && y < neckY - 0.01 && y > neckY - 0.13 && Math.abs(ax - 0.032) < 0.0032) setc([238, 236, 228]);
         // collar
         const cr = Math.hypot(x, (z - P.Neck.z)*1.1);
-        if (y > neckY - 0.045 && cr < 0.088 + (kind === 'hoodie' ? 0.01 : 0)){
+        if (!d.collarRing && y > neckY - 0.045 && cr < collarR){
           if (kind === 'tee' || kind === 'tank' || kind === 'suit') setc(kind === 'suit' ? dk(topC, 0.8) : trimC);
           if (kind === 'bomber' || kind === 'track') setc(U3(T0.rib === undefined ? T0.trim === undefined ? shadeInt(T0.color, 0.7) : T0.trim : T0.rib));
           if (kind === 'hoodie') setc(dk(topC, 0.88));
@@ -44257,7 +44330,7 @@ const PR = (function(){
   /* boys: broad shoulders + V-taper, flat chest, slim hips / glutes, heavy arms, big hands + feet (merged UNDER the character's own `build`) */
   const MALE = { shoulders:0.062, torsoW:[[1.00, 0.130], [1.04, 0.127], [1.08, 0.125], [1.12, 0.130], [1.16, 0.139], [1.20, 0.148], [1.26, 0.154], [1.30, 0.145], [1.34, 0.080]], waistD:0.004, trap:0.014,
     // Release 15.6: a flat chest plateau across the whole front (pecs), no cup bumps, no sternum ridge, no belly bulge
-    bust:0.04, bustX:0, bustFlat:0.075, bustSX:0.035, bustY:0.13, bustSY:0.07, drape:[1.06, 1.215, 1],
+    bust:0.04, bustX:0, bustFlat:0.075, bustSX:0.035, bustY:0.13, bustSY:0.07, drape:[1.06, 1.215, 1], round:0.034, plate:0.006,
     chest:0.015, hips:0.12, glute:0.05, bulk:0.018, hand:1.16, foot:1.07 };
   const _w1 = new T.Matrix4();
   /* slide both arm joints outward by `sh` (reshape() already slid the arm mesh the same amount) and re-derive the skin for the new
@@ -44282,7 +44355,10 @@ const PR = (function(){
 
   /* ----------------------------------------------------------- dress a rider */
   function dress(rider, ch){
-    const d = ch.dress; if (!d || !rider.mesh || !rider.mesh.isSkinnedMesh) return;
+    if (!ch.dress || !rider.mesh || !rider.mesh.isSkinnedMesh) return;
+    const d = Object.assign({}, ch.dress, { skin:PG.skinTone(ch.dress.skin) });     // (people56: deeper, warmer skin; the roster's own colours are untouched)
+    { const T0 = d.top || { kind:'none' }, k0 = T0.kind || 'tee';                   // (people56: a rib collar ring instead of the painted band)
+      d.collarRing = k0 !== 'none' && !(d.kit || []).some(k=> (typeof k === 'string' ? k : k.type) === 'collar'); }
     const t0 = performance.now();
     const mesh = rider.mesh;
     let P = landmarks(rider);
@@ -44318,11 +44394,46 @@ const PR = (function(){
       m.needsUpdate = true;
     });
     // the head
-    const hp = P.Head, lift = d.lift === undefined ? -0.04 : d.lift;
-    const hd = Object.assign({ skin:d.skin, neckW:0.9 }, male ? { male:1, neckW:1.25 } : {}, d.head || {});
+    const hp = P.Head, lift = d.lift === undefined ? -0.03 : d.lift;        // (people56: -0.04 -- the chin sat on the collar)
+    const hd = Object.assign({ skin:d.skin, neckW:0.9 }, male ? { male:1, neckW:1.25 } : {}, d.head || {}, { neck:false });
     const head = PG.buildHead(hd);
     head.scale.setScalar(d.headScale || (male ? 1.15 : 1.1));
     attach(rider, 'Head', head, MT(hp.x, hp.y + lift, hp.z + 0.004));
+    // people56 (Release 15.53): a real neck. It used to be a thick 18 cm cylinder fixed to the HEAD: every time the head tilted on the
+    // leaning rider it swung out of the collar as a slab down the chest ("the boys chin"). Now a tapered column sits on the NECK bone,
+    // from inside the collar up to the head's joint, and a ball in that joint covers the hinge whichever way the head turns.
+    if (P.Neck && P.Head && rider.bones.Neck){
+      const hw = (d.head && d.head.wide) || 1, nw = (male ? 1 : 0.86)*(d.neckW || 1)*(0.3 + 0.7*hw), rT = 0.043*nw, sm = PG.skinMat(d.skin, true);
+      const a = new T.Vector3(P.Neck.x, P.Neck.y, P.Neck.z), b = new T.Vector3(P.Head.x, P.Head.y, P.Head.z), dir = b.clone().sub(a);
+      if (dir.length() > 0.02){
+        dir.normalize(); a.addScaledVector(dir, -0.045); b.addScaledVector(dir, 0.010);
+        // a column of revolution: wide where it leaves the shoulders, slim under the jaw; shaded darker under the chin
+        const L = a.distanceTo(b), rad = t=> rT*(1 + 0.40*Math.pow(1 - Math.min(1, t/0.55), 2)), q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 1, 0), dir);
+        const g = new T.CylinderGeometry(1, 1, L, 18, 7, true), gp = g.attributes.position, gn = g.attributes.normal, col = new Float32Array(gp.count*3), v = new T.Vector3();
+        for (let i = 0; i < gp.count; i++){
+          const t = gp.getY(i)/L + 0.5, r = rad(t), sx = gp.getX(i), sz = gp.getZ(i), dr = (rad(t + 0.01) - rad(t - 0.01))/(0.02*L);
+          gp.setXYZ(i, sx*r, gp.getY(i), sz*r); v.set(sx, -dr, sz).normalize(); gn.setXYZ(i, v.x, v.y, v.z);
+          v.set(sx, 0, sz).applyQuaternion(q); const k = 1 - 0.20*sst(0.40, 0.95, t)*(0.55 + 0.45*clamp(v.z, 0, 1));
+          col[i*3] = k; col[i*3 + 1] = k*(1 - (1 - k)*0.25); col[i*3 + 2] = k*(1 - (1 - k)*0.35);
+        }
+        g.setAttribute('color', new T.BufferAttribute(col, 3));
+        g.applyMatrix4(new T.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), q, new T.Vector3(1, 1, 1)));
+        const nm = new T.Mesh(g, sm); nm.castShadow = true; attach(rider, 'Neck', nm, new T.Matrix4());
+        const bg = new T.SphereGeometry(rT*1.02, 16, 12), bc = new Float32Array(bg.attributes.position.count*3); for (let i = 0; i < bc.length; i += 3){ bc[i] = 0.84; bc[i + 1] = 0.81; bc[i + 2] = 0.79; }
+        bg.setAttribute('color', new T.BufferAttribute(bc, 3));
+        const ball = new T.Mesh(bg, sm); ball.castShadow = true; attach(rider, 'Head', ball, MT(b.x, b.y, b.z));
+      }
+    }
+    // people56: the collar -- a rib ring round the neck's base, on the chest's bone so it stays with the shirt
+    if (d.collarRing && P.Neck){
+      const T0 = d.top, kind = T0.kind || 'tee', base = T0.color === undefined ? 0x888888 : T0.color;
+      const hex = kind === 'tee' || kind === 'tank' ? (T0.trim === undefined ? shadeInt(base, 0.72) : T0.trim) : kind === 'bomber' || kind === 'track' ? (T0.rib === undefined ? T0.trim === undefined ? shadeInt(base, 0.7) : T0.trim : T0.rib)
+        : shadeInt(base, kind === 'hoodie' ? 0.88 : kind === 'vest' ? 0.7 : 0.8);
+      const tube = kind === 'hoodie' ? 0.0135 : kind === 'bomber' || kind === 'track' || kind === 'vest' ? 0.0115 : 0.0088, R = (male ? 0.046 : 0.041)*(d.neckW || 1)*(0.3 + 0.7*((d.head && d.head.wide) || 1)) + tube + 0.002;
+      const g = new T.TorusGeometry(R, tube, 8, 30); g.rotateX(Math.PI/2); g.scale(1, 0.82, 0.94);
+      g.translate(0, P.Neck.y + 0.008, P.Neck.z - 0.003);
+      attach(rider, 'Spine2', vcMesh(PG.paint(g, rgbLin(hex)), 0.92, 0), new T.Matrix4());
+    }
     // kit
     (d.kit || []).forEach(k=>{
       const o = typeof k === 'string' ? { type:k } : k;
@@ -91606,7 +91717,7 @@ function ui43MenuCard(){
 }
 /* 15.37 ("update the version"): the version next to the menu logo, so every copy (claude.ai, GitHub, the downloaded file) says which
    one it is. Bump DL_VER with every release. */
-const DL_VER = '15.52';
+const DL_VER = '15.53';
 function ui43Ver(){
   if (document.getElementById('ui43Ver')) return;
   const b = document.querySelector('#menu .mBrand'); if (!b) return;
