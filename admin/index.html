@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-v5n5G+RcJ/Fm7lXkRJ/ctImlcjEq4ZhCcHHcS56Dykw='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-jN+c+RcsSrwJgP6XM4DlKcT+pffQwbyKkCp0aA/ZqXc='; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Dusk Line admin</title>
 <style>
 :root{ --bg:#0d1016; --card:#161a23; --line:rgba(255,255,255,.12); --ink:#f1ece2; --dim:rgba(241,236,226,.62); --hot:#ff7a45; --teal:#5fd6c4; --bad:#ff5d5d; --ok:#7be08a; --yel:#ffd21f; color-scheme:dark; }
@@ -65,13 +65,14 @@ const RIDES = [{"i":"fatmtb","n":"Northcut Bigfloat FS","c":"mtb","p":1200},{"i"
 const ARTS = ['star', 'wheel', 'scoot', 'bars', 'bolt', 'can', 'city', 'crown', 'dome', 'gear', 'lid', 'mtn', 'ramp', 'slice', 'speed', 'stripe', 'sun', 'wave'];
 const DAILY_FIELDS = [['score', 'Score in one run'], ['bestChain', 'Longest trick chain in a run'], ['bestAir', 'Biggest air in a run'], ['grindTime', 'Grind time in a run'], ['bestSpin', 'Biggest spin in a run'], ['tricksLanded', 'Tricks landed in a run'], ['bestCombo', 'Best combo in a run'], ['saves', 'Sketchy saves in a run']];
 const ACH_FIELDS = [['lifetime.runs', 'Runs finished, all time'], ['lifetime.bestScore', 'Best score ever'], ['lifetime.bestChain', 'Longest chain ever'], ['lifetime.totalGrindTime', 'Total grind time'], ['lifetime.totalTricks', 'Tricks landed, all time'], ['lifetime.bestSpin', 'Biggest spin ever'], ['ownedDrives.length', 'Rides owned'], ['ownedKits.length', 'Paints owned'], ['lifetime.totalRepEarned', 'Money earned, all time'], ['lifetime.playTimeSec', 'Seconds played']];
-const ERR = { net:"Couldn't reach the game's database. Check the internet and try again.", auth:'You were signed out. Sign in again.', bad_login:'Wrong username or password.',
-  locked:'Too many wrong tries. Wait a few minutes.', rate_limited:'Too fast. Wait a minute and try again.', not_admin:'This account is not an admin (or the admin code has run out). Unlock again.',
-  bad_code:'That admin code is not right.', same_as_password:'The admin code must be different from your password.', bad_old_code:'The old admin code is not right.', no_code:'Set an admin code first.',
-  no_player:'Nobody has that username.', is_admin:"You can't do that to an admin (or to yourself).", bad_name:"That name isn't allowed (3 to 16 letters, numbers or _ and no bad words).", name_taken:'That name is taken.',
+const ERR = { net:"Couldn't reach the game's database. Check the internet and try again.", off:'The admin site is not switched on yet. Ask Claude to switch it on.',
+  no_pass:'The admin site is not switched on yet. Ask Claude to switch it on.', auth:'The door closed. Type the passcode again.',
+  locked:'Too many wrong tries. The door is locked for a while.', rate_limited:'Too fast. Wait a minute and try again.', not_admin:'The door closed (it locks by itself after 8 hours). Type the passcode again.',
+  bad_code:'That passcode is not right.', bad_old_code:'The passcode you use now was typed wrong.', bad_new:'That new passcode is too easy to guess. Use at least 5 letters or numbers: not all the same, and not something like 12345.',
+  no_player:'Nobody has that username.', is_admin:"You can't do that to the admin itself.", bad_name:"That name isn't allowed (3 to 16 letters, numbers or _ and no bad words).", name_taken:'That name is taken.',
   bad_what:'Unknown thing to wipe.', no_server:'That server is not there any more.', bad_key:'Unknown setting.', too_big:'That is too much text to save.', bad_value:'That could not be saved (wrong shape).',
   bad_words:'That has a blocked word in it.', bad_word:'A blocked word needs 2 to 24 letters.', banned:'This account is locked.', bad_fn:'Unknown action.' };
-const S = { tok:'', name:'', view:'signin', tab:'home', msg:'', bad:false, busy:false, data:{} };
+const S = { tok:'', name:'', view:'pass', tab:'home', msg:'', bad:false, busy:false, data:{} };
 try { S.tok = sessionStorage.getItem('dl_admin_tok') || ''; } catch(e){}
 
 /* ---------------------------------------------------------------- helpers: every piece of data is put on the page as TEXT, never as HTML */
@@ -98,6 +99,7 @@ async function rpc(fn, args){
     const r = await fetch(SUPA_URL + '/rest/v1/rpc/' + fn, { method:'POST', cache:'no-store', referrerPolicy:'no-referrer',
       headers:{ apikey:SUPA_KEY, Authorization:'Bearer ' + SUPA_KEY, 'Content-Type':'application/json' }, body:JSON.stringify(args || {}) });
     const d = await r.json().catch(()=> null);
+    if (r.status === 404) return { ok:false, error:'off' };
     if (!r.ok) return { ok:false, error:'net' };
     return (d && typeof d === 'object') ? d : { ok:false, error:'net' };
   } catch(e){ return { ok:false, error:'net' }; }
@@ -118,76 +120,67 @@ function ask(text, yesLabel, onYes, input){
   document.body.appendChild(m); (inp || yes).focus();
 }
 
-/* ---------------------------------------------------------------- signing in: account password, then the admin code */
+/* ---------------------------------------------------------------- the door: ONE passcode. The game's database checks it (this page never
+   holds the passcode or anything to compare it with); a right passcode gives an 8-hour key that lives in this tab only. */
+function forget(){ S.tok = ''; S.name = ''; S.data = {}; try { sessionStorage.removeItem('dl_admin_tok'); } catch(e){} S.view = 'pass'; }
+function waitText(sec){ sec = Math.max(1, Math.round(sec)); if (sec < 90) return sec + ' seconds'; if (sec < 5400) return Math.round(sec/60) + ' minutes'; return Math.round(sec/3600) + ' hours'; }
 async function refreshMe(){
-  if (!S.tok){ S.view = 'signin'; return draw(); }
+  if (!S.tok){ S.view = 'pass'; return draw(); }
   const r = await rpc('dl_admin_me', { p_token:S.tok });
-  if (!r.ok){ if (r.error === 'auth'){ S.tok = ''; try { sessionStorage.removeItem('dl_admin_tok'); } catch(e){} S.view = 'signin'; } else say(errText(r), true); return draw(); }
-  S.name = r.username || '';
-  S.view = !r.admin ? 'notadmin' : !r.has_code ? 'setcode' : !r.unlocked ? 'unlock' : 'app';
-  draw();
-  if (S.view === 'app') load(S.tab);
+  if (!r.ok && r.error !== 'auth'){ say(errText(r), true); return draw(); }
+  if (!r.ok || !r.admin || !r.unlocked){ const was = S.view === 'app'; forget(); draw(); if (was) say(ERR.not_admin, true); return; }
+  S.name = r.username || 'Admin'; S.view = 'app';
+  draw(); load(S.tab);
 }
-async function signIn(u, p){
-  say('Signing in…');
-  const r = await rpc('dl_login', { p_username:u, p_password:p });
-  if (!r.ok){ say(errText(r), true); return; }
-  S.tok = r.token; try { sessionStorage.setItem('dl_admin_tok', S.tok); } catch(e){}
+async function unlock(code){
+  say('Checking…');
+  const r = await rpc('dl_admin_pass_unlock', { p_code:code });
+  if (!r.ok){
+    let t = errText(r);
+    if (r.error === 'locked' && r.wait) t = 'Too many wrong tries. The door is locked for ' + waitText(r.wait) + '.';
+    else if (r.error === 'bad_code' && r.wait) t += ' The door is locked now for ' + waitText(r.wait) + '.';
+    else if (r.error === 'bad_code' && typeof r.left === 'number') t += ' ' + r.left + (r.left === 1 ? ' try' : ' tries') + ' left before it locks.';
+    say(t, true); return;
+  }
+  S.tok = String(r.token || ''); try { sessionStorage.setItem('dl_admin_tok', S.tok); } catch(e){}
   say(''); await refreshMe();
 }
-async function signOut(){
-  const t = S.tok; S.tok = ''; S.name = ''; S.data = {}; try { sessionStorage.removeItem('dl_admin_tok'); } catch(e){}
-  S.view = 'signin'; draw();
+async function lockNow(){
+  const t = S.tok; forget(); say(''); draw(); doorCheck();
   if (t){ await rpc('dl_admin_lock', { p_token:t }); await rpc('dl_logout', { p_token:t }); }
 }
-async function lockNow(){ await rpc('dl_admin_lock', { p_token:S.tok }); S.data = {}; await refreshMe(); }
-
-function viewSignIn(){
-  const u = h('input', { type:'text', id:'u', maxlength:16, autocomplete:'username', autocapitalize:'off', spellcheck:'false' });
-  const p = h('input', { type:'password', id:'p', maxlength:72, autocomplete:'current-password' });
-  const go = ()=>{ if (!/^[A-Za-z0-9_]{3,16}$/.test(u.value.trim()) || p.value.length < 6){ say('Type your Dusk Line username and password.', true); return; } signIn(u.value.trim(), p.value); p.value = ''; };
-  const f = h('div', { cls:'card center' }, h('h2', { text:'Admin sign in', style:'margin-top:0' }),
-    h('p', { cls:'dim', text:'Use your Dusk Line account (the same username and password as in the game).' }),
-    h('label', { for:'u', text:'Username' }), u, h('label', { for:'p', text:'Password' }), p,
-    h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Sign in', on:{ click:go } })),
-    h('p', { cls:'dim small', style:'margin-top:14px', text:'Only an account that has been switched on as an admin can go further. Everybody else sees a closed door.' }));
+/* before anybody types: is the admin site switched on, and is the door locked right now? */
+async function doorCheck(){
+  const r = await rpc('dl_admin_pass_state', {});
+  if (S.view !== 'pass') return;
+  if (!r.ok){ if (r.error === 'off') say(ERR.off, true); return; }
+  if (!r.set) say(ERR.no_pass, true);
+  else if (r.wait > 0) say('Too many wrong tries. The door is locked for ' + waitText(r.wait) + '.', true);
+}
+function viewPass(){
+  const c = h('input', { type:'password', id:'pc', maxlength:72, autocomplete:'off', autocapitalize:'off', spellcheck:'false' });
+  const go = ()=>{ const v = c.value; if (!v){ say('Type the passcode.', true); return; } c.value = ''; unlock(v); };
+  const f = h('div', { cls:'card center' }, h('h2', { text:'Admin passcode', style:'margin-top:0' }),
+    h('p', { cls:'dim', text:'Type the passcode to open the admin site.' }),
+    h('label', { for:'pc', text:'Passcode' }), c,
+    h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Open', on:{ click:go } })),
+    h('p', { cls:'dim small', style:'margin-top:14px', text:'Five wrong tries lock the door: 5 minutes the first time, then longer each time. The game’s database checks the passcode, not this page.' }));
   f.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
   return f;
 }
-function viewNotAdmin(){
-  return h('div', { cls:'card center' }, h('h2', { text:'Locked', style:'margin-top:0' }),
-    h('p', { text:'You are signed in as ' + S.name + ', but this account is not an admin.' }),
-    h('p', { cls:'dim', text:'The admin site stays locked until the game’s developer switches it on for one account. If this is your game: tell Claude your account name and ask to unlock the admin site.' }),
-    h('div', { cls:'row', style:'margin-top:14px' }, h('button', { text:'Check again', on:{ click:refreshMe } }), h('button', { text:'Sign out', on:{ click:signOut } })));
-}
-function viewCode(first){
-  const c1 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' }), c2 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' });
-  const c = h('input', { type:'password', maxlength:72, autocomplete:'off' });
+function passCard(){
+  const o = h('input', { type:'password', maxlength:72, autocomplete:'off' }), n1 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' }), n2 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' });
   const go = async ()=>{
-    if (first){
-      if (c1.value.length < 8){ say('The admin code needs at least 8 characters.', true); return; }
-      if (c1.value !== c2.value){ say('The two codes are not the same.', true); return; }
-      const r = await rpc('dl_admin_code_set', { p_token:S.tok, p_code:c1.value, p_old:null }); c1.value = c2.value = '';
-      if (!r.ok){ say(errText(r), true); return; }
-    } else {
-      const r = await rpc('dl_admin_unlock', { p_token:S.tok, p_code:c.value }); c.value = '';
-      if (!r.ok){ say(errText(r), true); return; }
-    }
-    say(''); refreshMe();
+    if (n1.value.length < 5){ say('The new passcode needs at least 5 letters or numbers.', true); return; }
+    if (n1.value !== n2.value){ say('The two new passcodes are not the same.', true); return; }
+    const r = await rpc('dl_admin_pass_change', { p_token:S.tok, p_old:o.value, p_new:n1.value }); o.value = n1.value = n2.value = '';
+    if (!r.ok){ if (r.error === 'not_admin' || r.error === 'auth') return refreshMe(); say(errText(r), true); return; }
+    say('Passcode changed. Use the new one from now on.');
   };
-  const f = first
-    ? h('div', { cls:'card center' }, h('h2', { text:'Choose your admin code', style:'margin-top:0' }),
-        h('p', { text:'Hi ' + S.name + '. Pick a second secret just for this site: your admin code.' }),
-        h('ul', { cls:'dim small' }, h('li', { text:'At least 8 characters, and NOT your game password.' }), h('li', { text:'You type it each time you open the admin site.' }), h('li', { text:'Tell a parent what it is. Nobody else.' })),
-        h('label', { text:'Admin code' }), c1, h('label', { text:'Type it again' }), c2,
-        h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Save my admin code', on:{ click:go } }), h('button', { text:'Sign out', on:{ click:signOut } })))
-    : h('div', { cls:'card center' }, h('h2', { text:'Admin code', style:'margin-top:0' }),
-        h('p', { text:'Signed in as ' + S.name + '. Type your admin code to open the door.' }),
-        h('label', { text:'Admin code' }), c,
-        h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Unlock', on:{ click:go } }), h('button', { text:'Sign out', on:{ click:signOut } })),
-        h('p', { cls:'dim small', style:'margin-top:14px', text:'Six wrong codes lock this for 15 minutes. Forgot it? Ask Claude to reset the admin code.' }));
-  f.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
-  return f;
+  return h('div', { cls:'card' }, h('h3', { text:'Change the passcode', style:'margin-top:0' }),
+    h('div', { cls:'cols3' }, h('div', null, h('label', { text:'Passcode now' }), o), h('div', null, h('label', { text:'New passcode' }), n1), h('div', null, h('label', { text:'New one again' }), n2)),
+    h('div', { cls:'row', style:'margin-top:12px' }, h('button', { text:'Change it', on:{ click:go } })),
+    h('p', { cls:'dim small', text:'Anyone who knows the passcode can use this site. Tell a parent what it is, and nobody else.' }));
 }
 
 /* ---------------------------------------------------------------- the app */
@@ -200,7 +193,8 @@ async function load(tab){
   else if (tab === 'scores'){ r = await call('boards'); if (r.ok){ D.boards = r.boards; if (!D.board && r.boards.length) D.board = r.boards[0].board; }
     if (r.ok && D.board){ const s = await call('scores', { board:D.board, limit:100 }); if (s.ok) D.scores = s.scores; }
     const rr = await call('runs', { limit:40 }); if (rr.ok) D.runs = rr.runs; }
-  else if (tab === 'ads' || tab === 'numbers'){ r = await call('config_get'); if (r.ok){ D.config = r.config; D.ads = D.news = D.prices = D.daily_pool = D.achievements = null; } }
+  else if (tab === 'ads' || tab === 'numbers'){ r = await call('config_get'); if (r.ok){ D.config = r.config; D.ads = D.news = D.prices = D.daily_pool = D.achievements = null; }
+    const sg = await rpc('dl_site_get', {}); D.gameReads = !!sg.ok; }
   else if (tab === 'words'){ r = await call('words'); if (r.ok) D.words = r.words; }
   else if (tab === 'log'){ r = await call('log', { limit:120 }); if (r.ok) D.log = r.log; }
   if (r && !r.ok && r.error !== 'not_admin') say(errText(r), true);
@@ -215,7 +209,7 @@ async function act(fn, args, done){
 function tabHome(){
   const s = S.data.stats || {};
   const T = (v, l)=> h('div', { cls:'stat' }, h('b', { text:v === undefined ? '…' : String(v) }), h('span', { text:l }));
-  return h('div', null, h('h2', { text:'Hello ' + S.name }),
+  return h('div', null, h('h2', { text:'Admin home' }),
     h('div', { cls:'grid' }, T(s.players, 'accounts'), T(s.players_24h, 'online today'), T(s.players_7d, 'this week'), T(s.servers_live, 'servers live now'),
       T(s.runs_24h, 'runs today'), T(s.runs, 'runs ever'), T(s.scores, 'scores on boards'), T(s.builds, 'shared builds'), T(s.crews, 'crews'), T(s.banned, 'banned')),
     h('div', { cls:'card' }, h('h3', { text:'What you can do here', style:'margin-top:0' }),
@@ -225,7 +219,8 @@ function tabHome(){
         h('li', { text:'Ads & news: put your own words on the game’s billboards and a news line on the menu.' }),
         h('li', { text:'Game numbers: ride prices, daily challenges, achievements.' }),
         h('li', { text:'Blocked words: add a word that players must not use in names.' })),
-      h('p', { cls:'dim small', text:'Everything you change is written in the Log with your name. Nothing here deletes a player’s account for good.' })));
+      h('p', { cls:'dim small', text:'Everything you change is written in the Log. Nothing here deletes a player’s account for good.' })),
+    passCard());
 }
 function tabPlayers(){
   const D = S.data, q = h('input', { type:'search', placeholder:'Search a username', value:D.q || '', maxlength:16 });
@@ -293,6 +288,8 @@ function tabScores(){
       : h('p', { cls:'dim', text:'No boards yet.' }),
     h('h3', { text:'Latest runs (guests too)' }), h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'Rider' }), h('th', { cls:'num', text:'Score' }), h('th', { text:'Where' }), h('th', { text:'When' }))), rb)));
 }
+/* until the last database step is done the game does not read ads, news or prices from here (it would be unsafe before that) */
+function waitNote(){ return S.data.gameReads === false ? h('div', { cls:'note', text:'Saved here, but not in the game yet: the game starts to show your ads, news and prices after the last database step. Ask Claude to finish it.' }) : null; }
 function adPreview(a){
   const bg = /^#[0-9a-f]{6}$/i.test(a.bg || '') ? a.bg : '#1f6fd6', fg = /^#[0-9a-f]{6}$/i.test(a.fg || '') ? a.fg : '#ffffff', ac = /^#[0-9a-f]{6}$/i.test(a.ac || '') ? a.ac : '#ffd21f';
   return h('div', { cls:'ad', style:'background:linear-gradient(135deg, ' + bg + ', rgba(0,0,0,.35)), ' + bg + '; color:' + fg }, h('b', { text:(a.t || 'YOUR WORDS').toUpperCase() }), h('i', { style:'background:' + ac }), h('span', { text:a.s || '' }));
@@ -318,7 +315,7 @@ function tabAds(){
     say('Saved. ' + r.value.length + ' board' + (r.value.length === 1 ? '' : 's') + ' with your words' + (r.dropped ? ', ' + r.dropped + ' left out (empty or a blocked word)' : '') + '. Players see it the next time they open the game.'); D.ads = null; D.config = null; load('ads'); };
   const nt = h('input', { type:'text', maxlength:90, value:D.news.text }), non = h('input', { type:'checkbox', id:'non', checked:D.news.on });
   nt.addEventListener('input', ()=>{ D.news.text = nt.value; }); non.addEventListener('change', ()=>{ D.news.on = non.checked; });
-  return h('div', null, h('h2', { text:'Billboard ads' }),
+  return h('div', null, h('h2', { text:'Billboard ads' }), waitNote(),
     h('p', { cls:'dim', text:'About a third of the billboards in the game are ad boards. Fill up to four with your own words; empty ones show the game’s own ads.' }),
     h('div', { cls:'note', text:'Real ads from a real company: only after a parent has agreed it with them. No links, no prices, nothing that is not OK for kids.' }),
     cards,
@@ -370,7 +367,7 @@ function tabNumbers(){
     cnt.textContent = Object.keys(D.prices).length + ' changed prices' + (n > 60 ? ' · showing the first 60, search for more' : '');
   };
   q.addEventListener('input', ()=>{ D.rq = q.value; fill(); }); fill();
-  return h('div', null, h('h2', { text:'Game numbers' }),
+  return h('div', null, h('h2', { text:'Game numbers' }), waitNote(),
     h('h3', { text:'Ride prices' }), h('p', { cls:'dim', text:'Type a new price next to a ride (0 = free for everybody). Leave it empty to keep the normal price. The starter BMX always stays free.' }),
     h('div', { cls:'row' }, h('div', { cls:'grow' }, q), cnt),
     h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'Ride' }), h('th', { text:'Kind' }), h('th', { cls:'num', text:'Normal' }), h('th', { text:'Your price' }))), tb)),
@@ -404,7 +401,7 @@ function tabLog(){
 function draw(){
   const app = $('app'); app.textContent = '';
   const top = h('div', { cls:'top' }, h('div', { cls:'logo' }, 'DUSK', h('b', { text:'LINE' })), h('span', { cls:'tag hot', text:'admin' }), h('span', { cls:'dim small', text:'game ' + GAME_VER }));
-  if (S.tok && S.view !== 'signin') top.appendChild(h('div', { cls:'who' }, h('span', { cls:'dim small', text:S.name }), S.view === 'app' ? h('button', { cls:'sm', text:'Lock', on:{ click:lockNow } }) : null, h('button', { cls:'sm', text:'Sign out', on:{ click:signOut } })));
+  if (S.tok && S.view === 'app') top.appendChild(h('div', { cls:'who' }, h('span', { cls:'dim small', text:'door open' }), h('button', { cls:'sm', text:'Lock', on:{ click:lockNow } })));
   app.appendChild(top);
   const wrap = h('div', { cls:'wrap' });
   if (S.view === 'app'){
@@ -414,12 +411,12 @@ function draw(){
   }
   wrap.appendChild(h('div', { id:'msg', cls:'msg' + (S.bad ? ' bad' : '') + (S.msg ? '' : ' hide'), role:'status', text:S.msg }));
   let v;
-  if (S.view === 'signin') v = viewSignIn(); else if (S.view === 'notadmin') v = viewNotAdmin(); else if (S.view === 'setcode') v = viewCode(true); else if (S.view === 'unlock') v = viewCode(false);
+  if (S.view !== 'app') v = viewPass();
   else v = ({ home:tabHome, players:tabPlayers, servers:tabServers, scores:tabScores, ads:tabAds, numbers:tabNumbers, words:tabWords, log:tabLog }[S.tab] || tabHome)();
   wrap.appendChild(v); app.appendChild(wrap);
 }
 draw();
-if (S.tok) refreshMe();
+if (S.tok) refreshMe(); else doorCheck();
 </script>
 </body>
 </html>
