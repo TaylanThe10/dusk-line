@@ -4067,9 +4067,11 @@ html #loading .ldTip{ box-sizing:border-box; min-width:min(300px, 86vw); overflo
 </head>
 <body>
 <div id="loading">
+  <div class="ld60Sky" aria-hidden="true"><i class="ld60Sun"></i><i class="ld60S1"></i><i class="ld60S2"></i><i class="ld60Cl c1"></i><i class="ld60Cl c2"></i><i class="ld60Shoot"></i></div>
   <svg id="loadSkyline" viewBox="0 0 900 100" preserveAspectRatio="none" aria-hidden="true">
     <polygon points="0,100 0,78 36,78 36,80 64,80 64,71 92,71 92,27 136,27 136,80 176,80 176,22 220,22 220,75 248,75 248,81 292,81 292,81 332,81 332,65 360,65 360,69 396,69 396,64 424,64 424,22 472,22 472,76 520,76 520,39 564,39 564,76 608,76 608,69 652,69 652,64 692,64 692,73 728,73 728,60 760,60 760,64 788,64 788,72 828,72 828,63 864,63 864,66 892,66 892,78 900,78 900,100"/>
   </svg>
+  <div id="ld60Hello"></div>
   <div class="lt">Dusk <b>Line</b></div>
   <div class="loadProgress">
     <div id="loadBar"><span class="ld44Clip"><i></i></span><div class="ld44Track"><div class="ld44Bike"><svg class="ldBike" viewBox="0 0 40 30" aria-hidden="true"><g transform="translate(8 23)"><g class="ldW ldSp"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></g></g><g transform="translate(31 23)"><g class="ldW ldSp"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></g></g><path class="ldF" d="M8 23H16L14 15ZM14 15L26 13.6M16 23L27.5 16.5M26 13.6L31 23M26 13.6L25.2 8.4M23.2 8.4H27.4"/><g class="ldR"><circle cx="23.4" cy="2.9" r="2.4"/><path d="M16.5 23.4L20 17.2L15 11.6L21.2 6.2L25.2 8.6"/></g></svg><b class="ld44W ld44W1" aria-hidden="true"><svg viewBox="-8 -8 16 16"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></svg></b><b class="ld44W ld44W2" aria-hidden="true"><svg viewBox="-8 -8 16 16"><circle r="6.2"/><path d="M-6.2 0H6.2M0-6.2V6.2"/></svg></b></div></div></div>
@@ -4078,6 +4080,116 @@ html #loading .ldTip{ box-sizing:border-box; min-width:min(300px, 86vw); overflo
   <div class="ls" id="loadMsg">Pumping up the tyres</div>
   <div class="ldTip" id="ldTip">Hold SPACE rolling up a ramp. Let go right at the lip.</div>
 </div>
+<style id="g60Css">
+#gate60{ position:fixed; left:0; top:0; right:0; bottom:0; z-index:100000; display:none; overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y;
+  background:radial-gradient(120% 70% at 50% 100%, rgba(255,122,69,.36), rgba(255,122,69,0) 62%), linear-gradient(180deg, #0b0d13 0%, #141322 46%, #2a1b24 78%, #3a2220 100%);
+  color:#f3ede1; font-family:var(--dl-cond, "Arial Narrow", Arial, sans-serif); -webkit-user-select:text; user-select:text; }
+#gate60.g60On{ display:flex; padding:14px; padding-top:max(14px, env(safe-area-inset-top, 0px)); padding-bottom:max(14px, env(safe-area-inset-bottom, 0px)); box-sizing:border-box; }
+#gate60.g60Out{ opacity:0; transition:opacity .28s ease; pointer-events:none; }
+#gate60 *{ box-sizing:border-box; }
+#gate60 .g60Card{ width:430px; max-width:100%; margin:auto; padding:22px 22px 18px; background:#111113; outline:2px solid rgba(243,237,225,.20); box-shadow:8px 8px 0 #000; }
+#gate60 .g60Logo{ font:400 38px/.95 var(--dl-display, "Arial Black", Arial, sans-serif); text-transform:uppercase; letter-spacing:.01em; color:#f3ede1; text-shadow:3px 3px 0 #ff5a1f; white-space:nowrap; }
+#gate60 .g60Logo b{ display:inline-block; font-weight:400; color:#111113; background:#ffd23f; padding:.06em .2em 0; margin-left:.14em; text-shadow:none; transform:rotate(3deg); }
+#gate60 #g60Lead{ margin:14px 0 14px; font:600 17px/1.3 var(--dl-cond, "Arial Narrow", Arial, sans-serif); opacity:.88; }
+#gate60 .g60Seg{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:4px; }
+#gate60 .g60Seg button{ height:42px; margin:0; padding:0 6px; border:2px solid rgba(243,237,225,.26); border-radius:0; background:transparent; color:#f3ede1; cursor:pointer;
+  font:800 16px/1 var(--dl-cond, "Arial Narrow", Arial, sans-serif); letter-spacing:.06em; text-transform:uppercase; }
+#gate60 .g60Seg button.sel{ background:#ffd23f; color:#111113; border-color:#ffd23f; }
+#gate60 #g60Form{ margin:0; }
+#gate60 #g60Form label{ display:block; margin-top:11px; font:800 12px/1 var(--dl-cond, "Arial Narrow", Arial, sans-serif); letter-spacing:.12em; text-transform:uppercase; color:rgba(243,237,225,.82); }
+#gate60 #g60Form input{ display:block; width:100%; height:46px; margin:6px 0 0; padding:0 12px; border:2px solid #111113; border-radius:0; outline:none;
+  font:600 18px/1 Arial, Helvetica, sans-serif; letter-spacing:0; text-transform:none; color:#111113; background:#f3ede1; -webkit-user-select:text; user-select:text; -webkit-appearance:none; appearance:none; }
+#gate60 #g60Form input:focus{ border-color:#ffd23f; box-shadow:0 0 0 3px rgba(255,210,63,.45); }
+#gate60 .g60Hint{ display:block; margin-top:5px; font:500 13px/1.25 var(--dl-cond, "Arial Narrow", Arial, sans-serif); letter-spacing:0; text-transform:none; color:rgba(243,237,225,.6); }
+#gate60 #g60Go{ display:block; width:100%; height:54px; margin:16px 0 0; padding:0 10px; border:3px solid #111113; border-radius:0; background:#ff5a1f; color:#111113; cursor:pointer;
+  font:400 21px/1 var(--dl-display, "Arial Black", Arial, sans-serif); letter-spacing:.02em; text-transform:uppercase; box-shadow:5px 5px 0 #000; white-space:nowrap; }
+#gate60 #g60Go:active{ transform:translate(3px, 3px); box-shadow:2px 2px 0 #000; }
+#gate60 #g60Go[disabled]{ opacity:.6; cursor:default; }
+#gate60 #g60Err{ min-height:20px; margin-top:11px; font:600 15px/1.3 var(--dl-cond, "Arial Narrow", Arial, sans-serif); color:#ff9a7a; }
+#gate60 #g60Err.ok{ color:#9fe3b0; }
+#gate60 .g60Fine{ margin:8px 0 0; font:500 12.5px/1.35 var(--dl-cond, "Arial Narrow", Arial, sans-serif); color:rgba(243,237,225,.55); }
+#gate60 #g60Skip{ display:none; width:100%; height:44px; margin:10px 0 0; border:2px solid rgba(243,237,225,.3); border-radius:0; background:transparent; color:#f3ede1; cursor:pointer;
+  font:800 15px/1 var(--dl-cond, "Arial Narrow", Arial, sans-serif); letter-spacing:.05em; text-transform:uppercase; }
+#gate60 #g60Skip.on{ display:block; }
+@media (max-height:740px) and (min-width:700px){
+  #gate60 .g60Card{ width:780px; display:grid; grid-template-columns:1fr 1.2fr; grid-column-gap:26px; padding:20px 22px 16px; }
+  #gate60 .g60Side{ align-self:center; }
+  #gate60 #g60Form label:first-child{ margin-top:0; }
+}
+@media (max-height:540px) and (min-width:560px){
+  #gate60 .g60Card{ width:740px; display:grid; grid-template-columns:1fr 1.2fr; grid-column-gap:22px; padding:14px 18px 12px; }
+  #gate60 .g60Side{ align-self:center; }
+  #gate60 .g60Logo{ font-size:32px; }
+  #gate60 #g60Lead{ margin:10px 0; font-size:15px; }
+  #gate60 #g60Form label{ margin-top:7px; }
+  #gate60 #g60Form label:first-child{ margin-top:0; }
+  #gate60 #g60Form input{ height:40px; margin-top:4px; }
+  #gate60 .g60Hint{ display:none; }
+  #gate60 #g60Go{ height:46px; margin-top:11px; font-size:19px; }
+  #gate60 #g60Err{ min-height:18px; margin-top:7px; font-size:14px; }
+  #gate60 #g60Skip{ height:38px; margin-top:8px; }
+}
+@media (max-width:480px){ #gate60 #g60Go{ font-size:17px; letter-spacing:0; padding:0 4px; } }
+@media (max-width:380px){ #gate60 .g60Card{ padding:18px 16px 14px; } #gate60 .g60Logo{ font-size:32px; } #gate60 #g60Go{ font-size:15px; } }
+@media (max-width:330px){ #gate60 #g60Go{ font-size:13px; } }
+html #loading > .ld60Sky{ position:absolute; left:0; top:0; right:0; bottom:0; z-index:0; overflow:hidden; pointer-events:none; }
+html #loading .ld60Sky i{ position:absolute; display:block; will-change:transform, opacity; }
+html #loading .ld60S1, html #loading .ld60S2{ left:0; top:0; right:0; height:56%; opacity:.2; }
+html #loading .ld60S1{ animation:ld60Tw 3.1s ease-in-out infinite alternate;
+  background-image:radial-gradient(1.3px 1.3px at 7% 22%, #fff 55%, transparent 60%), radial-gradient(1.6px 1.6px at 19% 61%, #ffe9c8 55%, transparent 60%), radial-gradient(1.2px 1.2px at 31% 12%, #fff 55%, transparent 60%),
+    radial-gradient(1.5px 1.5px at 44% 38%, #dfe8ff 55%, transparent 60%), radial-gradient(1.2px 1.2px at 58% 8%, #fff 55%, transparent 60%), radial-gradient(1.7px 1.7px at 69% 47%, #ffe9c8 55%, transparent 60%),
+    radial-gradient(1.2px 1.2px at 81% 19%, #fff 55%, transparent 60%), radial-gradient(1.4px 1.4px at 93% 55%, #dfe8ff 55%, transparent 60%); }
+html #loading .ld60S2{ animation:ld60Tw 4.7s ease-in-out -2.2s infinite alternate;
+  background-image:radial-gradient(1.2px 1.2px at 12% 44%, #fff 55%, transparent 60%), radial-gradient(1.5px 1.5px at 25% 27%, #dfe8ff 55%, transparent 60%), radial-gradient(1.3px 1.3px at 38% 70%, #fff 55%, transparent 60%),
+    radial-gradient(1.2px 1.2px at 51% 24%, #ffe9c8 55%, transparent 60%), radial-gradient(1.6px 1.6px at 63% 66%, #fff 55%, transparent 60%), radial-gradient(1.2px 1.2px at 76% 33%, #fff 55%, transparent 60%),
+    radial-gradient(1.4px 1.4px at 88% 9%, #dfe8ff 55%, transparent 60%), radial-gradient(1.2px 1.2px at 97% 30%, #fff 55%, transparent 60%); }
+@keyframes ld60Tw{ from{ opacity:.12; } to{ opacity:.9; } }
+html #loading .ld60Cl{ left:-48%; height:64px; border-radius:50%; background:radial-gradient(closest-side, rgba(255,176,128,.22), rgba(255,176,128,0)); }
+html #loading .ld60Cl.c1{ top:33%; width:46%; animation:ld60Drift 74s linear -20s infinite; }
+html #loading .ld60Cl.c2{ top:44%; width:32%; height:46px; animation:ld60Drift 104s linear -58s infinite; }
+@keyframes ld60Drift{ to{ transform:translateX(340%); } }
+html #loading .ld60Shoot{ top:11%; left:72%; width:96px; height:2px; border-radius:2px; opacity:0; background:linear-gradient(90deg, #fff, rgba(255,255,255,0));
+  transform:rotate(-22deg); animation:ld60Shoot 8s ease-in 1.5s infinite; }
+@keyframes ld60Shoot{ 0%{ opacity:0; transform:rotate(-22deg) translateX(0); } 3%{ opacity:.95; } 9%{ opacity:0; transform:rotate(-22deg) translateX(-280px); } 100%{ opacity:0; transform:rotate(-22deg) translateX(-280px); } }
+html #loading .ld60Sun{ left:50%; bottom:2%; width:420px; height:420px; margin-left:-210px; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,196,120,.34), rgba(255,150,80,.10) 55%, rgba(255,150,80,0)); animation:ld60Sun 4.4s ease-in-out infinite alternate; }
+@keyframes ld60Sun{ from{ transform:scale(.9); opacity:.55; } to{ transform:scale(1.12); opacity:1; } }
+html #loading #ld60Hello{ max-width:92vw; margin:0 0 2px; padding:0 8px; font:400 22px/1.15 var(--dl-hand, "Segoe Print", "Bradley Hand", cursive); color:#ffd23f; text-align:center;
+  transform:rotate(-2deg); text-shadow:2px 2px 0 #111113, 0 0 14px rgba(0,0,0,.6); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+html #loading #ld60Hello:empty{ display:none; }
+@media (max-height:480px){ html #loading #ld60Hello{ font-size:17px; } }
+@media (prefers-reduced-motion: reduce){ html #loading .ld60Sky i{ animation:none !important; } }
+</style>
+<div id="gate60" class="onlineOnly">
+  <div class="g60Card">
+    <div class="g60Side">
+      <div class="g60Logo">Dusk<b>Line</b></div>
+      <p id="g60Lead">Make your rider account to play. It takes ten seconds.</p>
+      <div class="g60Seg"><button type="button" data-m="signup" class="sel">Sign up</button><button type="button" data-m="login">Log in</button></div>
+      <p class="g60Fine">We keep a username and a scrambled password. No email, no real name.</p>
+    </div>
+    <div class="g60Main">
+      <form id="g60Form" autocomplete="on" novalidate>
+        <label>Username<input id="g60User" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text">
+          <span class="g60Hint">3 to 16 letters, numbers or _ &middot; not your real name</span></label>
+        <label>Password<input id="g60Pass" name="password" type="password" maxlength="72" autocomplete="new-password">
+          <span class="g60Hint">6 characters or more</span></label>
+        <label id="g60Pass2W">Password again<input id="g60Pass2" name="password2" type="password" maxlength="72" autocomplete="new-password"></label>
+        <button id="g60Go" type="submit">Create account &amp; play</button>
+      </form>
+      <div id="g60Err" role="status" aria-live="polite"></div>
+      <button id="g60Skip" type="button">Play now, sign in later</button>
+    </div>
+  </div>
+</div>
+<script data-g60="gate">
+(function(){try{var who=JSON.parse(localStorage.getItem("dusk_line_acct_v1")||"null"),hi=document.getElementById("ld60Hello");if(hi&&who&&typeof who.name==="string"&&/^[A-Za-z0-9_]{3,16}$/.test(who.name))hi.textContent="Welcome back, "+who.name}catch(e){}var g=document.getElementById("gate60");if(!g)return;var q=location.search||"",force=/[?&]gate=1\b/.test(q);if(/[?&]gate=0\b/.test(q)||!force&&(location.
+protocol==="file:"||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname||"")))return;var has=false;try{var o=JSON.parse(localStorage.getItem("dusk_line_acct_v1")||"null");has=!!(o&&typeof o.token==="string"&&o.token)}catch(e){}if(has&&!force)return;g.className+=" g60On";var S=window.__g60={shown:true,closed:false,mode:"signup",pending:null,submit:null,t:Date.now()};var el=function(id){return document.
+getElementById(id)};function msg(t,ok){var e=el("g60Err");if(e){e.textContent=t||"";e.className=ok?"ok":""}}function mode(m){S.mode=m;var b2=g.querySelectorAll(".g60Seg button"),i2;for(i2=0;i2<b2.length;i2++)b2[i2].className=b2[i2].getAttribute("data-m")===m?"sel":"";el("g60Pass2W").style.display=m==="signup"?"":"none";el("g60Go").textContent=m==="signup"?"Create account & play":"Log in & play";el(
+"g60Lead").textContent=m==="signup"?"Make your rider account to play. It takes ten seconds.":"Welcome back. Log in and ride.";el("g60Pass").setAttribute("autocomplete",m==="signup"?"new-password":"current-password");msg("")}S.msg=msg;S.setMode=mode;var b=g.querySelectorAll(".g60Seg button"),i;for(i=0;i<b.length;i++)b[i].onclick=function(){mode(this.getAttribute("data-m"))};el("g60Form").onsubmit=function(ev2){
+if(ev2&&ev2.preventDefault)ev2.preventDefault();var u=(el("g60User").value||"").replace(/^\s+|\s+$/g,""),p=el("g60Pass").value||"";if(!/^[A-Za-z0-9_]{3,16}$/.test(u)){msg("Usernames are 3 to 16 letters, numbers or underscores.");return false}if(p.length<6){msg("Passwords need at least 6 characters.");return false}if(S.mode==="signup"&&p!==(el("g60Pass2").value||"")){msg("The two passwords don't ma\
+tch.");return false}S.pending={mode:S.mode,user:u,pass:p};if(S.submit)S.submit();else msg("One moment, the game is still arriving...",true);return false};var stop=function(e){e.stopPropagation()};var ev=["keydown","keyup","keypress","pointerdown","pointerup","mousedown","mouseup","touchstart","touchend","wheel","contextmenu"];for(i=0;i<ev.length;i++)g.addEventListener(ev[i],stop)})();
+</script>
 <script data-p16="watch">
 (function(){var W=window.__p16w={err:null,t0:Date.now(),last:"",lastT:Date.now(),soft:false,card:false};window.addEventListener("error",function(e){if(W.err)return;var m=e&&(e.message||e.error&&e.error.message);W.err=String(m||"unknown error").slice(0,180)});function reload(){try{localStorage.setItem("dusk_line_p16_alive",JSON.stringify({ph:"away",t:Date.now(),n:0}))}catch(e){}location.reload()}function card(title,text){
 if(W.card)return;W.card=true;var o=document.createElement("div");o.id="p16Load";o.setAttribute("style",'position:fixed;left:0;top:0;right:0;bottom:0;z-index:100001;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(8,9,12,.95);color:#f3ede1;text-align:center;font-family:"Arial Narrow",Arial,sans-serif');var b=document.createElement("div");b.setAttribute("style","ma\
@@ -32335,10 +32447,10 @@ W13_SOL.extra.length;i++){const e=W13_SOL.extra[i];add(e[0],e[1],e[2])}}{const _
 pos.x,pz=WALK.pos.z;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=G.get(cx+i+","+(cz+j));if(!a)continue;for(let k=0;k<a.length;k+=3){const dx=x-a[k],dz=z-a[k+1],rr=r+a[k+2];if(dx*dx+dz*dz<rr*rr&&(px-a[k])*(px-a[k])+(pz-a[k+1])*(pz-a[k+1])>=rr*rr)return true}}return false}function walkBikeHit(x,z,r){if(!WALK.on||WALK.st==="down"||WALK.st==="up")return false;const fx2=Math.sin(PARK.yaw),fz2=Math.
 cos(PARK.yaw);const ax=PARK.pos.x+fx2*CUR_RZ,az=PARK.pos.z+fz2*CUR_RZ,bx=PARK.pos.x+fx2*CUR_FZ,bz=PARK.pos.z+fz2*CUR_FZ;const lay=PARK.roll>.4?.3:0;const ox=-Math.cos(PARK.yaw)*lay,oz=Math.sin(PARK.yaw)*lay;const abx=bx-ax,abz=bz-az,L2=abx*abx+abz*abz||1;const d2=(qx,qz)=>{const t=clamp(((qx-ax-ox)*abx+(qz-az-oz)*abz)/L2,0,1),px=ax+ox+abx*t,pz=az+oz+abz*t;return(qx-px)*(qx-px)+(qz-pz)*(qz-pz)};const rr=r+
 .16+lay*.6;return d2(x,z)<rr*rr&&d2(WALK.pos.x,WALK.pos.z)>=rr*rr}const _w13ring=[[0,0]];for(let i=0;i<8;i++){const a=i*Math.PI/4;_w13ring.push([Math.sin(a),Math.cos(a)])}function walkFree(x,z,y){for(let i=0;i<_w13ring.length;i++){const rx=x+_w13ring[i][0]*W13_R,rz=z+_w13ring[i][1]*W13_R;const s=sampleWorld(rx,rz);const h=s.h;if(h>y+W13_STEP)return false;if(i===0&&s.n.y<.62&&h>y+.06)return false}if(walkSolidHit(
-x,z,W13_R*.85))return false;if(walkBikeHit(x,z,W13_R*.8))return false;return true}function walkReadInput(){let x=0,z=0;const up=keys.up||touch.up?1:0,dn=keys.down||touch.down?1:0;const lf=keys.left||touch.left?1:0,rt=keys.right||touch.right?1:0;z=up-dn;x=rt-lf;let run=keys.manual||touch.manual?1:0;if(typeof MOB!=="undefined"&&MOB.on&&MOB.stick&&MOB.stick.on){const sx=MOB.stick.nx||0,sz=-(MOB.stick.
-ny||0),m2=Math.hypot(sx,sz);if(m2>.16){const k=clamp((m2-.16)/.7,.12,1)/m2;x=sx*k;z=sz*k}else if(!touch.left&&!touch.right){x=0;z=0}}const m=Math.hypot(x,z);if(m>1){x/=m;z/=m}WIN.x=x;WIN.z=z;WIN.mag=Math.min(1,m);WIN.run=run;const j=keys.crouch||touch.crouch?1:0;WIN.jump=j&&!WIN.jumpPrev?1:0;WIN.jumpPrev=j;WIN.jumpHeld=j;WIN.any=WIN.mag>.05||WIN.jump}function walkCtl(dt,auto){const az=WC.az;const fx2=Math.
-sin(az),fz2=Math.cos(az),rx=-Math.cos(az),rz=Math.sin(az);let dx,dz,mag,run;if(auto){dx=auto.x;dz=auto.z;mag=auto.m*.5;run=0}else{dx=fx2*WIN.z+rx*WIN.x;dz=fz2*WIN.z+rz*WIN.x;mag=WIN.mag;run=WIN.run;if(mag<.05&&WALK.nudge&&WALK.nudge.t>0){const nx=WALK.nudge.x-WALK.pos.x,nz=WALK.nudge.z-WALK.pos.z,d=Math.hypot(nx,nz);WALK.nudge.t-=dt;if(d>.05){dx=nx/d;dz=nz/d;mag=clamp(d*2.2,.15,.55)*.42}else WALK.
-nudge=null}else if(mag>=.05)WALK.nudge=null}const dl=Math.hypot(dx,dz);if(dl>1e-4){dx/=dl;dz/=dl}WALK.run=damp(WALK.run,run&&mag>.3?1:0,5,dt);const gear=W13_JOG+(W13_RUN-W13_JOG)*WALK.run;const top=mag<=.5?W13_WALK*(mag/.5):W13_WALK+(gear-W13_WALK)*((mag-.5)/.5);let want=0;if(mag>.05){const ty=Math.atan2(dx,dz),d=angleDiff(ty,WALK.yaw);const maxT=(WALK.air?4.5:12-3.5*WALK.run)*dt;const step=clamp(
+x,z,W13_R*.85))return false;if(walkBikeHit(x,z,W13_R*.8))return false;return true}function walkReadInput(){let x=0,z=0;const up=keys.up||touch.up?1:0,dn=keys.down||touch.down?1:0;const lf=keys.left||touch.left?1:0,rt=keys.right||touch.right?1:0;z=up-dn;x=rt-lf;let run=keys.manual||touch.manual||touch.go?1:0;if(typeof MOB!=="undefined"&&MOB.on&&MOB.stick&&MOB.stick.on){const sx=MOB.stick.nx||0,sz=-(MOB.
+stick.ny||0),m2=Math.hypot(sx,sz);if(m2>.16){const k=clamp((m2-.16)/.7,.12,1)/m2;x=sx*k;z=sz*k}else if(!touch.left&&!touch.right){x=0;z=0}}const m=Math.hypot(x,z);if(m>1){x/=m;z/=m}WIN.x=x;WIN.z=z;WIN.mag=Math.min(1,m);WIN.run=run;const j=keys.crouch||touch.crouch?1:0;WIN.jump=j&&!WIN.jumpPrev?1:0;WIN.jumpPrev=j;WIN.jumpHeld=j;WIN.any=WIN.mag>.05||WIN.jump}function walkCtl(dt,auto){const az=WC.az;
+const fx2=Math.sin(az),fz2=Math.cos(az),rx=-Math.cos(az),rz=Math.sin(az);let dx,dz,mag,run;if(auto){dx=auto.x;dz=auto.z;mag=auto.m*.5;run=0}else{dx=fx2*WIN.z+rx*WIN.x;dz=fz2*WIN.z+rz*WIN.x;mag=WIN.mag;run=WIN.run;if(mag<.05&&WALK.nudge&&WALK.nudge.t>0){const nx=WALK.nudge.x-WALK.pos.x,nz=WALK.nudge.z-WALK.pos.z,d=Math.hypot(nx,nz);WALK.nudge.t-=dt;if(d>.05){dx=nx/d;dz=nz/d;mag=clamp(d*2.2,.15,.55)*
+.42}else WALK.nudge=null}else if(mag>=.05)WALK.nudge=null}const dl=Math.hypot(dx,dz);if(dl>1e-4){dx/=dl;dz/=dl}WALK.run=damp(WALK.run,run&&mag>.3?1:0,5,dt);const gear=W13_JOG+(W13_RUN-W13_JOG)*WALK.run;const top=mag<=.5?W13_WALK*(mag/.5):W13_WALK+(gear-W13_WALK)*((mag-.5)/.5);let want=0;if(mag>.05){const ty=Math.atan2(dx,dz),d=angleDiff(ty,WALK.yaw);const maxT=(WALK.air?4.5:12-3.5*WALK.run)*dt;const step=clamp(
 d*(1-Math.exp(-14*dt)),-maxT,maxT);WALK.yaw+=step;WALK.turn=step/Math.max(dt,1e-4);want=top*clamp(Math.cos(d)*.6+.55,.25,1)}else WALK.turn=damp(WALK.turn,0,10,dt);const tvx=dx*want,tvz=dz*want;WALK.want=want;const k=WALK.air?2.4:want>Math.hypot(WALK.vel.x,WALK.vel.z)?7.5:11;const a0x=WALK.vel.x,a0z=WALK.vel.z;WALK.vel.x=damp(WALK.vel.x,tvx,k,dt);WALK.vel.z=damp(WALK.vel.z,tvz,k,dt);WALK.acc=((WALK.
 vel.x-a0x)*Math.sin(WALK.yaw)+(WALK.vel.z-a0z)*Math.cos(WALK.yaw))/Math.max(dt,1e-4);try{if(typeof PEOPLE!=="undefined"){for(let i=0;i<PEOPLE.length;i++){const p=PEOPLE[i];if(!p||!p.pos||p.dead||p.hidden)continue;const ex=WALK.pos.x-p.pos.x,ez=WALK.pos.z-p.pos.z,d2=ex*ex+ez*ez;if(d2<.36&&d2>1e-6&&Math.abs(p.pos.y-WALK.pos.y)<1.5){const d=Math.sqrt(d2),push=.6-d;WALK.pos.x+=ex/d*push*.5;WALK.pos.z+=
 ez/d*push*.5}}}}catch(e){}WALK.jbuf=WIN.jump&&!auto?W13_JBUF:Math.max(0,(WALK.jbuf||0)-dt);if(!WALK.air)WALK.coy=W13_COYOTE;else WALK.coy=Math.max(0,(WALK.coy||0)-dt);if(WALK.jbuf>0&&WALK.coy>0&&!auto){WALK.air=true;WALK.vy=W13_JUMP+.45*WALK.run;WALK.airT=0;WALK.jumpY=WALK.pos.y;WALK.jbuf=0;WALK.coy=0;WALK.jcut=false;WALK.jumped=true;try{sfxHop(.15)}catch(e){}}if(WALK.air&&WALK.jumped&&!WALK.jcut&&
@@ -34805,7 +34917,7 @@ quit);for(const b of[...grid.querySelectorAll("button"),...foot.querySelectorAll
 UI43.err="pause: "+(e&&e.message||e)}}function ui43OpenMap(){try{const fr=document.querySelector('#modeList .mode[data-mode="free"]');if(fr)fr.click();else if(typeof MODE!=="undefined")MODE="free";if(typeof GAME!=="undefined"&&GAME!=="play"&&typeof startRun==="function")startRun();setTimeout(()=>{try{if(typeof rgMapOpen==="function")rgMapOpen()}catch(e){UI43.err="map: "+e.message}},60)}catch(e){UI43.
 err="menu map: "+(e&&e.message||e)}}function ui43MenuCard(){if(document.getElementById("ui43MapCard"))return;const left=document.querySelector("#menu .mLeft");if(!left)return;const b=document.createElement("button");b.id="ui43MapCard";b.type="button";b.className="ui43MapCard";b.innerHTML='<span class="ui43MapArt" aria-hidden="true"><svg viewBox="0 0 64 40"><path d="M0 34 L14 22 L24 28 L38 12 L50 2\
 0 L64 8 L64 40 L0 40Z" fill="rgba(255,255,255,.08)"/><path d="M4 30 C14 26 18 18 30 20 S46 30 60 14" fill="none" stroke="#ffb347" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 4"/><circle cx="60" cy="14" r="3.6" fill="#ff6a1a"/><circle cx="4" cy="30" r="2.6" fill="#f4f1ea"/></svg></span><span class="tx"><b>World map</b><span>See the whole world, pick a place and ride there</span></\
-span><span class="go" aria-hidden="true">&rarr;</span>';b.addEventListener("click",ui43OpenMap);const mp=document.getElementById("mpBtn");if(mp&&mp.parentNode===left)left.insertBefore(b,mp);else left.appendChild(b)}const DL_VER="15.58";function ui43Ver(){if(document.getElementById("ui43Ver"))return;const b=document.querySelector("#menu .mBrand");if(!b)return;const s=document.createElement("span");
+span><span class="go" aria-hidden="true">&rarr;</span>';b.addEventListener("click",ui43OpenMap);const mp=document.getElementById("mpBtn");if(mp&&mp.parentNode===left)left.insertBefore(b,mp);else left.appendChild(b)}const DL_VER="15.59";function ui43Ver(){if(document.getElementById("ui43Ver"))return;const b=document.querySelector("#menu .mBrand");if(!b)return;const s=document.createElement("span");
 s.id="ui43Ver";s.className="ui43Ver";s.textContent="v"+DL_VER;s.title="Dusk Line version "+DL_VER;b.appendChild(s)}function ui43Minimap(){const cv=document.getElementById("minimap");if(!cv||cv._ui43)return;cv._ui43=true;let down=null;cv.addEventListener("pointerdown",e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};e.stopPropagation()},true);cv.addEventListener("pointerup",e=>{if(!down)return;
 const ok=Math.hypot(e.clientX-down.x,e.clientY-down.y)<14&&performance.now()-down.t<700;down=null;e.stopPropagation();if(ok&&typeof GAME!=="undefined"&&GAME==="play"&&typeof rgMapOpen==="function"&&!(typeof RGMAP!=="undefined"&&RGMAP.open)){e.preventDefault();rgMapOpen()}},true)}(function ui43MenuEarly(){if(typeof show!=="function")return;const base=show;show=function(id){if(id==="menu"&&typeof M28!==
 "undefined"&&!M28.ready&&typeof m28Boot==="function"){try{m28Boot()}catch(e){UI43.err="m28: "+(e&&e.message||e)}}return base.apply(this,arguments)}})();(function ui43Hooks(){if(!UI43.on)return;try{const P2=document.getElementById("pause");if(P2&&typeof MutationObserver!=="undefined"){let shown=false;new MutationObserver(()=>{const vis=!P2.classList.contains("hide");if(vis&&!shown)pz43Layout();shown=
@@ -35634,7 +35746,15 @@ I[k]-cx)>62||Math.abs(I[k+1]-cz)>62)break;const dx=I[k]-x,dz=I[k+1]-z,rr=r+I[k+2
 d[1]-z)<4.2)return true}}}catch(e){}return false}function c59StreetTrees(cx,cz,bias){if(!C59.on||typeof MAP==="undefined"||MAP.tree&&MAP.tree!=="round")return;if(typeof tree!=="function"||typeof edgePoint!=="function")return;const ci=Math.round(cx/CELL),cj=Math.round(cz/CELL);const sides=["n","s","e","w"];for(let s=0;s<4;s++){for(let k=0;k<4;k++){const q=s*8+k;if(c59H(ci,cj,q+100)<.2){C59.skipped++;
 continue}const frac=.14+.24*k+(c59H(ci,cj,q+200)-.5)*.09;const p=edgePoint(cx,cz,sides[s],frac,SIDEWALK_W*.36);if(c59Taken(cx,cz,p[0],p[1],2.7)){C59.skipped++;continue}const sc=.82+.3*c59H(ci,cj,q+300);TREE_LITE=true;try{tree(p[0],p[1],sc)}finally{TREE_LITE=false}try{if(typeof rdTreePit==="function")rdTreePit(p[0],p[1])}catch(e){}C59.trees++}}}function c59Light(){try{if(typeof MAP==="undefined"||MAP.
 key!=="dusk"||typeof PARKS==="undefined"||!PARKS[0])return;Object.assign(PARKS[0].light,{sun:4.25,hemi:1.3,bounce:.5});const G=typeof W2_GRADES!=="undefined"&&W2_GRADES.dusk;if(G){if(G.day)Object.assign(G.day,{con:1.14,black:.01,sat:1.12,lo:[.95,.99,1.07],vig:.26});if(G.dusk)Object.assign(G.dusk,{con:1.21,black:.015,sat:1.13,vig:.29});if(G.night)Object.assign(G.night,{con:1.17,black:.017,vig:.31})}
-C59.light=true}catch(e){C59.err="light: "+(e&&e.message||e)}}(function c59LightInit(){c59Light();try{if(typeof look52Set==="function"){const base=look52Set;look52Set=function(){const r=base.apply(this,arguments);c59Light();return r}}}catch(e){}})();window.C59=C59;/*! Dusk Line -- credits and licences. three.js r128 and its GLTFLoader: MIT licence, Copyright 2010-2021 Three.js Authors. Supabase JS client: MIT licence. Fonts: Barlow Condensed, Inter and Caveat (SIL Open Font License 1.1), Permanent Marker (Apache License 2.0). Rider models: made with Adobe Mixamo characters. Every ride, brand and place name in the game is made up. */
+C59.light=true}catch(e){C59.err="light: "+(e&&e.message||e)}}(function c59LightInit(){c59Light();try{if(typeof look52Set==="function"){const base=look52Set;look52Set=function(){const r=base.apply(this,arguments);c59Light();return r}}}catch(e){}})();window.C59=C59;const G60={on:false,open:false,booted:false,finish:null,busy:false,fails:0,how:"",err:"",keep:0};function g60State(){return window.__g60||
+null}function g60IsOpen(){const s=g60State();return!!(s&&s.shown&&!s.closed)}{const run60=boot15Run;boot15Run=function(steps,finish){return run60.call(this,steps,function(){G60.booted=true;if(g60IsOpen()){G60.finish=finish;G60.keep=setInterval(()=>{try{if(window.__p16w)window.__p16w.lastT=Date.now()}catch(e){}},1500)}else finish()})}}function g60NoServer(){try{document.getElementById("g60Skip").classList.
+add("on")}catch(e){}}function g60Close(quiet,how){const s=g60State(),g=document.getElementById("gate60");if(s)s.closed=true;G60.open=false;G60.how=how||"";if(G60.keep){clearInterval(G60.keep);G60.keep=0}try{if(g&&document.activeElement&&g.contains(document.activeElement))document.activeElement.blur()}catch(e){}if(g){if(quiet)g.classList.remove("g60On");else{g.classList.add("g60Out");setTimeout(()=>{
+g.classList.remove("g60On","g60Out")},320)}}if(G60.finish){const f=G60.finish;G60.finish=null;try{f()}catch(e){G60.err="finish: "+(e&&e.message||e);console.warn("[gate60] finish",e)}}}async function g60Submit(){const s=g60State();if(!s||!s.pending||G60.busy)return;const P2=s.pending;s.pending=null;if(P2.mode==="signup"&&typeof clean57Bad==="function"){let bad=false;try{bad=!!clean57Bad(P2.user)}catch(e){}
+if(bad){s.msg("Pick another username.");return}}const go=document.getElementById("g60Go");G60.busy=true;if(go)go.disabled=true;s.msg(P2.mode==="signup"?"Creating your account...":"Signing in...",true);let r=null;try{r=await dlRpc(P2.mode==="signup"?"dl_register":"dl_login",{p_username:P2.user,p_password:P2.pass})}catch(e){r={ok:false,error:"net"}}G60.busy=false;if(go)go.disabled=false;if(!r||!r.ok){
+const code=r&&r.error||"net";s.msg(typeof errText==="function"?errText(code):"That did not work. Try again.");if(code==="net"||code==="offline"){G60.fails++;g60NoServer()}return}const name=r.username||P2.user;try{document.getElementById("g60Pass").value="";document.getElementById("g60Pass2").value=""}catch(e){}try{acctSetSession(r.token,name)}catch(e){G60.err="session: "+(e&&e.message||e);try{ACCT.
+token=r.token;ACCT.name=name;acctSave()}catch(e2){}}try{if(typeof frRefresh==="function")frRefresh();if(typeof bgStart==="function")bgStart()}catch(e){}s.msg((P2.mode==="signup"?"Welcome, ":"Welcome back, ")+name+"!",true);try{const hi=document.getElementById("ld60Hello");if(hi)hi.textContent=(P2.mode==="signup"?"Welcome, ":"Welcome back, ")+name+(G60.booted?"":" - your city is nearly ready")}catch(e){}
+setTimeout(()=>g60Close(false,P2.mode),380)}function g60Init(){const s=g60State(),g=document.getElementById("gate60");if(!s||!g||!s.shown||s.closed)return;let ok=false;try{ok=typeof ONLINE_OK!=="undefined"&&!!ONLINE_OK&&typeof dlRpc==="function"&&getComputedStyle(g).display!=="none"}catch(e){ok=false}if(!ok){g60Close(true,"off");return}G60.on=true;G60.open=true;s.submit=g60Submit;try{document.getElementById(
+"g60Skip").onclick=()=>g60Close(false,"skip")}catch(e){}if(!(window.supabase&&window.supabase.createClient))g60NoServer();if(s.pending)g60Submit()}setTimeout(g60Init,0);window.G60=G60;/*! Dusk Line -- credits and licences. three.js r128 and its GLTFLoader: MIT licence, Copyright 2010-2021 Three.js Authors. Supabase JS client: MIT licence. Fonts: Barlow Condensed, Inter and Caveat (SIL Open Font License 1.1), Permanent Marker (Apache License 2.0). Rider models: made with Adobe Mixamo characters. Every ride, brand and place name in the game is made up. */
 var C57={ready:false,err:"",simple:true,refundDone:false,site:null,siteAt:0,siteTries:0,news:"",priceOv:null,tick:0,sayAt:0,cheatSaid:0};var C57W=null;var C57_ROT={any:"shpx avttre avttn snttbg xvyylbhefrys",sub:"fuvg ovgpu ovngpu phag juber fyhg chffl qvpxurnq pbpxfhpx nffubyr nefrubyr onfgneq jnax cravf intvan cbea ubeal qvyqb wvmm uragnv oybjwbo unaqwbo znfgheong betnfz rebgvp encvfg ergneq jrg\
 onpx genaal anmv uvgyre crqbcuvyr cnrqb obyybpx oryyraq shx cuhpx obare ahgfnpx onyyfnpx wnpxbss wrexbss gvggvrf gvggl xxx avtt fcnfgvp zbatbybvq cvff qhzonff wnpxnff fvxgve bebfch lneenx xnucr crmrirax nzpvx fvxre fvxrl tning",word:"nff nefr pbpx qvpx gvg obbo phz frk frkl encr nany nahf snt ubzb qlxr fcvp xvxr tbbx pbba cnxv arteb puvax gjng cevpx ahqr zvys xlf crqb urvy spx shp shd fug ogpu fgs\
 h gubg ubr nzx nd fvx voar lnenx"};var C57_LEET={"0":"o","1":"i","3":"e","4":"a","5":"s","7":"t","8":"b","@":"a","$":"s","!":"i"};function c57Words(){if(C57W)return C57W;if(typeof C57_ROT!=="object"||!C57_ROT)return null;const rot=s=>s.replace(/[a-z]/g,c=>String.fromCharCode((c.charCodeAt(0)-97+13)%26+97));const W={any:rot(C57_ROT.any).split(" "),sub:rot(C57_ROT.sub).split(" "),word:{}};rot(C57_ROT.
