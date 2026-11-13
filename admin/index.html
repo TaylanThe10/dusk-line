@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-PLcy/PynValuGdbh46tVJvr8MFzvZji7l+fq5knXUbw='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-tfydrsJnQZfEK6ABSCJM4taX62gx9CBOtACY1j4pvUQ='; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Dusk Line admin</title>
 <style>
 :root{ --bg:#0d1016; --card:#161a23; --line:rgba(255,255,255,.12); --ink:#f1ece2; --dim:rgba(241,236,226,.62); --hot:#ff7a45; --teal:#5fd6c4; --bad:#ff5d5d; --ok:#7be08a; --yel:#ffd21f; color-scheme:dark; }
@@ -52,6 +52,8 @@ table{ width:100%; border-collapse:collapse; } th, td{ text-align:left; padding:
 td input{ min-height:34px; } .num{ text-align:right; font-variant-numeric:tabular-nums; }
 .modal{ position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(4,6,10,.75); }
 .modal .card{ width:min(440px, 100%); margin:0; }
+button.tab.dirty::after{ content:' •'; color:#ffb020; }
+.more{ display:flex; gap:10px; align-items:center; margin:10px 0 4px; }
 .hide{ display:none !important; }
 @media (max-width:560px){ .cols3{ grid-template-columns:1fr; } h1{ font-size:19px; } }
 </style>
@@ -60,19 +62,33 @@ td input{ min-height:34px; } .num{ text-align:right; font-variant-numeric:tabula
 <div id="app"></div>
 <script>
 'use strict';
-const SUPA_URL = 'https://njgfhlnlethcyhrfhalg.supabase.co', SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qZ2ZobG5sZXRoY3locmZoYWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDc1MjYsImV4cCI6MjEwMjc4MzUyNn0.BvM8XK-PLb7fuCpJyp0vORdGLtNovqhYPNUZgXHqGdg', GAME_VER = '15.63';
-const RIDES = [{"i":"fatmtb","n":"Northcut Bigfloat FS","c":"mtb","p":1200},{"i":"v10","n":"Ridgecrow DH-X","c":"mtb","p":0},{"i":"slash","n":"Ridgecrow Ravine 160","c":"mtb","p":2300},{"i":"demo","n":"Halden Freefall","c":"mtb","p":1200},{"i":"tues","n":"Northcut Plunge DH","c":"mtb","p":1400},{"i":"sender","n":"Screeline Rockfall CF","c":"mtb","p":1600},{"i":"meta","n":"Halden Drift MX","c":"mtb","p":3000},{"i":"spindrift","n":"Screeline Coldfront","c":"mtb","p":3300},{"i":"stumpy","n":"Ridgecrow Trailhound","c":"mtb","p":4800},{"i":"megatower","n":"Halden Tallstack 29","c":"mtb","p":2000},{"i":"capra","n":"Northcut Outlier","c":"mtb","p":2700},{"i":"soundwave","n":"Curbline Wavelength","c":"bmx","p":0},{"i":"gateway","n":"Slabcraft Archway","c":"bmx","p":2000},{"i":"envy","n":"Ledgeworks Grudge","c":"bmx","p":1500},{"i":"williams","n":"Concrete Saints Rampart","c":"bmx","p":1800},{"i":"malum","n":"Curbline Riot","c":"bmx","p":1800},{"i":"legion","n":"Slabcraft Squadron","c":"bmx","p":0},{"i":"bigripper","n":"Ledgeworks Long Haul 29","c":"bmx","p":2600},{"i":"tarmac","n":"Velo Aster SL Race","c":"road","p":1500},{"i":"aeroad","n":"Corsa Lume Windcutter","c":"road","p":0},{"i":"madone","n":"Strada Nera Veloce","c":"road","p":3800},{"i":"dogma","n":"Strada Nera Grantour","c":"road","p":6500},{"i":"v4rs","n":"Velo Aster Classico","c":"road","p":2200},{"i":"s5","n":"Corsa Lume Slipstream","c":"road","p":0},{"i":"oltre","n":"Strada Nera Azzurra","c":"road","p":3000},{"i":"erawan","n":"Kickform Halo","c":"scooter","p":500},{"i":"prospect","n":"Kickform Pioneer","c":"scooter","p":0},{"i":"invictus","n":"Deckhand Unbroken","c":"scooter","p":1200},{"i":"prodigyx","n":"Deckhand Wunderkind","c":"scooter","p":1900},{"i":"vx9","n":"Kickform Vortex 9","c":"scooter","p":0},{"i":"maven","n":"Deckhand Savant","c":"scooter","p":950},{"i":"tilttheory","n":"Kickform Streetbox","c":"scooter","p":1450},{"i":"apexpro","n":"Deckhand Flare","c":"scooter","p":1100},{"i":"droneaeon","n":"Kickform Longshot","c":"scooter","p":1300},{"i":"chubbymelon","n":"Deckhand Watermelon","c":"scooter","p":1700},{"i":"northblade","n":"Kickform Arrow","c":"scooter","p":1250},{"i":"bluntprodigy","n":"Deckhand Rookie","c":"scooter","p":650},{"i":"gritelite","n":"Kickform Gold Standard","c":"scooter","p":1900},{"i":"districttitled","n":"Deckhand Twilight","c":"scooter","p":1500},{"i":"yfz450qdirt","n":"Roostworks Launch 450","c":"quad","p":9800},{"i":"trx450qdirt","n":"Bermshot Holeshot 450","c":"quad","p":9600},{"i":"ltr450qdirt","n":"Bermshot Flatout 450","c":"quad","p":10200},{"i":"outlanderqdirt","n":"Mudhammer Mammoth 1000","c":"quad","p":12400},{"i":"sportsmanqdirt","n":"Mudhammer Packhorse 570","c":"quad","p":8600},{"i":"voltaqdirt","n":"Dusk Volt-X E-Quad","c":"quad","p":11200},{"i":"volconqdirt","n":"Gridline Silent 4x4","c":"quad","p":11800},{"i":"mini110qdirt","n":"Dusk Mini Quad 110","c":"quad","p":0},{"i":"r1moto","n":"Chicane Howler 1000","c":"street","p":28500},{"i":"zx10moto","n":"Chicane Mantis 1000","c":"street","p":29500},{"i":"panigalemoto","n":"Chicane Rosso V4","c":"street","p":34000},{"i":"s1000rrmoto","n":"Pitlane Autobahn RR","c":"street","p":32000},{"i":"cbrmoto","n":"Pitlane Tricolour 1000","c":"street","p":33000},{"i":"gsxrmoto","n":"Pitlane Azure 1000","c":"street","p":26000},{"i":"superdukemoto","n":"Alleycat Ogre 1300","c":"street","p":21500},{"i":"z900moto","n":"Alleycat Gecko 900","c":"street","p":18000},{"i":"mt09moto","n":"Alleycat Growler 900","c":"street","p":17500},{"i":"speedtriplemoto","n":"Alleycat Twin-Eye 1200","c":"street","p":20500},{"i":"ktm690smmoto","n":"Alleycat Sideways 690","c":"street","p":12800},{"i":"husky701moto","n":"Bermshot Kerb 700","c":"street","p":13400},{"i":"wr450smmoto","n":"Roostworks Street 450","c":"street","p":10800},{"i":"hypermotardmoto","n":"Chicane Rosso Motard 950","c":"street","p":15500},{"i":"yz250","n":"Roostworks Ringer 250","c":"gasdirt","p":9250},{"i":"crf450r","n":"Roostworks Thumper 450","c":"gasdirt","p":11500},{"i":"klx110","n":"Pipsqueak Pit 110","c":"gasdirt","p":0},{"i":"ktm125dirt","n":"Roostworks Screamer 125","c":"gasdirt","p":5400},{"i":"crf250dirt","n":"Roostworks Rev 250","c":"gasdirt","p":7400},{"i":"fc250dirt","n":"Bermshot Carve 250","c":"gasdirt","p":7600},{"i":"beta300dirt","n":"Mudhammer Allday 300","c":"gasdirt","p":7900},{"i":"ktm450dirt","n":"Roostworks Number One 450","c":"gasdirt","p":11600},{"i":"rmz450dirt","n":"Bermshot Bolt 450","c":"gasdirt","p":11800},{"i":"cr500dirt","n":"Roostworks Big Bore 500","c":"gasdirt","p":10900},{"i":"maico490dirt","n":"Mudhammer Classic 490","c":"gasdirt","p":9200},{"i":"drz400smdirt","n":"Bermshot Slider 400","c":"gasdirt","p":9600},{"i":"xr650dirt","n":"Mudhammer Dune Runner 650","c":"gasdirt","p":9900},{"i":"mc50dirt","n":"Pipsqueak Buzz 50","c":"gasdirt","p":0},{"i":"yz65dirt","n":"Pipsqueak Sprout 65","c":"gasdirt","p":2200},{"i":"kx85dirt","n":"Pipsqueak Big Wheel 85","c":"gasdirt","p":3400},{"i":"cotadirt","n":"Mudhammer Tiptoe 300","c":"gasdirt","p":6400},{"i":"africadirt","n":"Mudhammer Overland Rally","c":"gasdirt","p":14500},{"i":"lightbee","n":"Ohmrider Spark LX","c":"edirt","p":8000},{"i":"ultrabee","n":"Ohmrider Surge UX","c":"edirt","p":11250},{"i":"stormbee","n":"Ohmrider Tempest MX","c":"edirt","p":4500},{"i":"sting","n":"Watt Wolf Fang R","c":"edirt","p":8500},{"i":"xxx","n":"Watt Wolf Highline","c":"edirt","p":10000},{"i":"komodo","n":"Watt Wolf Drifter","c":"edirt","p":5000},{"i":"ss3","n":"Ampstorm Squall 3","c":"edirt","p":6000},{"i":"sr","n":"Ampstorm Gale RS","c":"edirt","p":7750},{"i":"xaber","n":"Gridline Volt 300","c":"edirt","p":9750},{"i":"x260","n":"Gridline Trailcat","c":"edirt","p":7500},{"i":"varg","n":"Sparkhorn Ragnar","c":"edirt","p":12000},{"i":"xqi3","n":"Gridline Pip","c":"edirt","p":4200},{"i":"villain","n":"Ampstorm Outlaw","c":"edirt","p":6750},{"i":"r1s","n":"Sparkhorn Rift","c":"edirt","p":6250},{"i":"etm","n":"Sparkhorn Pitstop","c":"edirt","p":0},{"i":"freego","n":"Ampstorm Torrent X","c":"edirt","p":8750},{"i":"kit80","n":"Motor Bike 80cc","c":"moped","p":0},{"i":"revvfs","n":"Retro Volt Throttle FS","c":"moped","p":5000},{"i":"revvdrt","n":"Retro Volt Throttle Dirt","c":"moped","p":4700},{"i":"rx","n":"Boardwalk Shoreline R","c":"moped","p":7000},{"i":"s2","n":"Boardwalk Shoreline Classic","c":"moped","p":2600},{"i":"arielx","n":"Retro Volt Grand Tourer","c":"moped","p":6500},{"i":"scrambler","n":"Boardwalk Rambler","c":"moped","p":3800},{"i":"x7","n":"Retro Volt Duo","c":"moped","p":2900},{"i":"goat","n":"Boardwalk Mountaineer","c":"moped","p":7500},{"i":"urtopia","n":"Circuit Featherline","c":"ebike","p":6000},{"i":"levo","n":"Torque Pine Trailpower","c":"emtb","p":4800},{"i":"vala","n":"Torque Pine Summit","c":"emtb","p":6000},{"i":"rail","n":"Torque Pine Gradient","c":"emtb","p":9250},{"i":"aventure","n":"Circuit Dune Fat","c":"ebike","p":4400},{"i":"xyber","n":"Circuit Neon X","c":"ebike","p":8250},{"i":"flightpro","n":"Gatedrop Pro XL","c":"bmx","p":600},{"i":"performer","n":"Concrete Saints Showman","c":"bmx","p":500},{"i":"conquest24","n":"Gatedrop Cruiser 24","c":"bmx","p":2500},{"i":"flatland","n":"Curbline Spinner FL","c":"bmx","p":1300},{"i":"streetsweeper","n":"Slabcraft Gutterball","c":"bmx","p":1700},{"i":"p3","n":"Northcut Kicker 26","c":"bmx","p":1600},{"i":"californian","n":"Concrete Saints Westcoast","c":"bmx","p":1000},{"i":"kenevo","n":"Torque Pine Gravity E","c":"emtb","p":0},{"i":"rise","n":"Torque Pine Lite SL","c":"emtb","p":7250},{"i":"moterra","n":"Torque Pine Bruiser","c":"emtb","p":3800},{"i":"trancex","n":"Torque Pine Flowstate","c":"emtb","p":8250},{"i":"allmtn","n":"Torque Pine Bigtrail","c":"emtb","p":0},{"i":"ehtmtb","n":"Torque Pine Hardtail E","c":"emtb","p":3200},{"i":"gsd","n":"Circuit Cargo Duo","c":"ebike","p":0},{"i":"radwagon","n":"Circuit Longtail","c":"ebike","p":0},{"i":"brompton","n":"Circuit Fold","c":"ebike","p":5000},{"i":"gocycle","n":"Circuit Swoop","c":"ebike","p":5500},{"i":"ultimate","n":"Circuit Canal C3","c":"ebike","p":2700},{"i":"creo","n":"Velo Aster E-Gravel","c":"ebike","p":6500},{"i":"townie","n":"Circuit Beachside","c":"ebike","p":2200},{"i":"curt","n":"Circuit Stealth","c":"ebike","p":3600},{"i":"vanmoof","n":"Circuit Metro S","c":"ebike","p":3200},{"i":"scale","n":"Screeline Sprint XC","c":"mtb","p":5500},{"i":"ticket","n":"Northcut Lander DJ","c":"mtb","p":5250},{"i":"mukluk","n":"Halden Snowshoe Fat","c":"mtb","p":0},{"i":"clash","n":"Ridgecrow Brawler","c":"mtb","p":4100},{"i":"bronson","n":"Halden Ledgerunner","c":"mtb","p":4500},{"i":"yeti","n":"Screeline Switchback 140","c":"mtb","p":3900},{"i":"radrunner","n":"Retro Volt Courier","c":"moped","p":0},{"i":"metacycle","n":"Retro Volt Cafe Racer","c":"moped","p":8500},{"i":"kalk","n":"Sparkhorn Frost","c":"edirt","p":6500},{"i":"kukirin","n":"Kurb Dirt 4","c":"escooter","p":0},{"i":"g4maxscoot","n":"Kurb Dirt 4 Max","c":"escooter","p":3400},{"i":"fighterscoot","n":"Glidr Warpath 11","c":"escooter","p":3900},{"i":"gallopscoot","n":"Kurb Canter","c":"escooter","p":2900},{"i":"m4seatscoot","n":"Kurb Saddle Pro","c":"escooter","p":1900},{"i":"flexseatscoot","n":"Citylink Loafer","c":"escooter","p":1600},{"i":"pureairscoot","n":"Citylink Breeze 3","c":"escooter","p":1200},{"i":"dtxscoot","n":"Glidr Colossus X","c":"escooter","p":3900},{"i":"burnescoot","n":"Glidr Scorch Max","c":"escooter","p":4200},{"i":"wolfkingscoot","n":"Glidr Badlands King","c":"escooter","p":3800},{"i":"mi4pro","n":"Kurb One Pro","c":"escooter","p":1200},{"i":"ninebotmax","n":"Kurb Longhaul","c":"escooter","p":1300},{"i":"gt2","n":"Kurb Overdrive","c":"escooter","p":2200},{"i":"phantom","n":"Glidr Nightjet","c":"escooter","p":1800},{"i":"thunder3","n":"Glidr Stormbolt","c":"escooter","p":3100},{"i":"wolf11","n":"Glidr Badlands 11","c":"escooter","p":2600},{"i":"razore300","n":"Kurb Junior 300","c":"escooter","p":900},{"i":"razore300s","n":"Kurb Junior 300 Seat","c":"escooter","p":0},{"i":"unagi","n":"Glidr Slim One","c":"escooter","p":1700},{"i":"kqi3","n":"Kurb Arc Sport","c":"escooter","p":1500},{"i":"limegen4","n":"Citylink Rental 4","c":"escooter","p":0},{"i":"hiboy","n":"Kurb Lite S","c":"escooter","p":1000},{"i":"zero10x","n":"Glidr Rally Ten","c":"escooter","p":2500},{"i":"vsett10","n":"Glidr Dual Ten","c":"escooter","p":2800},{"i":"inokim","n":"Glidr Hornet","c":"escooter","p":2400},{"i":"skyrider","n":"Dusk Skyrider","c":"escooter","p":2900},{"i":"speedseries","n":"Gatedrop Velocity XL","c":"bmx","p":850},{"i":"haromaster","n":"Concrete Saints Heritage","c":"bmx","p":1100},{"i":"fittrl","n":"Slabcraft Dirtline","c":"bmx","p":2000},{"i":"typeo","n":"Curbline Unit Zero","c":"bmx","p":2400},{"i":"lacey","n":"Ledgeworks Linework","c":"bmx","p":2200},{"i":"horizon18","n":"Gatedrop Junior 18","c":"bmx","p":750},{"i":"atf","n":"Concrete Saints Bunker","c":"bmx","p":1400},{"i":"quadangle","n":"Ledgeworks Loopframe 26","c":"bmx","p":2300},{"i":"killabee","n":"Slabcraft Stinger","c":"bmx","p":2100},{"i":"pogofs","n":"Gatedrop Pogo FS","c":"bmx","p":2600},{"i":"shockwave","n":"Curbline Shockwave","c":"bmx","p":1600},{"i":"mudcat","n":"Ledgeworks Mudcat","c":"bmx","p":2000},{"i":"hoverfs","n":"Concrete Saints Hover FS","c":"bmx","p":2400},{"i":"bigpogo","n":"Gatedrop Big Pogo 24 FS","c":"bmx","p":3000},{"i":"goldrushbmx","n":"Gold Rush","c":"customs","p":2600},{"i":"neonbmx","n":"Neon Viper","c":"customs","p":3800},{"i":"lowridebmx","n":"Lowrider Twist","c":"customs","p":4200},{"i":"hellfirebmx","n":"Hellfire","c":"customs","p":3200},{"i":"checkerbmx","n":"Checkmate Racer","c":"customs","p":4400},{"i":"skybmx","n":"Sky Hook","c":"customs","p":0},{"i":"oilbmx","n":"Oil Slick","c":"customs","p":3600},{"i":"tallbmx","n":"Double Decker","c":"customs","p":3900},{"i":"goldmtb","n":"Golden Gravity","c":"customs","p":8800},{"i":"ghostmtb","n":"Ghostlight","c":"customs","p":7600},{"i":"junglemtb","n":"Jungle Commando","c":"customs","p":5400},{"i":"snowmtb","n":"Snow Beast","c":"customs","p":4800},{"i":"carbonmtb","n":"Carbon Stealth","c":"customs","p":6200},{"i":"lavamtb","n":"Lava Flow","c":"customs","p":4600},{"i":"zebramtb","n":"Zebra","c":"customs","p":5200},{"i":"pilotmtb","n":"Sky Pilot","c":"customs","p":3400},{"i":"velodroad","n":"Velodrome","c":"customs","p":11800},{"i":"goldroad","n":"24K Aero","c":"customs","p":9800},{"i":"nightroad","n":"Night Rider","c":"customs","p":7200},{"i":"stormroad","n":"Desert Storm","c":"customs","p":4200},{"i":"choppercruis","n":"Midnight Chopper","c":"customs","p":5200},{"i":"lowcruis","n":"Lowrider Deluxe","c":"customs","p":6400},{"i":"monsterebike","n":"Monster Truck","c":"customs","p":7400},{"i":"cyberebike","n":"Cyber Moto","c":"customs","p":8600},{"i":"goldemtb","n":"Gold Volt","c":"customs","p":11500},{"i":"toxicemtb","n":"Toxic","c":"customs","p":9600},{"i":"retroebike","n":"Retro Rocket","c":"customs","p":5600},{"i":"starshipebike","n":"Starship","c":"customs","p":6800},{"i":"dragmoto","n":"Drag Strip","c":"customs","p":13800},{"i":"smmoto","n":"Neon Supermoto","c":"customs","p":7800},{"i":"bobbermoto","n":"Bobber","c":"customs","p":6600},{"i":"cafemoto","n":"Cafe Racer","c":"customs","p":7200},{"i":"trackmoto","n":"Flat Tracker","c":"customs","p":6900},{"i":"boardmoto","n":"Board Tracker 80","c":"customs","p":4400},{"i":"rocketmoto","n":"Rocket 80","c":"customs","p":4800},{"i":"neonscoot","n":"Neon Glider","c":"customs","p":4600},{"i":"goldscoot","n":"Gold Bar","c":"customs","p":2400},{"i":"firescoot","n":"Fire Kick","c":"customs","p":2000},{"i":"glowscoot","n":"Glow Wheels","c":"customs","p":0},{"i":"thunderscoot","n":"Thunderbolt X","c":"customs","p":16500},{"i":"loungescoot","n":"Lounge Rider","c":"customs","p":2200},{"i":"minirocketscoot","n":"Mini Rocket","c":"customs","p":0},{"i":"mudscoot","n":"Mud Monster","c":"customs","p":14800},{"i":"carbonscoot","n":"Carbon Ghost","c":"customs","p":3200},{"i":"rainbowscoot","n":"Rainbow Ripper","c":"customs","p":1600}];
+const SUPA_URL = 'https://njgfhlnlethcyhrfhalg.supabase.co', SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qZ2ZobG5sZXRoY3locmZoYWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDc1MjYsImV4cCI6MjEwMjc4MzUyNn0.BvM8XK-PLb7fuCpJyp0vORdGLtNovqhYPNUZgXHqGdg', GAME_VER = '15.65';
+const RIDES = [{"i":"fatmtb","n":"Northcut Bigfloat FS","c":"mtb","p":1200},{"i":"v10","n":"Ridgecrow DH-X","c":"mtb","p":0},{"i":"slash","n":"Ridgecrow Ravine 160","c":"mtb","p":2300},{"i":"demo","n":"Halden Freefall","c":"mtb","p":1200},{"i":"tues","n":"Northcut Plunge DH","c":"mtb","p":1400},{"i":"sender","n":"Screeline Rockfall CF","c":"mtb","p":1600},{"i":"meta","n":"Halden Drift MX","c":"mtb","p":3000},{"i":"spindrift","n":"Screeline Coldfront","c":"mtb","p":3300},{"i":"stumpy","n":"Ridgecrow Trailhound","c":"mtb","p":4800},{"i":"megatower","n":"Halden Tallstack 29","c":"mtb","p":2000},{"i":"capra","n":"Northcut Outlier","c":"mtb","p":2700},{"i":"soundwave","n":"Curbline Wavelength","c":"bmx","p":0},{"i":"gateway","n":"Slabcraft Archway","c":"bmx","p":2000},{"i":"envy","n":"Ledgeworks Grudge","c":"bmx","p":1500},{"i":"williams","n":"Concrete Saints Rampart","c":"bmx","p":1800},{"i":"malum","n":"Curbline Riot","c":"bmx","p":1800},{"i":"legion","n":"Slabcraft Squadron","c":"bmx","p":0},{"i":"bigripper","n":"Ledgeworks Long Haul 29","c":"bmx","p":2600},{"i":"tarmac","n":"Velo Aster SL Race","c":"road","p":1500},{"i":"aeroad","n":"Corsa Lume Windcutter","c":"road","p":0},{"i":"madone","n":"Strada Nera Veloce","c":"road","p":3800},{"i":"dogma","n":"Strada Nera Grantour","c":"road","p":6500},{"i":"v4rs","n":"Velo Aster Classico","c":"road","p":2200},{"i":"s5","n":"Corsa Lume Slipstream","c":"road","p":0},{"i":"oltre","n":"Strada Nera Azzurra","c":"road","p":3000},{"i":"erawan","n":"Kickform Halo","c":"scooter","p":500},{"i":"prospect","n":"Kickform Pioneer","c":"scooter","p":0},{"i":"invictus","n":"Deckhand Unbroken","c":"scooter","p":1200},{"i":"prodigyx","n":"Deckhand Wunderkind","c":"scooter","p":1900},{"i":"vx9","n":"Kickform Vortex 9","c":"scooter","p":0},{"i":"maven","n":"Deckhand Savant","c":"scooter","p":950},{"i":"tilttheory","n":"Kickform Streetbox","c":"scooter","p":1450},{"i":"apexpro","n":"Deckhand Flare","c":"scooter","p":1100},{"i":"droneaeon","n":"Kickform Longshot","c":"scooter","p":1300},{"i":"chubbymelon","n":"Deckhand Watermelon","c":"scooter","p":1700},{"i":"northblade","n":"Kickform Arrow","c":"scooter","p":1250},{"i":"bluntprodigy","n":"Deckhand Rookie","c":"scooter","p":650},{"i":"gritelite","n":"Kickform Gold Standard","c":"scooter","p":1900},{"i":"districttitled","n":"Deckhand Twilight","c":"scooter","p":1500},{"i":"ktm690smmoto","n":"Brakeburn Sideways 690","c":"street","p":12800},{"i":"husky701moto","n":"Bermshot Kerb 700","c":"street","p":13400},{"i":"wr450smmoto","n":"Roostworks Street 450","c":"street","p":10800},{"i":"hypermotardmoto","n":"Chicane Rosso Motard 950","c":"street","p":15500},{"i":"yz250","n":"Roostworks Ringer 250","c":"gasdirt","p":9250},{"i":"crf450r","n":"Roostworks Thumper 450","c":"gasdirt","p":11500},{"i":"klx110","n":"Pipsqueak Pit 110","c":"gasdirt","p":0},{"i":"ktm125dirt","n":"Roostworks Screamer 125","c":"gasdirt","p":5400},{"i":"crf250dirt","n":"Roostworks Rev 250","c":"gasdirt","p":7400},{"i":"fc250dirt","n":"Bermshot Carve 250","c":"gasdirt","p":7600},{"i":"beta300dirt","n":"Mudhammer Allday 300","c":"gasdirt","p":7900},{"i":"ktm450dirt","n":"Roostworks Number One 450","c":"gasdirt","p":11600},{"i":"rmz450dirt","n":"Bermshot Bolt 450","c":"gasdirt","p":11800},{"i":"cr500dirt","n":"Roostworks Big Bore 500","c":"gasdirt","p":10900},{"i":"maico490dirt","n":"Mudhammer Classic 490","c":"gasdirt","p":9200},{"i":"drz400smdirt","n":"Bermshot Slider 400","c":"gasdirt","p":9600},{"i":"xr650dirt","n":"Mudhammer Dune Runner 650","c":"gasdirt","p":9900},{"i":"mc50dirt","n":"Pipsqueak Buzz 50","c":"gasdirt","p":0},{"i":"yz65dirt","n":"Pipsqueak Sprout 65","c":"gasdirt","p":2200},{"i":"kx85dirt","n":"Pipsqueak Big Wheel 85","c":"gasdirt","p":3400},{"i":"cotadirt","n":"Mudhammer Tiptoe 300","c":"gasdirt","p":6400},{"i":"africadirt","n":"Mudhammer Overland Rally","c":"gasdirt","p":14500},{"i":"lightbee","n":"Ohmrider Spark LX","c":"edirt","p":8000},{"i":"ultrabee","n":"Ohmrider Surge UX","c":"edirt","p":11250},{"i":"stormbee","n":"Ohmrider Tempest MX","c":"edirt","p":4500},{"i":"sting","n":"Watt Wolf Fang R","c":"edirt","p":8500},{"i":"xxx","n":"Watt Wolf Highline","c":"edirt","p":10000},{"i":"komodo","n":"Watt Wolf Drifter","c":"edirt","p":5000},{"i":"ss3","n":"Ampstorm Squall 3","c":"edirt","p":6000},{"i":"sr","n":"Ampstorm Gale RS","c":"edirt","p":7750},{"i":"xaber","n":"Gridline Volt 300","c":"edirt","p":9750},{"i":"x260","n":"Gridline Trailcat","c":"edirt","p":7500},{"i":"varg","n":"Sparkhorn Ragnar","c":"edirt","p":12000},{"i":"xqi3","n":"Gridline Pip","c":"edirt","p":4200},{"i":"villain","n":"Ampstorm Outlaw","c":"edirt","p":6750},{"i":"r1s","n":"Sparkhorn Rift","c":"edirt","p":6250},{"i":"etm","n":"Sparkhorn Pitstop","c":"edirt","p":0},{"i":"freego","n":"Ampstorm Torrent X","c":"edirt","p":8750},{"i":"kit80","n":"Motor Bike 80cc","c":"moped","p":0},{"i":"revvfs","n":"Retro Volt Throttle FS","c":"moped","p":5000},{"i":"revvdrt","n":"Retro Volt Throttle Dirt","c":"moped","p":4700},{"i":"rx","n":"Boardwalk Shoreline R","c":"moped","p":7000},{"i":"s2","n":"Boardwalk Shoreline Classic","c":"moped","p":2600},{"i":"arielx","n":"Retro Volt Grand Tourer","c":"moped","p":6500},{"i":"scrambler","n":"Boardwalk Rambler","c":"moped","p":3800},{"i":"x7","n":"Retro Volt Duo","c":"moped","p":2900},{"i":"goat","n":"Boardwalk Mountaineer","c":"moped","p":7500},{"i":"urtopia","n":"Circuit Featherline","c":"ebike","p":6000},{"i":"levo","n":"Torque Pine Trailpower","c":"emtb","p":4800},{"i":"vala","n":"Torque Pine Summit","c":"emtb","p":6000},{"i":"rail","n":"Torque Pine Gradient","c":"emtb","p":9250},{"i":"aventure","n":"Circuit Dune Fat","c":"ebike","p":4400},{"i":"xyber","n":"Circuit Neon X","c":"ebike","p":8250},{"i":"flightpro","n":"Gatedrop Pro XL","c":"bmx","p":600},{"i":"performer","n":"Concrete Saints Showman","c":"bmx","p":500},{"i":"conquest24","n":"Gatedrop Cruiser 24","c":"bmx","p":2500},{"i":"flatland","n":"Curbline Spinner FL","c":"bmx","p":1300},{"i":"streetsweeper","n":"Slabcraft Gutterball","c":"bmx","p":1700},{"i":"p3","n":"Northcut Kicker 26","c":"bmx","p":1600},{"i":"californian","n":"Concrete Saints Westcoast","c":"bmx","p":1000},{"i":"kenevo","n":"Torque Pine Gravity E","c":"emtb","p":0},{"i":"rise","n":"Torque Pine Lite SL","c":"emtb","p":7250},{"i":"moterra","n":"Torque Pine Bruiser","c":"emtb","p":3800},{"i":"trancex","n":"Torque Pine Flowstate","c":"emtb","p":8250},{"i":"allmtn","n":"Torque Pine Bigtrail","c":"emtb","p":0},{"i":"ehtmtb","n":"Torque Pine Hardtail E","c":"emtb","p":3200},{"i":"gsd","n":"Circuit Cargo Duo","c":"ebike","p":0},{"i":"radwagon","n":"Circuit Longtail","c":"ebike","p":0},{"i":"brompton","n":"Circuit Fold","c":"ebike","p":5000},{"i":"gocycle","n":"Circuit Swoop","c":"ebike","p":5500},{"i":"ultimate","n":"Circuit Canal C3","c":"ebike","p":2700},{"i":"creo","n":"Velo Aster E-Gravel","c":"ebike","p":6500},{"i":"townie","n":"Circuit Beachside","c":"ebike","p":2200},{"i":"curt","n":"Circuit Stealth","c":"ebike","p":3600},{"i":"vanmoof","n":"Circuit Metro S","c":"ebike","p":3200},{"i":"scale","n":"Screeline Sprint XC","c":"mtb","p":5500},{"i":"ticket","n":"Northcut Lander DJ","c":"mtb","p":5250},{"i":"mukluk","n":"Halden Snowshoe Fat","c":"mtb","p":0},{"i":"clash","n":"Ridgecrow Brawler","c":"mtb","p":4100},{"i":"bronson","n":"Halden Ledgerunner","c":"mtb","p":4500},{"i":"yeti","n":"Screeline Switchback 140","c":"mtb","p":3900},{"i":"radrunner","n":"Retro Volt Courier","c":"moped","p":0},{"i":"metacycle","n":"Retro Volt Cafe Racer","c":"moped","p":8500},{"i":"kalk","n":"Sparkhorn Frost","c":"edirt","p":6500},{"i":"kukirin","n":"Kurb Dirt 4","c":"escooter","p":0},{"i":"g4maxscoot","n":"Kurb Dirt 4 Max","c":"escooter","p":3400},{"i":"fighterscoot","n":"Glidr Warpath 11","c":"escooter","p":3900},{"i":"gallopscoot","n":"Kurb Canter","c":"escooter","p":2900},{"i":"m4seatscoot","n":"Kurb Saddle Pro","c":"escooter","p":1900},{"i":"flexseatscoot","n":"Citylink Loafer","c":"escooter","p":1600},{"i":"pureairscoot","n":"Citylink Breeze 3","c":"escooter","p":1200},{"i":"dtxscoot","n":"Glidr Colossus X","c":"escooter","p":3900},{"i":"burnescoot","n":"Glidr Scorch Max","c":"escooter","p":4200},{"i":"wolfkingscoot","n":"Glidr Badlands King","c":"escooter","p":3800},{"i":"mi4pro","n":"Kurb One Pro","c":"escooter","p":1200},{"i":"ninebotmax","n":"Kurb Longhaul","c":"escooter","p":1300},{"i":"gt2","n":"Kurb Overdrive","c":"escooter","p":2200},{"i":"phantom","n":"Glidr Nightjet","c":"escooter","p":1800},{"i":"thunder3","n":"Glidr Stormbolt","c":"escooter","p":3100},{"i":"wolf11","n":"Glidr Badlands 11","c":"escooter","p":2600},{"i":"razore300","n":"Kurb Junior 300","c":"escooter","p":900},{"i":"razore300s","n":"Kurb Junior 300 Seat","c":"escooter","p":0},{"i":"unagi","n":"Glidr Slim One","c":"escooter","p":1700},{"i":"kqi3","n":"Kurb Arc Sport","c":"escooter","p":1500},{"i":"limegen4","n":"Citylink Rental 4","c":"escooter","p":0},{"i":"hiboy","n":"Kurb Lite S","c":"escooter","p":1000},{"i":"zero10x","n":"Glidr Rally Ten","c":"escooter","p":2500},{"i":"vsett10","n":"Glidr Dual Ten","c":"escooter","p":2800},{"i":"inokim","n":"Glidr Hornet","c":"escooter","p":2400},{"i":"skyrider","n":"Dusk Skyrider","c":"escooter","p":2900},{"i":"speedseries","n":"Gatedrop Velocity XL","c":"bmx","p":850},{"i":"haromaster","n":"Concrete Saints Heritage","c":"bmx","p":1100},{"i":"fittrl","n":"Slabcraft Dirtline","c":"bmx","p":2000},{"i":"typeo","n":"Curbline Unit Zero","c":"bmx","p":2400},{"i":"lacey","n":"Ledgeworks Linework","c":"bmx","p":2200},{"i":"horizon18","n":"Gatedrop Junior 18","c":"bmx","p":750},{"i":"atf","n":"Concrete Saints Bunker","c":"bmx","p":1400},{"i":"quadangle","n":"Ledgeworks Loopframe 26","c":"bmx","p":2300},{"i":"killabee","n":"Slabcraft Stinger","c":"bmx","p":2100},{"i":"pogofs","n":"Gatedrop Pogo FS","c":"bmx","p":2600},{"i":"shockwave","n":"Curbline Shockwave","c":"bmx","p":1600},{"i":"mudcat","n":"Ledgeworks Mudcat","c":"bmx","p":2000},{"i":"hoverfs","n":"Concrete Saints Hover FS","c":"bmx","p":2400},{"i":"bigpogo","n":"Gatedrop Big Pogo 24 FS","c":"bmx","p":3000},{"i":"goldrushbmx","n":"Gold Rush","c":"customs","p":2600},{"i":"neonbmx","n":"Neon Viper","c":"customs","p":3800},{"i":"lowridebmx","n":"Lowrider Twist","c":"customs","p":4200},{"i":"hellfirebmx","n":"Hellfire","c":"customs","p":3200},{"i":"checkerbmx","n":"Checkmate Racer","c":"customs","p":4400},{"i":"skybmx","n":"Sky Hook","c":"customs","p":0},{"i":"oilbmx","n":"Oil Slick","c":"customs","p":3600},{"i":"tallbmx","n":"Double Decker","c":"customs","p":3900},{"i":"goldmtb","n":"Golden Gravity","c":"customs","p":8800},{"i":"ghostmtb","n":"Ghostlight","c":"customs","p":7600},{"i":"junglemtb","n":"Jungle Commando","c":"customs","p":5400},{"i":"snowmtb","n":"Snow Beast","c":"customs","p":4800},{"i":"carbonmtb","n":"Carbon Stealth","c":"customs","p":6200},{"i":"lavamtb","n":"Lava Flow","c":"customs","p":4600},{"i":"zebramtb","n":"Zebra","c":"customs","p":5200},{"i":"pilotmtb","n":"Sky Pilot","c":"customs","p":3400},{"i":"velodroad","n":"Velodrome","c":"customs","p":11800},{"i":"goldroad","n":"24K Aero","c":"customs","p":9800},{"i":"nightroad","n":"Night Rider","c":"customs","p":7200},{"i":"stormroad","n":"Desert Storm","c":"customs","p":4200},{"i":"choppercruis","n":"Midnight Chopper","c":"customs","p":5200},{"i":"lowcruis","n":"Lowrider Deluxe","c":"customs","p":6400},{"i":"monsterebike","n":"Monster Truck","c":"customs","p":7400},{"i":"cyberebike","n":"Cyber Moto","c":"customs","p":8600},{"i":"goldemtb","n":"Gold Volt","c":"customs","p":11500},{"i":"toxicemtb","n":"Toxic","c":"customs","p":9600},{"i":"retroebike","n":"Retro Rocket","c":"customs","p":5600},{"i":"starshipebike","n":"Starship","c":"customs","p":6800},{"i":"dragmoto","n":"Drag Strip","c":"customs","p":13800},{"i":"smmoto","n":"Neon Supermoto","c":"customs","p":7800},{"i":"bobbermoto","n":"Bobber","c":"customs","p":6600},{"i":"cafemoto","n":"Cafe Racer","c":"customs","p":7200},{"i":"trackmoto","n":"Flat Tracker","c":"customs","p":6900},{"i":"boardmoto","n":"Board Tracker 80","c":"customs","p":4400},{"i":"rocketmoto","n":"Rocket 80","c":"customs","p":4800},{"i":"neonscoot","n":"Neon Glider","c":"customs","p":4600},{"i":"goldscoot","n":"Gold Bar","c":"customs","p":2400},{"i":"firescoot","n":"Fire Kick","c":"customs","p":2000},{"i":"glowscoot","n":"Glow Wheels","c":"customs","p":0},{"i":"thunderscoot","n":"Thunderbolt X","c":"customs","p":16500},{"i":"loungescoot","n":"Lounge Rider","c":"customs","p":2200},{"i":"minirocketscoot","n":"Mini Rocket","c":"customs","p":0},{"i":"mudscoot","n":"Mud Monster","c":"customs","p":14800},{"i":"carbonscoot","n":"Carbon Ghost","c":"customs","p":3200},{"i":"rainbowscoot","n":"Rainbow Ripper","c":"customs","p":1600}];
 const ARTS = ['star', 'wheel', 'scoot', 'bars', 'bolt', 'can', 'city', 'crown', 'dome', 'gear', 'lid', 'mtn', 'ramp', 'slice', 'speed', 'stripe', 'sun', 'wave'];
 const DAILY_FIELDS = [['score', 'Score in one run'], ['bestChain', 'Longest trick chain in a run'], ['bestAir', 'Biggest air in a run'], ['grindTime', 'Grind time in a run'], ['bestSpin', 'Biggest spin in a run'], ['tricksLanded', 'Tricks landed in a run'], ['bestCombo', 'Best combo in a run'], ['saves', 'Sketchy saves in a run']];
 const ACH_FIELDS = [['lifetime.runs', 'Runs finished, all time'], ['lifetime.bestScore', 'Best score ever'], ['lifetime.bestChain', 'Longest chain ever'], ['lifetime.totalGrindTime', 'Total grind time'], ['lifetime.totalTricks', 'Tricks landed, all time'], ['lifetime.bestSpin', 'Biggest spin ever'], ['ownedDrives.length', 'Rides owned'], ['ownedKits.length', 'Paints owned'], ['lifetime.totalRepEarned', 'Money earned, all time'], ['lifetime.playTimeSec', 'Seconds played']];
 const ERR = { net:"Couldn't reach the game's database. Check the internet and try again.", off:'The admin site is not switched on yet. Ask Claude to switch it on.',
   no_pass:'The admin site is not switched on yet. Ask Claude to switch it on.', auth:'The door closed. Type the passcode again.',
   locked:'Too many wrong tries. The door is locked for a while.', rate_limited:'Too fast. Wait a minute and try again.', not_admin:'The door closed (it locks by itself after 8 hours). Type the passcode again.',
-  bad_code:'That passcode is not right.', bad_old_code:'The passcode you use now was typed wrong.', bad_new:'That new passcode is too easy to guess. Use at least 5 letters or numbers: not all the same, and not something like 12345.',
+  bad_code:'That passcode is not right.', bad_old_code:'The passcode you use now was typed wrong.', bad_new:'That new passcode is too easy to guess. Use 10 or more letters, numbers or signs: not all the same, and not something like 0123456789.',
   no_player:'Nobody has that username.', is_admin:"You can't do that to the admin itself.", bad_name:"That name isn't allowed (3 to 16 letters, numbers or _ and no bad words).", name_taken:'That name is taken.',
   bad_what:'Unknown thing to wipe.', no_server:'That server is not there any more.', bad_key:'Unknown setting.', too_big:'That is too much text to save.', bad_value:'That could not be saved (wrong shape).',
   bad_words:'That has a blocked word in it.', bad_word:'A blocked word needs 2 to 24 letters.', banned:'This account is locked.', bad_fn:'Unknown action.' };
-const S = { tok:'', name:'', view:'pass', tab:'home', msg:'', bad:false, busy:false, data:{} };
+const S = { tok:'', name:'', view:'pass', tab:'home', msg:'', bad:false, busy:false, data:{}, dirty:{}, dirtyTab:'' };
+/* 15.64: unsaved edits (the Ads & news and Game numbers tabs) are remembered so leaving asks first */
+/* (one flag per part: ads, news, prices, daily_pool, achievements -- a save clears its own flag, see call()) */
+function isDirty(){ return Object.keys(S.dirty).length > 0; }
+function markDirty(sec){ S.dirty[sec] = 1; S.dirtyTab = S.tab; const b = document.querySelector('button.tab.on'); if (b) b.classList.add('dirty'); }
+function dirtySync(){ if (!isDirty()){ const b = document.querySelector('button.tab.dirty'); if (b) b.classList.remove('dirty'); } }
+function leaveOk(go){ if (!isDirty()){ go(); return; } ask('You changed things here and did not save them. Leave and lose the changes?', 'Leave without saving', ()=>{ S.dirty = {}; go(); }); }
+addEventListener('beforeunload', e=>{ if (isDirty()){ e.preventDefault(); e.returnValue = ''; } });
+const LIM = { players:80, scores:100, runs:40, log:120, reports:60 }, LIM_MAX = 300;
+function moreRow(n, key, what){
+  const lim = S.data['lim_' + key] || LIM[key];
+  if (n < lim) return h('p', { cls:'dim small', text:'All ' + n + ' ' + what + ' shown.' });
+  if (lim >= LIM_MAX) return h('p', { cls:'dim small', text:'Showing the first ' + LIM_MAX + ' ' + what + '.' + (key === 'players' ? ' Search to find others.' : '') });
+  return h('div', { cls:'more' }, h('button', { text:'Load more', on:{ click:()=>{ S.data['lim_' + key] = Math.min(LIM_MAX, lim + LIM[key]); load(S.tab); } } }), h('span', { cls:'dim small', text:n + ' ' + what + ' shown' }));
+}
 try { S.tok = sessionStorage.getItem('dl_admin_tok') || ''; } catch(e){}
 
 /* ---------------------------------------------------------------- helpers: every piece of data is put on the page as TEXT, never as HTML */
@@ -106,23 +122,40 @@ async function rpc(fn, args){
 }
 async function call(fn, args){
   const r = await rpc('dl_admin_call', { p_token:S.tok, p_fn:fn, p_args:args || {} });
+  if (fn === 'config_set' && r && r.ok && args){ delete S.dirty[args.key]; dirtySync(); }
   if (r && r.error === 'not_admin'){ await refreshMe(); }
   return r;
 }
 /* a question before anything that changes something */
 function ask(text, yesLabel, onYes, input){
+  const back = document.activeElement;
   const inp = input ? h('input', { type:'text', maxlength:input.max || 120, placeholder:input.ph || '', value:input.value || '', autocomplete:'off' }) : null;
-  const close = ()=> m.remove();
+  const close = ()=>{ if (!m.isConnected) return; m.remove(); document.removeEventListener('keydown', key, true); try { if (back && back.isConnected) back.focus(); } catch(e){} };
   const yes = h('button', { cls:'pri', text:yesLabel || 'Yes', on:{ click:()=>{ const v = inp ? inp.value.trim() : ''; close(); onYes(v); } } });
-  const m = h('div', { cls:'modal', role:'dialog', 'aria-modal':'true' }, h('div', { cls:'card' }, h('p', { text:text }), input ? h('label', { text:input.label || '' }) : null, inp,
-    h('div', { cls:'row', style:'margin-top:14px; justify-content:flex-end' }, h('button', { text:'Cancel', on:{ click:close } }), yes)));
-  m.addEventListener('keydown', e=>{ if (e.key === 'Escape') close(); if (e.key === 'Enter' && inp){ yes.click(); } });
+  const card = h('div', { cls:'card' }, h('p', { id:'askT', text:text }), input ? h('label', { text:input.label || '' }) : null, inp,
+    h('div', { cls:'row', style:'margin-top:14px; justify-content:flex-end' }, h('button', { text:'Cancel', on:{ click:close } }), yes));
+  const m = h('div', { cls:'modal', role:'dialog', 'aria-modal':'true', 'aria-labelledby':'askT' }, card);
+  // a click on the dark backdrop closes it, Escape closes it, Tab stays inside it
+  m.addEventListener('mousedown', e=>{ if (e.target === m) close(); });
+  const key = e=>{
+    if (!m.isConnected) return;
+    if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); close(); return; }
+    if (e.key === 'Enter' && inp && document.activeElement === inp){ e.preventDefault(); yes.click(); return; }
+    if (e.key === 'Tab'){
+      const f = Array.from(m.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(x=> !x.disabled);
+      if (!f.length) return;
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && (i <= 0)){ e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && (i < 0 || i === f.length - 1)){ e.preventDefault(); f[0].focus(); }
+    }
+  };
+  document.addEventListener('keydown', key, true);
   document.body.appendChild(m); (inp || yes).focus();
 }
 
 /* ---------------------------------------------------------------- the door: ONE passcode. The game's database checks it (this page never
    holds the passcode or anything to compare it with); a right passcode gives an 8-hour key that lives in this tab only. */
-function forget(){ S.tok = ''; S.name = ''; S.data = {}; try { sessionStorage.removeItem('dl_admin_tok'); } catch(e){} S.view = 'pass'; }
+function forget(){ S.tok = ''; S.name = ''; S.data = {}; S.dirty = {}; try { sessionStorage.removeItem('dl_admin_tok'); } catch(e){} S.view = 'pass'; }
 function waitText(sec){ sec = Math.max(1, Math.round(sec)); if (sec < 90) return sec + ' seconds'; if (sec < 5400) return Math.round(sec/60) + ' minutes'; return Math.round(sec/3600) + ' hours'; }
 async function refreshMe(){
   if (!S.tok){ S.view = 'pass'; return draw(); }
@@ -132,9 +165,16 @@ async function refreshMe(){
   S.name = r.username || 'Admin'; S.view = 'app';
   draw(); load(S.tab);
 }
+/* 15.64: this browser's own random id -- wrong passcodes lock only this device (once the 15.64 database step is in) */
+function devId(){
+  let d = ''; try { d = localStorage.getItem('dl_admin_dev') || ''; } catch(e){}
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(d)){ const a = new Uint8Array(18); crypto.getRandomValues(a); d = Array.from(a, b=> 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[b & 63]).join(''); try { localStorage.setItem('dl_admin_dev', d); } catch(e){} }
+  return d;
+}
 async function unlock(code){
   say('Checking…');
-  const r = await rpc('dl_admin_pass_unlock', { p_code:code });
+  let r = await rpc('dl_admin_pass_unlock2', { p_code:code, p_dev:devId() });
+  if (!r.ok && (r.error === 'off' || r.error === 'net')) r = await rpc('dl_admin_pass_unlock', { p_code:code });     // (before the 15.64 database step)
   if (!r.ok){
     let t = errText(r);
     if (r.error === 'locked' && r.wait) t = 'Too many wrong tries. The door is locked for ' + waitText(r.wait) + '.';
@@ -143,6 +183,7 @@ async function unlock(code){
     say(t, true); return;
   }
   S.tok = String(r.token || ''); try { sessionStorage.setItem('dl_admin_tok', S.tok); } catch(e){}
+  S.shortPass = r.long === false;
   say(''); await refreshMe();
 }
 async function lockNow(){
@@ -151,7 +192,8 @@ async function lockNow(){
 }
 /* before anybody types: is the admin site switched on, and is the door locked right now? */
 async function doorCheck(){
-  const r = await rpc('dl_admin_pass_state', {});
+  let r = await rpc('dl_admin_pass_state2', { p_dev:devId() });
+  if (!r.ok && (r.error === 'off' || r.error === 'net')) r = await rpc('dl_admin_pass_state', {});
   if (S.view !== 'pass') return;
   if (!r.ok){ if (r.error === 'off') say(ERR.off, true); return; }
   if (!r.set) say(ERR.no_pass, true);
@@ -164,39 +206,43 @@ function viewPass(){
     h('p', { cls:'dim', text:'Type the passcode to open the admin site.' }),
     h('label', { for:'pc', text:'Passcode' }), c,
     h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Open', on:{ click:go } })),
-    h('p', { cls:'dim small', style:'margin-top:14px', text:'Five wrong tries lock the door: 5 minutes the first time, then longer each time. The game’s database checks the passcode, not this page.' }));
+    h('p', { cls:'dim small', style:'margin-top:14px', text:'Five wrong tries lock this device: 5 minutes the first time, then longer each time. The game’s database checks the passcode, not this page.' }));
   f.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
   return f;
 }
 function passCard(){
   const o = h('input', { type:'password', maxlength:72, autocomplete:'off' }), n1 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' }), n2 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' });
   const go = async ()=>{
-    if (n1.value.length < 5){ say('The new passcode needs at least 5 letters or numbers.', true); return; }
+    if (n1.value.length < 10){ say('The new passcode needs 10 or more letters, numbers or signs.', true); return; }
     if (n1.value !== n2.value){ say('The two new passcodes are not the same.', true); return; }
     const r = await rpc('dl_admin_pass_change', { p_token:S.tok, p_old:o.value, p_new:n1.value }); o.value = n1.value = n2.value = '';
     if (!r.ok){ if (r.error === 'not_admin' || r.error === 'auth') return refreshMe(); say(errText(r), true); return; }
-    say('Passcode changed. Use the new one from now on.');
+    S.shortPass = false; say('Passcode changed. Use the new one from now on.'); if (S.tab === 'home') draw();
   };
   return h('div', { cls:'card' }, h('h3', { text:'Change the passcode', style:'margin-top:0' }),
+    S.shortPass ? h('div', { cls:'note', text:'Your passcode is short. Pick a new one with 10 or more letters, numbers or signs: it is much harder to guess.' }) : null,
     h('div', { cls:'cols3' }, h('div', null, h('label', { text:'Passcode now' }), o), h('div', null, h('label', { text:'New passcode' }), n1), h('div', null, h('label', { text:'New one again' }), n2)),
     h('div', { cls:'row', style:'margin-top:12px' }, h('button', { text:'Change it', on:{ click:go } })),
     h('p', { cls:'dim small', text:'Anyone who knows the passcode can use this site. Tell a parent what it is, and nobody else.' }));
 }
 
 /* ---------------------------------------------------------------- the app */
-const TABS = [['home', 'Home'], ['players', 'Players'], ['servers', 'Servers'], ['scores', 'Scores'], ['ads', 'Ads & news'], ['numbers', 'Game numbers'], ['words', 'Blocked words'], ['log', 'Log']];
+const TABS = [['home', 'Home'], ['players', 'Players'], ['reports', 'Reports'], ['servers', 'Servers'], ['scores', 'Scores'], ['ads', 'Ads & news'], ['numbers', 'Game numbers'], ['words', 'Blocked words'], ['log', 'Log']];
+const REASONS = { name:'Their name', chat:'What they wrote', cheat:'Cheating', mean:'Being mean', other:'Something else' };
 async function load(tab){
   S.tab = tab; const D = S.data; let r;
   if (tab === 'home'){ r = await call('stats'); if (r.ok) D.stats = r; }
-  else if (tab === 'players'){ r = await call('players', { q:D.q || '', limit:80 }); if (r.ok) D.players = r.players; }
+  else if (tab === 'players'){ r = await call('players', { q:D.q || '', limit:D.lim_players || LIM.players }); if (r.ok) D.players = r.players; }
   else if (tab === 'servers'){ r = await call('servers'); if (r.ok){ D.servers = r.servers; D.rooms = r.rooms; } }
   else if (tab === 'scores'){ r = await call('boards'); if (r.ok){ D.boards = r.boards; if (!D.board && r.boards.length) D.board = r.boards[0].board; }
-    if (r.ok && D.board){ const s = await call('scores', { board:D.board, limit:100 }); if (s.ok) D.scores = s.scores; }
-    const rr = await call('runs', { limit:40 }); if (rr.ok) D.runs = rr.runs; }
-  else if (tab === 'ads' || tab === 'numbers'){ r = await call('config_get'); if (r.ok){ D.config = r.config; D.ads = D.news = D.prices = D.daily_pool = D.achievements = null; }
+    if (r.ok && D.board){ const s = await call('scores', { board:D.board, limit:D.lim_scores || LIM.scores }); if (s.ok) D.scores = s.scores; }
+    const rr = await call('runs', { limit:D.lim_runs || LIM.runs }); if (rr.ok) D.runs = rr.runs; }
+  else if (tab === 'ads' || tab === 'numbers'){ r = await call('config_get'); if (r.ok){ D.config = r.config; ['ads', 'news', 'prices', 'daily_pool', 'achievements'].forEach(k=>{ if (!S.dirty[k]) D[k] = null; }); }
     const sg = await rpc('dl_site_get', {}); D.gameReads = !!sg.ok; }
   else if (tab === 'words'){ r = await call('words'); if (r.ok) D.words = r.words; }
-  else if (tab === 'log'){ r = await call('log', { limit:120 }); if (r.ok) D.log = r.log; }
+  else if (tab === 'log'){ r = await call('log', { limit:D.lim_log || LIM.log }); if (r.ok) D.log = r.log; }
+  else if (tab === 'reports'){ r = await call('reports', { status:D.rst || 'open', limit:D.lim_reports || LIM.reports });
+    if (r.ok){ D.reports = r.reports; D.repOpen = r.open; D.repOff = false; } else if (r.error === 'bad_fn' || r.error === 'unknown' || r.error === 'bad_args'){ D.repOff = true; D.reports = []; r = { ok:true }; } }
   if (r && !r.ok && r.error !== 'not_admin') say(errText(r), true);
   if (S.view === 'app') draw();
 }
@@ -224,7 +270,7 @@ function tabHome(){
 }
 function tabPlayers(){
   const D = S.data, q = h('input', { type:'search', placeholder:'Search a username', value:D.q || '', maxlength:16 });
-  const go = ()=>{ D.q = q.value.trim(); load('players'); };
+  const go = ()=>{ D.q = q.value.trim(); D.lim_players = 0; load('players'); };
   q.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
   const list = h('div', { cls:'list' });
   (D.players || []).forEach(p=>{
@@ -253,7 +299,7 @@ function tabPlayers(){
     list.appendChild(it);
   });
   return h('div', null, h('h2', { text:'Players' }), h('div', { cls:'row' }, h('div', { cls:'grow' }, q), h('button', { cls:'pri', text:'Search', on:{ click:go } })),
-    h('p', { cls:'dim small', text:(D.players ? D.players.length : 0) + ' shown, newest visits first.' }), list);
+    h('p', { cls:'dim small', text:'Newest visits first.' }), list, moreRow((D.players || []).length, 'players', 'players'));
 }
 function tabServers(){
   const D = S.data, list = h('div', { cls:'list' });
@@ -272,7 +318,7 @@ function tabServers(){
     h('h3', { text:'Rooms open right now' }), (D.rooms || []).length ? rooms : h('p', { cls:'dim', text:'No rooms right now.' }));
 }
 function tabScores(){
-  const D = S.data, sel = h('select', { on:{ change:e=>{ D.board = e.target.value; load('scores'); } } });
+  const D = S.data, sel = h('select', { on:{ change:e=>{ D.board = e.target.value; D.lim_scores = 0; load('scores'); } } });
   (D.boards || []).forEach(b=> sel.appendChild(h('option', { value:b.board, text:b.board + ' (' + b.n + (b.hidden ? ', ' + b.hidden + ' hidden' : '') + ')', selected:b.board === D.board })));
   const tb = h('tbody');
   (D.scores || []).forEach(s=>{
@@ -284,9 +330,9 @@ function tabScores(){
   (D.runs || []).forEach(r=> rb.appendChild(h('tr', null, h('td', { text:r.name || '' }), h('td', { cls:'num', text:String(r.score === null ? '' : r.score) }), h('td', { cls:'dim small', text:[r.park, r.mode, r.ride].filter(Boolean).join(' · ') }), h('td', { cls:'dim small', text:ago(r.at) }))));
   return h('div', null, h('h2', { text:'Scores' }),
     (D.boards || []).length ? h('div', null, h('label', { text:'Board' }), sel,
-      h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'' }), h('th', { text:'Player' }), h('th', { cls:'num', text:'Score' }), h('th', { text:'' }), h('th', { text:'' }), h('th', { text:'' }))), tb)))
+      h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'' }), h('th', { text:'Player' }), h('th', { cls:'num', text:'Score' }), h('th', { text:'' }), h('th', { text:'' }), h('th', { text:'' }))), tb)), moreRow((D.scores || []).length, 'scores', 'scores'))
       : h('p', { cls:'dim', text:'No boards yet.' }),
-    h('h3', { text:'Latest runs (guests too)' }), h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'Rider' }), h('th', { cls:'num', text:'Score' }), h('th', { text:'Where' }), h('th', { text:'When' }))), rb)));
+    h('h3', { text:'Latest runs (guests too)' }), h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'Rider' }), h('th', { cls:'num', text:'Score' }), h('th', { text:'Where' }), h('th', { text:'When' }))), rb)), moreRow((D.runs || []).length, 'runs', 'runs'));
 }
 /* until the last database step is done the game does not read ads, news or prices from here (it would be unsafe before that) */
 function waitNote(){ return S.data.gameReads === false ? h('div', { cls:'note', text:'Saved here, but not in the game yet: the game starts to show your ads, news and prices after the last database step. Ask Claude to finish it.' }) : null; }
@@ -299,7 +345,7 @@ function tabAds(){
   if (!D.config) return h('p', { cls:'dim', text:'Loading…' });
   if (!D.ads){ const v = cfg.ads && Array.isArray(cfg.ads.value) ? cfg.ads.value : []; D.ads = [0, 1, 2, 3].map(i=> Object.assign({ t:'', s:'', bg:'#1f6fd6', fg:'#ffffff', ac:'#ffd21f', art:'star' }, v[i] || {})); }
   if (!D.news){ const n = cfg.news && cfg.news.value ? cfg.news.value : {}; D.news = { text:n.text || '', on:n.on !== false }; }
-  const cards = h('div', { cls:'two' });
+  const cards = h('div', { cls:'two', 'data-sec':'ads' });
   D.ads.forEach((a, i)=>{
     const pv = h('div'); const re = ()=>{ pv.textContent = ''; pv.appendChild(adPreview(a)); };
     const f = (k, el)=>{ el.addEventListener('input', ()=>{ a[k] = el.value; re(); }); return el; };
@@ -322,7 +368,7 @@ function tabAds(){
     h('div', { cls:'row', style:'margin-top:12px' }, h('button', { cls:'pri', text:'Save the boards', on:{ click:()=> save(D.ads.filter(a=> (a.t || '').trim())) } }),
       h('button', { text:'Back to the game’s own ads', on:{ click:()=> ask('Take your ads down and show the game’s own ads?', 'Yes', ()=> save([])) } })),
     h('h2', { text:'News line on the menu' }),
-    h('div', { cls:'card' }, h('label', { text:'One line, up to 90 letters' }), nt, h('div', { cls:'row', style:'margin-top:10px' }, non, h('label', { for:'non', style:'margin:0', text:'Show it' })),
+    h('div', { cls:'card', 'data-sec':'news' }, h('label', { text:'One line, up to 90 letters' }), nt, h('div', { cls:'row', style:'margin-top:10px' }, non, h('label', { for:'non', style:'margin:0', text:'Show it' })),
       h('div', { cls:'row', style:'margin-top:12px' }, h('button', { cls:'pri', text:'Save the news', on:{ click:async ()=>{ const r = await call('config_set', { key:'news', value:{ text:nt.value, on:non.checked } }); if (!r.ok){ say(errText(r), true); return; } say(r.value.on ? 'News saved.' : 'News is off.'); D.news = null; D.config = null; load('ads'); } } }))));
 }
 function listEditor(title, key, rows, fields, withDesc){
@@ -336,7 +382,7 @@ function listEditor(title, key, rows, fields, withDesc){
       box.appendChild(h('div', { cls:'item' }, h('label', { style:'margin-top:0', text:'What the player reads' }), inp('t', 'text', withDesc ? 40 : 60),
         withDesc ? h('label', { text:'Small print' }) : null, withDesc ? inp('d', 'text', 120) : null,
         h('div', { cls:'cols3' }, h('div', null, h('label', { text:'Counts' }), fs), h('div', null, h('label', { text:'Needed' }), inp('value', 'number')), h('div', null, h('label', { text:'Reward ($)' }), inp('rep', 'number'))),
-        h('div', { cls:'acts' }, h('button', { cls:'sm bad', text:'Remove', on:{ click:()=>{ rows.splice(i, 1); draw1(); } } }))));
+        h('div', { cls:'acts' }, h('button', { cls:'sm bad', text:'Remove', on:{ click:()=>{ rows.splice(i, 1); markDirty(key); draw1(); } } }))));
     });
   };
   draw1();
@@ -346,8 +392,8 @@ function listEditor(title, key, rows, fields, withDesc){
     const r = await call('config_set', { key:key, value:out }); if (!r.ok){ say(errText(r), true); return; }
     say('Saved ' + r.value.length + '.' + (r.dropped ? ' ' + r.dropped + ' left out.' : '')); S.data.config = null; S.data[key] = null; load('numbers');
   };
-  return h('div', null, h('h3', { text:title }), box, h('div', { cls:'row', style:'margin-top:10px' },
-    h('button', { text:'Add one', on:{ click:()=>{ rows.push({ t:'', d:'', rep:100, field:fields[0][0], value:1 }); draw1(); } } }), h('button', { cls:'pri', text:'Save', on:{ click:save } })));
+  return h('div', { 'data-sec':key }, h('h3', { text:title }), box, h('div', { cls:'row', style:'margin-top:10px' },
+    h('button', { text:'Add one', on:{ click:()=>{ rows.push({ t:'', d:'', rep:100, field:fields[0][0], value:1 }); markDirty(key); draw1(); } } }), h('button', { cls:'pri', text:'Save', on:{ click:save } })));
 }
 function tabNumbers(){
   const D = S.data, cfg = D.config || {};
@@ -370,7 +416,7 @@ function tabNumbers(){
   return h('div', null, h('h2', { text:'Game numbers' }), waitNote(),
     h('h3', { text:'Ride prices' }), h('p', { cls:'dim', text:'Type a new price next to a ride (0 = free for everybody). Leave it empty to keep the normal price. The starter BMX always stays free.' }),
     h('div', { cls:'row' }, h('div', { cls:'grow' }, q), cnt),
-    h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'Ride' }), h('th', { text:'Kind' }), h('th', { cls:'num', text:'Normal' }), h('th', { text:'Your price' }))), tb)),
+    h('div', { cls:'card', style:'overflow-x:auto', 'data-sec':'prices' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'Ride' }), h('th', { text:'Kind' }), h('th', { cls:'num', text:'Normal' }), h('th', { text:'Your price' }))), tb)),
     h('div', { cls:'row' }, h('button', { cls:'pri', text:'Save prices', on:{ click:async ()=>{ const r = await call('config_set', { key:'prices', value:{ veh:D.prices } }); if (!r.ok){ say(errText(r), true); return; } say('Prices saved (' + Object.keys(r.value.veh).length + ' changed).'); D.prices = null; D.config = null; load('numbers'); } } }),
       h('button', { text:'All prices back to normal', on:{ click:()=> ask('Put every ride back to its normal price?', 'Yes', async ()=>{ D.prices = {}; const r = await call('config_set', { key:'prices', value:{ veh:{} } }); if (!r.ok){ say(errText(r), true); return; } say('All prices are normal again.'); D.prices = null; D.config = null; load('numbers'); }) } })),
     listEditor('Daily challenges (the game picks 3 each day)', 'daily_pool', D.daily_pool, DAILY_FIELDS, false),
@@ -391,28 +437,72 @@ function tabWords(){
     h('div', { cls:'row' }, h('button', { cls:'sm', text:show ? 'Hide the words' : 'Show the words', on:{ click:()=>{ D.showWords = !show; draw(); } } }), h('span', { cls:'dim small', text:(D.words || []).length + ' words. Tap one to switch it off or on.' })),
     h('div', { cls:'card' }, list));
 }
+function tabReports(){
+  const D = S.data, list = h('div', { cls:'list' });
+  if (D.repOff) return h('div', null, h('h2', { text:'Reports' }),
+    h('div', { cls:'note', text:'Reports are not switched on yet. A parent needs to run the 15.64 database step (010_fair_safe.sql). Then riders can report each other in the game, and the reports show up here.' }));
+  const sel = h('select', { on:{ change:e=>{ D.rst = e.target.value; D.lim_reports = 0; load('reports'); } } });
+  [['open', 'Open'], ['done', 'Done'], ['dismissed', 'Not a problem'], ['all', 'All']].forEach(o=> sel.appendChild(h('option', { value:o[0], text:o[1], selected:(D.rst || 'open') === o[0] })));
+  (D.reports || []).forEach(r=>{
+    const hd = h('div', { cls:'hd' }, h('b', { text:r.name }), r.banned ? h('span', { cls:'tag bad', text:'banned' }) : null,
+      h('span', { cls:'tag' + (r.reason === 'cheat' || r.reason === 'mean' ? ' hot' : ''), text:REASONS[r.reason] || r.reason }),
+      r.status !== 'open' ? h('span', { cls:'tag ' + (r.status === 'done' ? 'ok' : ''), text:r.status === 'done' ? 'done' : 'not a problem' }) : null,
+      h('span', { cls:'dim small', text:ago(r.at) }));
+    const bits = ['reported by ' + r.by];
+    if (r.room) bits.push('in room ' + r.room);
+    if (r.total > 1) bits.push(r.total + ' reports about ' + r.name + ' in all');
+    if (r.handled_by) bits.push(r.status + ' by ' + r.handled_by + ' ' + ago(r.handled_at));
+    const it = h('div', { cls:'item' }, hd, r.note ? h('div', { cls:'meta', text:'“' + r.note + '”' }) : null, h('div', { cls:'meta', text:bits.join(' · ') }));
+    const A = h('div', { cls:'acts' });
+    if (r.status === 'open'){
+      A.appendChild(h('button', { cls:'sm pri', text:'Done', title:'You dealt with it', on:{ click:()=> act('report_set', { id:r.id, set:'done' }, 'Marked done.') } }));
+      A.appendChild(h('button', { cls:'sm', text:'Not a problem', on:{ click:()=> act('report_set', { id:r.id, set:'dismissed' }, 'Marked: not a problem.') } }));
+    } else A.appendChild(h('button', { cls:'sm', text:'Open again', on:{ click:()=> act('report_set', { id:r.id, set:'open' }, 'Open again.') } }));
+    A.appendChild(h('button', { cls:'sm', text:'Find ' + r.name, on:{ click:()=> leaveOk(()=>{ D.q = r.name; D.lim_players = 0; S.tab = 'players'; draw(); load('players'); }) } }));
+    it.appendChild(A); list.appendChild(it);
+  });
+  return h('div', null, h('h2', { text:'Reports' }),
+    h('p', { cls:'dim', text:'Riders can report another rider in the game (Riders list → Report). Look at what happened, then ban, rename or wipe on the Players tab if it is needed.' }),
+    h('div', { cls:'row' }, h('label', { text:'Show', style:'margin:0' }), sel, h('span', { cls:'dim small', text:(D.repOpen || 0) + ' open' })),
+    (D.reports || []).length ? list : h('p', { cls:'dim', text:'Nothing here.' }),
+    moreRow((D.reports || []).length, 'reports', 'reports'));
+}
 function tabLog(){
-  const tb = h('tbody');
-  (S.data.log || []).forEach(l=>{ let d = ''; try { d = l.detail && Object.keys(l.detail).length ? JSON.stringify(l.detail) : ''; } catch(e){} tb.appendChild(h('tr', null, h('td', { cls:'dim small', text:when(l.at) }), h('td', { text:l.admin || '' }), h('td', { text:l.action }), h('td', { text:l.target || '' }), h('td', { cls:'dim small', text:d }))); });
+  const D = S.data, tb = h('tbody'), q = h('input', { type:'search', placeholder:'Filter: an admin, an action, a player…', value:D.lq || '', maxlength:40 }), cnt = h('span', { cls:'dim small' });
+  const rows = (D.log || []).map(l=>{ let d = ''; try { d = l.detail && Object.keys(l.detail).length ? JSON.stringify(l.detail) : ''; } catch(e){}
+    return { l, d, txt:[l.admin, l.action, l.target, d].join(' ').toLowerCase() }; });
+  const fill = ()=>{
+    tb.textContent = ''; const f = (D.lq || '').trim().toLowerCase(); let n = 0;
+    rows.forEach(r=>{ if (f && r.txt.indexOf(f) < 0) return; n++;
+      tb.appendChild(h('tr', null, h('td', { cls:'dim small', text:when(r.l.at) }), h('td', { text:r.l.admin || '' }), h('td', { text:r.l.action }), h('td', { text:r.l.target || '' }), h('td', { cls:'dim small', text:r.d }))); });
+    cnt.textContent = f ? n + ' of ' + rows.length + ' match' : '';
+  };
+  q.addEventListener('input', ()=>{ D.lq = q.value; fill(); }); fill();
   return h('div', null, h('h2', { text:'Log' }), h('p', { cls:'dim', text:'Everything an admin did, newest first.' }),
-    h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'When' }), h('th', { text:'Admin' }), h('th', { text:'Did' }), h('th', { text:'To' }), h('th', { text:'More' }))), tb)));
+    h('div', { cls:'row' }, h('div', { cls:'grow' }, q), cnt),
+    h('div', { cls:'card', style:'overflow-x:auto' }, h('table', null, h('thead', null, h('tr', null, h('th', { text:'When' }), h('th', { text:'Admin' }), h('th', { text:'Did' }), h('th', { text:'To' }), h('th', { text:'More' }))), tb)),
+    moreRow(rows.length, 'log', 'log lines'));
 }
 
 function draw(){
   const app = $('app'); app.textContent = '';
   const top = h('div', { cls:'top' }, h('div', { cls:'logo' }, 'DUSK', h('b', { text:'LINE' })), h('span', { cls:'tag hot', text:'admin' }), h('span', { cls:'dim small', text:'game ' + GAME_VER }));
-  if (S.tok && S.view === 'app') top.appendChild(h('div', { cls:'who' }, h('span', { cls:'dim small', text:'door open' }), h('button', { cls:'sm', text:'Lock', on:{ click:lockNow } })));
+  if (S.tok && S.view === 'app') top.appendChild(h('div', { cls:'who' }, h('span', { cls:'dim small', text:'door open' }), h('button', { cls:'sm', text:'Lock', on:{ click:()=> leaveOk(lockNow) } })));
   app.appendChild(top);
   const wrap = h('div', { cls:'wrap' });
   if (S.view === 'app'){
     const tabs = h('div', { cls:'tabs' });
-    TABS.forEach(t=> tabs.appendChild(h('button', { cls:'tab' + (S.tab === t[0] ? ' on' : ''), text:t[1], on:{ click:()=>{ say(''); S.tab = t[0]; if (t[0] === 'ads' || t[0] === 'numbers') S.data.config = null; draw(); load(t[0]); } } })));
+    TABS.forEach(t=> tabs.appendChild(h('button', { cls:'tab' + (S.tab === t[0] ? ' on' : '') + (isDirty() && S.dirtyTab === t[0] ? ' dirty' : ''), text:t[1], on:{ click:()=>{ if (t[0] === S.tab) return; leaveOk(()=>{ say(''); S.tab = t[0]; if (t[0] === 'ads' || t[0] === 'numbers') S.data.config = null; draw(); load(t[0]); }); } } })));
     app.appendChild(tabs);
   }
   wrap.appendChild(h('div', { id:'msg', cls:'msg' + (S.bad ? ' bad' : '') + (S.msg ? '' : ' hide'), role:'status', text:S.msg }));
   let v;
   if (S.view !== 'app') v = viewPass();
-  else v = ({ home:tabHome, players:tabPlayers, servers:tabServers, scores:tabScores, ads:tabAds, numbers:tabNumbers, words:tabWords, log:tabLog }[S.tab] || tabHome)();
+  else v = ({ home:tabHome, players:tabPlayers, reports:tabReports, servers:tabServers, scores:tabScores, ads:tabAds, numbers:tabNumbers, words:tabWords, log:tabLog }[S.tab] || tabHome)();
+  if (S.view === 'app' && (S.tab === 'ads' || S.tab === 'numbers')){
+    const mark = e=>{ const t = e.target; if (!t || t.type === 'search' || !t.closest) return; const sec = t.closest('[data-sec]'); if (sec) markDirty(sec.getAttribute('data-sec')); };
+    v.addEventListener('input', mark); v.addEventListener('change', mark);
+  }
   wrap.appendChild(v); app.appendChild(wrap);
 }
 draw();
