@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-+smQ/m6oBxKvmnLLobkua5dh6OYskQfjSaA/Mf+ca6U='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co wss://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-X+PUla3Ultx4nG8xN8zG3z8q0zYyIsPidMsNRvMdpKM='; img-src data: 'self'; base-uri 'none'; form-action 'none'">
 <title>Dusk Line admin</title>
 <style>
 :root{ --bg:#0d1016; --card:#161a23; --line:rgba(255,255,255,.12); --ink:#f1ece2; --dim:rgba(241,236,226,.62); --hot:#ff7a45; --teal:#5fd6c4; --bad:#ff5d5d; --ok:#7be08a; --yel:#ffd21f; color-scheme:dark; }
@@ -56,6 +56,73 @@ button.tab.dirty::after{ content:' •'; color:#ffb020; }
 .more{ display:flex; gap:10px; align-items:center; margin:10px 0 4px; }
 .hide{ display:none !important; }
 @media (max-width:560px){ .cols3{ grid-template-columns:1fr; } h1{ font-size:19px; } }
+
+/* ===== 15.86 ADM87: the admin site, remade ===== */
+:root{ --bg:#0a0d14; --bg2:#0f1420; --card:#141a27; --card2:#192132; --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16); --ink:#f3efe6; --dim:rgba(243,239,230,.6);
+  --hot:#ff7a45; --hot2:#ffb03a; --teal:#4fd8c4; --blue:#5aa8ff; --vio:#a78bfa; --bad:#ff5d6c; --ok:#5fe08a; --yel:#ffd21f; }
+html, body{ background:radial-gradient(1200px 700px at 85% -10%, rgba(255,122,69,.10), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(79,216,196,.08), transparent 60%), var(--bg); background-attachment:fixed; }
+body{ padding:0; }
+.shell{ display:grid; grid-template-columns:232px minmax(0,1fr); min-height:100vh; }
+button{ display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+button svg{ width:16px; height:16px; flex:none; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.side{ position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:4px; padding:18px 12px; background:rgba(9,12,19,.82); border-right:1px solid var(--line); backdrop-filter:blur(10px); overflow-y:auto; }
+.side .brand{ display:flex; align-items:center; gap:10px; padding:4px 8px 18px; }
+.side .brand .mk{ width:38px; height:38px; border-radius:11px; display:grid; place-items:center; background:linear-gradient(135deg, var(--hot), var(--hot2)); color:#1b0d05; font-weight:900; font-size:18px; box-shadow:0 6px 18px rgba(255,122,69,.35); }
+.side .brand b{ display:block; font-size:16px; font-weight:900; letter-spacing:.04em; } .side .brand span{ font-size:11px; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; }
+.nav{ display:flex; justify-content:flex-start; align-items:center; gap:11px; width:100%; min-height:42px; padding:0 12px; border:0; border-radius:11px; background:transparent; color:var(--dim); font-weight:700; font-size:14px; text-align:left; }
+.nav svg{ width:19px; height:19px; flex:none; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.nav:hover{ background:rgba(255,255,255,.06); color:var(--ink); } .nav.on{ background:linear-gradient(90deg, rgba(255,122,69,.22), rgba(255,122,69,.06)); color:#ffd8c6; box-shadow:inset 3px 0 0 var(--hot); }
+.nav .cnt{ margin-left:auto; font-size:11px; padding:1px 7px; border-radius:99px; background:rgba(95,224,138,.18); color:#a9f0bf; }
+.nav.dirty::after{ content:'•'; color:#ffb020; margin-left:auto; }
+.side .sep{ height:1px; background:var(--line); margin:10px 6px; }
+.side .me{ margin-top:auto; padding:12px; border-radius:12px; background:var(--card); border:1px solid var(--line); font-size:13px; }
+.side .me b{ display:flex; align-items:center; gap:8px; font-size:14px; } .side .me .dot{ width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 4px rgba(95,224,138,.15); }
+.main{ min-width:0; padding:22px 26px 60px; }
+.phead{ display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+.phead h1{ font-size:26px; letter-spacing:.01em; } .phead p{ margin:2px 0 0; color:var(--dim); font-size:14px; } .phead .acts{ margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.card{ background:linear-gradient(180deg, var(--card2), var(--card)); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+.card > h3:first-child, .card .ch{ margin-top:0; }
+.ch{ display:flex; align-items:center; gap:8px; margin-bottom:10px; } .ch h3{ margin:0; color:var(--ink); text-transform:none; letter-spacing:0; font-size:15px; } .ch .dim{ margin-left:auto; font-size:12px; }
+.kpis{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); margin-bottom:12px; }
+.kpi{ position:relative; overflow:hidden; padding:16px; border-radius:16px; background:linear-gradient(160deg, var(--card2), var(--card)); border:1px solid var(--line); }
+.kpi .ic{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; margin-bottom:10px; } .kpi .ic svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.kpi b{ display:block; font-size:30px; line-height:1; font-weight:900; font-variant-numeric:tabular-nums; } .kpi span{ display:block; margin-top:6px; font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+.kpi i{ position:absolute; right:-18px; bottom:-18px; width:80px; height:80px; border-radius:50%; opacity:.12; }
+.kpi.live b::after{ content:''; display:inline-block; width:9px; height:9px; margin-left:8px; vertical-align:middle; border-radius:50%; background:var(--ok); animation:pulse 1.6s infinite; }
+@keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(95,224,138,.6); } 100%{ box-shadow:0 0 0 12px rgba(95,224,138,0); } }
+.minis{ display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); margin-bottom:12px; }
+.mini{ padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.035); border:1px solid var(--line); } .mini b{ display:block; font-size:18px; font-variant-numeric:tabular-nums; } .mini span{ font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.07em; }
+.dgrid{ display:grid; gap:12px; grid-template-columns:repeat(12, minmax(0,1fr)); } .dgrid > .card{ margin:0; } .c8{ grid-column:span 8; } .c6{ grid-column:span 6; } .c4{ grid-column:span 4; } .c12{ grid-column:span 12; }
+@media (max-width:1100px){ .c8, .c6, .c4{ grid-column:span 12; } }
+svg.chart{ width:100%; height:auto; display:block; } svg.chart .gl{ stroke:rgba(255,255,255,.07); } svg.chart .ax{ fill:rgba(243,239,230,.45); font-size:11px; font-family:inherit; }
+svg.chart rect.bar:hover{ filter:brightness(1.25); }
+.plist{ display:flex; flex-direction:column; } .prow{ display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--line); font-size:14px; } .prow:last-child{ border-bottom:0; }
+.av{ width:32px; height:32px; flex:none; border-radius:10px; display:grid; place-items:center; font-weight:900; font-size:14px; color:#0d0f14; }
+.prow .nm{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .prow .sub{ color:var(--dim); font-size:12px; } .prow .rt{ margin-left:auto; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.on-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ok); margin-right:5px; } .off-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.2); margin-right:5px; }
+.lv{ display:inline-block; min-width:30px; padding:1px 7px; border-radius:7px; font-size:12px; font-weight:900; text-align:center; background:rgba(167,139,250,.18); color:#d6c9ff; }
+.coin{ display:inline-block; width:13px; height:13px; border-radius:50%; margin-right:5px; vertical-align:-1px; background:radial-gradient(circle at 35% 30%, #fff2a8, #ffbf2e 45%, #d9741a); box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+table.tbl{ width:100%; border-collapse:separate; border-spacing:0; } table.tbl th{ position:sticky; top:0; background:var(--card2); cursor:pointer; user-select:none; white-space:nowrap; } table.tbl th.s::after{ content:' ▾'; color:var(--hot); } table.tbl th.s.up::after{ content:' ▴'; }
+table.tbl td{ padding:9px 8px; } table.tbl tr.pr{ cursor:pointer; } table.tbl tr.pr:hover td{ background:rgba(255,255,255,.035); } table.tbl tr.open td{ background:rgba(255,122,69,.07); }
+table.tbl tr.ex td{ padding:10px 12px 14px; background:rgba(255,122,69,.05); }
+.mapwrap{ display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; height:calc(100vh - 150px); min-height:480px; }
+.mapbox{ position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#1d4f86; touch-action:none; }
+.mapbox canvas{ display:block; width:100%; height:100%; cursor:grab; } .mapbox canvas.drag{ cursor:grabbing; }
+.mapctl{ position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:6px; } .mapctl button{ width:40px; min-height:40px; padding:0; background:rgba(10,13,20,.82); backdrop-filter:blur(6px); font-size:18px; }
+.mapsty{ position:absolute; left:12px; top:12px; display:flex; gap:0; border-radius:11px; overflow:hidden; border:1px solid var(--line2); } .mapsty button{ border-radius:0; border:0; min-height:34px; background:rgba(10,13,20,.82); font-size:13px; } .mapsty button.on{ background:var(--hot); color:#1b0d05; }
+.maptip{ position:absolute; pointer-events:none; padding:6px 9px; border-radius:9px; background:rgba(10,13,20,.92); border:1px solid var(--line2); font-size:13px; white-space:nowrap; transform:translate(12px, -50%); }
+.mapstat{ position:absolute; left:12px; bottom:12px; padding:7px 11px; border-radius:10px; background:rgba(10,13,20,.82); font-size:12px; display:flex; gap:8px; align-items:center; }
+.mapside{ display:flex; flex-direction:column; gap:12px; min-height:0; overflow-y:auto; } .mapside .card{ margin:0; padding:14px; }
+.chips{ display:flex; flex-wrap:wrap; gap:6px; } .chip{ min-height:30px; padding:0 10px; border-radius:99px; font-size:12px; display:inline-flex; align-items:center; gap:6px; } .chip i{ width:9px; height:9px; border-radius:50%; } .chip.off{ opacity:.45; }
+@media (max-width:980px){ .mapwrap{ grid-template-columns:1fr; height:auto; } .mapbox{ height:62vh; } }
+.main > div > h2:first-child{ font-size:26px; margin:0 0 10px; }
+.main .card{ padding:16px; margin:12px 0; } .dgrid .card{ margin:0; }
+@media (max-width:860px){
+  .shell{ grid-template-columns:1fr; } .side{ position:sticky; z-index:6; height:auto; flex-direction:row; align-items:center; overflow-x:auto; padding:8px; gap:4px; }
+  .side .brand{ padding:0 6px 0 2px; } .side .brand div{ display:none; } .side .brand .mk{ width:34px; height:34px; } .side .sep, .side .me .x, .side .me b{ display:none; } .side .me{ margin:0 0 0 6px; padding:0; background:none; border:0; } .side .me button{ margin-top:0 !important; width:auto !important; }
+  .nav{ width:auto; flex:none; padding:0 10px; } .nav span.t{ display:none; } .nav.on span.t{ display:inline; }
+  .main{ padding:16px 12px 40px; }
+}
 </style>
 </head>
 <body>
@@ -63,6 +130,7 @@ button.tab.dirty::after{ content:' •'; color:#ffb020; }
 <script>
 'use strict';
 const SUPA_URL = 'https://njgfhlnlethcyhrfhalg.supabase.co', SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qZ2ZobG5sZXRoY3locmZoYWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDc1MjYsImV4cCI6MjEwMjc4MzUyNn0.BvM8XK-PLb7fuCpJyp0vORdGLtNovqhYPNUZgXHqGdg', GAME_VER = '15.86';
+const MAPD = {"half":12288,"img":4096,"pl":[["City Centre","place","#ffc46b",0,70],["Maple Heights","place","#ffc46b",-55,-4462],["Harbor Point","place","#ffc46b",5664,-5649],["Westbrook","place","#ffc46b",-4425,36],["Millbrook","place","#ffc46b",4888,4106],["Ironwood Bike Park","park","#2e7d4f",-2731,5048],["Silver Lake Beach","place","#ffc46b",-3360,9586],["Raven Ridge Bike Park","park","#474e5c",-6426,-4830],["Millbrook Flow Park","park","#2f9e6a",5644,6283],["Greenbelt Bike Park","park","#5c9b2c",-1166,2737],["Sawtooth Bike Park","park","#2a5aa8",-9696,1115],["Red Mesa Freeride","park","#c0472a",9004,9235],["Silver Lake Flow Park","park","#1e8fa0",-4046,9055],["Maple Heights Skate Spot","place","#ffc46b",-65,-4547],["Westbrook Skate Spot","place","#ffc46b",-4547,110],["Harbor Point Quay","place","#ffc46b",5920,-5920],["Millbrook Bridge","place","#ffc46b",4673,4499],["Pinecrest","place","#ffc46b",-9624,924],["Lakeview","place","#ffc46b",-3257,9335],["Copper Springs","place","#ffc46b",8652,9143],["Gull Harbor","place","#ffc46b",426,-9075],["Gull Harbor Quay","place","#ffc46b",804,-8654],["Mega Skatepark","place","#ffc46b",-985,-878],["DUSK FUEL","gas","#ff9a2e",-619,243],["Dusk Mart","conv","#ffd23f",-637,251],["Gear Garage Cycles","bike","#2fb8ff",-615,214],["Fakie Skate Shop","skate","#ff5ad0",-615,197],["Rev Limit Motors","garage","#ff5a4a",-652,175],["Kickstand Coffee","cafe","#c98a4b",-658,265],["DUSK FUEL","gas","#ff9a2e",-197,-619],["Dusk Mart","conv","#ffd23f",-189,-637],["Freewheel Bike Co.","bike","#2fb8ff",-226,-615],["Coping Club","skate","#ff5ad0",-243,-615],["Piston & Bolt","garage","#ff5a4a",-265,-652],["Flat White Co.","cafe","#c98a4b",-175,-658],["DUSK FUEL","gas","#ff9a2e",133,179],["Dusk Mart","conv","#ffd23f",141,197],["Chainline Cycles","bike","#2fb8ff",104,175],["Coping Club","skate","#ff5ad0",87,175],["Piston & Bolt","garage","#ff5a4a",65,212],["Flat White Co.","cafe","#c98a4b",155,219],["DUSK FUEL","gas","#ff9a2e",197,619],["Dusk Mart","conv","#ffd23f",189,637],["Crankworks Bikes","bike","#2fb8ff",226,615],["Coping Club","skate","#ff5ad0",243,615],["Piston & Bolt","garage","#ff5a4a",265,652],["Flat White Co.","cafe","#c98a4b",175,659],["DUSK FUEL","gas","#ff9a2e",619,-243],["Dusk Mart","conv","#ffd23f",637,-251],["Velo Union","bike","#2fb8ff",615,-214],["Fakie Skate Shop","skate","#ff5ad0",615,-197],["Rev Limit Motors","garage","#ff5a4a",652,-175],["Kickstand Coffee","cafe","#c98a4b",659,-265],["Crankworks Bikes","bike","#2fb8ff",-63,-4458],["DUSK FUEL","gas","#ff9a2e",-105,-4540],["Dusk Mart","conv","#ffd23f",-124,-4519],["Freewheel Bike Co.","bike","#2fb8ff",-4427,27],["DUSK FUEL","gas","#ff9a2e",-4514,58],["Dusk Mart","conv","#ffd23f",-4533,36],["DUSK FUEL","gas","#ff9a2e",4996,-5227],["Harbor Mart","conv","#ffd23f",4974,-5246],["Spoke & Chain Cycles","bike","#2fb8ff",5593,-5593],["DUSK FUEL","gas","#ff9a2e",4437,3821],["Millbrook Mart","conv","#ffd23f",4456,3799],["Two Wheel Supply","bike","#2fb8ff",4718,4167],["DUSK FUEL","gas","#ff9a2e",4901,-243],["Eastfield Mart","conv","#ffd23f",4899,-272],["Gear Garage Cycles","bike","#2fb8ff",4968,-224],["DUSK FUEL","gas","#ff9a2e",-3795,-4428],["Northwood Store","conv","#ffd23f",-3792,-4457],["Velo Union","bike","#2fb8ff",-3867,-4463],["DUSK FUEL","gas","#ff9a2e",-9044,1082],["Pinecrest Mart","conv","#ffd23f",-9042,1111],["Summit Cycles","bike","#2fb8ff",-9436,953],["DUSK FUEL","gas","#ff9a2e",-3031,9418],["Lakeview Mart","conv","#ffd23f",-3030,9447],["Lakeshore Bikes","bike","#2fb8ff",-3101,9374],["DUSK FUEL","gas","#ff9a2e",8268,8749],["Copper Mart","conv","#ffd23f",8273,8721],["Red Rock Bikes","bike","#2fb8ff",8581,9010],["Island Wheels","bike","#2fb8ff",364,-8984],["Ironwood Bike Hut","bike","#2fb8ff",-2738,4985],["Indoor Bike Park: Mega Stunt Island","indoor","#ff6a1a",8364,7366],["Indoor Bike Park: Dusk City Warehouse","indoor","#ff6a1a",3387,-294],["Indoor Bike Park: Harbor Point Hangar","indoor","#ff6a1a",5264,-5503],["Indoor Bike Park: Ironwood Barn","indoor","#ff6a1a",-2174,5090],["Indoor Bike Park: Mega Dome","indoor","#ff6a1a",2656,2776]],"lifts":[["Ironwood Chair",-2772,5076,-3746,5458],["Raven Ridge Chair",-6486,-4820,-7608,-4963],["Sawtooth Gondola",-9752,1118,-9485,1854],["Frostfang Chair",-9646,-3445,-11078,-3956],["Whitecap Chair",-9567,-1367,-11071,-1582],["Glacier Crown Chair",-9629,3095,-11076,3560],["Silver Spire Chair",-7642,-2658,-9077,-3157],["Avalanche Peak Chair",-7687,3342,-9081,3948],["Icefall Peak Chair",-9746,5221,-11085,5939],["Northstar Chair",-7846,5458,-9093,6326],["Pinecrest Ski Lift",-10058,868,-11453,746]]};
 const RIDES = [{"i":"fatmtb","n":"Northcut Bigfloat FS","c":"mtb","p":1200},{"i":"v10","n":"Ridgecrow DH-X","c":"mtb","p":0},{"i":"slash","n":"Ridgecrow Ravine 160","c":"mtb","p":2300},{"i":"demo","n":"Halden Freefall","c":"mtb","p":1200},{"i":"tues","n":"Northcut Plunge DH","c":"mtb","p":1400},{"i":"sender","n":"Screeline Rockfall CF","c":"mtb","p":1600},{"i":"meta","n":"Halden Drift MX","c":"mtb","p":3000},{"i":"spindrift","n":"Screeline Coldfront","c":"mtb","p":3300},{"i":"stumpy","n":"Ridgecrow Trailhound","c":"mtb","p":4800},{"i":"megatower","n":"Halden Tallstack 29","c":"mtb","p":2000},{"i":"capra","n":"Northcut Outlier","c":"mtb","p":2700},{"i":"soundwave","n":"Curbline Wavelength","c":"bmx","p":0},{"i":"gateway","n":"Slabcraft Archway","c":"bmx","p":2000},{"i":"envy","n":"Ledgeworks Grudge","c":"bmx","p":1500},{"i":"williams","n":"Concrete Saints Rampart","c":"bmx","p":1800},{"i":"malum","n":"Curbline Riot","c":"bmx","p":1800},{"i":"legion","n":"Slabcraft Squadron","c":"bmx","p":0},{"i":"bigripper","n":"Ledgeworks Long Haul 29","c":"bmx","p":2600},{"i":"tarmac","n":"Velo Aster SL Race","c":"road","p":1500},{"i":"aeroad","n":"Corsa Lume Windcutter","c":"road","p":0},{"i":"madone","n":"Strada Nera Veloce","c":"road","p":3800},{"i":"dogma","n":"Strada Nera Grantour","c":"road","p":6500},{"i":"v4rs","n":"Velo Aster Classico","c":"road","p":2200},{"i":"s5","n":"Corsa Lume Slipstream","c":"road","p":0},{"i":"oltre","n":"Strada Nera Azzurra","c":"road","p":3000},{"i":"erawan","n":"Kickform Halo","c":"scooter","p":500},{"i":"prospect","n":"Kickform Pioneer","c":"scooter","p":0},{"i":"invictus","n":"Deckhand Unbroken","c":"scooter","p":1200},{"i":"prodigyx","n":"Deckhand Wunderkind","c":"scooter","p":1900},{"i":"vx9","n":"Kickform Vortex 9","c":"scooter","p":0},{"i":"maven","n":"Deckhand Savant","c":"scooter","p":950},{"i":"tilttheory","n":"Kickform Streetbox","c":"scooter","p":1450},{"i":"apexpro","n":"Deckhand Flare","c":"scooter","p":1100},{"i":"droneaeon","n":"Kickform Longshot","c":"scooter","p":1300},{"i":"chubbymelon","n":"Deckhand Watermelon","c":"scooter","p":1700},{"i":"northblade","n":"Kickform Arrow","c":"scooter","p":1250},{"i":"bluntprodigy","n":"Deckhand Rookie","c":"scooter","p":650},{"i":"gritelite","n":"Kickform Gold Standard","c":"scooter","p":1900},{"i":"districttitled","n":"Deckhand Twilight","c":"scooter","p":1500},{"i":"ktm690smmoto","n":"Brakeburn Sideways 690","c":"street","p":12800},{"i":"husky701moto","n":"Bermshot Kerb 700","c":"street","p":13400},{"i":"wr450smmoto","n":"Roostworks Street 450","c":"street","p":10800},{"i":"hypermotardmoto","n":"Chicane Twin Motard 950","c":"street","p":15500},{"i":"yz250","n":"Roostworks Ringer 250","c":"gasdirt","p":9250},{"i":"crf450r","n":"Roostworks Thumper 450","c":"gasdirt","p":11500},{"i":"klx110","n":"Pipsqueak Pit 110","c":"gasdirt","p":0},{"i":"ktm125dirt","n":"Roostworks Screamer 125","c":"gasdirt","p":5400},{"i":"crf250dirt","n":"Roostworks Rev 250","c":"gasdirt","p":7400},{"i":"fc250dirt","n":"Bermshot Carve 250","c":"gasdirt","p":7600},{"i":"beta300dirt","n":"Mudhammer Allday 300","c":"gasdirt","p":7900},{"i":"ktm450dirt","n":"Roostworks Number One 450","c":"gasdirt","p":11600},{"i":"rmz450dirt","n":"Bermshot Bolt 450","c":"gasdirt","p":11800},{"i":"cr500dirt","n":"Roostworks Big Bore 500","c":"gasdirt","p":10900},{"i":"maico490dirt","n":"Mudhammer Classic 490","c":"gasdirt","p":9200},{"i":"drz400smdirt","n":"Bermshot Slider 400","c":"gasdirt","p":9600},{"i":"xr650dirt","n":"Mudhammer Dune Runner 650","c":"gasdirt","p":9900},{"i":"mc50dirt","n":"Pipsqueak Buzz 50","c":"gasdirt","p":0},{"i":"yz65dirt","n":"Pipsqueak Sprout 65","c":"gasdirt","p":2200},{"i":"kx85dirt","n":"Pipsqueak Big Wheel 85","c":"gasdirt","p":3400},{"i":"cotadirt","n":"Mudhammer Tiptoe 300","c":"gasdirt","p":6400},{"i":"africadirt","n":"Mudhammer Overland Rally","c":"gasdirt","p":14500},{"i":"lightbee","n":"Ohmrider Spark LX","c":"edirt","p":8000},{"i":"ultrabee","n":"Ohmrider Surge UX","c":"edirt","p":11250},{"i":"stormbee","n":"Ohmrider Tempest MX","c":"edirt","p":4500},{"i":"sting","n":"Watt Wolf Fang R","c":"edirt","p":8500},{"i":"xxx","n":"Watt Wolf Highline","c":"edirt","p":10000},{"i":"komodo","n":"Watt Wolf Drifter","c":"edirt","p":5000},{"i":"ss3","n":"Ampstorm Squall 3","c":"edirt","p":6000},{"i":"sr","n":"Ampstorm Gale RS","c":"edirt","p":7750},{"i":"xaber","n":"Gridline Volt 300","c":"edirt","p":9750},{"i":"x260","n":"Gridline Trailcat","c":"edirt","p":7500},{"i":"varg","n":"Sparkhorn Ragnar","c":"edirt","p":12000},{"i":"xqi3","n":"Gridline Pip","c":"edirt","p":4200},{"i":"villain","n":"Ampstorm Outlaw","c":"edirt","p":6750},{"i":"r1s","n":"Sparkhorn Rift","c":"edirt","p":6250},{"i":"etm","n":"Sparkhorn Pitstop","c":"edirt","p":0},{"i":"freego","n":"Ampstorm Torrent X","c":"edirt","p":8750},{"i":"kit80","n":"Motor Bike 80cc","c":"moped","p":0},{"i":"revvfs","n":"Retro Volt Throttle FS","c":"moped","p":5000},{"i":"revvdrt","n":"Retro Volt Throttle Dirt","c":"moped","p":4700},{"i":"rx","n":"Boardwalk Shoreline R","c":"moped","p":7000},{"i":"s2","n":"Boardwalk Shoreline Classic","c":"moped","p":2600},{"i":"arielx","n":"Retro Volt Grand Tourer","c":"moped","p":6500},{"i":"scrambler","n":"Boardwalk Rambler","c":"moped","p":3800},{"i":"x7","n":"Retro Volt Duo","c":"moped","p":2900},{"i":"goat","n":"Boardwalk Mountaineer","c":"moped","p":7500},{"i":"urtopia","n":"Circuit Featherline","c":"ebike","p":6000},{"i":"levo","n":"Torque Pine Trailpower","c":"emtb","p":4800},{"i":"vala","n":"Torque Pine Summit","c":"emtb","p":6000},{"i":"rail","n":"Torque Pine Gradient","c":"emtb","p":9250},{"i":"aventure","n":"Circuit Dune Fat","c":"ebike","p":4400},{"i":"xyber","n":"Circuit Neon X","c":"ebike","p":8250},{"i":"flightpro","n":"Gatedrop Pro XL","c":"bmx","p":600},{"i":"performer","n":"Concrete Saints Showman","c":"bmx","p":500},{"i":"conquest24","n":"Gatedrop Cruiser 24","c":"bmx","p":2500},{"i":"flatland","n":"Curbline Spinner FL","c":"bmx","p":1300},{"i":"streetsweeper","n":"Slabcraft Gutterball","c":"bmx","p":1700},{"i":"p3","n":"Northcut Kicker 26","c":"bmx","p":1600},{"i":"californian","n":"Concrete Saints Westcoast","c":"bmx","p":1000},{"i":"kenevo","n":"Torque Pine Gravity E","c":"emtb","p":0},{"i":"rise","n":"Torque Pine Lite SL","c":"emtb","p":7250},{"i":"moterra","n":"Torque Pine Bruiser","c":"emtb","p":3800},{"i":"trancex","n":"Torque Pine Flowstate","c":"emtb","p":8250},{"i":"allmtn","n":"Torque Pine Bigtrail","c":"emtb","p":0},{"i":"ehtmtb","n":"Torque Pine Hardtail E","c":"emtb","p":3200},{"i":"gsd","n":"Circuit Cargo Duo","c":"ebike","p":0},{"i":"radwagon","n":"Circuit Longtail","c":"ebike","p":0},{"i":"brompton","n":"Circuit Fold","c":"ebike","p":5000},{"i":"gocycle","n":"Circuit Swoop","c":"ebike","p":5500},{"i":"ultimate","n":"Circuit Canal C3","c":"ebike","p":2700},{"i":"creo","n":"Velo Aster E-Gravel","c":"ebike","p":6500},{"i":"townie","n":"Circuit Beachside","c":"ebike","p":2200},{"i":"curt","n":"Circuit Stealth","c":"ebike","p":3600},{"i":"vanmoof","n":"Circuit Metro S","c":"ebike","p":3200},{"i":"scale","n":"Screeline Sprint XC","c":"mtb","p":5500},{"i":"ticket","n":"Northcut Lander DJ","c":"mtb","p":5250},{"i":"mukluk","n":"Halden Snowshoe Fat","c":"mtb","p":0},{"i":"clash","n":"Ridgecrow Brawler","c":"mtb","p":4100},{"i":"bronson","n":"Halden Ledgerunner","c":"mtb","p":4500},{"i":"yeti","n":"Screeline Switchback 140","c":"mtb","p":3900},{"i":"radrunner","n":"Retro Volt Courier","c":"moped","p":0},{"i":"metacycle","n":"Retro Volt Cafe Racer","c":"moped","p":8500},{"i":"kalk","n":"Sparkhorn Frost","c":"edirt","p":6500},{"i":"kukirin","n":"Kurb Dirt 4","c":"escooter","p":0},{"i":"g4maxscoot","n":"Kurb Dirt 4 Max","c":"escooter","p":3400},{"i":"fighterscoot","n":"Glidr Warpath 11","c":"escooter","p":3900},{"i":"gallopscoot","n":"Kurb Canter","c":"escooter","p":2900},{"i":"m4seatscoot","n":"Kurb Saddle Pro","c":"escooter","p":1900},{"i":"flexseatscoot","n":"Citylink Loafer","c":"escooter","p":1600},{"i":"pureairscoot","n":"Citylink Breeze 3","c":"escooter","p":1200},{"i":"dtxscoot","n":"Glidr Colossus X","c":"escooter","p":3900},{"i":"burnescoot","n":"Glidr Scorch Max","c":"escooter","p":4200},{"i":"wolfkingscoot","n":"Glidr Badlands King","c":"escooter","p":3800},{"i":"mi4pro","n":"Kurb One Pro","c":"escooter","p":1200},{"i":"ninebotmax","n":"Kurb Longhaul","c":"escooter","p":1300},{"i":"gt2","n":"Kurb Overdrive","c":"escooter","p":2200},{"i":"phantom","n":"Glidr Nightjet","c":"escooter","p":1800},{"i":"thunder3","n":"Glidr Stormbolt","c":"escooter","p":3100},{"i":"wolf11","n":"Glidr Badlands 11","c":"escooter","p":2600},{"i":"razore300","n":"Kurb Junior 300","c":"escooter","p":900},{"i":"razore300s","n":"Kurb Junior 300 Seat","c":"escooter","p":0},{"i":"unagi","n":"Glidr Slim One","c":"escooter","p":1700},{"i":"kqi3","n":"Kurb Arc Sport","c":"escooter","p":1500},{"i":"limegen4","n":"Citylink Rental 4","c":"escooter","p":0},{"i":"hiboy","n":"Kurb Lite S","c":"escooter","p":1000},{"i":"zero10x","n":"Glidr Rally Ten","c":"escooter","p":2500},{"i":"vsett10","n":"Glidr Dual Ten","c":"escooter","p":2800},{"i":"inokim","n":"Glidr Hornet","c":"escooter","p":2400},{"i":"skyrider","n":"Dusk Skyrider","c":"escooter","p":2900},{"i":"speedseries","n":"Gatedrop Velocity XL","c":"bmx","p":850},{"i":"haromaster","n":"Concrete Saints Heritage","c":"bmx","p":1100},{"i":"fittrl","n":"Slabcraft Dirtline","c":"bmx","p":2000},{"i":"typeo","n":"Curbline Unit Zero","c":"bmx","p":2400},{"i":"lacey","n":"Ledgeworks Linework","c":"bmx","p":2200},{"i":"horizon18","n":"Gatedrop Junior 18","c":"bmx","p":750},{"i":"atf","n":"Concrete Saints Bunker","c":"bmx","p":1400},{"i":"quadangle","n":"Ledgeworks Loopframe 26","c":"bmx","p":2300},{"i":"killabee","n":"Slabcraft Stinger","c":"bmx","p":2100},{"i":"pogofs","n":"Gatedrop Pogo FS","c":"bmx","p":2600},{"i":"shockwave","n":"Curbline Shockwave","c":"bmx","p":1600},{"i":"mudcat","n":"Ledgeworks Mudcat","c":"bmx","p":2000},{"i":"hoverfs","n":"Concrete Saints Hover FS","c":"bmx","p":2400},{"i":"bigpogo","n":"Gatedrop Big Pogo 24 FS","c":"bmx","p":3000},{"i":"goldrushbmx","n":"Gold Rush","c":"customs","p":2600},{"i":"neonbmx","n":"Neon Viper","c":"customs","p":3800},{"i":"lowridebmx","n":"Lowrider Twist","c":"customs","p":4200},{"i":"hellfirebmx","n":"Hellfire","c":"customs","p":3200},{"i":"checkerbmx","n":"Checkmate Racer","c":"customs","p":4400},{"i":"skybmx","n":"Sky Hook","c":"customs","p":0},{"i":"oilbmx","n":"Oil Slick","c":"customs","p":3600},{"i":"tallbmx","n":"Double Decker","c":"customs","p":3900},{"i":"goldmtb","n":"Golden Gravity","c":"customs","p":8800},{"i":"ghostmtb","n":"Ghostlight","c":"customs","p":7600},{"i":"junglemtb","n":"Jungle Commando","c":"customs","p":5400},{"i":"snowmtb","n":"Snow Beast","c":"customs","p":4800},{"i":"carbonmtb","n":"Carbon Stealth","c":"customs","p":6200},{"i":"lavamtb","n":"Lava Flow","c":"customs","p":4600},{"i":"zebramtb","n":"Zebra","c":"customs","p":5200},{"i":"pilotmtb","n":"Sky Pilot","c":"customs","p":3400},{"i":"velodroad","n":"Velodrome","c":"customs","p":11800},{"i":"goldroad","n":"24K Aero","c":"customs","p":9800},{"i":"nightroad","n":"Night Rider","c":"customs","p":7200},{"i":"stormroad","n":"Desert Storm","c":"customs","p":4200},{"i":"choppercruis","n":"Midnight Chopper","c":"customs","p":5200},{"i":"lowcruis","n":"Lowrider Deluxe","c":"customs","p":6400},{"i":"monsterebike","n":"Monster Truck","c":"customs","p":7400},{"i":"cyberebike","n":"Cyber Moto","c":"customs","p":8600},{"i":"goldemtb","n":"Gold Volt","c":"customs","p":11500},{"i":"toxicemtb","n":"Toxic","c":"customs","p":9600},{"i":"retroebike","n":"Retro Rocket","c":"customs","p":5600},{"i":"starshipebike","n":"Starship","c":"customs","p":6800},{"i":"dragmoto","n":"Drag Strip","c":"customs","p":13800},{"i":"smmoto","n":"Neon Supermoto","c":"customs","p":7800},{"i":"bobbermoto","n":"Bobber","c":"customs","p":6600},{"i":"cafemoto","n":"Cafe Racer","c":"customs","p":7200},{"i":"trackmoto","n":"Flat Tracker","c":"customs","p":6900},{"i":"boardmoto","n":"Board Tracker 80","c":"customs","p":4400},{"i":"rocketmoto","n":"Rocket 80","c":"customs","p":4800},{"i":"neonscoot","n":"Neon Glider","c":"customs","p":4600},{"i":"goldscoot","n":"Gold Bar","c":"customs","p":2400},{"i":"firescoot","n":"Fire Kick","c":"customs","p":2000},{"i":"glowscoot","n":"Glow Wheels","c":"customs","p":0},{"i":"thunderscoot","n":"Thunderbolt X","c":"customs","p":16500},{"i":"loungescoot","n":"Lounge Rider","c":"customs","p":2200},{"i":"minirocketscoot","n":"Mini Rocket","c":"customs","p":0},{"i":"mudscoot","n":"Mud Monster","c":"customs","p":14800},{"i":"carbonscoot","n":"Carbon Ghost","c":"customs","p":3200},{"i":"rainbowscoot","n":"Rainbow Ripper","c":"customs","p":1600}];
 const ARTS = ['star', 'wheel', 'scoot', 'bars', 'bolt', 'can', 'city', 'crown', 'dome', 'gear', 'lid', 'mtn', 'ramp', 'slice', 'speed', 'stripe', 'sun', 'wave'];
 const DAILY_FIELDS = [['score', 'Score in one run'], ['bestChain', 'Longest trick chain in a run'], ['bestAir', 'Biggest air in a run'], ['grindTime', 'Grind time in a run'], ['bestSpin', 'Biggest spin in a run'], ['tricksLanded', 'Tricks landed in a run'], ['bestCombo', 'Best combo in a run'], ['saves', 'Sketchy saves in a run']];
@@ -127,6 +195,43 @@ async function call(fn, args){
   if (r && r.error === 'not_admin'){ await refreshMe(); }
   return r;
 }
+
+/* ---------------------------------------------------------------- 15.86 ADM87: icons, levels, charts */
+const ICO = {
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>', map:'<path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  players:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-7 7-7s7 3 7 7"/><path d="M16 4a4 4 0 010 8M22 21c0-3-2-6-5-7"/>', reports:'<path d="M4 21V4h12l-2 4 2 4H4"/>',
+  servers:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>', scores:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0z"/><path d="M17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3"/>',
+  ads:'<path d="M3 11v2a1 1 0 001 1h3l5 4V6L7 10H4a1 1 0 00-1 1z"/><path d="M16 8a5 5 0 010 8M19 5a9 9 0 010 14"/>', numbers:'<path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>',
+  words:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>', log:'<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>', live:'<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19 5a10 10 0 010 14M5 19A10 10 0 015 5"/>',
+  run:'<path d="M13 4a2 2 0 11-.001 0"/><path d="M7 21l3-6 3 2v4M5 11l4-3 4 2 3 3h3"/>', week:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 008 0M7 11h10"/>', refresh:'<path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/>', gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+};
+function icon(k){ const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.innerHTML = ICO[k] || ''; return s; }
+function esc(t){ return String(t === undefined || t === null ? '' : t).replace(/[&<>"']/g, c=> ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+const xpNeed = L=> Math.round(200 * Math.pow(Math.max(1, L), 1.25) / 10) * 10;
+function lvOf(xp){ let L = 1, x = Math.max(0, Number(xp) | 0); while (L < 99 && x >= xpNeed(L)){ x -= xpNeed(L); L++; } return L; }
+const AVC = ['#ff7a45', '#ffb03a', '#4fd8c4', '#5aa8ff', '#a78bfa', '#ff6fa8', '#7be08a', '#ffd21f'];
+function avColor(n){ let h = 0; n = String(n || ''); for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) | 0; return AVC[Math.abs(h) % AVC.length]; }
+function av(n){ return h('div', { cls:'av', style:'background:' + avColor(n), text:String(n || '?').slice(0, 1).toUpperCase() }); }
+const ONLINE_MS = 3 * 60 * 1000;
+function isOnline(p){ return p && p.last_seen && Date.now() - p.last_seen < ONLINE_MS; }
+function num(n){ return n === undefined || n === null ? '…' : Number(n).toLocaleString('en-US'); }
+function dayKey(ms){ const d = new Date(ms); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function perDay(times, days){ const out = [], lab = [], idx = {}; const now = new Date(); now.setHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--){ const d = new Date(now.getTime() - i * 864e5); idx[dayKey(d.getTime())] = out.length; out.push(0); lab.push((d.getMonth() + 1) + '/' + d.getDate()); }
+  times.forEach(t=>{ const k = idx[dayKey(t)]; if (k !== undefined) out[k]++; }); return { v:out, l:lab }; }
+function barChart(vals, labels, col, unit){
+  const W = 640, H = 190, L = 34, B = 26, T = 10, n = Math.max(1, vals.length), mx = Math.max(1, ...vals), top = mx <= 4 ? 4 : Math.ceil(mx / 4) * 4, bw = (W - L - 8) / n;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart" role="img"><defs><linearGradient id="g' + col.slice(1) + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '"/><stop offset="1" stop-color="' + col + '" stop-opacity=".35"/></linearGradient></defs>';
+  for (let i = 0; i <= 4; i++){ const y = H - B - (H - B - T) * i / 4; s += '<line class="gl" x1="' + L + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '"/><text class="ax" x="' + (L - 6) + '" y="' + (y + 4) + '" text-anchor="end">' + Math.round(top * i / 4) + '</text>'; }
+  const every = Math.ceil(n / 8);
+  vals.forEach((v, i)=>{ const hh = (H - B - T) * v / top, x = L + i * bw + bw * .14;
+    s += '<rect class="bar" x="' + x.toFixed(1) + '" y="' + (H - B - hh).toFixed(1) + '" width="' + (bw * .72).toFixed(1) + '" height="' + Math.max(v ? 2 : 0, hh).toFixed(1) + '" rx="4" fill="url(#g' + col.slice(1) + ')"><title>' + esc(labels[i]) + ': ' + v + ' ' + esc(unit || '') + '</title></rect>';
+    if (i % every === 0 || (i === n - 1 && (n - 1) % every > every / 2)) s += '<text class="ax" x="' + (x + bw * .36).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(labels[i]) + '</text>'; });
+  return s + '</svg>';
+}
+function svgBox(svg){ const d = h('div'); d.innerHTML = svg; return d; }
 /* a question before anything that changes something */
 function ask(text, yesLabel, onYes, input){
   const back = document.activeElement;
@@ -331,12 +436,17 @@ function passCard(){
 }
 
 /* ---------------------------------------------------------------- the app */
-const TABS = [['home', 'Home'], ['players', 'Players'], ['reports', 'Reports'], ['servers', 'Servers'], ['scores', 'Scores'], ['ads', 'Ads & news'], ['numbers', 'Game numbers'], ['words', 'Blocked words'], ['log', 'Log']];
+const TABS = [['home', 'Dashboard', 'home'], ['map', 'Live map', 'map'], ['players', 'Players', 'players'], ['servers', 'Servers', 'servers'], ['scores', 'Scores', 'scores'], ['reports', 'Reports', 'reports'], ['ads', 'Ads & news', 'ads'], ['numbers', 'Game numbers', 'numbers'], ['words', 'Blocked words', 'words'], ['log', 'Log', 'log'], ['me', 'Admin code', 'lock']];
 const REASONS = { name:'Their name', chat:'What they wrote', cheat:'Cheating', mean:'Being mean', other:'Something else' };
 async function load(tab){
   S.tab = tab; const D = S.data; let r;
-  if (tab === 'home'){ r = await call('stats'); if (r.ok) D.stats = r; }
-  else if (tab === 'players'){ r = await call('players', { q:D.q || '', limit:D.lim_players || LIM.players }); if (r.ok) D.players = r.players; }
+  if (tab === 'home'){ r = await call('stats'); if (r.ok) D.stats = r;
+    const [pp, rr, lg, sv] = await Promise.all([call('players', { limit:300 }), call('runs', { limit:300 }), call('log', { limit:8 }), call('servers')]);
+    if (pp.ok) D.allPlayers = pp.players; if (rr.ok) D.allRuns = rr.runs; if (lg.ok) D.recentLog = lg.log; if (sv.ok){ D.servers = sv.servers; D.rooms = sv.rooms; }
+    D.homeAt = Date.now(); }
+  else if (tab === 'map'){ const [sv, pp] = await Promise.all([call('servers'), call('players', { limit:300 })]); r = sv; if (sv.ok){ D.servers = sv.servers; D.rooms = sv.rooms; } if (pp.ok) D.allPlayers = pp.players; lmWant(); }
+  else if (tab === 'me'){ r = { ok:true }; }
+  else if (tab === 'players'){ r = await call('players', { q:D.q || '', limit:D.lim_players || 300 }); if (r.ok) D.players = r.players; }
   else if (tab === 'servers'){ r = await call('servers'); if (r.ok){ D.servers = r.servers; D.rooms = r.rooms; } }
   else if (tab === 'scores'){ r = await call('boards'); if (r.ok){ D.boards = r.boards; if (!D.board && r.boards.length) D.board = r.boards[0].board; }
     if (r.ok && D.board){ const s = await call('scores', { board:D.board, limit:D.lim_scores || LIM.scores }); if (s.ok) D.scores = s.scores; }
@@ -356,41 +466,182 @@ async function act(fn, args, done){
   say(done || 'Done.'); await load(S.tab); return r;
 }
 
+function kpi(ic, v, l, col, live){ return h('div', { cls:'kpi' + (live ? ' live' : '') }, h('div', { cls:'ic', style:'background:' + col + '22; color:' + col }, icon(ic)), h('b', { text:v }), h('span', { text:l }), h('i', { style:'background:' + col })); }
+function mini(v, l){ return h('div', { cls:'mini' }, h('b', { text:v }), h('span', { text:l })); }
+function card(title, sub, ...kids){ return h('div', { cls:'card' }, h('div', { cls:'ch' }, h('h3', { text:title }), sub ? h('span', { cls:'dim', text:sub }) : null), ...kids); }
+function pRow(p, right){ return h('div', { cls:'prow' }, av(p.name), h('div', { style:'min-width:0' }, h('div', { cls:'nm' }, h('span', { cls:isOnline(p) ? 'on-dot' : 'off-dot' }), p.name), h('div', { cls:'sub', text:right[0] })), h('div', { cls:'rt' }, right[1])); }
 function tabHome(){
-  const s = S.data.stats || {};
-  const T = (v, l)=> h('div', { cls:'stat' }, h('b', { text:v === undefined ? '…' : String(v) }), h('span', { text:l }));
-  return h('div', null, h('h2', { text:'Admin home' }),
-    h('div', { cls:'grid' }, T(s.players, 'accounts'), T(s.players_24h, 'online today'), T(s.players_7d, 'this week'), T(s.servers_live, 'servers live now'),
-      T(s.runs_24h, 'runs today'), T(s.runs, 'runs ever'), T(s.scores, 'scores on boards'), T(s.builds, 'shared builds'), T(s.crews, 'crews'), T(s.banned, 'banned')),
-    h('div', { cls:'card' }, h('h3', { text:'What you can do here', style:'margin-top:0' }),
-      h('ul', null, h('li', { text:'Players: find someone, ban or unban them, wipe a rude bio, reset a crew name, give a new name.' }),
-        h('li', { text:'Servers: see who is hosting, close a server, fix its name.' }),
-        h('li', { text:'Scores: hide a fake score from the boards (and show it again).' }),
-        h('li', { text:'Ads & news: put your own words on the game’s billboards and a news line on the menu.' }),
-        h('li', { text:'Game numbers: ride prices, daily challenges, achievements.' }),
-        h('li', { text:'Blocked words: add a word that players must not use in names.' })),
-      h('p', { cls:'dim small', text:'Everything you change is written in the Log. Nothing here deletes a player’s account for good.' })),
-    passCard());
+  const D = S.data, s = D.stats || {}, P = D.allPlayers || [], R = D.allRuns || [];
+  const online = P.filter(isOnline), coins = P.reduce((a, p)=> a + (Number(p.cash) || 0), 0);
+  const np = perDay(P.map(p=> p.created).filter(Boolean), 30), nr = perDay(R.map(r=> r.at).filter(Boolean), 14);
+  const buckets = [['Online now', 0, 3 * 60e3], ['Today', 3 * 60e3, 864e5], ['This week', 864e5, 7 * 864e5], ['This month', 7 * 864e5, 30 * 864e5], ['Longer ago', 30 * 864e5, 1e15]];
+  const bc = buckets.map(b=> P.filter(p=> p.last_seen && Date.now() - p.last_seen >= b[1] && Date.now() - p.last_seen < b[2]).length), bmx = Math.max(1, ...bc);
+  const seen = h('div', null, ...buckets.map((b, i)=> h('div', { style:'margin:10px 0' }, h('div', { cls:'row', style:'justify-content:space-between' }, h('span', { cls:'small', text:b[0] }), h('b', { cls:'small', text:String(bc[i]) })),
+    h('div', { style:'height:9px; border-radius:9px; background:rgba(255,255,255,.06); overflow:hidden' }, h('div', { style:'height:100%; width:' + (100 * bc[i] / bmx).toFixed(1) + '%; border-radius:9px; background:' + ['#5fe08a', '#4fd8c4', '#5aa8ff', '#a78bfa', '#6b7280'][i] })))));
+  const top = P.slice().sort((a, b)=> (b.xp || 0) - (a.xp || 0)).slice(0, 6), rich = P.slice().sort((a, b)=> (b.cash || 0) - (a.cash || 0)).slice(0, 6), fresh = P.slice().sort((a, b)=> (b.created || 0) - (a.created || 0)).slice(0, 6);
+  const live = (D.servers || []).filter(x=> x.live), riding = live.reduce((a, x)=> a + (x.players || 0), 0);
+  const lg = h('div', { cls:'plist' }, ...(D.recentLog || []).slice(0, 6).map(l=> h('div', { cls:'prow' }, h('div', { style:'min-width:0' }, h('div', { cls:'nm', text:(l.action || '') + (l.target ? ' · ' + l.target : '') }), h('div', { cls:'sub', text:(l.admin || '') + ' · ' + ago(l.at) })))));
+  const mapPrev = h('div', { style:'position:relative; border-radius:12px; overflow:hidden; cursor:pointer; aspect-ratio:1/1; background:#1d4f86 url(map.jpg) center/cover' , on:{ click:()=> goTab('map') } },
+    h('div', { style:'position:absolute; left:10px; bottom:10px; padding:6px 10px; border-radius:9px; background:rgba(10,13,20,.85); font-size:13px; font-weight:700' }, live.length ? live.length + ' server' + (live.length === 1 ? '' : 's') + ' live · ' + riding + ' riding' : 'Open the live map'));
+  return h('div', null,
+    h('div', { cls:'phead' }, h('div', null, h('h1', { text:'Dashboard' }), h('p', { text:'Hi ' + (S.name || 'admin') + ' · ' + (D.homeAt ? 'updated ' + new Date(D.homeAt).toLocaleTimeString() + ' · refreshes by itself every 30 s' : 'loading…') })),
+      h('div', { cls:'acts' }, h('button', { cls:'sm', on:{ click:()=> load('home') } }, icon('refresh'), ' Refresh'))),
+    h('div', { cls:'kpis' }, kpi('players', num(s.players), 'Players', '#ff7a45'), kpi('live', String(online.length), 'Online now', '#5fe08a', online.length > 0), kpi('home', num(s.players_24h), 'On today', '#4fd8c4'),
+      kpi('week', num(s.players_7d), 'This week', '#5aa8ff'), kpi('servers', num(s.servers_live), 'Live servers', '#a78bfa', s.servers_live > 0), kpi('run', num(s.runs_24h), 'Runs today', '#ffb03a')),
+    h('div', { cls:'minis' }, mini(num(coins), 'Dusk Coins in wallets'), mini(num(s.runs), 'Runs ever'), mini(num(s.scores), 'Board scores'), mini(num(s.builds), 'Shared builds'), mini(num(s.crews), 'Crews'), mini(num(s.banned), 'Banned')),
+    h('div', { cls:'dgrid' },
+      h('div', { cls:'card c8' }, h('div', { cls:'ch' }, h('h3', { text:'New players' }), h('span', { cls:'dim', text:'last 30 days · ' + np.v.reduce((a, b)=> a + b, 0) + ' joined' })), svgBox(barChart(np.v, np.l, '#ff7a45', 'joined'))),
+      h('div', { cls:'card c4' }, h('div', { cls:'ch' }, h('h3', { text:'When players were last on' })), seen),
+      h('div', { cls:'card c8' }, h('div', { cls:'ch' }, h('h3', { text:'Runs played' }), h('span', { cls:'dim', text:'last 14 days · newest ' + R.length + ' runs' })), svgBox(barChart(nr.v, nr.l, '#4fd8c4', 'runs'))),
+      h('div', { cls:'card c4' }, h('div', { cls:'ch' }, h('h3', { text:'Live map' }), h('span', { cls:'dim', text:'tap to open' })), mapPrev),
+      h('div', { cls:'card c4' }, h('div', { cls:'ch' }, h('h3', { text:'Online now' }), h('span', { cls:'dim', text:online.length + ' rider' + (online.length === 1 ? '' : 's') })),
+        online.length ? h('div', { cls:'plist' }, ...online.slice(0, 8).map(p=> pRow(p, [p.room ? 'in room ' + p.room : 'riding', h('span', { cls:'lv', text:'LV ' + lvOf(p.xp) })]))) : h('p', { cls:'dim small', text:'Nobody is on right now.' })),
+      h('div', { cls:'card c4' }, h('div', { cls:'ch' }, h('h3', { text:'Top levels' })), h('div', { cls:'plist' }, ...top.map(p=> pRow(p, [num(p.xp) + ' XP', h('span', { cls:'lv', text:'LV ' + lvOf(p.xp) })])))),
+      h('div', { cls:'card c4' }, h('div', { cls:'ch' }, h('h3', { text:'Most Dusk Coins' })), h('div', { cls:'plist' }, ...rich.map(p=> pRow(p, ['seen ' + ago(p.last_seen), h('span', null, h('span', { cls:'coin' }), num(p.cash || 0))])))),
+      h('div', { cls:'card c6' }, h('div', { cls:'ch' }, h('h3', { text:'Newest players' })), h('div', { cls:'plist' }, ...fresh.map(p=> pRow(p, ['joined ' + ago(p.created), h('span', { cls:'dim small', text:'seen ' + ago(p.last_seen) })])))),
+      h('div', { cls:'card c6' }, h('div', { cls:'ch' }, h('h3', { text:'Latest admin actions' }), h('button', { cls:'sm', text:'Full log', on:{ click:()=> goTab('log') } })), (D.recentLog || []).length ? lg : h('p', { cls:'dim small', text:'Nothing yet.' }))));
 }
-function tabPlayers(){
-  const D = S.data, q = h('input', { type:'search', placeholder:'Search a username', value:D.q || '', maxlength:16 });
-  const go = ()=>{ D.q = q.value.trim(); D.lim_players = 0; load('players'); };
-  q.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
-  const list = h('div', { cls:'list' });
-  (D.players || []).forEach(p=>{
-    const banned = !!p.banned_until;
-    const hd = h('div', { cls:'hd' }, h('b', { text:p.name }), p.admin ? h('span', { cls:'tag hot', text:'admin' }) : null, banned ? h('span', { cls:'tag bad', text:'banned' }) : null,
-      p.room ? h('span', { cls:'tag ok', text:'in room ' + p.room }) : null, h('span', { cls:'dim small', text:'seen ' + ago(p.last_seen) }));
-    const bits = [];
-    if (p.cash !== null && p.cash !== undefined) bits.push(money(p.cash));
-    if (p.crew) bits.push('crew [' + p.crew.tag + '] ' + p.crew.name + (p.crew.owner ? ' (owner)' : ''));
-    if (p.builds) bits.push(p.builds + ' shared build' + (p.builds === 1 ? '' : 's'));
-    bits.push('joined ' + ago(p.created));
-    const it = h('div', { cls:'item' }, hd, h('div', { cls:'meta', text:bits.join(' · ') }),
-      p.bio ? h('div', { cls:'meta', text:'Bio: ' + p.bio }) : null,
-      banned ? h('div', { cls:'meta', text:'Banned until ' + when(p.banned_until) + (p.ban_reason ? ' · ' + p.ban_reason : '') }) : null);
-    if (!p.admin){
-      const A = h('div', { cls:'acts' });
+/* ---------------------------------------------------------------- 15.86 ADM87: the LIVE MAP.
+   The world picture is the game's own big map (exported from the game, 4096 px for 24.6 km). Riders show up live while they ride
+   on a server or in a room: this page listens to those rooms the same way the game does (Supabase Realtime broadcast), without
+   joining them -- nobody in the room sees the admin. Riding alone (single player) sends nothing online, so those riders are not here. */
+const PL_KIND = { place:['Towns + places', '#ffc46b'], park:['Bike parks', '#5fe08a'], skate:['Skateparks', '#ff6fa8'], indoor:['Indoor parks', '#a78bfa'], bike:['Bike shops', '#5aa8ff'], garage:['Garages', '#9aa3b2'], gas:['Gas stations', '#ffb03a'], conv:['Stores', '#ff9a6b'], cafe:['Cafés', '#d9a066'] };
+const LM = { on:false, cv:null, g:null, cx:0, cz:0, k:0, sty:'map', img:{}, lay:{ place:1, park:1, skate:1, indoor:1, bike:0, garage:0, gas:0, conv:0, cafe:0, lifts:1, riders:1 }, riders:{}, follow:'', raf:0, drag:null, tip:null, hover:null, sel:null, side:null };
+const RT = { ws:null, ref:0, J:{}, want:new Set(), hb:0, state:'off', msgs:0, retry:0 };
+function lmImg(sty){ if (!LM.img[sty]){ const im = new Image(); im.onload = ()=> lmDirty(); im.src = sty === 'sat' ? 'sat.jpg' : 'map.jpg'; LM.img[sty] = im; } return LM.img[sty]; }
+function lmFit(){ const r = LM.cv.getBoundingClientRect(); LM.k = Math.min(r.width, r.height) / (2 * MAPD.half) * 1.02; LM.cx = 0; LM.cz = 0; }
+function lmDirty(){ LM.dirty = true; }
+const lmX = x=> LM.W / 2 + (x - LM.cx) * LM.k, lmY = z=> LM.H / 2 + (z - LM.cz) * LM.k;
+function lmZoom(f, sx, sy){ const r = LM.cv.getBoundingClientRect(); sx = sx === undefined ? r.width / 2 : sx; sy = sy === undefined ? r.height / 2 : sy;
+  const wx = LM.cx + (sx - r.width / 2) / LM.k, wz = LM.cz + (sy - r.height / 2) / LM.k, k0 = Math.min(r.width, r.height) / (2 * MAPD.half);
+  LM.k = Math.max(k0 * .8, Math.min(3, LM.k * f)); LM.cx = wx - (sx - r.width / 2) / LM.k; LM.cz = wz - (sy - r.height / 2) / LM.k; lmDirty(); }
+function lmFly(x, z, k){ LM.cx = x; LM.cz = z; if (k) LM.k = k; lmDirty(); }
+function lmRiderList(){ const now = Date.now(), out = []; for (const id in LM.riders){ const r = LM.riders[id]; if (now - r.t > 15000){ delete LM.riders[id]; continue; } out.push(r); } return out.sort((a, b)=> a.name.localeCompare(b.name)); }
+function lmRender(){
+  const cv = LM.cv; if (!cv) return; const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+  if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)){ cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); if (!LM.k) lmFit(); }
+  LM.W = r.width; LM.H = r.height; const g = LM.g; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = LM.sty === 'sat' ? '#1b3c52' : '#2a5d96'; g.fillRect(0, 0, LM.W, LM.H);
+  const im = lmImg(LM.sty); if (im.complete && im.naturalWidth){ g.imageSmoothingEnabled = true; g.drawImage(im, lmX(-MAPD.half), lmY(-MAPD.half), 2 * MAPD.half * LM.k, 2 * MAPD.half * LM.k); }
+  const pts = []; LM.pts = pts;
+  if (LM.lay.lifts) MAPD.lifts.forEach(L=>{ g.save(); g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 2; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(lmX(L[1]), lmY(L[2])); g.lineTo(lmX(L[3]), lmY(L[4])); g.stroke(); g.restore();
+    [[L[1], L[2]], [L[3], L[4]]].forEach(q=>{ const x = lmX(q[0]), y = lmY(q[1]); g.fillStyle = '#e9edf3'; g.strokeStyle = '#1b2230'; g.lineWidth = 2; g.beginPath(); g.rect(x - 4, y - 4, 8, 8); g.fill(); g.stroke(); });
+    pts.push({ x:lmX((L[1] + L[3]) / 2), y:lmY((L[2] + L[4]) / 2), t:L[0], s:'ski lift', wx:(L[1] + L[3]) / 2, wz:(L[2] + L[4]) / 2 }); });
+  const showLab = LM.k > .045, boxes = []; const free = (x, y, w, hh)=>{ for (const b of boxes) if (x < b[0] + b[2] && x + w > b[0] && y < b[1] + b[3] && y + hh > b[1]) return false; boxes.push([x, y, w, hh]); return true; };
+  MAPD.pl.forEach(P=>{ const kd = P[1]; if (!LM.lay[kd]) return; const x = lmX(P[3]), y = lmY(P[4]); if (x < -20 || y < -20 || x > LM.W + 20 || y > LM.H + 20) return;
+    const col = (PL_KIND[kd] || [0, '#fff'])[1], big = kd === 'place' || kd === 'park', rad = big ? 6 : 4.5;
+    g.beginPath(); g.arc(x, y, rad + 2, 0, 6.283); g.fillStyle = 'rgba(10,13,20,.85)'; g.fill(); g.beginPath(); g.arc(x, y, rad, 0, 6.283); g.fillStyle = col; g.fill();
+    if ((big || LM.k > .3) && (showLab || kd === 'park' || LM.k > .02)){ g.font = '700 ' + (kd === 'place' ? 13 : 12) + 'px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; const lw = g.measureText(P[0]).width; if (free(x + rad + 3, y - 9, lw + 6, 18)){ g.lineWidth = 3.5; g.strokeStyle = 'rgba(10,13,20,.85)'; g.strokeText(P[0], x + rad + 5, y); g.fillStyle = kd === 'place' ? '#fff3dc' : kd === 'park' ? '#d6ffe2' : '#f3efe6'; g.fillText(P[0], x + rad + 5, y); } }
+    pts.push({ x, y, t:P[0], s:(PL_KIND[kd] || [''])[0].replace(/s$/, ''), wx:P[3], wz:P[4] }); });
+  const R = lmRiderList();
+  if (LM.lay.riders) R.forEach(rd=>{
+    if (LM.follow === rd.key){ LM.cx += (rd.x - LM.cx) * .2; LM.cz += (rd.z - LM.cz) * .2; }
+    const x = lmX(rd.x), y = lmY(rd.z);
+    if (rd.trail.length > 1){ g.beginPath(); rd.trail.forEach((q, i)=>{ const a = lmX(q[0]), b = lmY(q[1]); if (i) g.lineTo(a, b); else g.moveTo(a, b); }); g.lineTo(x, y); g.strokeStyle = rd.col + 'aa'; g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke(); }
+    const pulse = 9 + 5 * (.5 + .5 * Math.sin(performance.now() / 260));
+    g.beginPath(); g.arc(x, y, pulse, 0, 6.283); g.fillStyle = rd.col + '33'; g.fill();
+    g.save(); g.translate(x, y); g.rotate(rd.yaw); g.beginPath(); g.moveTo(0, 10); g.lineTo(7, -7); g.lineTo(0, -3); g.lineTo(-7, -7); g.closePath(); g.fillStyle = rd.col; g.strokeStyle = '#0a0d14'; g.lineWidth = 2; g.fill(); g.stroke(); g.restore();
+    g.font = '800 12px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom'; const t = rd.name, w = g.measureText(t).width + 12;
+    g.fillStyle = 'rgba(10,13,20,.88)'; g.fillRect(x - w / 2, y - 31, w, 18); g.fillStyle = '#fff'; g.fillText(t, x, y - 16);
+    pts.push({ x, y, t:rd.name, s:Math.round(rd.spd * 3.6) + ' km/h · ' + rd.code, rider:rd.key, wx:rd.x, wz:rd.z }); });
+  // scale bar
+  const want = 110 / LM.k, steps = [50, 100, 200, 500, 1000, 2000, 5000]; let m = steps[0]; for (const st of steps) if (st <= want) m = st;
+  const px = m * LM.k, x0 = LM.W - px - 22, y0 = LM.H - 18; g.fillStyle = 'rgba(10,13,20,.8)'; g.fillRect(x0 - 8, y0 - 20, px + 16, 28); g.fillStyle = '#f3efe6'; g.fillRect(x0, y0, px, 3); g.font = '700 11px system-ui'; g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillText(m >= 1000 ? m / 1000 + ' km' : m + ' m', x0, y0 - 3);
+  const st = $('lmStat'); if (st) st.innerHTML = '<span class="' + (RT.state === 'on' ? 'on-dot' : 'off-dot') + '"></span>' + (RT.state === 'on' ? 'Live · listening to ' + Object.keys(RT.J).length + ' room' + (Object.keys(RT.J).length === 1 ? '' : 's') + ' · ' + R.length + ' rider' + (R.length === 1 ? '' : 's') : RT.state === 'connecting' ? 'Connecting…' : 'Not connected (trying again)');
+  if (LM.listN !== R.length + ':' + R.map(r=> r.key).join(',')){ LM.listN = R.length + ':' + R.map(r=> r.key).join(','); lmSideRiders(R); }
+}
+function lmLoop(){ if (!LM.on) return; LM.raf = requestAnimationFrame(lmLoop); const anyR = Object.keys(LM.riders).length; if (LM.dirty || anyR || LM.follow){ LM.dirty = false; lmRender(); } }
+function lmPick(sx, sy){ let best = null, bd = 14 * 14; (LM.pts || []).forEach(q=>{ const d = (q.x - sx) ** 2 + (q.y - sy) ** 2; if (d < bd || (q.rider && d < 22 * 22 && (!best || !best.rider))){ bd = d; best = q; } }); return best; }
+function lmSideRiders(R){
+  const box = $('lmRiders'); if (!box) return; box.textContent = '';
+  if (!R.length){ box.appendChild(h('p', { cls:'dim small', text:Object.keys(RT.J).length ? 'Nobody is riding in a room right now. They show up here the moment they do.' : 'No live servers or rooms right now. When someone plays online, they show up here.' })); return; }
+  R.forEach(rd=> box.appendChild(h('div', { cls:'prow', style:'cursor:pointer' + (LM.follow === rd.key ? '; background:rgba(255,122,69,.1); border-radius:10px' : ''), on:{ click:()=>{ LM.follow = LM.follow === rd.key ? '' : rd.key; if (LM.follow) lmFly(rd.x, rd.z, Math.max(LM.k, .25)); LM.listN = ''; lmDirty(); } } },
+    h('div', { cls:'av', style:'background:' + rd.col, text:rd.name.slice(0, 1).toUpperCase() }), h('div', { style:'min-width:0' }, h('div', { cls:'nm', text:rd.name }), h('div', { cls:'sub', text:'room ' + rd.code + (LM.follow === rd.key ? ' · following' : '') })),
+    h('div', { cls:'rt small', text:Math.round(rd.spd * 3.6) + ' km/h' }))));
+}
+function tabMap(){
+  const D = S.data, live = (D.servers || []).filter(x=> x.live), rooms = D.rooms || [];
+  const cv = h('canvas', { 'aria-label':'World map' }), tip = h('div', { cls:'maptip hide' });
+  const sty = h('div', { cls:'mapsty' }, ...[['map', 'Map'], ['sat', 'Satellite']].map(([k, l])=> h('button', { cls:LM.sty === k ? 'on' : '', text:l, on:{ click:e=>{ LM.sty = k; sty.querySelectorAll('button').forEach(b=> b.classList.toggle('on', b === e.currentTarget)); lmDirty(); } } })));
+  const ctl = h('div', { cls:'mapctl' }, h('button', { text:'+', title:'Zoom in', on:{ click:()=> lmZoom(1.5) } }), h('button', { text:'−', title:'Zoom out', on:{ click:()=> lmZoom(1 / 1.5) } }), h('button', { text:'⤢', title:'Whole map', on:{ click:()=>{ LM.follow = ''; lmFit(); lmDirty(); } } }),
+    h('button', { text:'◎', title:'City centre', on:{ click:()=>{ LM.follow = ''; lmFly(0, 0, .14); } } }));
+  const box = h('div', { cls:'mapbox' }, cv, sty, ctl, tip, h('div', { cls:'mapstat', id:'lmStat', text:'Connecting…' }));
+  LM.cv = cv; LM.g = cv.getContext('2d'); LM.tip = tip; LM.k = 0;
+  // pan, zoom, pinch, hover, click
+  const pts = new Map();
+  cv.addEventListener('pointerdown', e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.offsetX, e.offsetY]); LM.drag = { x:e.offsetX, y:e.offsetY, cx:LM.cx, cz:LM.cz, moved:false }; cv.classList.add('drag'); });
+  cv.addEventListener('pointermove', e=>{
+    if (pts.has(e.pointerId)) pts.set(e.pointerId, [e.offsetX, e.offsetY]);
+    if (pts.size === 2){ const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (LM.pd) lmZoom(d / LM.pd, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); LM.pd = d; return; }
+    if (LM.drag && pts.size === 1){ const dx = e.offsetX - LM.drag.x, dy = e.offsetY - LM.drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) LM.drag.moved = true; if (LM.drag.moved){ LM.follow = ''; LM.cx = LM.drag.cx - dx / LM.k; LM.cz = LM.drag.cz - dy / LM.k; lmDirty(); } return; }
+    const q = lmPick(e.offsetX, e.offsetY); if (q){ tip.innerHTML = '<b>' + esc(q.t) + '</b><br><span class="dim">' + esc(q.s) + '</span>'; tip.style.left = e.offsetX + 'px'; tip.style.top = e.offsetY + 'px'; tip.classList.remove('hide'); } else tip.classList.add('hide'); });
+  const up = e=>{ pts.delete(e.pointerId); if (pts.size < 2) LM.pd = 0; if (LM.drag && !LM.drag.moved && pts.size === 0){ const q = lmPick(e.offsetX, e.offsetY); if (q && q.rider){ LM.follow = q.rider; LM.listN = ''; } else if (q) lmFly(q.wx, q.wz, Math.max(LM.k, .3)); } LM.drag = null; cv.classList.remove('drag'); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('pointerleave', ()=> tip.classList.add('hide'));
+  cv.addEventListener('wheel', e=>{ e.preventDefault(); lmZoom(Math.pow(1.0015, -e.deltaY), e.offsetX, e.offsetY); }, { passive:false });
+  cv.addEventListener('dblclick', e=> lmZoom(2, e.offsetX, e.offsetY));
+  // side panel
+  const layers = h('div', { cls:'chips' }, ...Object.keys(PL_KIND).concat(['lifts', 'riders']).map(k=>{ const lab = k === 'lifts' ? 'Ski lifts' : k === 'riders' ? 'Live riders' : PL_KIND[k][0], col = k === 'lifts' ? '#e9edf3' : k === 'riders' ? '#ff7a45' : PL_KIND[k][1];
+    const b = h('button', { cls:'chip' + (LM.lay[k] ? '' : ' off'), on:{ click:()=>{ LM.lay[k] = LM.lay[k] ? 0 : 1; b.classList.toggle('off', !LM.lay[k]); lmDirty(); } } }, h('i', { style:'background:' + col }), lab); return b; }));
+  const find = h('select', { 'aria-label':'Go to a place' }, h('option', { value:'', text:'Go to a place…' }), ...MAPD.pl.filter(P=> P[1] === 'place' || P[1] === 'park' || P[1] === 'indoor' || P[1] === 'skate').sort((a, b)=> a[0].localeCompare(b[0])).map(P=> h('option', { value:P[3] + ',' + P[4], text:P[0] })),
+    ...MAPD.lifts.map(L=> h('option', { value:L[1] + ',' + L[2], text:L[0] + ' (lift)' })));
+  find.addEventListener('change', ()=>{ if (!find.value) return; const [x, z] = find.value.split(',').map(Number); LM.follow = ''; lmFly(x, z, .35); });
+  const srv = h('div', { cls:'plist' }, ...(live.length ? live.map(x=> h('div', { cls:'prow' }, h('div', { style:'min-width:0' }, h('div', { cls:'nm', text:x.name }), h('div', { cls:'sub', text:'host ' + x.host + ' · ' + x.code })), h('div', { cls:'rt small', text:x.players + '/' + x.max }))) : [h('p', { cls:'dim small', text:'No live servers.' })]),
+    ...rooms.map(x=> h('div', { cls:'prow' }, h('div', { style:'min-width:0' }, h('div', { cls:'nm', text:'Room ' + x.code }), h('div', { cls:'sub', text:(x.names && x.names.length ? x.names.join(', ') : 'private room') })), h('div', { cls:'rt small', text:(x.riders || 0) + ' in' }))));
+  const side = h('div', { cls:'mapside' },
+    h('div', { cls:'card' }, h('div', { cls:'ch' }, h('h3', { text:'Live riders' })), h('div', { id:'lmRiders', cls:'plist' }), h('p', { cls:'dim small', style:'margin-top:8px', text:'Riders appear while they play on a server or in a room. Tap one to follow them.' })),
+    h('div', { cls:'card' }, h('div', { cls:'ch' }, h('h3', { text:'Find' })), find),
+    h('div', { cls:'card' }, h('div', { cls:'ch' }, h('h3', { text:'Show on the map' })), layers),
+    h('div', { cls:'card' }, h('div', { cls:'ch' }, h('h3', { text:'Servers + rooms' }), h('span', { cls:'dim', text:(live.length + rooms.length) + ' live' })), srv));
+  LM.listN = '';
+  return h('div', null, h('div', { cls:'phead' }, h('div', null, h('h1', { text:'Live map' }), h('p', { text:'The whole world of Dusk Line: 24 km of city, towns, parks and mountains. Drag to move, scroll or pinch to zoom.' }))),
+    h('div', { cls:'mapwrap' }, box, side));
+}
+function lmWant(){ const D = S.data; RT.want = new Set((D.servers || []).filter(x=> x.live).map(x=> x.code).concat((D.rooms || []).map(x=> x.code)).filter(Boolean)); rtSync(); }
+async function lmRefresh(){ const [sv, pp] = await Promise.all([call('servers'), call('players', { limit:300 })]); if (sv && sv.ok){ S.data.servers = sv.servers; S.data.rooms = sv.rooms; } if (pp && pp.ok) S.data.allPlayers = pp.players; lmWant(); }
+function lmStart(){ LM.on = true; cancelAnimationFrame(LM.raf); lmDirty(); lmLoop(); rtConnect(); lmWant(); }
+function lmStop(){ LM.on = false; cancelAnimationFrame(LM.raf); LM.cv = null; rtClose(); }
+/* --- a small Supabase Realtime client: listen only (no presence of our own) */
+function rtSend(topic, event, payload, join){ if (!RT.ws || RT.ws.readyState !== 1) return null; const ref = String(++RT.ref); const m = { topic, event, payload, ref }; if (join) m.join_ref = ref; RT.ws.send(JSON.stringify(m)); return ref; }
+function rtConnect(){
+  if (RT.ws && RT.ws.readyState <= 1) return;
+  let ws; try { ws = new WebSocket(SUPA_URL.replace(/^https/, 'wss') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(SUPA_KEY) + '&vsn=1.0.0'); } catch(e){ RT.state = 'off'; return; }
+  RT.ws = ws; RT.state = 'connecting'; RT.J = {};
+  ws.onopen = ()=>{ RT.state = 'on'; RT.retry = 0; rtSync(); clearInterval(RT.hb); RT.hb = setInterval(()=> rtSend('phoenix', 'heartbeat', {}), 25000); lmDirty(); };
+  ws.onmessage = e=>{ RT.msgs++; rtIn(e.data); };
+  ws.onclose = ()=>{ clearInterval(RT.hb); RT.state = 'off'; RT.J = {}; lmDirty(); if (LM.on && RT.ws === ws){ RT.ws = null; setTimeout(()=>{ if (LM.on) rtConnect(); }, Math.min(15000, 2000 * ++RT.retry)); } };
+  ws.onerror = ()=>{};
+}
+function rtClose(){ const ws = RT.ws; RT.ws = null; RT.J = {}; RT.state = 'off'; clearInterval(RT.hb); try { if (ws) ws.close(); } catch(e){} }
+function rtSync(){
+  if (!RT.ws || RT.ws.readyState !== 1) return;
+  RT.want.forEach(code=>{ if (!RT.J[code]) RT.J[code] = { names:{}, ref:rtSend('realtime:room:' + code, 'phx_join', { config:{ broadcast:{ ack:false, self:false }, presence:{ key:'' }, postgres_changes:[], private:false }, access_token:SUPA_KEY }, true) }; });
+  Object.keys(RT.J).forEach(code=>{ if (!RT.want.has(code)){ rtSend('realtime:room:' + code, 'phx_leave', {}); delete RT.J[code]; } });
+}
+const RCOL = ['#ff7a45', '#4fd8c4', '#ffd21f', '#a78bfa', '#5aa8ff', '#ff6fa8', '#7be08a', '#ffb03a'];
+function rtRider(code, id, x, z, yaw, spd){
+  if (!id || !isFinite(x) || !isFinite(z)) return;
+  const J = RT.J[code], key = code + '|' + id; let r = LM.riders[key];
+  if (!r){ r = LM.riders[key] = { key, id, code, trail:[], col:RCOL[Object.keys(LM.riders).length % RCOL.length] }; }
+  if (r.x !== undefined && Math.hypot(x - r.x, z - r.z) > 2){ r.trail.push([r.x, r.z]); if (r.trail.length > 40) r.trail.shift(); if (Math.hypot(x - r.x, z - r.z) > 300) r.trail = []; }
+  r.x = x; r.z = z; r.yaw = yaw; r.spd = spd || 0; r.t = Date.now(); r.name = (J && J.names[id]) || r.name || 'Rider';
+}
+function rtIn(txt){
+  let m; try { m = JSON.parse(txt); } catch(e){ return; }
+  const tp = String(m.topic || ''); if (tp.indexOf('realtime:room:') !== 0) return;
+  const code = tp.slice(14), J = RT.J[code]; if (!J) return; const P = m.payload || {};
+  if (m.event === 'broadcast'){
+    const ev = P.event, d = P.payload || {};
+    if (ev === 's' && Array.isArray(d.a) && d.a.length >= 7){ const a = d.a; rtRider(code, String(a[0]), a[3] / 100, a[5] / 100, (a[6] || 0) / 1000, Math.hypot(a[7] || 0, a[8] || 0) / 100); }
+    else if (ev === 'state' && d && typeof d.x === 'number'){ rtRider(code, String(d.id || ''), d.x, d.z, +d.yaw || 0, d.v ? Math.hypot(d.v[0] || 0, d.v[2] || 0) : 0); }
+  } else if (m.event === 'presence_state'){ for (const k in P){ const mt = ((P[k] || {}).metas || [])[0] || {}; J.names[k] = String(mt.name || mt.n || '').slice(0, 24); } lmNames(code); }
+  else if (m.event === 'presence_diff'){ const jn = P.joins || {}, lv = P.leaves || {}; for (const k in jn){ const mt = ((jn[k] || {}).metas || [])[0] || {}; J.names[k] = String(mt.name || '').slice(0, 24); } for (const k in lv){ delete J.names[k]; delete LM.riders[code + '|' + k]; } lmNames(code); }
+}
+function lmNames(code){ const J = RT.J[code]; for (const key in LM.riders){ const r = LM.riders[key]; if (r.code === code && J.names[r.id]) r.name = J.names[r.id]; } LM.listN = ''; lmDirty(); }
+function tabMe(){ return h('div', null, h('div', { cls:'phead' }, h('div', null, h('h1', { text:'Admin code' }), h('p', { text:'Change the secret code you type to open this site.' }))), passCard()); }
+function playerActs(p){
+  const banned = !!p.banned_until;
+  const A = h('div', { cls:'acts' });
+  if (!p.admin){
       const ban = (hours, label)=> h('button', { cls:'sm bad', text:'Ban ' + label, on:{ click:()=> ask('Ban ' + p.name + ' for ' + label + '? They are signed out and cannot sign in.', 'Yes, ban', why=> act('ban', { name:p.name, hours:hours, reason:why }, p.name + ' is banned for ' + label + '.'), { label:'Why? (only admins see this)', ph:'bad name, cheating…', max:120 }) } });
       if (banned) A.appendChild(h('button', { cls:'sm', text:'Unban', on:{ click:()=> ask('Let ' + p.name + ' back in?', 'Unban', ()=> act('ban', { name:p.name, hours:0 }, p.name + ' can sign in again.')) } }));
       else { A.appendChild(ban(24, '1 day')); A.appendChild(ban(168, '7 days')); A.appendChild(ban(876000, 'for good')); }
@@ -398,12 +649,41 @@ function tabPlayers(){
       if (p.crew && p.crew.owner) A.appendChild(h('button', { cls:'sm', text:'Reset crew name', on:{ click:()=> ask('Reset the crew name of [' + p.crew.tag + ']?', 'Reset', ()=> act('wipe', { name:p.name, what:'crew' }, 'Crew name reset.')) } }));
       if (p.builds) A.appendChild(h('button', { cls:'sm', text:'Hide builds', on:{ click:()=> ask('Hide every shared build of ' + p.name + '?', 'Hide', ()=> act('wipe', { name:p.name, what:'builds' }, 'Builds hidden.')) } }));
       A.appendChild(h('button', { cls:'sm', text:'Rename', on:{ click:()=> ask('Give ' + p.name + ' a new username.', 'Rename', nn=> act('rename', { name:p.name, new:nn }, 'Renamed to ' + nn + '.'), { label:'New username', ph:'3 to 16 letters, numbers or _', max:16 }) } }));
-      it.appendChild(A);
+  }
+  return A;
+}
+function tabPlayers(){
+  const D = S.data, q = h('input', { type:'search', placeholder:'Search a username', value:D.q || '', maxlength:16 });
+  const go = ()=>{ D.q = q.value.trim(); load('players'); };
+  q.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
+  const P = (D.players || []).slice(), sk = D.psort || 'last_seen', up = !!D.pup;
+  const val = (p, k)=> k === 'name' ? String(p.name).toLowerCase() : k === 'lv' ? (p.xp || 0) : k === 'cash' ? (p.cash || 0) : k === 'builds' ? (p.builds || 0) : (p[k] || 0);
+  P.sort((a, b)=>{ const x = val(a, sk), y = val(b, sk); return (x < y ? -1 : x > y ? 1 : 0) * (up ? 1 : -1); });
+  const th = (k, t, c)=> h('th', { cls:(sk === k ? 's' + (up ? ' up' : '') : '') + (c ? ' ' + c : ''), text:t, on:{ click:()=>{ if (D.psort === k) D.pup = !D.pup; else { D.psort = k; D.pup = k === 'name'; } draw(); } } });
+  const tb = h('tbody');
+  P.forEach(p=>{
+    const open = D.popen === p.name, banned = !!p.banned_until;
+    const tr = h('tr', { cls:'pr' + (open ? ' open' : ''), on:{ click:()=>{ D.popen = open ? '' : p.name; draw(); } } },
+      h('td', null, h('div', { cls:'row', style:'flex-wrap:nowrap' }, av(p.name), h('div', { style:'min-width:0' }, h('b', { text:p.name }), h('div', { cls:'small dim' }, p.admin ? h('span', { cls:'tag hot', text:'admin' }) : null, banned ? h('span', { cls:'tag bad', text:'banned' }) : null, p.crew ? ' [' + p.crew.tag + ']' : '')))),
+      h('td', null, h('span', { cls:'lv', text:'LV ' + lvOf(p.xp) })),
+      h('td', { cls:'num' }, h('span', { cls:'coin' }), num(p.cash || 0)),
+      h('td', { cls:'num', text:String(p.builds || 0) }),
+      h('td', null, h('span', { cls:isOnline(p) ? 'on-dot' : 'off-dot' }), isOnline(p) ? 'online now' : ago(p.last_seen), p.room ? h('div', { cls:'small dim', text:'room ' + p.room }) : null),
+      h('td', { cls:'dim small', text:ago(p.created) }));
+    tb.appendChild(tr);
+    if (open){
+      const bits = [];
+      if (p.crew) bits.push('Crew [' + p.crew.tag + '] ' + p.crew.name + (p.crew.owner ? ' (owner)' : ''));
+      bits.push(num(p.xp || 0) + ' XP'); bits.push('joined ' + when(p.created)); bits.push('last on ' + when(p.last_seen));
+      tb.appendChild(h('tr', { cls:'ex' }, h('td', { colspan:'6' }, h('div', { cls:'meta', text:bits.join(' · ') }), p.bio ? h('div', { cls:'meta', text:'Bio: ' + p.bio }) : null,
+        banned ? h('div', { cls:'meta', text:'Banned until ' + when(p.banned_until) + (p.ban_reason ? ' · ' + p.ban_reason : '') }) : null,
+        p.admin ? h('p', { cls:'dim small', text:'This is an admin account.' }) : playerActs(p))));
     }
-    list.appendChild(it);
   });
-  return h('div', null, h('h2', { text:'Players' }), h('div', { cls:'row' }, h('div', { cls:'grow' }, q), h('button', { cls:'pri', text:'Search', on:{ click:go } })),
-    h('p', { cls:'dim small', text:'Newest visits first.' }), list, moreRow((D.players || []).length, 'players', 'players'));
+  const onl = P.filter(isOnline).length;
+  return h('div', null, h('div', { cls:'phead' }, h('div', null, h('h1', { text:'Players' }), h('p', { text:P.length + ' shown · ' + onl + ' online now · tap a player for actions' }))),
+    h('div', { cls:'row', style:'margin-bottom:12px' }, h('div', { cls:'grow' }, q), h('button', { cls:'pri', text:'Search', on:{ click:go } })),
+    h('div', { cls:'card', style:'overflow-x:auto; padding:6px 10px' }, h('table', { cls:'tbl' }, h('thead', null, h('tr', null, th('name', 'Player'), th('lv', 'Level'), th('cash', 'Dusk Coins', 'num'), th('builds', 'Builds', 'num'), th('last_seen', 'Last on'), th('created', 'Joined'))), tb)));
 }
 function tabServers(){
   const D = S.data, list = h('div', { cls:'list' });
@@ -588,27 +868,41 @@ function tabLog(){
     moreRow(rows.length, 'log', 'log lines'));
 }
 
+function goTab(t){ if (t === S.tab) return; leaveOk(()=>{ say(''); S.tab = t; if (t === 'ads' || t === 'numbers') S.data.config = null; if (t !== 'map') lmStop(); draw(); load(t); }); }
 function draw(){
   const app = $('app'); app.textContent = '';
-  const top = h('div', { cls:'top' }, h('div', { cls:'logo' }, 'DUSK', h('b', { text:'LINE' })), h('span', { cls:'tag hot', text:'admin' }), h('span', { cls:'dim small', text:'game ' + GAME_VER }));
-  if (S.tok && S.view === 'app') top.appendChild(h('div', { cls:'who' }, h('span', { cls:'dim small', text:'door open' }), h('button', { cls:'sm', text:'Lock', on:{ click:()=> leaveOk(lockNow) } })));
-  app.appendChild(top);
-  const wrap = h('div', { cls:'wrap' });
-  if (S.view === 'app'){
-    const tabs = h('div', { cls:'tabs' });
-    TABS.forEach(t=> tabs.appendChild(h('button', { cls:'tab' + (S.tab === t[0] ? ' on' : '') + (isDirty() && S.dirtyTab === t[0] ? ' dirty' : ''), text:t[1], on:{ click:()=>{ if (t[0] === S.tab) return; leaveOk(()=>{ say(''); S.tab = t[0]; if (t[0] === 'ads' || t[0] === 'numbers') S.data.config = null; draw(); load(t[0]); }); } } })));
-    app.appendChild(tabs);
+  if (S.view !== 'app'){
+    lmStop();
+    const top = h('div', { cls:'top' }, h('div', { cls:'logo' }, 'DUSK', h('b', { text:'LINE' })), h('span', { cls:'tag hot', text:'admin' }), h('span', { cls:'dim small', text:'game ' + GAME_VER }));
+    app.appendChild(top);
+    const wrap = h('div', { cls:'wrap' });
+    wrap.appendChild(h('div', { id:'msg', cls:'msg' + (S.bad ? ' bad' : '') + (S.msg ? '' : ' hide'), role:'status', text:S.msg }));
+    wrap.appendChild(viewPass()); app.appendChild(wrap); return;
   }
-  wrap.appendChild(h('div', { id:'msg', cls:'msg' + (S.bad ? ' bad' : '') + (S.msg ? '' : ' hide'), role:'status', text:S.msg }));
-  let v;
-  if (S.view !== 'app') v = viewPass();
-  else v = ({ home:tabHome, players:tabPlayers, reports:tabReports, servers:tabServers, scores:tabScores, ads:tabAds, numbers:tabNumbers, words:tabWords, log:tabLog }[S.tab] || tabHome)();
-  if (S.view === 'app' && (S.tab === 'ads' || S.tab === 'numbers')){
+  const side = h('nav', { cls:'side', 'aria-label':'Admin sections' },
+    h('div', { cls:'brand' }, h('div', { cls:'mk', text:'D' }), h('div', null, h('b', { text:'DUSK LINE' }), h('span', { text:'admin · game ' + GAME_VER }))));
+  const D = S.data, onl = (D.allPlayers || []).filter(isOnline).length;
+  TABS.forEach((t, k)=>{
+    if (k === 2 || k === 6) side.appendChild(h('div', { cls:'sep' }));
+    const b = h('button', { cls:'nav' + (S.tab === t[0] ? ' on' : '') + (isDirty() && S.dirtyTab === t[0] ? ' dirty' : ''), title:t[1], on:{ click:()=> goTab(t[0]) } }, icon(t[2]), h('span', { cls:'t', text:t[1] }));
+    if (t[0] === 'map' && onl) b.appendChild(h('span', { cls:'cnt', text:onl + ' on' }));
+    side.appendChild(b);
+  });
+  side.appendChild(h('div', { cls:'me' }, h('b', null, h('span', { cls:'dot' }), S.name || 'Admin'), h('div', { cls:'dim small x', text:'door open · locks by itself after 8 hours' }),
+    h('button', { cls:'sm', style:'margin-top:8px; width:100%', on:{ click:()=> leaveOk(lockNow) } }, icon('lock'), ' Lock')));
+  const main = h('main', { cls:'main' });
+  main.appendChild(h('div', { id:'msg', cls:'msg' + (S.bad ? ' bad' : '') + (S.msg ? '' : ' hide'), role:'status', text:S.msg }));
+  const v = ({ home:tabHome, map:tabMap, players:tabPlayers, reports:tabReports, servers:tabServers, scores:tabScores, ads:tabAds, numbers:tabNumbers, words:tabWords, log:tabLog, me:tabMe }[S.tab] || tabHome)();
+  if (S.tab === 'ads' || S.tab === 'numbers'){
     const mark = e=>{ const t = e.target; if (!t || t.type === 'search' || !t.closest) return; const sec = t.closest('[data-sec]'); if (sec) markDirty(sec.getAttribute('data-sec')); };
     v.addEventListener('input', mark); v.addEventListener('change', mark);
   }
-  wrap.appendChild(v); app.appendChild(wrap);
+  main.appendChild(v);
+  app.appendChild(h('div', { cls:'shell' }, side, main));
+  if (S.tab === 'map') lmStart();
 }
+/* the dashboard and the map keep themselves fresh */
+setInterval(()=>{ if (S.view !== 'app' || document.hidden) return; if (S.tab === 'home' && !document.querySelector('.modal')) load('home'); else if (S.tab === 'map') lmRefresh(); }, 30000);
 draw();
 doorCheck().then(()=>{ if (S.tok) refreshMe(); });
 </script>
