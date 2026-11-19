@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-Of6Ip37Cjh2onmmwV/2BL8F3SRfb60uyhwpH75N76Ko='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-+smQ/m6oBxKvmnLLobkua5dh6OYskQfjSaA/Mf+ca6U='; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Dusk Line admin</title>
 <style>
 :root{ --bg:#0d1016; --card:#161a23; --line:rgba(255,255,255,.12); --ink:#f1ece2; --dim:rgba(241,236,226,.62); --hot:#ff7a45; --teal:#5fd6c4; --bad:#ff5d5d; --ok:#7be08a; --yel:#ffd21f; color-scheme:dark; }
@@ -68,7 +68,7 @@ const ARTS = ['star', 'wheel', 'scoot', 'bars', 'bolt', 'can', 'city', 'crown', 
 const DAILY_FIELDS = [['score', 'Score in one run'], ['bestChain', 'Longest trick chain in a run'], ['bestAir', 'Biggest air in a run'], ['grindTime', 'Grind time in a run'], ['bestSpin', 'Biggest spin in a run'], ['tricksLanded', 'Tricks landed in a run'], ['bestCombo', 'Best combo in a run'], ['saves', 'Sketchy saves in a run']];
 const ACH_FIELDS = [['lifetime.runs', 'Runs finished, all time'], ['lifetime.bestScore', 'Best score ever'], ['lifetime.bestChain', 'Longest chain ever'], ['lifetime.totalGrindTime', 'Total grind time'], ['lifetime.totalTricks', 'Tricks landed, all time'], ['lifetime.bestSpin', 'Biggest spin ever'], ['ownedDrives.length', 'Rides owned'], ['ownedKits.length', 'Paints owned'], ['lifetime.totalRepEarned', 'Money earned, all time'], ['lifetime.playTimeSec', 'Seconds played']];
 const ERR = { net:"Couldn't reach the game's database. Check the internet and try again.", off:'The admin site is not switched on yet. Ask Claude to switch it on.',
-  bad_login:"That username and password don't match a Dusk Line account.", same_as_password:'Pick an admin code that is not your game password.', no_code:'Make your admin code first.',
+  bad_login:"That username and password don't match. New here? Press Make the admin login.", bad_password:'The password needs 6 or more letters, numbers or signs.', same_as_password:'Pick an admin code that is not your game password.', no_code:'Make your admin code first.',
   no_pass:'The admin site is not switched on yet. Ask Claude to switch it on.', auth:'The door closed. Open it again.',
   locked:'Too many wrong tries. The door is locked for a while.', rate_limited:'Too fast. Wait a minute and try again.', not_admin:'The door closed (it locks by itself after 8 hours). Open it again.',
   bad_code:'That code is not right.', bad_old_code:'The passcode you use now was typed wrong.', bad_new:'That new passcode is too easy to guess. Use 10 or more letters, numbers or signs: not all the same, and not something like 0123456789.',
@@ -233,6 +233,13 @@ async function acctLogin(user, pass){
   S.tok = String(r.token || ''); try { sessionStorage.setItem('dl_admin_tok', S.tok); } catch(e){}
   say(''); await refreshMe();
 }
+async function acctMake(user, pass){
+  say('Making the admin login…');
+  const r = await rpc('dl_register', { p_username:user, p_password:pass });
+  if (!r.ok){ say(r.error === 'name_taken' ? 'That name is taken. If it is yours, press Sign in instead.' : errText(r), true); return; }
+  S.tok = String(r.token || ''); try { sessionStorage.setItem('dl_admin_tok', S.tok); } catch(e){}
+  say(''); await refreshMe();
+}
 async function acctCode(code, first){
   say('Checking…');
   const r = first ? await rpc('dl_admin_code_set', { p_token:S.tok, p_code:code }) : await rpc('dl_admin_unlock', { p_token:S.tok, p_code:code });
@@ -282,14 +289,28 @@ function viewAcct(){
     f.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
     return f;
   }
+  const make = S.step === 'make';
   const u = h('input', { type:'text', id:'au', maxlength:24, autocomplete:'username', autocapitalize:'off', spellcheck:'false' });
-  const pw = h('input', { type:'password', id:'ap', maxlength:72, autocomplete:'current-password' });
-  const go = ()=>{ const a = u.value.trim(), b = pw.value; if (!a || !b){ say('Type your username and password.', true); return; } pw.value = ''; acctLogin(a, b); };
-  const f = h('div', { cls:'card center' }, h('h2', { text:'Admin sign in', style:'margin-top:0' }),
-    h('p', { cls:'dim', text:'Sign in with your Dusk Line account (the same one you use in the game).' }),
+  const pw = h('input', { type:'password', id:'ap', maxlength:72, autocomplete:make ? 'new-password' : 'current-password' });
+  const pw2 = make ? h('input', { type:'password', id:'ap2', maxlength:72, autocomplete:'new-password' }) : null;
+  const go = ()=>{
+    const a = u.value.trim(), b = pw.value;
+    if (!a || !b){ say('Type the username and password.', true); return; }
+    if (make){
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(a)){ say('The username needs 3 to 16 letters, numbers or _ (no spaces).', true); return; }
+      if (b.length < 6){ say(ERR.bad_password, true); return; }
+      if (b !== pw2.value){ say('The two passwords are not the same.', true); return; }
+      pw.value = pw2.value = ''; acctMake(a, b); return;
+    }
+    pw.value = ''; acctLogin(a, b);
+  };
+  const swap = h('button', { text:make ? 'I already have it: sign in' : 'Make the admin login', on:{ click:()=>{ S.step = make ? 'login' : 'make'; say(''); draw(); } } });
+  const f = h('div', { cls:'card center' }, h('h2', { text:make ? 'Make the admin login' : 'Admin sign in', style:'margin-top:0' }),
+    h('p', { cls:'dim', text:make ? 'Pick the username and password you will use to open this admin site. Keep the password secret.' : 'Sign in with the admin login.' }),
     h('label', { for:'au', text:'Username' }), u, h('label', { for:'ap', text:'Password' }), pw,
-    h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Sign in', on:{ click:go } })),
-    h('p', { cls:'dim small', style:'margin-top:14px', text:'Only the admin account gets past the next step. Everybody else just sees “not the admin”.' }));
+    make ? h('label', { for:'ap2', text:'Password again' }) : null, pw2,
+    h('div', { cls:'row', style:'margin-top:14px; gap:8px; flex-wrap:wrap' }, h('button', { cls:'pri', text:make ? 'Make it' : 'Sign in', on:{ click:go } }), swap),
+    h('p', { cls:'dim small', style:'margin-top:14px', text:make ? 'This also works as a Dusk Line account in the game. It only becomes the admin after the next step.' : 'Only the admin login gets past the next step. Everybody else just sees “not the admin”.' }));
   f.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
   return f;
 }
