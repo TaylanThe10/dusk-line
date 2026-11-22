@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co wss://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-f/F3qdG8sUSsteK35nj2+mlNxRlDPm5zeCEVyHBb+C0='; img-src data: 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co wss://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-4NFGGfKKE4JODrw+PECMIhaJLcYaY9iLcV8z/+vfRa4='; img-src data: 'self'; base-uri 'none'; form-action 'none'">
 <title>Dusk Line admin</title>
 <style>
 :root{ --bg:#0d1016; --card:#161a23; --line:rgba(255,255,255,.12); --ink:#f1ece2; --dim:rgba(241,236,226,.62); --hot:#ff7a45; --teal:#5fd6c4; --bad:#ff5d5d; --ok:#7be08a; --yel:#ffd21f; color-scheme:dark; }
@@ -139,7 +139,7 @@ const ERR = { net:"Couldn't reach the game's database. Check the internet and tr
   bad_login:"That username and password don't match. New here? Press Make the admin login.", bad_password:'The password needs 6 or more letters, numbers or signs.', same_as_password:'Pick an admin code that is not your game password.', no_code:'Make your admin code first.',
   no_pass:'The admin site is not switched on yet. Ask Claude to switch it on.', auth:'The door closed. Open it again.',
   locked:'Too many wrong tries. The door is locked for a while.', rate_limited:'Too fast. Wait a minute and try again.', not_admin:'The door closed (it locks by itself after 8 hours). Open it again.',
-  bad_code:'That code is not right.', bad_old_code:'The passcode you use now was typed wrong.', bad_new:'That new passcode is too easy to guess. Use 10 or more letters, numbers or signs: not all the same, and not something like 0123456789.',
+  bad_code:'That code is not right.', bad_old_code:'The code you use now was typed wrong.', bad_new:'That new code is too easy to guess. Use more numbers or letters, not all the same one.',
   no_player:'Nobody has that username.', is_admin:"You can't do that to the admin itself.", bad_name:"That name isn't allowed (3 to 16 letters, numbers or _ and no bad words).", name_taken:'That name is taken.',
   bad_what:'Unknown thing to wipe.', no_server:'That server is not there any more.', bad_key:'Unknown setting.', too_big:'That is too much text to save.', bad_value:'That could not be saved (wrong shape).',
   bad_words:'That has a blocked word in it.', bad_word:'A blocked word needs 2 to 24 letters.', banned:'This account is locked.', bad_fn:'Unknown action.' };
@@ -294,7 +294,7 @@ async function unlock(code){
     say(t, true); return;
   }
   S.tok = String(r.token || ''); try { sessionStorage.setItem('dl_admin_tok', S.tok); } catch(e){}
-  S.shortPass = r.long === false;
+  S.shortPass = false;
   say(''); await refreshMe();
 }
 async function lockNow(){
@@ -305,25 +305,40 @@ async function lockNow(){
 async function doorCheck(){
   let r = await rpc('dl_admin_pass_state2', { p_dev:devId() });
   if (!r.ok && (r.error === 'off' || r.error === 'net')) r = await rpc('dl_admin_pass_state', {});
-  if (!r.ok && r.error === 'off'){                                          // 15.86: the one-passcode door isn't in the database: use the account door
-    S.mode = 'acct'; if (S.view === 'pass' && !S.step) S.step = 'login'; if (S.view === 'pass') draw(); return;
+  if (!r.ok && r.error === 'off'){                                          // 16.00: the code door isn't in the database yet: say how to switch it on
+    if (S.mode !== 'acct'){ S.mode = 'pass'; S.doorOff = true; } if (S.view === 'pass') draw(); return;
   }
-  if (r.ok) S.mode = 'pass';
+  if (r.ok){ S.mode = 'pass'; S.doorOff = false; }
   if (S.view !== 'pass') return;
+  draw();
   if (!r.ok){ if (r.error === 'off') say(ERR.off, true); return; }
   if (!r.set) say(ERR.no_pass, true);
   else if (r.wait > 0) say('Too many wrong tries. The door is locked for ' + waitText(r.wait) + '.', true);
 }
+function viewDoorOff(){                                                    // 16.00: the code door needs its one database step
+  return h('div', { cls:'card center', style:'max-width:560px' }, h('h2', { text:'Admin code', style:'margin-top:0' }),
+    h('p', { text:'The code door needs one step in Supabase first. You only do it once.' }),
+    h('ol', { style:'padding-left:20px; line-height:1.5' },
+      h('li', null, 'Open Downloads › Claude outputs › dusk-line-admin-code-step.sql and copy everything in it.'),
+      h('li', null, 'Open the game’s Supabase project, then SQL Editor (the button below opens it).'),
+      h('li', null, 'Paste it and press Run. Then come back here and press Check again.')),
+    h('div', { cls:'row', style:'margin-top:12px; gap:8px; flex-wrap:wrap' },
+      h('button', { text:'Open Supabase SQL Editor', on:{ click:()=>{ try { window.open(SQL_EDITOR, '_blank', 'noopener'); } catch(e){} } } }),
+      h('button', { cls:'pri', text:'Check again', on:{ click:()=>{ say('Checking…'); doorCheck().then(()=>{ if (S.doorOff) say('Not switched on yet. Run the step in Supabase first.', true); else say(''); draw(); }); } } })),
+    h('p', { cls:'dim small', style:'margin-top:14px' }, 'Need the admin site before that? ',
+      h('a', { href:'#', text:'Sign in the old way', on:{ click:e=>{ e.preventDefault(); S.mode = 'acct'; S.step = 'login'; say(''); draw(); } } }), '.'));
+}
 function viewPass(){
   if (S.mode === 'acct') return viewAcct();
   if (!S.mode) return h('div', { cls:'card center' }, h('p', { cls:'dim', text:'Opening the door…' }));
+  if (S.doorOff) return viewDoorOff();
   const c = h('input', { type:'password', id:'pc', maxlength:72, autocomplete:'off', autocapitalize:'off', spellcheck:'false' });
-  const go = ()=>{ const v = c.value; if (!v){ say('Type the passcode.', true); return; } c.value = ''; unlock(v); };
-  const f = h('div', { cls:'card center' }, h('h2', { text:'Admin passcode', style:'margin-top:0' }),
-    h('p', { cls:'dim', text:'Type the passcode to open the admin site.' }),
-    h('label', { for:'pc', text:'Passcode' }), c,
+  const go = ()=>{ const v = c.value; if (!v){ say('Type the admin code.', true); return; } c.value = ''; unlock(v); };
+  const f = h('div', { cls:'card center' }, h('h2', { text:'Admin code', style:'margin-top:0' }),
+    h('p', { cls:'dim', text:'Type the admin code to open the admin site.' }),
+    h('label', { for:'pc', text:'Code' }), c,
     h('div', { cls:'row', style:'margin-top:14px' }, h('button', { cls:'pri', text:'Open', on:{ click:go } })),
-    h('p', { cls:'dim small', style:'margin-top:14px', text:'Five wrong tries lock this device: 5 minutes the first time, then longer each time. The game’s database checks the passcode, not this page.' }));
+    h('p', { cls:'dim small', style:'margin-top:14px', text:'Five wrong tries lock the door: 5 minutes the first time, then longer each time (up to 6 hours). The game’s database checks the code, not this page.' }));
   f.addEventListener('keydown', e=>{ if (e.key === 'Enter') go(); });
   return f;
 }
@@ -422,17 +437,18 @@ function viewAcct(){
 function passCard(){
   const o = h('input', { type:'password', maxlength:72, autocomplete:'off' }), n1 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' }), n2 = h('input', { type:'password', maxlength:72, autocomplete:'new-password' });
   const go = async ()=>{
-    if (n1.value.length < 10){ say('The new passcode needs 10 or more letters, numbers or signs.', true); return; }
-    if (n1.value !== n2.value){ say('The two new passcodes are not the same.', true); return; }
+    const min = S.mode === 'acct' ? 10 : 5;
+    if (n1.value.length < min){ say('The new code needs ' + min + ' or more numbers or letters.', true); return; }
+    if (n1.value !== n2.value){ say('The two new codes are not the same.', true); return; }
     const r = S.mode === 'acct' ? await rpc('dl_admin_code_set', { p_token:S.tok, p_code:n1.value, p_old:o.value }) : await rpc('dl_admin_pass_change', { p_token:S.tok, p_old:o.value, p_new:n1.value }); o.value = n1.value = n2.value = '';
     if (!r.ok){ if (r.error === 'not_admin' || r.error === 'auth') return refreshMe(); say(errText(r), true); return; }
-    S.shortPass = false; say('Passcode changed. Use the new one from now on.'); if (S.tab === 'home') draw();
+    S.shortPass = false; say('Code changed. Use the new one from now on.'); if (S.tab === 'home') draw();
   };
-  return h('div', { cls:'card' }, h('h3', { text:S.mode === 'acct' ? 'Change the admin code' : 'Change the passcode', style:'margin-top:0' }),
+  return h('div', { cls:'card' }, h('h3', { text:S.mode === 'acct' ? 'Change the admin code' : 'Change the admin code', style:'margin-top:0' }),
     S.shortPass ? h('div', { cls:'note', text:'Your passcode is short. Pick a new one with 10 or more letters, numbers or signs: it is much harder to guess.' }) : null,
-    h('div', { cls:'cols3' }, h('div', null, h('label', { text:'Passcode now' }), o), h('div', null, h('label', { text:'New passcode' }), n1), h('div', null, h('label', { text:'New one again' }), n2)),
+    h('div', { cls:'cols3' }, h('div', null, h('label', { text:'Code now' }), o), h('div', null, h('label', { text:'New code' }), n1), h('div', null, h('label', { text:'New one again' }), n2)),
     h('div', { cls:'row', style:'margin-top:12px' }, h('button', { text:'Change it', on:{ click:go } })),
-    h('p', { cls:'dim small', text:'Anyone who knows the passcode can use this site. Tell a parent what it is, and nobody else.' }));
+    h('p', { cls:'dim small', text:'Anyone who knows the code can use this site. Tell a parent what it is, and nobody else.' }));
 }
 
 /* ---------------------------------------------------------------- the app */
