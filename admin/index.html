@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co wss://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-4NFGGfKKE4JODrw+PECMIhaJLcYaY9iLcV8z/+vfRa4='; img-src data: 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://njgfhlnlethcyhrfhalg.supabase.co wss://njgfhlnlethcyhrfhalg.supabase.co; style-src 'unsafe-inline'; script-src 'sha256-65AmUGQLAc3DUBnT22lKojr1NLPtvuJXE32WctZUcxc='; img-src data: 'self'; base-uri 'none'; form-action 'none'">
 <title>Dusk Line admin</title>
 <style>
 :root{ --bg:#0d1016; --card:#161a23; --line:rgba(255,255,255,.12); --ink:#f1ece2; --dim:rgba(241,236,226,.62); --hot:#ff7a45; --teal:#5fd6c4; --bad:#ff5d5d; --ok:#7be08a; --yel:#ffd21f; color-scheme:dark; }
@@ -319,7 +319,7 @@ function viewDoorOff(){                                                    // 16
   return h('div', { cls:'card center', style:'max-width:560px' }, h('h2', { text:'Admin code', style:'margin-top:0' }),
     h('p', { text:'The code door needs one step in Supabase first. You only do it once.' }),
     h('ol', { style:'padding-left:20px; line-height:1.5' },
-      h('li', null, 'Open Downloads › Claude outputs › dusk-line-admin-code-step.sql and copy everything in it.'),
+      h('li', null, 'Open the file dusk-line-admin-code-step.sql that Claude sent you in the chat, and copy everything in it.'),
       h('li', null, 'Open the game’s Supabase project, then SQL Editor (the button below opens it).'),
       h('li', null, 'Paste it and press Run. Then come back here and press Check again.')),
     h('div', { cls:'row', style:'margin-top:12px; gap:8px; flex-wrap:wrap' },
